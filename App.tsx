@@ -5,10 +5,11 @@ import { LoginPage } from './components/auth/LoginPage';
 import { RegisterPage } from './components/auth/RegisterPage';
 import { ProfilePage } from './components/profile/ProfilePage';
 import { AdminPage } from './components/admin/AdminPage';
-import type { Product, CartItem, Language, Theme, User, Order, OrderStatus, UserRole, Promotion } from './types';
+import type { Product, CartItem, Language, Theme, User, Order, OrderStatus, UserRole, Promotion, Permission } from './types';
 import { products as initialProducts, restaurantInfo, users as initialUsers, promotions as initialPromotions } from './data/mockData';
 import { ToastNotification } from './components/ToastNotification';
 import { useTranslations } from './i18n/translations';
+import { initialRolePermissions } from './data/permissions';
 
 // Subscribes to the browser's hashchange event.
 function subscribe(callback: () => void) {
@@ -58,6 +59,11 @@ const App: React.FC = () => {
   const [orders, setOrders] = useState<Order[]>(() => {
       const savedOrders = localStorage.getItem('restaurant_orders');
       return savedOrders ? JSON.parse(savedOrders) : [];
+  });
+  
+  const [rolePermissions, setRolePermissions] = useState<Record<UserRole, Permission[]>>(() => {
+    const saved = localStorage.getItem('restaurant_role_permissions');
+    return saved ? JSON.parse(saved) : initialRolePermissions;
   });
 
   // Auth State
@@ -125,6 +131,10 @@ const App: React.FC = () => {
   }, [orders]);
   
   useEffect(() => {
+      localStorage.setItem('restaurant_role_permissions', JSON.stringify(rolePermissions));
+  }, [rolePermissions]);
+  
+  useEffect(() => {
       if (currentUser) {
         sessionStorage.setItem('restaurant_currentUser', JSON.stringify(currentUser));
       } else {
@@ -143,6 +153,14 @@ const App: React.FC = () => {
         setToast(prev => ({ ...prev, isVisible: false }));
     }, 3000);
   }, []);
+  
+  const hasPermission = useCallback((permission: Permission): boolean => {
+    if (!currentUser) return false;
+    // Super Admins always have all permissions, regardless of the roles object
+    if (currentUser.role === 'superAdmin') return true;
+    const userPermissions = rolePermissions[currentUser.role];
+    return userPermissions?.includes(permission) ?? false;
+  }, [currentUser, rolePermissions]);
 
   // Auth Callbacks
   const login = useCallback((user: User) => setCurrentUser(user), []);
@@ -200,11 +218,19 @@ const App: React.FC = () => {
   }, []);
 
   const updateOrderStatus = useCallback((orderId: string, status: OrderStatus) => {
-      setOrders(prev => prev.map(o => o.id === orderId ? { ...o, status } : o));
-  }, []);
+    if (!hasPermission('manage_orders')) {
+        showToast(t.permissionDenied);
+        return;
+    }
+    setOrders(prev => prev.map(o => o.id === orderId ? { ...o, status } : o));
+  }, [hasPermission, showToast, t.permissionDenied]);
 
   // Admin Callbacks
   const addProduct = useCallback((productData: Omit<Product, 'id'>) => {
+    if (!hasPermission('manage_menu')) {
+        showToast(t.permissionDenied);
+        return;
+    }
     setProducts(prev => {
         const newProduct: Product = {
             ...productData,
@@ -212,17 +238,29 @@ const App: React.FC = () => {
         };
         return [newProduct, ...prev];
     });
-  }, []);
+  }, [hasPermission, showToast, t.permissionDenied]);
 
   const updateProduct = useCallback((updatedProduct: Product) => {
+    if (!hasPermission('manage_menu')) {
+        showToast(t.permissionDenied);
+        return;
+    }
     setProducts(prev => prev.map(p => p.id === updatedProduct.id ? updatedProduct : p));
-  }, []);
+  }, [hasPermission, showToast, t.permissionDenied]);
 
   const deleteProduct = useCallback((productId: number) => {
+    if (!hasPermission('manage_menu')) {
+        showToast(t.permissionDenied);
+        return;
+    }
     setProducts(prev => prev.filter(p => p.id !== productId));
-  }, []);
+  }, [hasPermission, showToast, t.permissionDenied]);
 
   const addPromotion = useCallback((promotionData: Omit<Promotion, 'id'>) => {
+    if (!hasPermission('manage_promotions')) {
+        showToast(t.permissionDenied);
+        return;
+    }
     setPromotions(prev => {
         const newPromotion: Promotion = {
             ...promotionData,
@@ -230,30 +268,58 @@ const App: React.FC = () => {
         };
         return [newPromotion, ...prev];
     });
-  }, []);
+  }, [hasPermission, showToast, t.permissionDenied]);
 
   const updatePromotion = useCallback((updatedPromotion: Promotion) => {
+    if (!hasPermission('manage_promotions')) {
+        showToast(t.permissionDenied);
+        return;
+    }
     setPromotions(prev => prev.map(p => p.id === updatedPromotion.id ? updatedPromotion : p));
-  }, []);
+  }, [hasPermission, showToast, t.permissionDenied]);
 
   const deletePromotion = useCallback((promotionId: number) => {
+    if (!hasPermission('manage_promotions')) {
+        showToast(t.permissionDenied);
+        return;
+    }
     setPromotions(prev => prev.filter(p => p.id !== promotionId));
-  }, []);
+  }, [hasPermission, showToast, t.permissionDenied]);
   
   const addUser = useCallback((userData: Omit<User, 'id'>) => {
+    if (!hasPermission('manage_users')) {
+        showToast(t.permissionDenied);
+        return;
+    }
     setUsers(prev => {
         const newUser: User = { ...userData, id: Date.now() };
         return [newUser, ...prev];
     });
-  }, []);
+  }, [hasPermission, showToast, t.permissionDenied]);
   
   const updateUser = useCallback((updatedUser: User) => {
-      setUsers(prev => prev.map(u => u.id === updatedUser.id ? updatedUser : u));
-  }, []);
+    if (!hasPermission('manage_users')) {
+        showToast(t.permissionDenied);
+        return;
+    }
+    setUsers(prev => prev.map(u => u.id === updatedUser.id ? updatedUser : u));
+  }, [hasPermission, showToast, t.permissionDenied]);
 
   const deleteUser = useCallback((userId: number) => {
-      setUsers(prev => prev.filter(u => u.id !== userId));
-  }, []);
+    if (!hasPermission('manage_users')) {
+        showToast(t.permissionDenied);
+        return;
+    }
+    setUsers(prev => prev.filter(u => u.id !== userId));
+  }, [hasPermission, showToast, t.permissionDenied]);
+  
+  const updateRolePermissions = useCallback((role: UserRole, permissions: Permission[]) => {
+    if (!hasPermission('manage_roles')) {
+        showToast(t.permissionDenied);
+        return;
+    }
+    setRolePermissions(prev => ({...prev, [role]: permissions}));
+  }, [hasPermission, showToast, t.permissionDenied]);
 
 
   // Router
@@ -268,6 +334,7 @@ const App: React.FC = () => {
       return isAdmin ? (
         <AdminPage 
             language={language} 
+            currentUser={currentUser}
             allProducts={products}
             allUsers={users}
             restaurantInfo={restaurantInfo} 
@@ -284,6 +351,8 @@ const App: React.FC = () => {
             addUser={addUser}
             updateUser={updateUser}
             deleteUser={deleteUser}
+            rolePermissions={rolePermissions}
+            updateRolePermissions={updateRolePermissions}
         />
       ) : null;
     }

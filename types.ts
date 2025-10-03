@@ -90,3 +90,12 @@ export interface Order {
     mobile: string; // mandatory for all
   };
 }
+
+// Permissions Type
+export type Permission = 
+  | 'view_orders'
+  | 'manage_orders'
+  | 'manage_menu'
+  | 'manage_promotions'
+  | 'manage_users'
+  | 'manage_roles';

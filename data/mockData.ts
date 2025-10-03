@@ -1,7 +1,7 @@
 import type { Product, Category, Tag, Promotion, RestaurantInfo, User } from '../types';
 
 export const restaurantInfo: RestaurantInfo = {
-    name: { en: "The Gourmet Place", ar: "المكان الذواقة" },
+    name: { en: "The Gourmet Place", ar: "مطعم زفران" },
     logo: "https://picsum.photos/100",
     whatsappNumber: "201028855779", // Replace with actual WhatsApp number
 };

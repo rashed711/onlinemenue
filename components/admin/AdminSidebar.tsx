@@ -1,26 +1,31 @@
 import React from 'react';
-import type { Language } from '../../types';
+import type { Language, Permission, User, UserRole } from '../../types';
 import { useTranslations } from '../../i18n/translations';
-import { ClipboardListIcon, CollectionIcon, TagIcon, UsersIcon, CloseIcon } from '../icons/Icons';
+import { ClipboardListIcon, CollectionIcon, TagIcon, UsersIcon, CloseIcon, ShieldCheckIcon } from '../icons/Icons';
+import { usePermissions } from '../../hooks/usePermissions';
 
-type AdminTab = 'orders' | 'menu' | 'promotions' | 'users';
+type AdminTab = 'orders' | 'menu' | 'promotions' | 'users' | 'roles';
 
 interface AdminSidebarProps {
     language: Language;
+    currentUser: User | null;
+    rolePermissions: Record<UserRole, Permission[]>;
     activeTab: AdminTab;
     setActiveTab: (tab: AdminTab) => void;
     isOpen: boolean;
     setIsOpen: (isOpen: boolean) => void;
 }
 
-export const AdminSidebar: React.FC<AdminSidebarProps> = ({ language, activeTab, setActiveTab, isOpen, setIsOpen }) => {
+export const AdminSidebar: React.FC<AdminSidebarProps> = ({ language, currentUser, rolePermissions, activeTab, setActiveTab, isOpen, setIsOpen }) => {
     const t = useTranslations(language);
+    const { hasPermission } = usePermissions(currentUser, rolePermissions);
 
     const navItems = [
-        { id: 'orders', label: t.manageOrders, icon: ClipboardListIcon },
-        { id: 'menu', label: t.manageMenu, icon: CollectionIcon },
-        { id: 'promotions', label: t.managePromotions, icon: TagIcon },
-        { id: 'users', label: t.manageUsers, icon: UsersIcon },
+        { id: 'orders', label: t.manageOrders, icon: ClipboardListIcon, permission: 'view_orders' as Permission },
+        { id: 'menu', label: t.manageMenu, icon: CollectionIcon, permission: 'manage_menu' as Permission },
+        { id: 'promotions', label: t.managePromotions, icon: TagIcon, permission: 'manage_promotions' as Permission },
+        { id: 'users', label: t.manageUsers, icon: UsersIcon, permission: 'manage_users' as Permission },
+        { id: 'roles', label: t.manageRoles, icon: ShieldCheckIcon, permission: 'manage_roles' as Permission },
     ];
 
     const NavLink = ({ item }: { item: typeof navItems[0] }) => (
@@ -68,7 +73,9 @@ export const AdminSidebar: React.FC<AdminSidebarProps> = ({ language, activeTab,
                 </div>
                  <div className="flex-1 mt-6 flex flex-col justify-between">
                     <nav>
-                        {navItems.map(item => <NavLink key={item.id} item={item} />)}
+                        {navItems.map(item => (
+                           hasPermission(item.permission) && <NavLink key={item.id} item={item} />
+                        ))}
                     </nav>
                      <a href="#/" onClick={(e) => handleNav(e, '/')} className="text-center text-sm text-gray-500 hover:text-primary-500 dark:text-gray-400 dark:hover:text-primary-400">
                         &larr; {language === 'ar' ? 'العودة إلى القائمة' : 'Back to Menu'}
