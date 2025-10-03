@@ -25,16 +25,17 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product, language, onP
   return (
     <div 
         onClick={() => onProductClick(product)}
-        className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg overflow-hidden group transform hover:-translate-y-2 transition-all duration-300 cursor-pointer flex flex-col"
+        className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg overflow-hidden group transform hover:scale-105 transition-all duration-300 cursor-pointer flex flex-col hover:shadow-2xl"
     >
       <div className="relative">
         <img src={product.image} alt={product.name[language]} className="w-full h-48 object-cover" />
         {product.isNew && <div className="absolute top-3 end-3 bg-green-500 text-white text-xs font-bold px-2 py-1 rounded-full">{t.newItems.slice(0,-1)}</div>}
         {product.isPopular && !product.isNew && <div className="absolute top-3 end-3 bg-primary-500 text-white text-xs font-bold px-2 py-1 rounded-full">{t.mostPopular}</div>}
+         <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
       </div>
       <div className="p-4 flex flex-col flex-grow">
         <h3 className="text-lg font-bold truncate">{product.name[language]}</h3>
-        <p className="text-gray-500 dark:text-gray-400 text-sm mt-1 flex-grow h-10">{product.description[language]}</p>
+        <p className="text-gray-500 dark:text-gray-400 text-sm mt-1 flex-grow line-clamp-2">{product.description[language]}</p>
         <div className="flex justify-between items-center mt-4">
           <div className="flex items-center">
             <StarIcon className="w-5 h-5 text-yellow-400" />
@@ -46,7 +47,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product, language, onP
         </div>
         <button
           onClick={handleAddToCart}
-          className="w-full mt-4 bg-primary-500 text-white font-bold py-2 px-4 rounded-lg hover:bg-primary-600 flex items-center justify-center gap-2 transition-colors duration-300"
+          className="w-full mt-4 bg-primary-500 text-white font-bold py-2.5 px-4 rounded-lg hover:bg-primary-600 flex items-center justify-center gap-2 transition-colors duration-300 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 dark:focus:ring-offset-gray-800"
         >
           <PlusIcon className="w-5 h-5" />
           {t.addToCart}

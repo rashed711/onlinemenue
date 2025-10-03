@@ -10,6 +10,7 @@ import { PromotionSection } from './PromotionSection';
 import { Footer } from './Footer';
 import { ReceiptModal } from './ReceiptModal';
 import { GuestCheckoutModal } from './GuestCheckoutModal';
+import { HeroSection } from './HeroSection';
 import { useTranslations } from '../i18n/translations';
 
 interface MenuPageProps {
@@ -180,8 +181,8 @@ export const MenuPage: React.FC<MenuPageProps> = (props) => {
         });
       }, [searchTerm, selectedCategory, selectedTags, language]);
       
-    const popularProducts = useMemo(() => initialProducts.filter(p => p.isPopular).slice(0, 5), []);
-    const newProducts = useMemo(() => initialProducts.filter(p => p.isNew).slice(0, 5), []);
+    const popularProducts = useMemo(() => initialProducts.filter(p => p.isPopular).slice(0, 4), []);
+    const newProducts = useMemo(() => initialProducts.filter(p => p.isNew).slice(0, 4), []);
 
     const handleAddToCartAndOpenCart = useCallback((product: Product, quantity: number, options?: { [key: string]: string }) => {
         addToCart(product, quantity, options);
@@ -253,7 +254,9 @@ export const MenuPage: React.FC<MenuPageProps> = (props) => {
                 logout={logout}
             />
             
-            <main className="container mx-auto px-4 py-8">
+            <HeroSection language={language} />
+
+            <main className="container mx-auto max-w-7xl px-4 py-8">
                 <SearchAndFilter
                 language={language}
                 categories={initialCategories}

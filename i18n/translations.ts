@@ -1,8 +1,12 @@
+
 import type { Language } from '../types';
 
 export const translations = {
   en: {
     restaurantName: 'The Gourmet Place',
+    heroTitle: "Experience Authentic Flavors",
+    heroSubtitle: "Fresh ingredients, exquisite taste. Explore a menu crafted with passion.",
+    viewMenu: 'View Menu',
     searchPlaceholder: 'Search for dishes...',
     allCategories: 'All',
     filterByTags: 'Filter by:',
@@ -80,6 +84,9 @@ export const translations = {
   },
   ar: {
     restaurantName: 'المكان الذواقة',
+    heroTitle: "تذوق النكهات الأصيلة",
+    heroSubtitle: "مكونات طازجة، طعم رائع. اكتشف قائمة طعام أُعدت بشغف.",
+    viewMenu: 'تصفح القائمة',
     searchPlaceholder: 'ابحث عن الأطباق...',
     allCategories: 'الكل',
     filterByTags: 'تصفية حسب:',

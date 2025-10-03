@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useMemo, useCallback, useSyncExternalStore } from 'react';
 import { MenuPage } from './components/MenuPage';
 import { LoginPage } from './components/auth/LoginPage';
@@ -179,10 +180,10 @@ const App: React.FC = () => {
       return currentUser ? null : <RegisterPage language={language} register={register} />;
     }
     if (route.startsWith('#/admin')) {
-      return currentUser?.role === 'admin' ? <AdminPage language={language} allProducts={initialProducts} restaurantInfo={restaurantInfo} allOrders={orders} updateOrderStatus={updateOrderStatus} /> : null;
+      return currentUser?.role === 'admin' ? <AdminPage language={language} allProducts={initialProducts} restaurantInfo={restaurantInfo} allOrders={orders} updateOrderStatus={updateOrderStatus} logout={logout}/> : null;
     }
     if (route.startsWith('#/profile')) {
-       return currentUser?.role === 'customer' ? <ProfilePage language={language} currentUser={currentUser} orders={orders} /> : null;
+       return currentUser?.role === 'customer' ? <ProfilePage language={language} currentUser={currentUser} orders={orders} logout={logout} restaurantInfo={restaurantInfo}/> : null;
     }
 
     return (
@@ -203,7 +204,7 @@ const App: React.FC = () => {
   };
 
   return (
-    <div className={`min-h-screen bg-gray-50 dark:bg-gray-900 text-gray-800 dark:text-gray-200 transition-colors duration-300 ${language === 'ar' ? 'font-cairo' : 'font-sans'}`}>
+    <div className={`min-h-screen bg-slate-50 dark:bg-slate-950 text-gray-800 dark:text-gray-200 transition-colors duration-300 ${language === 'ar' ? 'font-cairo' : 'font-sans'}`}>
       {renderContent()}
     </div>
   );

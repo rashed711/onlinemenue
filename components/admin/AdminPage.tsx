@@ -1,6 +1,8 @@
+
 import React, { useState } from 'react';
 import type { Language, Product, RestaurantInfo, Order, OrderStatus } from '../../types';
 import { useTranslations } from '../../i18n/translations';
+import { PlusIcon, UserIcon } from '../icons/Icons';
 
 interface AdminPageProps {
     language: Language;
@@ -8,18 +10,14 @@ interface AdminPageProps {
     restaurantInfo: RestaurantInfo;
     allOrders: Order[];
     updateOrderStatus: (orderId: string, status: OrderStatus) => void;
+    logout: () => void;
 }
 
 type AdminTab = 'menu' | 'orders';
 
-export const AdminPage: React.FC<AdminPageProps> = ({ language, allProducts, restaurantInfo, allOrders, updateOrderStatus }) => {
+export const AdminPage: React.FC<AdminPageProps> = ({ language, allProducts, restaurantInfo, allOrders, updateOrderStatus, logout }) => {
     const t = useTranslations(language);
     const [activeTab, setActiveTab] = useState<AdminTab>('orders');
-
-    const handleLogout = () => {
-        sessionStorage.removeItem('restaurant_currentUser');
-        window.location.hash = '#/login';
-    };
 
     const handleStatusChange = (orderId: string, newStatus: OrderStatus) => {
         updateOrderStatus(orderId, newStatus);
@@ -36,28 +34,32 @@ export const AdminPage: React.FC<AdminPageProps> = ({ language, allProducts, res
     };
     
     return (
-        <div>
+        <div className="min-h-screen bg-slate-100 dark:bg-gray-900">
             <header className="bg-white dark:bg-gray-800 shadow-md sticky top-0 z-40">
-                <div className="container mx-auto px-4 py-3 flex justify-between items-center">
+                <div className="container mx-auto max-w-7xl px-4 py-3 flex justify-between items-center">
                     <div className="flex items-center gap-3">
                         <img src={restaurantInfo.logo} alt="logo" className="h-10 w-10 rounded-full object-cover" />
                         <h1 className="text-xl font-bold text-primary-600 dark:text-primary-400">{t.adminPanel}</h1>
                     </div>
-                    <button
-                        onClick={handleLogout}
-                        className="bg-red-500 text-white font-bold py-2 px-4 rounded-lg hover:bg-red-600 transition-colors"
-                    >
-                        {t.logout}
-                    </button>
+                     <div className="flex items-center gap-4">
+                        <a href="#/" className="text-sm font-semibold hover:text-primary-500">Back to Menu</a>
+                        <button
+                            onClick={logout}
+                            className="bg-red-500 text-white font-bold py-2 px-4 rounded-lg hover:bg-red-600 transition-colors"
+                        >
+                            {t.logout}
+                        </button>
+                    </div>
                 </div>
             </header>
-            <main className="container mx-auto px-4 py-8">
+            <main className="container mx-auto max-w-7xl px-4 py-8">
+                <h1 className="text-3xl font-bold mb-6">{t.welcomeAdmin}</h1>
                  <div className="border-b border-gray-200 dark:border-gray-700 mb-6">
-                    <nav className="flex space-x-4" aria-label="Tabs">
-                        <button onClick={() => setActiveTab('orders')} className={`px-3 py-2 font-medium text-sm rounded-t-lg ${activeTab === 'orders' ? 'border-b-2 border-primary-500 text-primary-600 dark:text-primary-400' : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200'}`}>
-                            {t.manageOrders} ({allOrders.length})
+                    <nav className="-mb-px flex space-x-6" aria-label="Tabs">
+                        <button onClick={() => setActiveTab('orders')} className={`whitespace-nowrap pb-4 px-1 border-b-2 font-medium text-sm transition-colors ${activeTab === 'orders' ? 'border-primary-500 text-primary-600 dark:text-primary-400' : 'border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 hover:border-gray-300'}`}>
+                            {t.manageOrders} <span className="bg-primary-100 dark:bg-primary-900/50 text-primary-600 dark:text-primary-300 text-xs font-semibold ms-2 px-2 py-0.5 rounded-full">{allOrders.length}</span>
                         </button>
-                        <button onClick={() => setActiveTab('menu')} className={`px-3 py-2 font-medium text-sm rounded-t-lg ${activeTab === 'menu' ? 'border-b-2 border-primary-500 text-primary-600 dark:text-primary-400' : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200'}`}>
+                        <button onClick={() => setActiveTab('menu')} className={`whitespace-nowrap pb-4 px-1 border-b-2 font-medium text-sm transition-colors ${activeTab === 'menu' ? 'border-primary-500 text-primary-600 dark:text-primary-400' : 'border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 hover:border-gray-300'}`}>
                             {t.manageMenu}
                         </button>
                     </nav>
@@ -65,20 +67,19 @@ export const AdminPage: React.FC<AdminPageProps> = ({ language, allProducts, res
 
                 {activeTab === 'orders' && (
                      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md overflow-x-auto">
-                        <table className="min-w-full">
-                            <thead className="bg-gray-100 dark:bg-gray-700">
+                        <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+                            <thead className="bg-gray-50 dark:bg-gray-700/50">
                                 <tr>
-                                    <th className="px-6 py-3 text-start text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">{t.orderId}</th>
-                                    <th className="px-6 py-3 text-start text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">{t.customer}</th>
-                                    <th className="px-6 py-3 text-start text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">{t.total}</th>
-                                    <th className="px-6 py-3 text-start text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">{t.status}</th>
-                                    {/* FIX: The 'actions' key was missing from translations. It has been added in translations.ts to fix this error. */}
-                                    <th className="px-6 py-3 text-start text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">{t.actions}</th>
+                                    <th scope="col" className="px-6 py-4 text-start text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">{t.orderId}</th>
+                                    <th scope="col" className="px-6 py-4 text-start text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">{t.customer}</th>
+                                    <th scope="col" className="px-6 py-4 text-start text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">{t.total}</th>
+                                    <th scope="col" className="px-6 py-4 text-start text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">{t.status}</th>
+                                    <th scope="col" className="px-6 py-4 text-start text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">{t.actions}</th>
                                 </tr>
                             </thead>
-                            <tbody className="divide-y divide-gray-200 dark:divide-gray-600">
-                                {allOrders.map(order => (
-                                    <tr key={order.id}>
+                            <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
+                                {allOrders.map((order, index) => (
+                                    <tr key={order.id} className={`${index % 2 === 0 ? 'bg-white dark:bg-gray-800' : 'bg-slate-50 dark:bg-gray-800/60'} hover:bg-slate-100 dark:hover:bg-gray-700/50 transition-colors`}>
                                         <td className="px-6 py-4 whitespace-nowrap font-mono text-sm">{order.id}</td>
                                         <td className="px-6 py-4 whitespace-nowrap">
                                             <div className="text-sm font-semibold">{order.customer.name || 'Guest'}</div>
@@ -112,24 +113,24 @@ export const AdminPage: React.FC<AdminPageProps> = ({ language, allProducts, res
                 {activeTab === 'menu' && (
                      <div>
                         <div className="flex justify-between items-center mb-6">
-                            <h2 className="text-3xl font-bold">{t.manageMenu}</h2>
-                            <button className="bg-green-500 text-white font-bold py-2 px-4 rounded-lg hover:bg-green-600 transition-colors">
+                            <h2 className="text-2xl font-bold">{t.manageMenu}</h2>
+                            <button className="bg-green-500 text-white font-bold py-2 px-4 rounded-lg hover:bg-green-600 transition-colors flex items-center gap-2">
+                                <PlusIcon className="w-5 h-5" />
                                 Add New Product
                             </button>
                         </div>
                         <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md overflow-hidden">
-                            <table className="min-w-full">
-                                <thead className="bg-gray-100 dark:bg-gray-700">
+                             <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+                                <thead className="bg-gray-50 dark:bg-gray-700/50">
                                     <tr>
-                                        {/* FIX: Use translation keys for table headers for consistency and internationalization. */}
-                                        <th className="px-6 py-3 text-start text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">{t.product}</th>
-                                        <th className="px-6 py-3 text-start text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">{t.price}</th>
-                                        <th className="px-6 py-3 text-start text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">{t.actions}</th>
+                                        <th scope="col" className="px-6 py-4 text-start text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">{t.product}</th>
+                                        <th scope="col" className="px-6 py-4 text-start text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">{t.price}</th>
+                                        <th scope="col" className="px-6 py-4 text-start text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">{t.actions}</th>
                                     </tr>
                                 </thead>
-                                <tbody className="divide-y divide-gray-200 dark:divide-gray-600">
-                                    {allProducts.map(product => (
-                                        <tr key={product.id}>
+                                 <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
+                                    {allProducts.map((product, index) => (
+                                        <tr key={product.id} className={`${index % 2 === 0 ? 'bg-white dark:bg-gray-800' : 'bg-slate-50 dark:bg-gray-800/60'} hover:bg-slate-100 dark:hover:bg-gray-700/50 transition-colors`}>
                                             <td className="px-6 py-4 whitespace-nowrap">
                                                 <div className="flex items-center">
                                                     <img src={product.image} alt={product.name[language]} className="w-12 h-12 rounded-md object-cover me-4" />
