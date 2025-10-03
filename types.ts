@@ -54,6 +54,7 @@ export interface Promotion {
   productId: number;
   discountPercent: number;
   endDate: string;
+  isActive: boolean;
 }
 
 export interface RestaurantInfo {

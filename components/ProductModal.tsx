@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import type { Product, Language } from '../types';
 import { useTranslations } from '../i18n/translations';
@@ -9,8 +8,6 @@ interface ProductModalProps {
   onClose: () => void;
   addToCart: (product: Product, quantity: number, options?: { [key: string]: string }) => void;
   language: Language;
-  recommendedProducts: Product[];
-  onRecommendedClick: (product: Product) => void;
 }
 
 export const ProductModal: React.FC<ProductModalProps> = ({
@@ -18,14 +15,21 @@ export const ProductModal: React.FC<ProductModalProps> = ({
   onClose,
   addToCart,
   language,
-  recommendedProducts,
-  onRecommendedClick,
 }) => {
   const t = useTranslations(language);
   const [quantity, setQuantity] = useState(1);
   const [selectedOptions, setSelectedOptions] = useState<{ [key: string]: string }>({});
 
   useEffect(() => {
+    // Close modal on escape key press
+    const handleEsc = (event: KeyboardEvent) => {
+       if (event.key === 'Escape') {
+        onClose();
+       }
+    };
+    window.addEventListener('keydown', handleEsc);
+
+    // Set default options
     const defaultOptions: { [key: string]: string } = {};
     product.options?.forEach(option => {
       if (option.values.length > 0) {
@@ -34,7 +38,11 @@ export const ProductModal: React.FC<ProductModalProps> = ({
     });
     setSelectedOptions(defaultOptions);
     setQuantity(1);
-  }, [product]);
+
+    return () => {
+      window.removeEventListener('keydown', handleEsc);
+    };
+  }, [product, onClose]);
 
   const handleAddToCart = () => {
     addToCart(product, quantity, selectedOptions);
@@ -58,80 +66,70 @@ export const ProductModal: React.FC<ProductModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-60 z-50 flex justify-center items-center" onClick={onClose}>
-      <div className="bg-white dark:bg-gray-800 rounded-2xl w-11/12 max-w-4xl max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
-        <div className="p-4 flex justify-end">
-            <button onClick={onClose} className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700">
+    <div className="fixed inset-0 bg-black bg-opacity-70 z-50 flex justify-center items-center p-4" onClick={onClose}>
+      <div className="bg-white dark:bg-gray-800 rounded-2xl w-full max-w-4xl max-h-[90vh] overflow-y-auto relative animate-fade-in-up" onClick={e => e.stopPropagation()}>
+        
+        <div className="absolute top-0 end-0 p-2 z-10">
+            <button onClick={onClose} className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 w-10 h-10 flex items-center justify-center" aria-label={t.close}>
                 <CloseIcon className="w-6 h-6"/>
             </button>
         </div>
-        <div className="p-2 md:p-8 md:pt-0 grid grid-cols-1 md:grid-cols-2 gap-8">
-          <div>
-            <img src={product.image} alt={product.name[language]} className="w-full h-auto rounded-xl object-cover" />
+
+        <div className="p-4 sm:p-6 md:p-8 grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-8">
+          <div className="flex items-center justify-center">
+             <img src={product.image} alt={product.name[language]} className="w-full h-auto max-h-[75vh] rounded-xl object-cover" />
           </div>
           <div className="flex flex-col">
-            <h2 className="text-3xl font-extrabold">{product.name[language]}</h2>
+            <h2 className="text-2xl md:text-3xl font-extrabold pr-8">{product.name[language]}</h2>
             <div className="flex items-center my-3">
               <StarIcon className="w-5 h-5 text-yellow-400" />
               <span className="text-gray-700 dark:text-gray-300 font-semibold ms-1">{product.rating}</span>
             </div>
             <p className="text-gray-600 dark:text-gray-300 mb-4">{product.description[language]}</p>
             
-            {product.options?.map(option => (
-              <div key={option.name.en} className="my-2">
-                <h4 className="font-semibold mb-2">{option.name[language]}</h4>
-                <div className="flex flex-wrap gap-2">
-                  {option.values.map(value => (
-                    <button
-                      key={value.name.en}
-                      onClick={() => handleOptionChange(option.name.en, value.name.en)}
-                      className={`px-3 py-1.5 rounded-full text-sm transition-colors ${selectedOptions[option.name.en] === value.name.en ? 'bg-primary-600 text-white' : 'bg-gray-200 dark:bg-gray-700'}`}
-                    >
-                      {value.name[language]} {value.priceModifier > 0 && `(+${value.priceModifier.toFixed(2)})`}
-                    </button>
-                  ))}
+            <div className="flex-grow space-y-4">
+                {product.options?.map(option => (
+                <div key={option.name.en}>
+                    <h4 className="font-semibold mb-2">{option.name[language]}</h4>
+                    <div className="flex flex-wrap gap-2">
+                    {option.values.map(value => (
+                        <button
+                        key={value.name.en}
+                        onClick={() => handleOptionChange(option.name.en, value.name.en)}
+                        className={`px-3 py-1.5 rounded-full text-sm font-semibold transition-all duration-200 ${selectedOptions[option.name.en] === value.name.en ? 'bg-primary-600 text-white shadow-md' : 'bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600'}`}
+                        >
+                        {value.name[language]} {value.priceModifier > 0 && ` (+${value.priceModifier.toFixed(2)})`}
+                        </button>
+                    ))}
+                    </div>
                 </div>
-              </div>
-            ))}
+                ))}
+            </div>
 
             <div className="flex items-center my-6">
               <h4 className="font-semibold me-4">{t.quantity}:</h4>
               <div className="flex items-center border border-gray-200 dark:border-gray-600 rounded-full">
-                  <button onClick={() => setQuantity(q => Math.max(1, q - 1))} className="p-3 text-lg">-</button>
-                  <span className="px-4 font-bold text-lg">{quantity}</span>
-                  <button onClick={() => setQuantity(q => q + 1)} className="p-3 text-lg">+</button>
+                  <button onClick={() => setQuantity(q => Math.max(1, q - 1))} className="px-4 py-2 text-xl font-bold" aria-label="Decrease quantity">-</button>
+                  <span className="px-4 font-bold text-lg w-12 text-center" aria-live="polite">{quantity}</span>
+                  <button onClick={() => setQuantity(q => q + 1)} className="px-4 py-2 text-xl font-bold" aria-label="Increase quantity">+</button>
               </div>
             </div>
 
             <div className="mt-auto pt-6 border-t border-gray-200 dark:border-gray-700">
-              <div className="flex justify-between items-center">
-                <div>
-                  <span className="text-gray-500">{t.total}</span>
-                  <p className="text-3xl font-extrabold text-primary-600 dark:text-primary-400">{calculateTotalPrice().toFixed(2)} {t.currency}</p>
+              <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-4">
+                <div className="text-center sm:text-start">
+                  <span className="text-gray-500 dark:text-gray-400 text-sm">{t.total}</span>
+                  <p className="text-2xl sm:text-3xl font-extrabold text-primary-600 dark:text-primary-400">{calculateTotalPrice().toFixed(2)} {t.currency}</p>
                 </div>
-                <button onClick={handleAddToCart} className="bg-primary-500 text-white font-bold py-3 px-6 rounded-lg hover:bg-primary-600 flex items-center gap-2 transition-colors">
+                <button onClick={handleAddToCart} className="w-full sm:w-auto bg-primary-500 text-white font-bold py-3 px-6 rounded-lg hover:bg-primary-600 flex items-center justify-center gap-2 transition-colors text-base sm:text-lg focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 dark:focus:ring-offset-gray-800">
                   <PlusIcon className="w-6 h-6" />
                   {t.addToCart}
                 </button>
               </div>
             </div>
+            
           </div>
         </div>
-        
-        {recommendedProducts.length > 0 && (
-          <div className="p-8 bg-gray-50 dark:bg-gray-900/50">
-              <h3 className="text-xl font-bold mb-4">{t.recommendedItems}</h3>
-              <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                  {recommendedProducts.map(recProduct => (
-                      <div key={recProduct.id} onClick={() => onRecommendedClick(recProduct)} className="cursor-pointer group">
-                          <img src={recProduct.image} alt={recProduct.name[language]} className="rounded-lg h-24 w-full object-cover mb-2 transition-transform group-hover:scale-105" />
-                          <h4 className="font-semibold text-sm truncate">{recProduct.name[language]}</h4>
-                          <p className="text-primary-500 font-bold text-xs">{recProduct.price.toFixed(2)} {t.currency}</p>
-                      </div>
-                  ))}
-              </div>
-          </div>
-        )}
       </div>
     </div>
   );

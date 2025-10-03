@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useCallback } from 'react';
-import type { User, Order, Language, Theme, Product, CartItem, OrderStatus } from '../types';
-import { products as initialProducts, categories as initialCategories, tags as initialTags, promotions as initialPromotions, restaurantInfo } from '../data/mockData';
+import type { User, Order, Language, Theme, Product, CartItem, OrderStatus, Promotion } from '../types';
+import { categories as initialCategories, tags as initialTags, restaurantInfo } from '../data/mockData';
 import { Header } from './Header';
 import { SearchAndFilter } from './SearchAndFilter';
 import { ProductList } from './ProductList';
@@ -12,6 +12,7 @@ import { ReceiptModal } from './ReceiptModal';
 import { GuestCheckoutModal } from './GuestCheckoutModal';
 import { HeroSection } from './HeroSection';
 import { useTranslations } from '../i18n/translations';
+import { CartContents } from './CartContents';
 
 interface MenuPageProps {
     language: Language;
@@ -25,13 +26,15 @@ interface MenuPageProps {
     currentUser: User | null;
     logout: () => void;
     placeOrder: (order: Omit<Order, 'id' | 'timestamp'>) => Order;
+    products: Product[];
+    promotions: Promotion[];
 }
 
 export const MenuPage: React.FC<MenuPageProps> = (props) => {
     const {
         language, theme, toggleLanguage, toggleTheme,
         cartItems, addToCart, updateCartQuantity, clearCart,
-        currentUser, logout, placeOrder
+        currentUser, logout, placeOrder, products, promotions
     } = props;
     
     const t = useTranslations(language);
@@ -169,7 +172,7 @@ export const MenuPage: React.FC<MenuPageProps> = (props) => {
     }, [language, t]);
 
     const filteredProducts = useMemo(() => {
-        return initialProducts.filter(product => {
+        return products.filter(product => {
           const name = product.name[language] || product.name['en'];
           const description = product.description[language] || product.description['en'];
     
@@ -179,15 +182,14 @@ export const MenuPage: React.FC<MenuPageProps> = (props) => {
           
           return matchesSearch && matchesCategory && matchesTags;
         });
-      }, [searchTerm, selectedCategory, selectedTags, language]);
+      }, [searchTerm, selectedCategory, selectedTags, language, products]);
       
-    const popularProducts = useMemo(() => initialProducts.filter(p => p.isPopular).slice(0, 4), []);
-    const newProducts = useMemo(() => initialProducts.filter(p => p.isNew).slice(0, 4), []);
+    const popularProducts = useMemo(() => products.filter(p => p.isPopular).slice(0, 4), [products]);
+    const newProducts = useMemo(() => products.filter(p => p.isNew).slice(0, 4), [products]);
 
-    const handleAddToCartAndOpenCart = useCallback((product: Product, quantity: number, options?: { [key: string]: string }) => {
+    const handleAddToCartWithoutOpeningCart = useCallback((product: Product, quantity: number, options?: { [key: string]: string }) => {
         addToCart(product, quantity, options);
-        if (!isCartOpen) setIsCartOpen(true);
-    }, [addToCart, isCartOpen]);
+    }, [addToCart]);
       
     const calculateTotal = (items: CartItem[]) => {
         return items.reduce((total, item) => {
@@ -256,45 +258,64 @@ export const MenuPage: React.FC<MenuPageProps> = (props) => {
             
             <HeroSection language={language} />
 
-            <main className="container mx-auto max-w-7xl px-4 py-8">
-                <SearchAndFilter
-                language={language}
-                categories={initialCategories}
-                tags={initialTags}
-                searchTerm={searchTerm}
-                setSearchTerm={setSearchTerm}
-                selectedCategory={selectedCategory}
-                setSelectedCategory={setSelectedCategory}
-                selectedTags={selectedTags}
-                setSelectedTags={setSelectedTags}
-                />
-                
-                <PromotionSection promotions={initialPromotions} language={language} onProductClick={setSelectedProduct} />
+            <div className="container mx-auto max-w-7xl px-4 py-8">
+                <div className="lg:grid lg:grid-cols-3 lg:gap-8">
+                    <main className="lg:col-span-2">
+                        <SearchAndFilter
+                            language={language}
+                            categories={initialCategories}
+                            tags={initialTags}
+                            searchTerm={searchTerm}
+                            setSearchTerm={setSearchTerm}
+                            selectedCategory={selectedCategory}
+                            setSelectedCategory={setSelectedCategory}
+                            selectedTags={selectedTags}
+                            setSelectedTags={setSelectedTags}
+                        />
+                        
+                        <PromotionSection promotions={promotions} products={products} language={language} onProductClick={setSelectedProduct} />
 
-                <ProductList 
-                titleKey="mostPopular" 
-                products={popularProducts} 
-                language={language} 
-                onProductClick={setSelectedProduct} 
-                addToCart={handleAddToCartAndOpenCart}
-                />
+                        <ProductList 
+                            titleKey="mostPopular" 
+                            products={popularProducts} 
+                            language={language} 
+                            onProductClick={setSelectedProduct} 
+                            addToCart={handleAddToCartWithoutOpeningCart}
+                        />
 
-                <ProductList 
-                titleKey="newItems"
-                products={newProducts} 
-                language={language} 
-                onProductClick={setSelectedProduct} 
-                addToCart={handleAddToCartAndOpenCart}
-                />
+                        <ProductList 
+                            titleKey="newItems"
+                            products={newProducts} 
+                            language={language} 
+                            onProductClick={setSelectedProduct} 
+                            addToCart={handleAddToCartWithoutOpeningCart}
+                        />
 
-                <ProductList 
-                titleKey="fullMenu"
-                products={filteredProducts} 
-                language={language} 
-                onProductClick={setSelectedProduct} 
-                addToCart={handleAddToCartAndOpenCart}
-                />
-            </main>
+                        <ProductList 
+                            titleKey="fullMenu"
+                            products={filteredProducts} 
+                            language={language} 
+                            onProductClick={setSelectedProduct} 
+                            addToCart={handleAddToCartWithoutOpeningCart}
+                        />
+                    </main>
+
+                    <aside className="hidden lg:block lg:col-span-1 self-start">
+                        <div className="sticky top-24">
+                            <div className="rounded-2xl shadow-lg overflow-hidden border border-gray-200 dark:border-gray-700">
+                                <CartContents 
+                                    cartItems={cartItems}
+                                    updateCartQuantity={updateCartQuantity}
+                                    clearCart={clearCart}
+                                    language={language}
+                                    onPlaceOrder={handlePlaceOrder}
+                                />
+                            </div>
+                        </div>
+                    </aside>
+                </div>
+            </div>
+
 
             <Footer language={language}/>
 
@@ -312,10 +333,8 @@ export const MenuPage: React.FC<MenuPageProps> = (props) => {
                 <ProductModal
                 product={selectedProduct}
                 onClose={() => setSelectedProduct(null)}
-                addToCart={handleAddToCartAndOpenCart}
+                addToCart={handleAddToCartWithoutOpeningCart}
                 language={language}
-                recommendedProducts={initialProducts.filter(p => p.categoryId === selectedProduct.categoryId && p.id !== selectedProduct.id).slice(0, 3)}
-                onRecommendedClick={setSelectedProduct}
                 />
             )}
             

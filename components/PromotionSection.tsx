@@ -3,18 +3,17 @@ import React from 'react';
 import type { Promotion, Language, Product } from '../types';
 import { useTranslations } from '../i18n/translations';
 import { useCountdown } from '../hooks/useCountdown';
-import { products } from '../data/mockData';
 
 interface PromotionCardProps {
   promotion: Promotion;
+  product: Product;
   language: Language;
   onProductClick: (product: Product) => void;
 }
 
-const PromotionCard: React.FC<PromotionCardProps> = ({ promotion, language, onProductClick }) => {
+const PromotionCard: React.FC<PromotionCardProps> = ({ promotion, product, language, onProductClick }) => {
     const t = useTranslations(language);
     const { days, hours, minutes, seconds } = useCountdown(promotion.endDate);
-    const product = products.find(p => p.id === promotion.productId);
 
     if (!product || (days + hours + minutes + seconds <= 0)) {
         return null;
@@ -48,14 +47,17 @@ const PromotionCard: React.FC<PromotionCardProps> = ({ promotion, language, onPr
 
 interface PromotionSectionProps {
   promotions: Promotion[];
+  products: Product[];
   language: Language;
   onProductClick: (product: Product) => void;
 }
 
-export const PromotionSection: React.FC<PromotionSectionProps> = ({ promotions, language, onProductClick }) => {
+export const PromotionSection: React.FC<PromotionSectionProps> = ({ promotions, products, language, onProductClick }) => {
   const t = useTranslations(language);
   
-  if (!promotions || promotions.length === 0) {
+  const activePromotions = promotions.filter(p => p.isActive);
+  
+  if (!activePromotions || activePromotions.length === 0) {
     return null;
   }
 
@@ -63,9 +65,11 @@ export const PromotionSection: React.FC<PromotionSectionProps> = ({ promotions, 
     <section className="my-12">
         <h2 className="text-3xl font-bold mb-6 border-b-4 border-primary-500 pb-2 inline-block">{t.todaysOffers}</h2>
         <div className="space-y-6">
-            {promotions.map(promo => (
-                <PromotionCard key={promo.id} promotion={promo} language={language} onProductClick={onProductClick} />
-            ))}
+            {activePromotions.map(promo => {
+                const product = products.find(p => p.id === promo.productId);
+                if (!product) return null;
+                return <PromotionCard key={promo.id} promotion={promo} product={product} language={language} onProductClick={onProductClick} />
+            })}
         </div>
     </section>
   )

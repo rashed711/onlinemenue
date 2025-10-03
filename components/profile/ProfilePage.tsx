@@ -1,4 +1,3 @@
-
 import React from 'react';
 import type { Language, Order, User, OrderStatus, RestaurantInfo } from '../../types';
 import { useTranslations } from '../../i18n/translations';
@@ -14,6 +13,11 @@ interface ProfilePageProps {
 
 export const ProfilePage: React.FC<ProfilePageProps> = ({ language, currentUser, orders, logout, restaurantInfo }) => {
     const t = useTranslations(language);
+
+    const handleNav = (e: React.MouseEvent<HTMLAnchorElement>, path: string) => {
+        e.preventDefault();
+        window.location.hash = path;
+    };
 
     const userOrders = orders.filter(order => order.customer.userId === currentUser.id);
 
@@ -31,7 +35,7 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({ language, currentUser,
         <div className="min-h-screen bg-slate-100 dark:bg-gray-900">
              <header className="bg-white dark:bg-gray-800 shadow-md sticky top-0 z-10">
                 <div className="container mx-auto max-w-5xl px-4 py-3 flex justify-between items-center">
-                    <a href="#/" className="flex items-center gap-3 cursor-pointer">
+                    <a href="#/" onClick={(e) => handleNav(e, '/')} className="flex items-center gap-3 cursor-pointer">
                         <img src={restaurantInfo.logo} alt="logo" className="h-10 w-10 rounded-full object-cover" />
                         <h1 className="text-xl font-bold text-primary-600 dark:text-primary-400">{restaurantInfo.name[language]}</h1>
                     </a>
@@ -95,7 +99,7 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({ language, currentUser,
                 ) : (
                     <div className="text-center py-16 bg-white dark:bg-gray-800 rounded-lg shadow-md">
                         <p className="text-gray-500 dark:text-gray-400 text-lg">You have no orders yet.</p>
-                        <a href="#/" className="mt-4 inline-block bg-primary-500 text-white font-bold py-3 px-6 rounded-lg hover:bg-primary-600 transition-transform transform hover:scale-105">Start Shopping</a>
+                        <a href="#/" onClick={(e) => handleNav(e, '/')} className="mt-4 inline-block bg-primary-500 text-white font-bold py-3 px-6 rounded-lg hover:bg-primary-600 transition-transform transform hover:scale-105">Start Shopping</a>
                     </div>
                 )}
             </main>

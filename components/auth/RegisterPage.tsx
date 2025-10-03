@@ -14,6 +14,11 @@ export const RegisterPage: React.FC<RegisterPageProps> = ({ language, register }
     const [password, setPassword] = useState('');
     const [error, setError] = useState('');
 
+    const handleNav = (e: React.MouseEvent<HTMLAnchorElement>, path: string) => {
+        e.preventDefault();
+        window.location.hash = path;
+    };
+
     const handleRegister = (e: React.FormEvent) => {
         e.preventDefault();
         if (!name || !mobile || !password) {
@@ -78,12 +83,12 @@ export const RegisterPage: React.FC<RegisterPageProps> = ({ language, register }
                 </form>
                 <div className="text-center text-sm">
                      <span className="text-gray-600 dark:text-gray-400">{t.alreadyHaveAccount} </span>
-                    <a href="#/login" className="font-medium text-primary-600 hover:underline dark:text-primary-500">
+                    <a href="#/login" onClick={(e) => handleNav(e, '/login')} className="font-medium text-primary-600 hover:underline dark:text-primary-500">
                         {t.login}
                     </a>
                 </div>
                  <div className="text-center">
-                    <a href="#/" className="text-sm text-primary-600 hover:underline dark:text-primary-500">
+                    <a href="#/" onClick={(e) => handleNav(e, '/')} className="text-sm text-primary-600 hover:underline dark:text-primary-500">
                         &larr; Back to Menu
                     </a>
                 </div>

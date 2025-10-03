@@ -5,8 +5,10 @@ import { LoginPage } from './components/auth/LoginPage';
 import { RegisterPage } from './components/auth/RegisterPage';
 import { ProfilePage } from './components/profile/ProfilePage';
 import { AdminPage } from './components/admin/AdminPage';
-import type { Product, CartItem, Language, Theme, User, Order, OrderStatus } from './types';
-import { products as initialProducts, restaurantInfo, users as initialUsers } from './data/mockData';
+import type { Product, CartItem, Language, Theme, User, Order, OrderStatus, UserRole, Promotion } from './types';
+import { products as initialProducts, restaurantInfo, users as initialUsers, promotions as initialPromotions } from './data/mockData';
+import { ToastNotification } from './components/ToastNotification';
+import { useTranslations } from './i18n/translations';
 
 // Subscribes to the browser's hashchange event.
 function subscribe(callback: () => void) {
@@ -25,8 +27,19 @@ const App: React.FC = () => {
   // UI State
   const [language, setLanguage] = useState<Language>(() => (localStorage.getItem('restaurant_language') as Language) || 'ar');
   const [theme, setTheme] = useState<Theme>(() => (localStorage.getItem('restaurant_theme') as Theme) || 'light');
-  
+  const [toast, setToast] = useState<{ message: string; isVisible: boolean }>({ message: '', isVisible: false });
+
   // Data State
+  const [products, setProducts] = useState<Product[]>(() => {
+    const savedProducts = localStorage.getItem('restaurant_products');
+    return savedProducts ? JSON.parse(savedProducts) : initialProducts;
+  });
+
+  const [promotions, setPromotions] = useState<Promotion[]>(() => {
+    const savedPromotions = localStorage.getItem('restaurant_promotions');
+    return savedPromotions ? JSON.parse(savedPromotions) : initialPromotions;
+  });
+
   const [cartItems, setCartItems] = useState<CartItem[]>(() => {
     try {
       const savedCart = localStorage.getItem('restaurant_cart');
@@ -56,6 +69,8 @@ const App: React.FC = () => {
   // Routing State
   const hash = useSyncExternalStore(subscribe, getSnapshot, () => '');
   const route = useMemo(() => hash || '#/', [hash]);
+  const t = useTranslations(language);
+
 
   // Effect for route-based redirection for authentication
   useEffect(() => {
@@ -88,6 +103,14 @@ const App: React.FC = () => {
   
   // Data Persistence Effects
   useEffect(() => {
+    localStorage.setItem('restaurant_products', JSON.stringify(products));
+  }, [products]);
+
+  useEffect(() => {
+    localStorage.setItem('restaurant_promotions', JSON.stringify(promotions));
+  }, [promotions]);
+
+  useEffect(() => {
     localStorage.setItem('restaurant_cart', JSON.stringify(cartItems));
   }, [cartItems]);
   
@@ -112,6 +135,12 @@ const App: React.FC = () => {
   const toggleTheme = useCallback(() => setTheme(prev => prev === 'light' ? 'dark' : 'light'), []);
   const toggleLanguage = useCallback(() => setLanguage(prev => prev === 'en' ? 'ar' : 'en'), []);
   const clearCart = useCallback(() => setCartItems([]), []);
+  const showToast = useCallback((message: string) => {
+    setToast({ message, isVisible: true });
+    setTimeout(() => {
+        setToast(prev => ({ ...prev, isVisible: false }));
+    }, 3000);
+  }, []);
 
   // Auth Callbacks
   const login = useCallback((user: User) => setCurrentUser(user), []);
@@ -140,7 +169,8 @@ const App: React.FC = () => {
       }
       return [...prevItems, { product, quantity, options }];
     });
-  }, []);
+    showToast(t.addedToCart);
+  }, [showToast, t]);
 
   const updateCartQuantity = useCallback((productId: number, options: { [key: string]: string } | undefined, newQuantity: number) => {
     const itemVariantId = productId + JSON.stringify(options || {});
@@ -171,6 +201,49 @@ const App: React.FC = () => {
       setOrders(prev => prev.map(o => o.id === orderId ? { ...o, status } : o));
   }, []);
 
+  // Admin Callbacks
+  const addProduct = useCallback((productData: Omit<Product, 'id'>) => {
+    setProducts(prev => {
+        const newProduct: Product = {
+            ...productData,
+            id: Date.now(), // Simple ID generation
+        };
+        return [newProduct, ...prev];
+    });
+  }, []);
+
+  const updateProduct = useCallback((updatedProduct: Product) => {
+    setProducts(prev => prev.map(p => p.id === updatedProduct.id ? updatedProduct : p));
+  }, []);
+
+  const deleteProduct = useCallback((productId: number) => {
+    setProducts(prev => prev.filter(p => p.id !== productId));
+  }, []);
+
+  const addPromotion = useCallback((promotionData: Omit<Promotion, 'id'>) => {
+    setPromotions(prev => {
+        const newPromotion: Promotion = {
+            ...promotionData,
+            id: Date.now(),
+        };
+        return [newPromotion, ...prev];
+    });
+  }, []);
+
+  const updatePromotion = useCallback((updatedPromotion: Promotion) => {
+    setPromotions(prev => prev.map(p => p.id === updatedPromotion.id ? updatedPromotion : p));
+  }, []);
+
+  const deletePromotion = useCallback((promotionId: number) => {
+    setPromotions(prev => prev.filter(p => p.id !== promotionId));
+  }, []);
+
+  const updateUserRole = useCallback((userId: number, role: UserRole) => {
+      setUsers(prev => prev.map(u => u.id === userId ? { ...u, role } : u));
+      showToast(t.roleUpdatedSuccess);
+  }, [showToast, t]);
+
+
   // Router
   const renderContent = () => {
     if (route.startsWith('#/login')) {
@@ -180,7 +253,25 @@ const App: React.FC = () => {
       return currentUser ? null : <RegisterPage language={language} register={register} />;
     }
     if (route.startsWith('#/admin')) {
-      return currentUser?.role === 'admin' ? <AdminPage language={language} allProducts={initialProducts} restaurantInfo={restaurantInfo} allOrders={orders} updateOrderStatus={updateOrderStatus} logout={logout}/> : null;
+      return currentUser?.role === 'admin' ? (
+        <AdminPage 
+            language={language} 
+            allProducts={products}
+            allUsers={users}
+            restaurantInfo={restaurantInfo} 
+            allOrders={orders} 
+            allPromotions={promotions}
+            updateOrderStatus={updateOrderStatus} 
+            logout={logout}
+            addProduct={addProduct}
+            updateProduct={updateProduct}
+            deleteProduct={deleteProduct}
+            addPromotion={addPromotion}
+            updatePromotion={updatePromotion}
+            deletePromotion={deletePromotion}
+            updateUserRole={updateUserRole}
+        />
+      ) : null;
     }
     if (route.startsWith('#/profile')) {
        return currentUser?.role === 'customer' ? <ProfilePage language={language} currentUser={currentUser} orders={orders} logout={logout} restaurantInfo={restaurantInfo}/> : null;
@@ -199,6 +290,8 @@ const App: React.FC = () => {
         currentUser={currentUser}
         logout={logout}
         placeOrder={placeOrder}
+        products={products}
+        promotions={promotions}
       />
     );
   };
@@ -206,6 +299,7 @@ const App: React.FC = () => {
   return (
     <div className={`min-h-screen bg-slate-50 dark:bg-slate-950 text-gray-800 dark:text-gray-200 transition-colors duration-300 ${language === 'ar' ? 'font-cairo' : 'font-sans'}`}>
       {renderContent()}
+      <ToastNotification message={toast.message} isVisible={toast.isVisible} />
     </div>
   );
 };

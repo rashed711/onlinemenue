@@ -140,6 +140,7 @@ export const promotions: Promotion[] = [
         productId: 2,
         discountPercent: 20,
         endDate: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(), // 24 hours from now
+        isActive: true,
     },
     {
         id: 2,
@@ -148,5 +149,6 @@ export const promotions: Promotion[] = [
         productId: 3, // Example for one drink
         discountPercent: 50,
         endDate: new Date(Date.now() + 3 * 60 * 60 * 1000).toISOString(), // 3 hours from now
+        isActive: true,
     }
 ];

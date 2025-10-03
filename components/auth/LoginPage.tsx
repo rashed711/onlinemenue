@@ -10,9 +10,14 @@ interface LoginPageProps {
 
 export const LoginPage: React.FC<LoginPageProps> = ({ language, users, login }) => {
     const t = useTranslations(language);
-    const [mobile, setMobile] = useState('');
-    const [password, setPassword] = useState('');
+    const [mobile, setMobile] = useState('admin');
+    const [password, setPassword] = useState('password');
     const [error, setError] = useState('');
+
+    const handleNav = (e: React.MouseEvent<HTMLAnchorElement>, path: string) => {
+        e.preventDefault();
+        window.location.hash = path;
+    };
 
     const handleLogin = (e: React.FormEvent) => {
         e.preventDefault();
@@ -72,12 +77,12 @@ export const LoginPage: React.FC<LoginPageProps> = ({ language, users, login }) 
                 </form>
                 <div className="text-center text-sm">
                     <span className="text-gray-600 dark:text-gray-400">{t.dontHaveAccount} </span>
-                    <a href="#/register" className="font-medium text-primary-600 hover:underline dark:text-primary-500">
+                    <a href="#/register" onClick={(e) => handleNav(e, '/register')} className="font-medium text-primary-600 hover:underline dark:text-primary-500">
                         {t.register}
                     </a>
                 </div>
                  <div className="text-center">
-                    <a href="#/" className="text-sm text-primary-600 hover:underline dark:text-primary-500">
+                    <a href="#/" onClick={(e) => handleNav(e, '/')} className="text-sm text-primary-600 hover:underline dark:text-primary-500">
                         &larr; Back to Menu
                     </a>
                 </div>
