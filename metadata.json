@@ -1,0 +1,5 @@
+{
+  "name": "QR Code Restaurant Menu",
+  "description": "A modern, interactive digital menu for restaurants and cafes. Customers can browse items, filter by categories and dietary needs, switch languages (English/Arabic), toggle dark mode, and build their order in a dynamic cart before sending it via WhatsApp.",
+  "requestFramePermissions": []
+}
