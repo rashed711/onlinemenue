@@ -1,4 +1,5 @@
 
+
 import React from 'react';
 import type { Language, Category, Tag } from '../types';
 import { useTranslations } from '../i18n/translations';
@@ -30,9 +31,13 @@ export const SearchAndFilter: React.FC<SearchAndFilterProps> = ({
   const t = useTranslations(language);
 
   const handleTagChange = (tagId: string) => {
-    setSelectedTags(prev =>
-      prev.includes(tagId) ? prev.filter(t => t !== tagId) : [...prev, tagId]
-    );
+    // FIX: The `setSelectedTags` prop is typed to only accept a value, not a function updater.
+    // The logic is preserved by calculating the new tags array based on the `selectedTags` prop
+    // and passing the resulting array to `setSelectedTags`, conforming to the type signature.
+    const newTags = selectedTags.includes(tagId)
+      ? selectedTags.filter(t => t !== tagId)
+      : [...selectedTags, tagId];
+    setSelectedTags(newTags);
   };
 
   return (

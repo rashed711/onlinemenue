@@ -71,11 +71,13 @@ const App: React.FC = () => {
   const route = useMemo(() => hash || '#/', [hash]);
   const t = useTranslations(language);
 
+  const isAdmin = useMemo(() => currentUser?.role === 'admin' || currentUser?.role === 'superAdmin', [currentUser]);
+
 
   // Effect for route-based redirection for authentication
   useEffect(() => {
     // Redirect non-admins trying to access admin pages
-    if (route.startsWith('#/admin') && currentUser?.role !== 'admin') {
+    if (route.startsWith('#/admin') && !isAdmin) {
       window.location.hash = '#/login';
     } 
     // Redirect non-customers trying to access profile page
@@ -84,9 +86,9 @@ const App: React.FC = () => {
     }
     // Redirect logged-in users trying to access login/register pages
     else if ((route.startsWith('#/login') || route.startsWith('#/register')) && currentUser) {
-      window.location.hash = currentUser.role === 'admin' ? '#/admin' : '#/profile';
+      window.location.hash = isAdmin ? '#/admin' : '#/profile';
     }
-  }, [route, currentUser]);
+  }, [route, currentUser, isAdmin]);
 
 
   // UI Persistence Effects
@@ -237,11 +239,21 @@ const App: React.FC = () => {
   const deletePromotion = useCallback((promotionId: number) => {
     setPromotions(prev => prev.filter(p => p.id !== promotionId));
   }, []);
+  
+  const addUser = useCallback((userData: Omit<User, 'id'>) => {
+    setUsers(prev => {
+        const newUser: User = { ...userData, id: Date.now() };
+        return [newUser, ...prev];
+    });
+  }, []);
+  
+  const updateUser = useCallback((updatedUser: User) => {
+      setUsers(prev => prev.map(u => u.id === updatedUser.id ? updatedUser : u));
+  }, []);
 
-  const updateUserRole = useCallback((userId: number, role: UserRole) => {
-      setUsers(prev => prev.map(u => u.id === userId ? { ...u, role } : u));
-      showToast(t.roleUpdatedSuccess);
-  }, [showToast, t]);
+  const deleteUser = useCallback((userId: number) => {
+      setUsers(prev => prev.filter(u => u.id !== userId));
+  }, []);
 
 
   // Router
@@ -253,7 +265,7 @@ const App: React.FC = () => {
       return currentUser ? null : <RegisterPage language={language} register={register} />;
     }
     if (route.startsWith('#/admin')) {
-      return currentUser?.role === 'admin' ? (
+      return isAdmin ? (
         <AdminPage 
             language={language} 
             allProducts={products}
@@ -269,7 +281,9 @@ const App: React.FC = () => {
             addPromotion={addPromotion}
             updatePromotion={updatePromotion}
             deletePromotion={deletePromotion}
-            updateUserRole={updateUserRole}
+            addUser={addUser}
+            updateUser={updateUser}
+            deleteUser={deleteUser}
         />
       ) : null;
     }

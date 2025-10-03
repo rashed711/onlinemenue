@@ -44,6 +44,10 @@ export const OrderDetailsModal: React.FC<OrderDetailsModalProps> = ({ order, onC
                             <p>{new Date(order.timestamp).toLocaleString(language === 'ar' ? 'ar-EG' : 'en-US')}</p>
                         </div>
                         <div>
+                            <p className="font-semibold text-gray-500 dark:text-gray-400 mb-1">{t.orderType}</p>
+                            <p className="font-bold">{t[order.orderType === 'Dine-in' ? 'dineIn' : 'delivery']}</p>
+                        </div>
+                        <div>
                             <p className="font-semibold text-gray-500 dark:text-gray-400 mb-1">{t.status}</p>
                             <p>
                                 <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusChipColor(order.status)}`}>
@@ -51,7 +55,7 @@ export const OrderDetailsModal: React.FC<OrderDetailsModalProps> = ({ order, onC
                                 </span>
                             </p>
                         </div>
-                         <div>
+                         <div className="sm:col-span-2">
                             <p className="font-semibold text-gray-500 dark:text-gray-400 mb-1">{t.total}</p>
                             <p className="font-extrabold text-lg text-primary-600 dark:text-primary-400">{order.total.toFixed(2)} {t.currency}</p>
                         </div>

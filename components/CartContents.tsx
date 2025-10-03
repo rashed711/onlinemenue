@@ -1,5 +1,5 @@
 import React, { useMemo } from 'react';
-import type { CartItem, Language } from '../types';
+import type { CartItem, Language, OrderType } from '../types';
 import { useTranslations } from '../i18n/translations';
 import { PlusIcon, MinusIcon, CloseIcon } from './icons/Icons';
 
@@ -9,6 +9,8 @@ interface CartContentsProps {
   clearCart: () => void;
   language: Language;
   onPlaceOrder: () => void;
+  orderType: OrderType;
+  setOrderType: (type: OrderType) => void;
   isSidebar?: boolean;
   onClose?: () => void;
 }
@@ -19,6 +21,8 @@ export const CartContents: React.FC<CartContentsProps> = ({
   clearCart,
   language,
   onPlaceOrder,
+  orderType,
+  setOrderType,
   isSidebar = false,
   onClose,
 }) => {
@@ -50,6 +54,10 @@ export const CartContents: React.FC<CartContentsProps> = ({
   const getItemVariantId = (item: CartItem) => {
       return item.product.id + JSON.stringify(item.options || {});
   }
+  
+  const orderTypeClasses = "w-full py-2 text-sm font-bold transition-colors duration-200";
+  const activeOrderTypeClasses = "bg-primary-600 text-white";
+  const inactiveOrderTypeClasses = "bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600";
 
   return (
     <div className="flex flex-col bg-white dark:bg-gray-800">
@@ -105,6 +113,18 @@ export const CartContents: React.FC<CartContentsProps> = ({
             <span>{t.total}</span>
             <span>{subtotal.toFixed(2)} {t.currency}</span>
           </div>
+
+          <div className="flex rounded-lg overflow-hidden border border-gray-200 dark:border-gray-600">
+            <button
+                onClick={() => setOrderType('Dine-in')}
+                className={`${orderTypeClasses} ${orderType === 'Dine-in' ? activeOrderTypeClasses : inactiveOrderTypeClasses}`}
+            >{t.dineIn}</button>
+            <button
+                onClick={() => setOrderType('Delivery')}
+                className={`${orderTypeClasses} ${orderType === 'Delivery' ? activeOrderTypeClasses : inactiveOrderTypeClasses}`}
+            >{t.delivery}</button>
+          </div>
+
           <button
             onClick={handlePlaceOrderClick}
             className="w-full bg-green-500 text-white font-bold py-3 px-4 rounded-lg hover:bg-green-600 transition-colors flex justify-center items-center"

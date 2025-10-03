@@ -35,8 +35,8 @@ export interface Product {
   image: string;
   categoryId: number;
   rating: number;
-  isPopular?: boolean;
-  isNew?: boolean;
+  isPopular: boolean;
+  isNew: boolean;
   tags: string[];
   options?: ProductOption[];
 }
@@ -64,7 +64,7 @@ export interface RestaurantInfo {
 }
 
 // New Types for Users and Orders
-export type UserRole = 'admin' | 'customer';
+export type UserRole = 'superAdmin' | 'admin' | 'employee' | 'waiter' | 'restaurantStaff' | 'delivery' | 'driver' | 'customer';
 
 export interface User {
   id: number;
@@ -75,6 +75,7 @@ export interface User {
 }
 
 export type OrderStatus = 'Pending' | 'In Progress' | 'Completed' | 'Cancelled';
+export type OrderType = 'Dine-in' | 'Delivery';
 
 export interface Order {
   id: string;
@@ -82,6 +83,7 @@ export interface Order {
   total: number;
   status: OrderStatus;
   timestamp: string;
+  orderType: OrderType;
   customer: {
     userId?: number; // for registered users
     name?: string; // for registered users

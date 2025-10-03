@@ -21,7 +21,7 @@ export const tags: Tag[] = [
 ];
 
 export const users: User[] = [
-    { id: 1, name: 'Admin', mobile: 'admin', password: 'password', role: 'admin' },
+    { id: 1, name: 'Admin', mobile: 'admin', password: 'password', role: 'superAdmin' },
     { id: 2, name: 'Ali Ahmed', mobile: '0501234567', password: 'password123', role: 'customer' },
     { id: 3, name: 'Fatima Zahra', mobile: '0557654321', password: 'password123', role: 'customer' },
 ];
@@ -37,6 +37,7 @@ export const products: Product[] = [
     categoryId: 1,
     rating: 4.8,
     isPopular: true,
+    isNew: false,
     tags: ['healthy'],
   },
   {
@@ -49,6 +50,7 @@ export const products: Product[] = [
     categoryId: 1,
     rating: 4.5,
     isPopular: true,
+    isNew: false,
     tags: [],
     options: [
         { name: { en: 'Add-ons', ar: 'إضافات' }, values: [{ name: { en: 'Extra Cheese', ar: 'جبنة إضافية' }, priceModifier: 5 }, { name: { en: 'Bacon', ar: 'بيكون' }, priceModifier: 8 }] }
@@ -63,6 +65,7 @@ export const products: Product[] = [
     image: 'https://picsum.photos/seed/lemonade/400/300',
     categoryId: 2,
     rating: 4.7,
+    isPopular: false,
     isNew: true,
     tags: ['healthy', 'vegetarian'],
   },
@@ -76,6 +79,7 @@ export const products: Product[] = [
     categoryId: 3,
     rating: 4.9,
     isPopular: true,
+    isNew: false,
     tags: ['vegetarian'],
   },
   {
@@ -87,6 +91,7 @@ export const products: Product[] = [
     image: 'https://picsum.photos/seed/pasta/400/300',
     categoryId: 1,
     rating: 4.4,
+    isPopular: false,
     isNew: true,
     tags: ['vegetarian', 'healthy'],
      options: [
@@ -102,6 +107,8 @@ export const products: Product[] = [
     image: 'https://picsum.photos/seed/wings/400/300',
     categoryId: 4,
     rating: 4.6,
+    isPopular: false,
+    isNew: false,
     tags: ['spicy'],
   },
   {
@@ -113,6 +120,8 @@ export const products: Product[] = [
     image: 'https://picsum.photos/seed/pizza/400/300',
     categoryId: 1,
     rating: 4.3,
+    isPopular: false,
+    isNew: false,
     tags: ['gluten-free'],
   },
   {
@@ -125,6 +134,7 @@ export const products: Product[] = [
     categoryId: 2,
     rating: 4.8,
     isPopular: true,
+    isNew: false,
     tags: ['vegetarian'],
      options: [
         { name: { en: 'Size', ar: 'الحجم' }, values: [{ name: { en: 'Medium', ar: 'وسط' }, priceModifier: 0 }, { name: { en: 'Large', ar: 'كبير' }, priceModifier: 5 }] }

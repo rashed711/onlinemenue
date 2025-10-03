@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useCallback } from 'react';
-import type { User, Order, Language, Theme, Product, CartItem, OrderStatus, Promotion } from '../types';
+import type { User, Order, Language, Theme, Product, CartItem, OrderStatus, Promotion, OrderType } from '../types';
 import { categories as initialCategories, tags as initialTags, restaurantInfo } from '../data/mockData';
 import { Header } from './Header';
 import { SearchAndFilter } from './SearchAndFilter';
@@ -41,6 +41,7 @@ export const MenuPage: React.FC<MenuPageProps> = (props) => {
     const [isCartOpen, setIsCartOpen] = useState(false);
     const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
     const [isGuestCheckoutOpen, setIsGuestCheckoutOpen] = useState(false);
+    const [orderType, setOrderType] = useState<OrderType>('Dine-in');
     
     const [isReceiptModalOpen, setIsReceiptModalOpen] = useState(false);
     const [receiptImageUrl, setReceiptImageUrl] = useState('');
@@ -111,6 +112,8 @@ export const MenuPage: React.FC<MenuPageProps> = (props) => {
             ctx.fillText(`${t.orderId}: ${order.id}`, mainX, y);
             y += lineHeight;
             ctx.fillText(`${t.date}: ${new Date(order.timestamp).toLocaleString(language === 'ar' ? 'ar-EG' : 'en-US')}`, mainX, y);
+            y += lineHeight;
+            ctx.fillText(`${t.orderType}: ${t[order.orderType === 'Dine-in' ? 'dineIn' : 'delivery']}`, mainX, y);
             y += lineHeight * 1.5;
             
             ctx.strokeStyle = '#e5e7eb';
@@ -213,6 +216,7 @@ export const MenuPage: React.FC<MenuPageProps> = (props) => {
                 items: cartItems,
                 total: calculateTotal(cartItems),
                 status: 'Pending' as OrderStatus,
+                orderType: orderType,
                 customer: {
                     userId: currentUser.id,
                     name: currentUser.name,
@@ -233,6 +237,7 @@ export const MenuPage: React.FC<MenuPageProps> = (props) => {
             items: cartItems,
             total: calculateTotal(cartItems),
             status: 'Pending' as OrderStatus,
+            orderType: orderType,
             customer: { mobile }
         };
         const newOrder = placeOrder(orderData);
@@ -309,6 +314,8 @@ export const MenuPage: React.FC<MenuPageProps> = (props) => {
                                     clearCart={clearCart}
                                     language={language}
                                     onPlaceOrder={handlePlaceOrder}
+                                    orderType={orderType}
+                                    setOrderType={setOrderType}
                                 />
                             </div>
                         </div>
@@ -327,6 +334,8 @@ export const MenuPage: React.FC<MenuPageProps> = (props) => {
                 clearCart={clearCart}
                 language={language}
                 onPlaceOrder={handlePlaceOrder}
+                orderType={orderType}
+                setOrderType={setOrderType}
             />
 
             {selectedProduct && (

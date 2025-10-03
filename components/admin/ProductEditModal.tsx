@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import type { Product, Language, LocalizedString } from '../../types';
 import { useTranslations } from '../../i18n/translations';
@@ -19,6 +18,8 @@ const emptyProduct: Omit<Product, 'id' | 'rating'> = {
     price: 0,
     image: '',
     categoryId: categories[0]?.id || 1,
+    isPopular: false,
+    isNew: false,
     tags: [],
 };
 
@@ -53,6 +54,11 @@ export const ProductEditModal: React.FC<ProductEditModalProps> = ({ product, onC
         const { name, value } = e.target;
         setFormData(prev => ({ ...prev, [name]: parseFloat(value) || 0 }));
     }
+
+    const handleCheckboxChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const { name, checked } = e.target;
+        setFormData(prev => ({ ...prev, [name]: checked }));
+    };
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
@@ -114,6 +120,16 @@ export const ProductEditModal: React.FC<ProductEditModalProps> = ({ product, onC
                     <div>
                         <label className="block text-sm font-medium mb-1">{t.imageURL}</label>
                         <input type="text" name="image" value={formData.image} onChange={handleTextChange} className="w-full p-2 border rounded-md dark:bg-gray-700 dark:border-gray-600" required placeholder="https://picsum.photos/seed/example/400/300" />
+                    </div>
+                     <div className="flex items-center gap-8 pt-2">
+                        <label className="flex items-center gap-2 cursor-pointer">
+                            <input type="checkbox" name="isPopular" checked={formData.isPopular} onChange={handleCheckboxChange} className="w-5 h-5 rounded text-primary-600 focus:ring-primary-500" />
+                            <span className="text-sm font-medium">{t.popular}</span>
+                        </label>
+                        <label className="flex items-center gap-2 cursor-pointer">
+                            <input type="checkbox" name="isNew" checked={formData.isNew} onChange={handleCheckboxChange} className="w-5 h-5 rounded text-primary-600 focus:ring-primary-500" />
+                            <span className="text-sm font-medium">{t.new}</span>
+                        </label>
                     </div>
                     <div className="flex justify-end gap-4 pt-4">
                         <button type="button" onClick={onClose} className="px-4 py-2 rounded-lg bg-gray-200 dark:bg-gray-600 hover:bg-gray-300 dark:hover:bg-gray-500 transition-colors">{t.cancel}</button>
