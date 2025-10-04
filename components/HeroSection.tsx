@@ -9,6 +9,14 @@ interface HeroSectionProps {
 export const HeroSection: React.FC<HeroSectionProps> = ({ language }) => {
   const t = useTranslations(language);
 
+  const handleScrollToMenu = (e: React.MouseEvent<HTMLAnchorElement>) => {
+    e.preventDefault();
+    const menuElement = document.getElementById('menu');
+    if (menuElement) {
+      menuElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  };
+
   return (
     <section className="relative h-[60vh] min-h-[400px] max-h-[600px] flex items-center justify-center text-white text-center">
       <div className="absolute inset-0 bg-black/60 z-10"></div>
@@ -26,6 +34,7 @@ export const HeroSection: React.FC<HeroSectionProps> = ({ language }) => {
         </p>
         <a 
           href="#menu"
+          onClick={handleScrollToMenu}
           className="bg-primary-500 hover:bg-primary-600 text-white font-bold py-3 px-8 rounded-full text-lg transition-transform transform hover:scale-105 inline-block"
         >
           {t.viewMenu}
