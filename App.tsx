@@ -5,12 +5,65 @@ import { LoginPage } from './components/auth/LoginPage';
 import { RegisterPage } from './components/auth/RegisterPage';
 import { ProfilePage } from './components/profile/ProfilePage';
 import { AdminPage } from './components/admin/AdminPage';
-import type { Product, CartItem, Language, Theme, User, Order, OrderStatus, UserRole, Promotion, Permission, Category, Tag } from './types';
-import { products as initialProducts, restaurantInfo, users as initialUsers, promotions as initialPromotions, initialCategories, initialTags } from './data/mockData';
+import type { Product, CartItem, Language, Theme, User, Order, OrderStatus, UserRole, Promotion, Permission, Category, Tag, RestaurantInfo } from './types';
+import { products as initialProducts, restaurantInfo as initialRestaurantInfo, users as initialUsers, promotions as initialPromotions, initialCategories, initialTags } from './data/mockData';
 import { ToastNotification } from './components/ToastNotification';
 import { useTranslations } from './i18n/translations';
 import { initialRolePermissions } from './data/permissions';
 import { calculateTotal } from './utils/helpers';
+
+// --- NEW COMPONENT: SocialPage ---
+const DynamicIcon: React.FC<{ d: string, className?: string }> = ({ d, className }) => (
+    <svg className={className} fill="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+        <path d={d}></path>
+    </svg>
+);
+
+const SocialPage: React.FC<{ language: Language, restaurantInfo: RestaurantInfo }> = ({ language, restaurantInfo }) => {
+    const t = useTranslations(language);
+    const visibleLinks = restaurantInfo.socialLinks.filter(link => link.isVisible);
+
+    const handleNav = (e: React.MouseEvent<HTMLAnchorElement>, path: string) => {
+        e.preventDefault();
+        window.location.hash = path;
+    };
+
+    return (
+        <div className="flex flex-col items-center justify-center min-h-screen bg-slate-100 dark:bg-slate-950 p-4">
+            <div className="w-full max-w-sm mx-auto text-center animate-fade-in-up">
+                <img src={restaurantInfo.logo} alt="logo" className="w-32 h-32 rounded-full mx-auto mb-6 shadow-lg border-4 border-white dark:border-slate-800" />
+                <h1 className="text-4xl font-bold text-slate-800 dark:text-slate-100 mb-2">{restaurantInfo.name[language]}</h1>
+                <p className="text-slate-500 dark:text-slate-400 mb-8">{t.heroSubtitle}</p>
+
+                <div className="space-y-4">
+                    {visibleLinks.map(link => (
+                        <a 
+                            key={link.id}
+                            href={link.url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="w-full flex items-center gap-4 p-4 bg-white dark:bg-slate-800 rounded-lg shadow-md hover:shadow-xl hover:scale-105 transition-all duration-300 border border-slate-200 dark:border-slate-700"
+                        >
+                            <DynamicIcon d={link.icon} className="w-6 h-6 text-primary-500" />
+                            <span className="font-semibold text-lg text-slate-700 dark:text-slate-200">{link.name}</span>
+                        </a>
+                    ))}
+                </div>
+
+                <div className="mt-12">
+                    <a
+                        href="#/menu"
+                        onClick={(e) => handleNav(e, '/menu')}
+                        className="bg-primary-500 hover:bg-primary-600 text-white font-bold py-3 px-8 rounded-full text-lg transition-transform transform hover:scale-105 inline-block shadow-lg"
+                    >
+                        {t.viewMenu}
+                    </a>
+                </div>
+            </div>
+        </div>
+    );
+};
+
 
 // Subscribes to the browser's hashchange event.
 function subscribe(callback: () => void) {
@@ -76,6 +129,12 @@ const App: React.FC = () => {
     const saved = localStorage.getItem('restaurant_role_permissions');
     return saved ? JSON.parse(saved) : initialRolePermissions;
   });
+  
+  const [restaurantInfo, setRestaurantInfo] = useState<RestaurantInfo>(() => {
+    const saved = localStorage.getItem('restaurant_info');
+    return saved ? JSON.parse(saved) : initialRestaurantInfo;
+  });
+
 
   // Auth State
   const [currentUser, setCurrentUser] = useState<User | null>(() => {
@@ -161,6 +220,10 @@ const App: React.FC = () => {
       }
   }, [currentUser]);
 
+  useEffect(() => {
+    localStorage.setItem('restaurant_info', JSON.stringify(restaurantInfo));
+  }, [restaurantInfo]);
+
 
   // Callbacks
   const toggleTheme = useCallback(() => setTheme(prev => prev === 'light' ? 'dark' : 'light'), []);
@@ -180,6 +243,10 @@ const App: React.FC = () => {
     const userPermissions = rolePermissions[currentUser.role];
     return userPermissions?.includes(permission) ?? false;
   }, [currentUser, rolePermissions]);
+  
+  const updateRestaurantInfo = useCallback((updatedInfo: Partial<RestaurantInfo>) => {
+    setRestaurantInfo(prev => ({...prev, ...updatedInfo}));
+  }, []);
 
   // Auth Callbacks
   const login = useCallback((user: User) => setCurrentUser(user), []);
@@ -471,6 +538,7 @@ const App: React.FC = () => {
             addTag={addTag}
             updateTag={updateTag}
             deleteTag={deleteTag}
+            updateRestaurantInfo={updateRestaurantInfo}
         />
       ) : null;
     }
@@ -478,7 +546,11 @@ const App: React.FC = () => {
        return currentUser?.role === 'customer' ? <ProfilePage language={language} currentUser={currentUser} orders={orders} logout={logout} restaurantInfo={restaurantInfo} updateOrder={updateOrder}/> : null;
     }
 
-    return (
+    if (route.startsWith('#/social')) {
+      return <SocialPage language={language} restaurantInfo={restaurantInfo} />;
+    }
+
+    const menuPageComponent = (
       <MenuPage
         language={language}
         theme={theme}
@@ -495,8 +567,21 @@ const App: React.FC = () => {
         promotions={promotions}
         categories={categories}
         tags={tags}
+        restaurantInfo={restaurantInfo}
       />
     );
+    
+    if (route.startsWith('#/menu')) {
+        return menuPageComponent;
+    }
+
+    if (route === '#/' || route === '') {
+        if (restaurantInfo.defaultPage === 'social') {
+            return <SocialPage language={language} restaurantInfo={restaurantInfo} />;
+        }
+    }
+
+    return menuPageComponent;
   };
 
   return (

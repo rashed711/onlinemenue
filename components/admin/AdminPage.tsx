@@ -1,7 +1,8 @@
-import React, { useState, useMemo } from 'react';
-import type { Language, Product, RestaurantInfo, Order, OrderStatus, User, UserRole, Promotion, Permission, Category, Tag, CartItem } from '../../types';
+
+import React, { useState, useMemo, useEffect } from 'react';
+import type { Language, Product, RestaurantInfo, Order, OrderStatus, User, UserRole, Promotion, Permission, Category, Tag, CartItem, SocialLink } from '../../types';
 import { useTranslations } from '../../i18n/translations';
-import { MenuAlt2Icon, PlusIcon, PencilIcon, TrashIcon, BellIcon, FireIcon, CheckBadgeIcon, XCircleIcon, TruckIcon, CheckCircleIcon } from '../icons/Icons';
+import { MenuAlt2Icon, PlusIcon, PencilIcon, TrashIcon, BellIcon, FireIcon, CheckBadgeIcon, XCircleIcon, TruckIcon, CheckCircleIcon, CloseIcon } from '../icons/Icons';
 import { OrderDetailsModal } from './OrderDetailsModal';
 import { ProductEditModal } from './ProductEditModal';
 import { PromotionEditModal } from './PromotionEditModal';
@@ -15,6 +16,205 @@ import { TagEditModal } from './TagEditModal';
 import { RefusalReasonModal } from './RefusalReasonModal';
 import { OrderEditModal } from './OrderEditModal';
 import { ReportsPage } from './ReportsPage';
+
+// --- START: Inlined SocialLinkEditModal ---
+interface SocialLinkEditModalProps {
+    link: SocialLink | null;
+    onClose: () => void;
+    onSave: (linkData: SocialLink | Omit<SocialLink, 'id'>) => void;
+}
+
+const emptyLink: Omit<SocialLink, 'id'> = {
+    name: '',
+    url: '',
+    icon: '',
+    isVisible: true,
+};
+
+const SocialLinkEditModal: React.FC<SocialLinkEditModalProps> = ({ link, onClose, onSave }) => {
+    const [formData, setFormData] = useState<Omit<SocialLink, 'id'>>(emptyLink);
+
+    useEffect(() => {
+        if (link) {
+            const { id, ...editableData } = link;
+            setFormData(editableData);
+        } else {
+            setFormData(emptyLink);
+        }
+    }, [link]);
+
+    const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+        const { name, value, type } = e.target;
+        if (type === 'checkbox') {
+            setFormData(prev => ({ ...prev, [name]: (e.target as HTMLInputElement).checked }));
+        } else {
+            setFormData(prev => ({ ...prev, [name]: value }));
+        }
+    };
+
+    const handleSubmit = (e: React.FormEvent) => {
+        e.preventDefault();
+        if (link) {
+            onSave({ ...link, ...formData });
+        } else {
+            onSave(formData);
+        }
+    };
+
+    return (
+        <div className="fixed inset-0 bg-black bg-opacity-60 z-50 flex justify-center items-center p-4" onClick={onClose}>
+            <div className="bg-white dark:bg-gray-800 rounded-2xl w-full max-w-lg" onClick={e => e.stopPropagation()}>
+                <div className="p-4 flex justify-between items-center border-b border-gray-200 dark:border-gray-700">
+                    <h2 className="text-xl font-bold">{link ? 'Edit Link' : 'Add New Link'}</h2>
+                    <button onClick={onClose} className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700">
+                        <CloseIcon className="w-6 h-6"/>
+                    </button>
+                </div>
+                <form onSubmit={handleSubmit} className="p-6 space-y-4">
+                    <div>
+                        <label className="block text-sm font-medium mb-1">Name (e.g., Instagram)</label>
+                        <input type="text" name="name" value={formData.name} onChange={handleChange} className="w-full p-2 border rounded-md dark:bg-gray-700 dark:border-gray-600" required />
+                    </div>
+                     <div>
+                        <label className="block text-sm font-medium mb-1">URL (e.g., https://instagram.com/user)</label>
+                        <input type="text" name="url" value={formData.url} onChange={handleChange} className="w-full p-2 border rounded-md dark:bg-gray-700 dark:border-gray-600" required />
+                    </div>
+                    <div>
+                        <label className="block text-sm font-medium mb-1">SVG Icon Path Data</label>
+                        <textarea name="icon" value={formData.icon} onChange={handleChange} rows={3} className="w-full p-2 border rounded-md dark:bg-gray-700 dark:border-gray-600 font-mono text-xs" required placeholder='Paste the "d" attribute from an SVG <path> element here.'></textarea>
+                        <p className="text-xs text-gray-500 mt-1">Find icons on sites like heroicons.com, view source, and copy the `d="..."` value.</p>
+                    </div>
+                    <div>
+                        <label className="flex items-center gap-2 cursor-pointer">
+                            <input type="checkbox" name="isVisible" checked={formData.isVisible} onChange={handleChange} className="w-5 h-5 rounded text-primary-600 focus:ring-primary-500" />
+                            <span className="text-sm font-medium">Visible on page</span>
+                        </label>
+                    </div>
+                    <div className="flex justify-end gap-4 pt-4">
+                        <button type="button" onClick={onClose} className="px-4 py-2 rounded-lg bg-gray-200 dark:bg-gray-600 hover:bg-gray-300 dark:hover:bg-gray-500">Cancel</button>
+                        <button type="submit" className="px-4 py-2 rounded-lg bg-primary-500 text-white hover:bg-primary-600">Save</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    );
+};
+// --- END: Inlined SocialLinkEditModal ---
+
+
+// --- START: Inlined SettingsPage ---
+interface SettingsPageProps {
+    language: Language;
+    restaurantInfo: RestaurantInfo;
+    updateRestaurantInfo: (updatedInfo: Partial<RestaurantInfo>) => void;
+}
+
+const DynamicIcon: React.FC<{ d: string, className?: string }> = ({ d, className }) => (
+    <svg className={className} fill="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+        <path d={d}></path>
+    </svg>
+);
+
+
+const SettingsPage: React.FC<SettingsPageProps> = ({ language, restaurantInfo, updateRestaurantInfo }) => {
+    const t = useTranslations(language);
+    const [editingLink, setEditingLink] = useState<SocialLink | 'new' | null>(null);
+
+    const handleHomepageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        updateRestaurantInfo({ defaultPage: e.target.value as 'menu' | 'social' });
+    };
+
+    const handleToggleVisibility = (linkId: number) => {
+        const updatedLinks = restaurantInfo.socialLinks.map(link => 
+            link.id === linkId ? { ...link, isVisible: !link.isVisible } : link
+        );
+        updateRestaurantInfo({ socialLinks: updatedLinks });
+    };
+
+    const handleDeleteLink = (linkId: number) => {
+        if (window.confirm("Are you sure you want to delete this link?")) {
+            const updatedLinks = restaurantInfo.socialLinks.filter(link => link.id !== linkId);
+            updateRestaurantInfo({ socialLinks: updatedLinks });
+        }
+    };
+    
+    const handleSaveLink = (linkData: SocialLink | Omit<SocialLink, 'id'>) => {
+        if ('id' in linkData) { // Editing existing
+            const updatedLinks = restaurantInfo.socialLinks.map(link => link.id === linkData.id ? linkData : link);
+            updateRestaurantInfo({ socialLinks: updatedLinks });
+        } else { // Adding new
+            const newLink: SocialLink = {
+                ...linkData,
+                id: restaurantInfo.socialLinks.length > 0 ? Math.max(...restaurantInfo.socialLinks.map(l => l.id)) + 1 : 1,
+            };
+            updateRestaurantInfo({ socialLinks: [...restaurantInfo.socialLinks, newLink] });
+        }
+        setEditingLink(null);
+    };
+
+    return (
+        <div className="space-y-8 animate-fade-in">
+            {/* Homepage Settings */}
+            <div className="bg-white dark:bg-slate-800 p-6 rounded-lg shadow-md border border-slate-200 dark:border-slate-700">
+                <h3 className="text-xl font-semibold mb-4">Homepage Settings</h3>
+                <div className="flex items-center space-x-6 rtl:space-x-reverse">
+                    <label className="flex items-center gap-2 cursor-pointer">
+                        <input type="radio" name="homepage" value="menu" checked={restaurantInfo.defaultPage === 'menu'} onChange={handleHomepageChange} className="w-5 h-5 text-primary-600 focus:ring-primary-500" />
+                        <span>Menu Page</span>
+                    </label>
+                    <label className="flex items-center gap-2 cursor-pointer">
+                        <input type="radio" name="homepage" value="social" checked={restaurantInfo.defaultPage === 'social'} onChange={handleHomepageChange} className="w-5 h-5 text-primary-600 focus:ring-primary-500" />
+                        <span>Social Links Page</span>
+                    </label>
+                </div>
+            </div>
+
+            {/* Social Links Management */}
+            <div>
+                <div className="flex justify-between items-center mb-4">
+                    <h3 className="text-xl font-semibold">Social & Contact Links</h3>
+                    <button onClick={() => setEditingLink('new')} className="bg-green-500 text-white font-bold py-2 px-3 rounded-lg hover:bg-green-600 transition-colors flex items-center gap-2 text-sm">
+                        <PlusIcon className="w-5 h-5" />
+                        Add New Link
+                    </button>
+                </div>
+                <div className="bg-white dark:bg-slate-800 rounded-lg shadow-md border border-slate-200 dark:border-slate-700">
+                    <ul className="divide-y divide-gray-200 dark:divide-gray-700">
+                        {restaurantInfo.socialLinks.map(link => (
+                            <li key={link.id} className="p-4 flex flex-wrap justify-between items-center gap-4 hover:bg-slate-50 dark:hover:bg-gray-700/50">
+                                <div className="flex items-center gap-4">
+                                    <DynamicIcon d={link.icon} className="w-6 h-6 text-slate-500 dark:text-slate-400" />
+                                    <div>
+                                        <div className="font-medium">{link.name}</div>
+                                        <a href={link.url} target="_blank" rel="noopener noreferrer" className="text-sm text-primary-600 hover:underline truncate max-w-xs block">{link.url}</a>
+                                    </div>
+                                </div>
+                                <div className="flex items-center gap-4">
+                                     <label className="relative inline-flex items-center cursor-pointer">
+                                        <input type="checkbox" checked={link.isVisible} onChange={() => handleToggleVisibility(link.id)} className="sr-only peer" />
+                                        <div className="w-11 h-6 bg-slate-200 rounded-full peer dark:bg-slate-700 peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full after:content-[''] after:absolute after:top-0.5 after:start-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-green-600"></div>
+                                    </label>
+                                    <button onClick={() => setEditingLink(link)} className="p-2 text-indigo-600 hover:bg-indigo-100 dark:hover:bg-indigo-900/50 rounded-full"><PencilIcon className="w-5 h-5" /></button>
+                                    <button onClick={() => handleDeleteLink(link.id)} className="p-2 text-red-600 hover:bg-red-100 dark:hover:bg-red-900/50 rounded-full"><TrashIcon className="w-5 h-5" /></button>
+                                </div>
+                            </li>
+                        ))}
+                    </ul>
+                </div>
+            </div>
+            
+            {editingLink && (
+                <SocialLinkEditModal
+                    link={editingLink === 'new' ? null : editingLink}
+                    onClose={() => setEditingLink(null)}
+                    onSave={handleSaveLink}
+                />
+            )}
+        </div>
+    );
+};
+// --- END: Inlined SettingsPage ---
+
 
 interface AdminPageProps {
     language: Language;
@@ -45,9 +245,10 @@ interface AdminPageProps {
     addTag: (tagData: Omit<Tag, 'id'> & {id: string}) => void;
     updateTag: (tag: Tag) => void;
     deleteTag: (tagId: string) => void;
+    updateRestaurantInfo: (updatedInfo: Partial<RestaurantInfo>) => void;
 }
 
-type AdminTab = 'orders' | 'reports' | 'productList' | 'classifications' | 'promotions' | 'users' | 'roles';
+type AdminTab = 'orders' | 'reports' | 'productList' | 'classifications' | 'promotions' | 'users' | 'roles' | 'settings';
 
 export const AdminPage: React.FC<AdminPageProps> = (props) => {
     const { 
@@ -55,7 +256,8 @@ export const AdminPage: React.FC<AdminPageProps> = (props) => {
         updateOrder, logout, addProduct, updateProduct, deleteProduct, 
         addPromotion, updatePromotion, deletePromotion, addUser, updateUser, deleteUser,
         rolePermissions, updateRolePermissions,
-        addCategory, updateCategory, deleteCategory, addTag, updateTag, deleteTag
+        addCategory, updateCategory, deleteCategory, addTag, updateTag, deleteTag,
+        updateRestaurantInfo
     } = props;
 
     const t = useTranslations(language);
@@ -418,6 +620,15 @@ export const AdminPage: React.FC<AdminPageProps> = (props) => {
                            </table>
                        </div>
                     </div>
+                );
+             case 'settings':
+                if (!hasPermission('manage_roles')) return null;
+                return (
+                    <SettingsPage
+                        language={language}
+                        restaurantInfo={restaurantInfo}
+                        updateRestaurantInfo={updateRestaurantInfo}
+                    />
                 );
             default: return null;
         }

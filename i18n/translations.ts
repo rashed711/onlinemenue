@@ -1,3 +1,4 @@
+
 import type { Language } from '../types';
 
 export const translations = {
@@ -197,6 +198,8 @@ export const translations = {
     deleteProductError: 'Cannot delete: This product is part of an active promotion.',
     deleteUserError: 'Cannot delete: This user has existing orders.',
     addTagError: 'Cannot add tag: A tag with this English name (and therefore same ID) already exists.',
+    settings: 'Settings',
+    contactUs: 'Contact Us',
   },
   ar: {
     restaurantName: 'المكان الذواقة',
@@ -394,6 +397,8 @@ export const translations = {
     deleteProductError: 'لا يمكن الحذف: هذا المنتج جزء من عرض ترويجي نشط.',
     deleteUserError: 'لا يمكن الحذف: هذا المستخدم لديه طلبات حالية.',
     addTagError: 'لا يمكن إضافة العلامة: توجد علامة بنفس الاسم الإنجليزي (وبالتالي نفس المعرف) بالفعل.',
+    settings: 'الإعدادات',
+    contactUs: 'تواصل معنا',
   },
 };
 

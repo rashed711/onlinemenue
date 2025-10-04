@@ -58,10 +58,20 @@ export interface Promotion {
   isActive: boolean;
 }
 
+export interface SocialLink {
+  id: number;
+  name: string;
+  url: string;
+  icon: string; // SVG path data (d attribute)
+  isVisible: boolean;
+}
+
 export interface RestaurantInfo {
     name: LocalizedString;
     logo: string;
     whatsappNumber: string;
+    socialLinks: SocialLink[];
+    defaultPage: 'menu' | 'social';
 }
 
 // New Types for Users and Orders

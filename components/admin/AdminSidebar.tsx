@@ -1,10 +1,10 @@
 import React from 'react';
 import type { Language, Permission, User, UserRole } from '../../types';
 import { useTranslations } from '../../i18n/translations';
-import { ClipboardListIcon, CollectionIcon, UsersIcon, CloseIcon, ShieldCheckIcon, BookmarkAltIcon, ChartBarIcon, TagIcon } from '../icons/Icons';
+import { ClipboardListIcon, CollectionIcon, UsersIcon, CloseIcon, ShieldCheckIcon, BookmarkAltIcon, ChartBarIcon, TagIcon, CogIcon } from '../icons/Icons';
 import { usePermissions } from '../../hooks/usePermissions';
 
-type AdminTab = 'orders' | 'reports' | 'productList' | 'classifications' | 'promotions' | 'users' | 'roles';
+type AdminTab = 'orders' | 'reports' | 'productList' | 'classifications' | 'promotions' | 'users' | 'roles' | 'settings';
 
 interface AdminSidebarProps {
     language: Language;
@@ -28,6 +28,7 @@ export const AdminSidebar: React.FC<AdminSidebarProps> = ({ language, currentUse
         { id: 'promotions', label: t.managePromotions, icon: TagIcon, permission: 'manage_promotions' as Permission },
         { id: 'users', label: t.manageUsers, icon: UsersIcon, permission: 'manage_users' as Permission },
         { id: 'roles', label: t.manageRoles, icon: ShieldCheckIcon, permission: 'manage_roles' as Permission },
+        { id: 'settings', label: t.settings, icon: CogIcon, permission: 'manage_roles' as Permission },
     ];
 
     // FIX: Explicitly type NavLink as a React.FC with a props interface

@@ -1,7 +1,8 @@
-import React, { useState, useEffect } from 'react';
+
+import React, { useState, useEffect, useMemo } from 'react';
 import type { Language, Theme, RestaurantInfo, User } from '../types';
 import { useTranslations } from '../i18n/translations';
-import { SunIcon, MoonIcon, CartIcon, LanguageIcon, UserIcon } from './icons/Icons';
+import { SunIcon, MoonIcon, CartIcon, LanguageIcon, UserIcon, LinkIcon } from './icons/Icons';
 
 interface HeaderProps {
   language: Language;
@@ -43,6 +44,7 @@ export const Header: React.FC<HeaderProps> = ({
   }, []);
   
   const isAdmin = currentUser?.role === 'admin' || currentUser?.role === 'superAdmin';
+  const hasVisibleSocialLinks = useMemo(() => restaurantInfo.socialLinks.some(link => link.isVisible), [restaurantInfo.socialLinks]);
 
   return (
     <header className={`sticky top-0 z-40 transition-all duration-300 ${isScrolled ? 'bg-white/80 dark:bg-slate-950/80 backdrop-blur-xl shadow-md border-b border-slate-200 dark:border-slate-800' : 'bg-transparent'}`}>
@@ -73,6 +75,17 @@ export const Header: React.FC<HeaderProps> = ({
               <div className="h-6 w-px bg-slate-200 dark:bg-slate-700"></div>
             </div>
             
+            {hasVisibleSocialLinks && (
+                <a 
+                    href="#/social" 
+                    onClick={(e) => handleNav(e, '/social')} 
+                    className="p-2 h-10 w-10 flex items-center justify-center rounded-full hover:bg-slate-200/60 dark:hover:bg-slate-700/60 transition-colors" 
+                    aria-label={t.contactUs}
+                    title={t.contactUs}
+                >
+                    <LinkIcon className="w-6 h-6" />
+                </a>
+            )}
             <button onClick={toggleLanguage} className="p-2 h-10 w-10 flex items-center justify-center rounded-full hover:bg-slate-200/60 dark:hover:bg-slate-700/60 transition-colors" aria-label="Toggle language">
               <LanguageIcon className="w-6 h-6" />
             </button>

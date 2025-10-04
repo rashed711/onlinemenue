@@ -1,6 +1,5 @@
 import React, { useState, useMemo, useCallback } from 'react';
-import type { User, Order, Language, Theme, Product, CartItem, OrderStatus, Promotion, OrderType, Category, Tag } from '../types';
-import { restaurantInfo } from '../data/mockData';
+import type { User, Order, Language, Theme, Product, CartItem, OrderStatus, Promotion, OrderType, Category, Tag, RestaurantInfo } from '../types';
 import { Header } from './Header';
 import { SearchAndFilter } from './SearchAndFilter';
 import { ProductList } from './ProductList';
@@ -30,6 +29,7 @@ interface MenuPageProps {
     promotions: Promotion[];
     categories: Category[];
     tags: Tag[];
+    restaurantInfo: RestaurantInfo;
 }
 
 export const MenuPage: React.FC<MenuPageProps> = (props) => {
@@ -37,7 +37,7 @@ export const MenuPage: React.FC<MenuPageProps> = (props) => {
         language, theme, toggleLanguage, toggleTheme,
         cartItems, addToCart, updateCartQuantity, clearCart,
         currentUser, logout, placeOrder, products, promotions,
-        categories, tags
+        categories, tags, restaurantInfo
     } = props;
     
     const t = useTranslations(language);
