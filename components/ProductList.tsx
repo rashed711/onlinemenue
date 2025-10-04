@@ -42,7 +42,7 @@ export const ProductList: React.FC<ProductListProps> = ({ titleKey, products, la
         <div className="relative -mx-4">
           <div ref={sliderRef} className="flex overflow-x-auto snap-x snap-mandatory scroll-smooth scrollbar-hide px-2">
             {products.map(product => (
-              <div key={product.id} className="w-[85%] sm:w-1/2 md:w-1/3 lg:w-1/4 flex-shrink-0 snap-center p-2">
+              <div key={product.id} className="w-11/12 sm:w-1/2 md:w-1/3 lg:w-1/4 flex-shrink-0 snap-center p-2">
                 <ProductCard 
                   product={product} 
                   language={language}
