@@ -209,7 +209,7 @@ export const translations = {
     mostPopular: 'الأكثر شعبية',
     newItems: 'أطباق جديدة',
     todaysOffers: "عروض اليوم",
-    fullMenu: 'القائمة الكاملة',
+    fullMenu: 'كل المنتجات',
     addToCart: 'أضف للسلة',
     viewDetails: 'عرض التفاصيل',
     cart: 'سلتي',

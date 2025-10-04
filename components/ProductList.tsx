@@ -18,7 +18,6 @@ interface ProductListProps {
 export const ProductList: React.FC<ProductListProps> = ({ titleKey, products, language, onProductClick, addToCart, slider = false }) => {
   const t = useTranslations(language);
   const sliderRef = useRef<HTMLDivElement>(null);
-  const intervalRef = useRef<number | null>(null);
   const isRtl = language === 'ar';
 
   const handleScroll = (direction: 'prev' | 'next') => {
@@ -33,41 +32,6 @@ export const ProductList: React.FC<ProductListProps> = ({ titleKey, products, la
       slider.scrollBy({ left: isRtl ? -scrollAmount : scrollAmount, behavior: 'smooth' });
     }
   };
-
-  const scrollNext = useCallback(() => {
-    if (sliderRef.current?.children[0]) {
-      const slider = sliderRef.current;
-      const cardWidth = (slider.children[0] as HTMLElement).offsetWidth;
-      const maxScroll = slider.scrollWidth - slider.clientWidth;
-
-      // A small buffer is needed for floating point inaccuracies
-      const isNearEnd = isRtl
-        ? slider.scrollLeft <= 1
-        : slider.scrollLeft >= maxScroll - 1;
-
-      if (isNearEnd) {
-        slider.scrollTo({ left: isRtl ? maxScroll : 0, behavior: 'smooth' });
-      } else {
-        slider.scrollBy({ left: isRtl ? -cardWidth : cardWidth, behavior: 'smooth' });
-      }
-    }
-  }, [isRtl]);
-
-  const startAutoPlay = useCallback(() => {
-    if (intervalRef.current) clearInterval(intervalRef.current);
-    intervalRef.current = window.setInterval(scrollNext, 4000); // 4 seconds
-  }, [scrollNext]);
-
-  const stopAutoPlay = () => {
-    if (intervalRef.current) clearInterval(intervalRef.current);
-  };
-
-  useEffect(() => {
-    if (slider) {
-      startAutoPlay();
-      return () => stopAutoPlay();
-    }
-  }, [slider, startAutoPlay]);
   
   if (products.length === 0) return null;
 
@@ -75,7 +39,7 @@ export const ProductList: React.FC<ProductListProps> = ({ titleKey, products, la
     return (
       <section className="my-12 sm:my-16 animate-fade-in-up">
         <h2 className="text-3xl font-extrabold mb-8">{t[titleKey]}</h2>
-        <div className="relative -mx-4" onMouseEnter={stopAutoPlay} onMouseLeave={startAutoPlay}>
+        <div className="relative -mx-4">
           <div ref={sliderRef} className="flex overflow-x-auto snap-x snap-mandatory scroll-smooth scrollbar-hide px-2">
             {products.map(product => (
               <div key={product.id} className="w-[85%] sm:w-1/2 md:w-1/3 lg:w-1/4 flex-shrink-0 snap-center p-2">

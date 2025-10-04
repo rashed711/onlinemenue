@@ -116,13 +116,13 @@ export const PromotionSection: React.FC<PromotionSectionProps> = ({ promotions, 
   return (
     <section className="my-12 animate-fade-in-up">
         <h2 className="text-3xl font-extrabold mb-8">{t.todaysOffers}</h2>
-        <div className="relative" onMouseEnter={stopAutoPlay} onMouseLeave={startAutoPlay}>
+        <div className="relative" onMouseEnter={stopAutoPlay} onMouseLeave={startAutoPlay} onTouchStart={stopAutoPlay} onTouchEnd={startAutoPlay}>
             <div ref={sliderRef} className="flex overflow-x-auto snap-x snap-mandatory scroll-smooth scrollbar-hide -mx-2">
                 {activePromotions.map(promo => {
                     const product = products.find(p => p.id === promo.productId);
                     if (!product) return null;
                     return (
-                        <div key={promo.id} className="w-[90%] md:w-1/2 lg:w-1/3 flex-shrink-0 snap-center p-2">
+                        <div key={promo.id} className="w-5/6 md:w-1/2 lg:w-1/3 flex-shrink-0 snap-center p-2">
                              <PromotionCard promotion={promo} product={product} language={language} onProductClick={onProductClick} />
                         </div>
                     );
