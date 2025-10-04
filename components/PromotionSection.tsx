@@ -27,7 +27,7 @@ const PromotionCard: React.FC<PromotionCardProps> = ({ promotion, product, langu
         <div onClick={() => onProductClick(product)} className="bg-gradient-to-br from-primary-500 to-primary-700 h-full text-white rounded-2xl p-6 lg:p-8 flex flex-col md:flex-row items-center gap-6 lg:gap-8 shadow-xl hover:shadow-2xl hover:shadow-primary-500/40 cursor-pointer transform hover:scale-[1.03] transition-all duration-300 min-h-[280px]">
             <img src={product.image} alt={product.name[language]} className="w-full md:w-36 h-48 md:h-36 rounded-xl md:rounded-full object-cover border-4 border-primary-300 flex-shrink-0" />
             <div className="flex flex-col flex-1 justify-center text-center md:text-start">
-                <div className="flex flex-col gap-4">
+                <div>
                     <div>
                         <h3 className="text-2xl lg:text-3xl font-bold">{promotion.title[language]}</h3>
                         <p className="mt-1 lg:mt-2 opacity-90 line-clamp-2">{promotion.description[language]}</p>
@@ -36,7 +36,7 @@ const PromotionCard: React.FC<PromotionCardProps> = ({ promotion, product, langu
                             <span className="line-through text-lg lg:text-xl opacity-80">{product.price.toFixed(2)} {t.currency}</span>
                         </div>
                     </div>
-                    <div>
+                    <div className="mt-4">
                         <p className="font-semibold uppercase text-sm opacity-90">{t.expiresIn}</p>
                         <div className="flex gap-2 text-2xl font-mono font-bold mt-1 justify-center md:justify-start">
                             <div className="bg-white/20 p-2 lg:py-2 lg:px-3 rounded-md min-w-[50px] lg:min-w-[60px] text-center">{String(days).padStart(2,'0')}<span className="text-xs block">{t.days}</span></div>
@@ -124,7 +124,7 @@ export const PromotionSection: React.FC<PromotionSectionProps> = ({ promotions, 
                     const product = products.find(p => p.id === promo.productId);
                     if (!product) return null;
                     return (
-                        <div key={promo.id} className="w-5/6 md:w-1/2 lg:w-1/3 flex-shrink-0 snap-center p-2">
+                        <div key={promo.id} className="w-full md:w-1/2 lg:w-[45%] xl:w-1/2 flex-shrink-0 snap-center p-2">
                              <PromotionCard promotion={promo} product={product} language={language} onProductClick={onProductClick} />
                         </div>
                     );
