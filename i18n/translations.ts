@@ -202,7 +202,7 @@ export const translations = {
     contactUs: 'Contact Us',
   },
   ar: {
-    restaurantName: 'المكان الذواقة',
+    restaurantName: 'مطعم تبوك',
     heroTitle: "اكتشف نكهات أصيلة",
     heroSubtitle: "مكونات طازجة، طعم رائع. استكشف قائمة طعام صنعت بشغف.",
     viewMenu: 'عرض القائمة',

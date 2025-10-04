@@ -38,7 +38,7 @@ const PromotionCard: React.FC<PromotionCardProps> = ({ promotion, product, langu
                     </div>
                     <div className="mt-4">
                         <p className="font-semibold uppercase text-sm opacity-90">{t.expiresIn}</p>
-                        <div className="flex gap-2 text-2xl font-mono font-bold mt-1 justify-center md:justify-start">
+                        <div className="flex rtl:flex-row-reverse gap-2 text-2xl font-mono font-bold mt-1 justify-center md:justify-start">
                             <div className="bg-white/20 p-2 lg:py-2 lg:px-3 rounded-md min-w-12 lg:min-w-14 text-center">{String(days).padStart(2,'0')}<span className="text-xs block">{t.days}</span></div>
                             <div className="bg-white/20 p-2 lg:py-2 lg:px-3 rounded-md min-w-12 lg:min-w-14 text-center">{String(hours).padStart(2,'0')}<span className="text-xs block">{t.hours}</span></div>
                             <div className="bg-white/20 p-2 lg:py-2 lg:px-3 rounded-md min-w-12 lg:min-w-14 text-center">{String(minutes).padStart(2,'0')}<span className="text-xs block">{t.minutes}</span></div>

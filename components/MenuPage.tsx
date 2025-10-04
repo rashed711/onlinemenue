@@ -322,6 +322,7 @@ export const MenuPage: React.FC<MenuPageProps> = (props) => {
                         language={language} 
                         onProductClick={setSelectedProduct} 
                         addToCart={handleAddToCartWithoutOpeningCart}
+                        slider={false}
                     />
                 </main>
             </div>
