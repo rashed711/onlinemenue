@@ -84,7 +84,7 @@ export const AdminSidebar: React.FC<AdminSidebarProps> = ({ language, currentUse
                         ))}
                     </nav>
                      <a href="#/" onClick={(e) => handleNav(e, '/')} className="text-center text-sm text-gray-500 hover:text-primary-500 dark:text-gray-400 dark:hover:text-primary-400">
-                        &larr; {language === 'ar' ? 'العودة إلى القائمة' : 'Back to Menu'}
+                        {t.backToMenu}
                     </a>
                 </div>
             </aside>

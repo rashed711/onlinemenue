@@ -89,7 +89,7 @@ export const RegisterPage: React.FC<RegisterPageProps> = ({ language, register }
                 </div>
                  <div className="text-center border-t border-slate-200 dark:border-slate-700 pt-4">
                     <a href="#/" onClick={(e) => handleNav(e, '/')} className="text-sm text-primary-600 hover:underline dark:text-primary-500">
-                        &larr; Back to Menu
+                        {t.backToMenu}
                     </a>
                 </div>
             </div>

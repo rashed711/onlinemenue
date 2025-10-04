@@ -201,10 +201,11 @@ export const translations = {
     addTagError: 'Cannot add tag: A tag with this English name (and therefore same ID) already exists.',
     settings: 'Settings',
     contactUs: 'Contact Us',
+    backToMenu: '← Back to Menu',
   },
   ar: {
     restaurantName: 'فريسكو',
-    viewMenu: 'عرض القائمة',
+    viewMenu: 'عرض المنيو',
     searchPlaceholder: 'ابحث عن أطباق...',
     allCategories: 'الكل',
     filterByTags: 'تصفية حسب:',
@@ -400,6 +401,7 @@ export const translations = {
     addTagError: 'لا يمكن إضافة العلامة: توجد علامة بنفس الاسم الإنجليزي (وبالتالي نفس المعرف) بالفعل.',
     settings: 'الإعدادات',
     contactUs: 'تواصل معنا',
+    backToMenu: '← الرجوع الي المنيو',
   },
 };
 

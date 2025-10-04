@@ -2,15 +2,18 @@ import type { Product, Category, Tag, Promotion, RestaurantInfo, User } from '..
 
 export const restaurantInfo: RestaurantInfo = {
     name: { en: "Fresco Restaurants", ar: "فريسكو" },
-    logo: "https://picsum.photos/100",
+    logo: "https://scontent.fcai19-12.fna.fbcdn.net/v/t39.30808-6/326784659_640082784584921_8943838091858707104_n.jpg?_nc_cat=110&ccb=1-7&_nc_sid=6ee11a&_nc_ohc=hDSAS50k57YQ7kNvwHyjCEH&_nc_oc=Adk4knaBHBvjAESF47VphTsJWWgKPiYprMuJdtONFsXURmSHD4nBBUeqUwO-yg8e2TE&_nc_zt=23&_nc_ht=scontent.fcai19-12.fna&_nc_gid=_eUOtrGErkewBVWyptkJJg&oh=00_AfchBFd41HJG_59OcxQ8NRsiZ7i-4KZk0DQNlILQeCpEJw&oe=68E71BD2",
     heroTitle: { en: "Experience Authentic Flavors", ar: "اكتشف نكهات أصيلة" },
     description: { en: "Fresh ingredients, exquisite taste. Explore a menu crafted with passion.", ar: "مكونات طازجة، طعم رائع. استكشف قائمة طعام صنعت بشغف." },
-    whatsappNumber: "201028855779", // Replace with actual WhatsApp number
+    whatsappNumber: "201060637363", // Replace with actual WhatsApp number
     defaultPage: 'menu',
     socialLinks: [
         { id: 1, name: 'Instagram', url: 'https://instagram.com', icon: 'https://img.icons8.com/color/48/instagram-new--v1.png', isVisible: true },
         { id: 2, name: 'Facebook', url: 'https://facebook.com', icon: 'https://img.icons8.com/color/48/facebook.png', isVisible: true },
-        { id: 3, name: 'Phone', url: 'tel:+201028855779', icon: 'https://img.icons8.com/color/48/phone.png', isVisible: false },
+        { id: 3, name: '01060637363', url: 'tel:+201060637363', icon: 'https://img.icons8.com/color/48/phone.png', isVisible: true },
+        { id: 4, name: '01027987666', url: 'tel:+201027987666', icon: 'https://img.icons8.com/color/48/phone.png', isVisible: true },
+        { id: 5, name: '0132722678', url: 'tel:+20132722678', icon: 'https://img.icons8.com/color/48/phone.png', isVisible: true },
+        { id: 6, name: 'For Complaints', url: 'tel:+201024423777', icon: 'https://img.icons8.com/color/48/phone.png', isVisible: true },
     ],
 };
 
@@ -76,7 +79,7 @@ export const products: Product[] = [
     categoryId: 2,
     rating: 4.7,
     isPopular: false,
-    isNew: true,
+    isNew: false,
     isVisible: true,
     tags: ['healthy', 'vegetarian'],
   },
@@ -104,7 +107,7 @@ export const products: Product[] = [
     categoryId: 1,
     rating: 4.4,
     isPopular: false,
-    isNew: true,
+    isNew: false,
     isVisible: true,
     tags: ['vegetarian', 'healthy'],
      options: [

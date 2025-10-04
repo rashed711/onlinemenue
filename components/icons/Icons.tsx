@@ -1,4 +1,3 @@
-
 import React from 'react';
 
 type IconProps = {
@@ -25,7 +24,7 @@ export const CartIcon: React.FC<IconProps> = ({ className }) => (
 
 export const LanguageIcon: React.FC<IconProps> = ({ className }) => (
     <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5h12M9 3v2m4 13-4-4-4 4M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16l4-4 4 4 4-4 4 4z" />
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 21a9.004 9.004 0 008.716-6.747M12 21a9.004 9.004 0 01-8.716-6.747M12 21c2.485 0 4.5-4.03 4.5-9S14.485 3 12 3m0 18c-2.485 0-4.5-4.03-4.5-9S9.515 3 12 3m0 0a8.997 8.997 0 017.843 4.582M12 3a8.997 8.997 0 00-7.843 4.582m15.686 0A11.953 11.953 0 0112 10.5c-2.998 0-5.74-1.1-7.843-2.918m15.686 0A8.959 8.959 0 0121 12c0 .778-.099 1.533-.284 2.253m0 0A11.953 11.953 0 0112 13.5c-2.998 0-5.74-1.1-7.843-2.918m15.686 0A8.959 8.959 0 0121 12c0 .778-.099 1.533-.284 2.253m0 0l-4.5-4.5m4.5 4.5l-4.5-4.5" />
     </svg>
 );
 
@@ -199,6 +198,12 @@ export const CogIcon: React.FC<IconProps> = ({ className }) => (
 
 export const LinkIcon: React.FC<IconProps> = ({ className }) => (
     <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20.25 8.511c.884.284 1.5 1.128 1.5 2.097v4.286c0 1.136-.847 2.1-1.98 2.193l-3.722.537a59.014 59.014 0 01-5.022 0l-3.722-.537C3.847 17.1 3 16.136 3 15v-4.286c0-.97.616-1.813 1.5-2.097m6.008 0H9.75m5.25 0h.008M9.75 16.5a3.75 3.75 0 01-3.75-3.75V8.784a3.75 3.75 0 013.75-3.75h4.5A3.75 3.75 0 0118 8.784v3.966A3.75 3.75 0 0114.25 16.5h-4.5z" />
     </svg>
+);
+
+export const FilterIcon: React.FC<IconProps> = ({ className }) => (
+  <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8v-2m0 2a2 2 0 100 4m0-4a2 2 0 110 4m0-4v-2m0 4h.01M18 8v-2m0 2a2 2 0 100 4m0-4a2 2 0 110 4m0-4v-2m0 4h.01" />
+  </svg>
 );
