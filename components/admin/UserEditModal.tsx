@@ -17,7 +17,7 @@ const emptyUser: Omit<User, 'id'> = {
     role: 'employee',
 };
 
-const userRoles: UserRole[] = ['superAdmin', 'admin', 'employee', 'waiter', 'restaurantStaff', 'delivery', 'driver', 'customer'];
+const userRoles: UserRole[] = ['superAdmin', 'admin', 'employee', 'waiter', 'waiterSupervisor', 'restaurantStaff', 'delivery', 'driver', 'customer'];
 
 export const UserEditModal: React.FC<UserEditModalProps> = ({ user, onClose, onSave, language }) => {
     const t = useTranslations(language);

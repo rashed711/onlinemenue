@@ -30,6 +30,7 @@ export const initialRolePermissions: Record<UserRole, Permission[]> = {
   ],
   employee: ['view_orders', 'manage_orders'],
   waiter: ['view_orders', 'manage_orders'],
+  waiterSupervisor: ['view_orders', 'manage_orders'],
   restaurantStaff: ['view_orders', 'manage_orders'],
   delivery: ['view_orders'],
   driver: ['view_orders'],

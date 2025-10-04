@@ -12,7 +12,7 @@ import { ReceiptModal } from './ReceiptModal';
 import { GuestCheckoutModal } from './GuestCheckoutModal';
 import { HeroSection } from './HeroSection';
 import { useTranslations } from '../i18n/translations';
-import { CartContents } from './CartContents';
+import { calculateTotal } from '../utils/helpers';
 
 interface MenuPageProps {
     language: Language;
@@ -69,18 +69,41 @@ export const MenuPage: React.FC<MenuPageProps> = (props) => {
         const fontLarge = `bold ${20 * dpi}px ${fontName}`;
         const fontSmall = `${13 * dpi}px ${fontName}`;
         const logoSize = 60 * dpi;
+        const canvasWidth = 420 * dpi;
+        
+        const getWrappedLines = (context: CanvasRenderingContext2D, text: string, maxWidth: number): string[] => {
+            const words = text.split(' ');
+            const lines = [];
+            let currentLine = words[0];
 
-        // Increased canvas height calculation to prevent clipping on longer receipts.
-        let canvasHeight = padding * 2 + logoSize + lineHeight * 6; // Increased header space
+            for (let i = 1; i < words.length; i++) {
+                const word = words[i];
+                const width = context.measureText(currentLine + ' ' + word).width;
+                if (width < maxWidth) {
+                    currentLine += ' ' + word;
+                } else {
+                    lines.push(currentLine);
+                    currentLine = word;
+                }
+            }
+            lines.push(currentLine);
+            return lines;
+        }
+
+        // Pre-calculate canvas height
+        let canvasHeight = padding * 2 + logoSize + lineHeight * 6;
+        ctx.font = font; // Set font for measurement
+        const textMaxWidth = canvasWidth - padding * 2 - (80 * dpi);
         order.items.forEach(item => {
-            canvasHeight += itemLineHeight * 1.5; // Increased space per item
+            const itemText = `${item.quantity} x ${item.product.name[language]}`;
+            const lines = getWrappedLines(ctx, itemText, textMaxWidth);
+            canvasHeight += lines.length * itemLineHeight;
             if (item.options) {
-                canvasHeight += Object.keys(item.options).length * itemLineHeight; // Increased space for options
+                canvasHeight += Object.keys(item.options).length * (itemLineHeight * 0.9);
             }
         });
-        canvasHeight += lineHeight * 5; // Increased footer space and buffer
-        
-        const canvasWidth = 420 * dpi;
+        canvasHeight += lineHeight * 5; // Footer and buffer
+
         canvas.width = canvasWidth;
         canvas.height = canvasHeight;
 
@@ -136,12 +159,18 @@ export const MenuPage: React.FC<MenuPageProps> = (props) => {
             
             ctx.font = font;
             order.items.forEach(item => {
-                const itemTotal = item.product.price * item.quantity;
-                ctx.textAlign = mainAlign;
-                ctx.fillText(`${item.quantity} x ${item.product.name[language]}`, mainX, y);
+                const itemTotal = calculateTotal([item]);
+                const itemText = `${item.quantity} x ${item.product.name[language]}`;
+                const lines = getWrappedLines(ctx, itemText, textMaxWidth);
+                
                 ctx.textAlign = secondaryAlign;
                 ctx.fillText(itemTotal.toFixed(2), secondaryX, y);
-                y += itemLineHeight * 1.2;
+
+                ctx.textAlign = mainAlign;
+                lines.forEach((line, index) => {
+                    ctx.fillText(line, mainX, y + (index * itemLineHeight));
+                });
+                y += lines.length * itemLineHeight;
 
                 if (item.options && item.product.options) {
                     ctx.fillStyle = '#6b7280';
@@ -152,12 +181,13 @@ export const MenuPage: React.FC<MenuPageProps> = (props) => {
                        if(option && value) {
                            ctx.textAlign = mainAlign;
                            ctx.fillText(`  - ${value.name[language]}`, mainX, y);
-                           y += itemLineHeight * 0.8;
+                           y += itemLineHeight * 0.9;
                        }
                     });
                     ctx.font = font;
                     ctx.fillStyle = '#1f2937';
                 }
+                 y += itemLineHeight * 0.3; // Padding after each item
             });
             
             ctx.beginPath();
@@ -176,7 +206,7 @@ export const MenuPage: React.FC<MenuPageProps> = (props) => {
         logo.onload = drawContent;
         logo.onerror = drawContent; 
       });
-    }, [language, t]);
+    }, [language, t, restaurantInfo]);
 
     const visibleProducts = useMemo(() => products.filter(p => p.isVisible), [products]);
 
@@ -193,29 +223,13 @@ export const MenuPage: React.FC<MenuPageProps> = (props) => {
         });
       }, [searchTerm, selectedCategory, selectedTags, language, visibleProducts]);
       
-    const popularProducts = useMemo(() => visibleProducts.filter(p => p.isPopular).slice(0, 4), [visibleProducts]);
+    const popularProducts = useMemo(() => visibleProducts.filter(p => p.isPopular).slice(0, 8), [visibleProducts]);
     const newProducts = useMemo(() => visibleProducts.filter(p => p.isNew).slice(0, 4), [visibleProducts]);
 
     const handleAddToCartWithoutOpeningCart = useCallback((product: Product, quantity: number, options?: { [key: string]: string }) => {
         addToCart(product, quantity, options);
     }, [addToCart]);
       
-    const calculateTotal = (items: CartItem[]) => {
-        return items.reduce((total, item) => {
-            let itemPrice = item.product.price;
-            if(item.options && item.product.options) {
-                Object.entries(item.options).forEach(([optionKey, valueKey]) => {
-                    const option = item.product.options?.find(opt => opt.name.en === optionKey);
-                    const value = option?.values.find(val => val.name.en === valueKey);
-                    if(value) {
-                        itemPrice += value.priceModifier;
-                    }
-                });
-            }
-            return total + itemPrice * item.quantity;
-        }, 0);
-    }
-    
     const handlePlaceOrder = async () => {
         if(currentUser) {
             const orderData = {
@@ -270,63 +284,46 @@ export const MenuPage: React.FC<MenuPageProps> = (props) => {
             <HeroSection language={language} />
 
             <div className="container mx-auto max-w-7xl px-4 py-8">
-                <div className="lg:grid lg:grid-cols-3 lg:gap-8">
-                    <main className="lg:col-span-2">
-                        <SearchAndFilter
-                            language={language}
-                            categories={categories}
-                            tags={tags}
-                            searchTerm={searchTerm}
-                            setSearchTerm={setSearchTerm}
-                            selectedCategory={selectedCategory}
-                            setSelectedCategory={setSelectedCategory}
-                            selectedTags={selectedTags}
-                            setSelectedTags={setSelectedTags}
-                        />
-                        
-                        <PromotionSection promotions={promotions} products={visibleProducts} language={language} onProductClick={setSelectedProduct} />
+                <main>
+                    <SearchAndFilter
+                        language={language}
+                        categories={categories}
+                        tags={tags}
+                        searchTerm={searchTerm}
+                        setSearchTerm={setSearchTerm}
+                        selectedCategory={selectedCategory}
+                        setSelectedCategory={setSelectedCategory}
+                        selectedTags={selectedTags}
+                        setSelectedTags={setSelectedTags}
+                    />
+                    
+                    <PromotionSection promotions={promotions} products={visibleProducts} language={language} onProductClick={setSelectedProduct} />
 
-                        <ProductList 
-                            titleKey="mostPopular" 
-                            products={popularProducts} 
-                            language={language} 
-                            onProductClick={setSelectedProduct} 
-                            addToCart={handleAddToCartWithoutOpeningCart}
-                        />
+                    <ProductList 
+                        titleKey="mostPopular" 
+                        products={popularProducts} 
+                        language={language} 
+                        onProductClick={setSelectedProduct} 
+                        addToCart={handleAddToCartWithoutOpeningCart}
+                        slider={true}
+                    />
 
-                        <ProductList 
-                            titleKey="newItems"
-                            products={newProducts} 
-                            language={language} 
-                            onProductClick={setSelectedProduct} 
-                            addToCart={handleAddToCartWithoutOpeningCart}
-                        />
+                    <ProductList 
+                        titleKey="newItems"
+                        products={newProducts} 
+                        language={language} 
+                        onProductClick={setSelectedProduct} 
+                        addToCart={handleAddToCartWithoutOpeningCart}
+                    />
 
-                        <ProductList 
-                            titleKey="fullMenu"
-                            products={filteredProducts} 
-                            language={language} 
-                            onProductClick={setSelectedProduct} 
-                            addToCart={handleAddToCartWithoutOpeningCart}
-                        />
-                    </main>
-
-                    <aside className="hidden lg:block lg:col-span-1 self-start">
-                        <div className="sticky top-24">
-                            <div className="rounded-2xl shadow-lg overflow-hidden border border-gray-200 dark:border-gray-700">
-                                <CartContents 
-                                    cartItems={cartItems}
-                                    updateCartQuantity={updateCartQuantity}
-                                    clearCart={clearCart}
-                                    language={language}
-                                    onPlaceOrder={handlePlaceOrder}
-                                    orderType={orderType}
-                                    setOrderType={setOrderType}
-                                />
-                            </div>
-                        </div>
-                    </aside>
-                </div>
+                    <ProductList 
+                        titleKey="fullMenu"
+                        products={filteredProducts} 
+                        language={language} 
+                        onProductClick={setSelectedProduct} 
+                        addToCart={handleAddToCartWithoutOpeningCart}
+                    />
+                </main>
             </div>
 
 

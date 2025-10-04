@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import type { Language, Product, RestaurantInfo, Order, OrderStatus, User, UserRole, Promotion, Permission, Category, Tag, CartItem } from '../../types';
 import { useTranslations } from '../../i18n/translations';
 import { MenuAlt2Icon, PlusIcon, PencilIcon, TrashIcon, BellIcon, FireIcon, CheckBadgeIcon, XCircleIcon, TruckIcon, CheckCircleIcon } from '../icons/Icons';
@@ -74,6 +74,27 @@ export const AdminPage: React.FC<AdminPageProps> = (props) => {
     const [editingTag, setEditingTag] = useState<Tag | 'new' | null>(null);
     const [refusingOrder, setRefusingOrder] = useState<Order | null>(null);
 
+    const ordersToDisplay = useMemo(() => {
+        if (!currentUser || !hasPermission('view_orders')) {
+            return [];
+        }
+        
+        const { role, id: userId } = currentUser;
+    
+        if (role === 'waiter') {
+            return allOrders.filter(order => order.createdBy === userId);
+        }
+        
+        if (role === 'waiterSupervisor') {
+            const waiterIds = allUsers.filter(user => user.role === 'waiter').map(user => user.id);
+            return allOrders.filter(order => order.createdBy && waiterIds.includes(order.createdBy));
+        }
+    
+        // All other roles with 'view_orders' permission see all orders.
+        return allOrders;
+    
+    }, [allOrders, currentUser, allUsers, hasPermission]);
+
 
     const handleSaveProduct = (productData: Product | Omit<Product, 'id' | 'rating'>) => {
         if ('id' in productData) {
@@ -140,7 +161,12 @@ export const AdminPage: React.FC<AdminPageProps> = (props) => {
         setEditingOrder(null);
     };
     
-    const OrderCard = ({ order }: { order: Order }) => {
+    // FIX: Explicitly type OrderCard as a React.FC with a props interface
+    // to resolve TypeScript error regarding the 'key' prop.
+    interface OrderCardProps {
+        order: Order;
+    }
+    const OrderCard: React.FC<OrderCardProps> = ({ order }) => {
         const isDriver = currentUser?.role === 'driver';
         const canManage = hasPermission('manage_orders');
 
@@ -174,22 +200,22 @@ export const AdminPage: React.FC<AdminPageProps> = (props) => {
         }
 
         return (
-            <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-4 space-y-3 relative transition-all hover:shadow-lg hover:scale-[1.02]">
+            <div className="bg-white dark:bg-slate-800 rounded-lg shadow-md p-4 space-y-3 relative transition-all hover:shadow-lg hover:scale-[1.02] border border-slate-200 dark:border-slate-700">
                 <div className="flex justify-between items-start">
                     <div>
-                        <p className="font-bold font-mono cursor-pointer hover:text-primary-600" onClick={() => setViewingOrder(order)}>{order.id}</p>
+                        <p className="font-bold font-mono cursor-pointer hover:text-primary-600 dark:hover:text-primary-400" onClick={() => setViewingOrder(order)}>{order.id}</p>
                         <p className="text-sm font-semibold">{order.customer.name || 'Guest'}</p>
-                        <p className="text-xs text-gray-500 dark:text-gray-400">{new Date(order.timestamp).toLocaleTimeString(language === 'ar' ? 'ar-EG' : 'en-US', { hour: '2-digit', minute:'2-digit' })}</p>
+                        <p className="text-xs text-slate-500 dark:text-slate-400">{new Date(order.timestamp).toLocaleTimeString(language === 'ar' ? 'ar-EG' : 'en-US', { hour: '2-digit', minute:'2-digit' })}</p>
                     </div>
-                    <p className="font-bold text-lg">{order.total.toFixed(2)}</p>
+                    <p className="font-bold text-lg text-primary-600 dark:text-primary-400">{order.total.toFixed(2)}</p>
                 </div>
                 <div>
-                    <ul className="text-xs text-gray-600 dark:text-gray-300 list-disc list-inside">
+                    <ul className="text-xs text-slate-600 dark:text-slate-300 list-disc list-inside space-y-1">
                         {order.items.slice(0, 2).map((item, index) => <li key={index} className="truncate">{item.quantity}x {item.product.name[language]}</li>)}
-                        {order.items.length > 2 && <li className="font-semibold">... and {order.items.length - 2} more</li>}
+                        {order.items.length > 2 && <li className="font-semibold text-slate-400">... and {order.items.length - 2} more</li>}
                     </ul>
                 </div>
-                <div className="flex justify-between items-center border-t dark:border-gray-700 pt-3">
+                <div className="flex justify-between items-center border-t dark:border-slate-700 pt-3">
                      <button onClick={() => setViewingOrder(order)} className="text-sm text-primary-600 hover:underline">{t.viewOrderDetails}</button>
                     {renderActions()}
                 </div>
@@ -201,70 +227,40 @@ export const AdminPage: React.FC<AdminPageProps> = (props) => {
         switch(activeTab) {
             case 'orders': {
                 if (!hasPermission('view_orders')) return null;
-                const pendingOrders = allOrders.filter(o => o.status === 'Pending');
-                const inProgressOrders = allOrders.filter(o => o.status === 'In Progress');
-                const readyForPickupOrders = allOrders.filter(o => o.status === 'Ready for Pickup');
-                const outForDeliveryOrders = allOrders.filter(o => o.status === 'Out for Delivery');
-                const completedOrders = allOrders.filter(o => o.status === 'Completed');
-                const cancelledOrders = allOrders.filter(o => o.status === 'Cancelled' || o.status === 'Refused');
+                const ordersByStatus = {
+                    Pending: ordersToDisplay.filter(o => o.status === 'Pending'),
+                    'In Progress': ordersToDisplay.filter(o => o.status === 'In Progress'),
+                    'Ready for Pickup': ordersToDisplay.filter(o => o.status === 'Ready for Pickup'),
+                    'Out for Delivery': ordersToDisplay.filter(o => o.status === 'Out for Delivery'),
+                    Completed: ordersToDisplay.filter(o => o.status === 'Completed'),
+                    Cancelled: ordersToDisplay.filter(o => o.status === 'Cancelled' || o.status === 'Refused'),
+                }
+                const boardColumns: {titleKey: keyof typeof t, icon: React.FC<any>, color: string, orders: Order[]}[] = [
+                    {titleKey: 'newOrders', icon: BellIcon, color: 'text-yellow-500', orders: ordersByStatus['Pending']},
+                    {titleKey: 'inTheKitchen', icon: FireIcon, color: 'text-orange-500', orders: ordersByStatus['In Progress']},
+                    {titleKey: 'readyForPickup', icon: CheckCircleIcon, color: 'text-cyan-500', orders: ordersByStatus['Ready for Pickup']},
+                    {titleKey: 'outForDelivery', icon: TruckIcon, color: 'text-blue-500', orders: ordersByStatus['Out for Delivery']},
+                    {titleKey: 'completed', icon: CheckBadgeIcon, color: 'text-green-500', orders: ordersByStatus['Completed']},
+                    {titleKey: 'cancelledOrders', icon: XCircleIcon, color: 'text-slate-500', orders: ordersByStatus['Cancelled']},
+                ]
 
                 return (
-                     <div>
+                     <div className='animate-fade-in'>
                         <h2 className="text-2xl font-bold mb-6">{t.manageOrders}</h2>
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-6">
-                            {/* New Orders Column */}
-                            <div className="flex flex-col space-y-4">
-                                <h3 className="text-lg font-bold flex items-center gap-2 sticky top-20 bg-slate-100 dark:bg-slate-900 py-2 z-10"><BellIcon className="w-6 h-6 text-yellow-500" /> {t.newOrders} ({pendingOrders.length})</h3>
-                                <div className="bg-slate-200/50 dark:bg-gray-900/50 p-2 sm:p-4 rounded-lg space-y-4 min-h-[200px] flex-grow">
-                                    {pendingOrders.map(order => <OrderCard key={order.id} order={order} />)}
-                                    {pendingOrders.length === 0 && <p className="text-center text-gray-500 pt-8">No new orders.</p>}
+                        <div className="w-full overflow-x-auto pb-4">
+                          <div className="inline-grid grid-cols-6 gap-6 min-w-max">
+                              {boardColumns.map(col => (
+                                <div key={col.titleKey} className="w-80 flex flex-col">
+                                  <h3 className={`text-lg font-bold flex items-center gap-2 p-2 sticky top-[88px] bg-slate-100 dark:bg-slate-900 z-10 ${col.color}`}>
+                                    <col.icon className="w-6 h-6"/> {t[col.titleKey]} ({col.orders.length})
+                                  </h3>
+                                  <div className="bg-slate-200/50 dark:bg-slate-900/50 p-2 sm:p-4 rounded-lg space-y-4 min-h-[calc(100vh-250px)] flex-grow">
+                                      {col.orders.map(order => <OrderCard order={order} key={order.id} />)}
+                                      {col.orders.length === 0 && <div className="h-full flex items-center justify-center"><p className="text-center text-slate-500 p-8">No orders.</p></div>}
+                                  </div>
                                 </div>
-                            </div>
-
-                            {/* In the Kitchen Column */}
-                            <div className="flex flex-col space-y-4">
-                                <h3 className="text-lg font-bold flex items-center gap-2 sticky top-20 bg-slate-100 dark:bg-slate-900 py-2 z-10"><FireIcon className="w-6 h-6 text-orange-500" /> {t.inTheKitchen} ({inProgressOrders.length})</h3>
-                                <div className="bg-slate-200/50 dark:bg-gray-900/50 p-2 sm:p-4 rounded-lg space-y-4 min-h-[200px] flex-grow">
-                                    {inProgressOrders.map(order => <OrderCard key={order.id} order={order} />)}
-                                    {inProgressOrders.length === 0 && <p className="text-center text-gray-500 pt-8">No orders in progress.</p>}
-                                </div>
-                            </div>
-
-                            {/* Ready for Pickup Column */}
-                            <div className="flex flex-col space-y-4">
-                                <h3 className="text-lg font-bold flex items-center gap-2 sticky top-20 bg-slate-100 dark:bg-slate-900 py-2 z-10"><CheckCircleIcon className="w-6 h-6 text-cyan-500" /> {t.readyForPickup} ({readyForPickupOrders.length})</h3>
-                                <div className="bg-slate-200/50 dark:bg-gray-900/50 p-2 sm:p-4 rounded-lg space-y-4 min-h-[200px] flex-grow">
-                                    {readyForPickupOrders.map(order => <OrderCard key={order.id} order={order} />)}
-                                    {readyForPickupOrders.length === 0 && <p className="text-center text-gray-500 pt-8">No orders ready.</p>}
-                                </div>
-                            </div>
-
-                            {/* Out for Delivery Column */}
-                            <div className="flex flex-col space-y-4">
-                                <h3 className="text-lg font-bold flex items-center gap-2 sticky top-20 bg-slate-100 dark:bg-slate-900 py-2 z-10"><TruckIcon className="w-6 h-6 text-blue-500" /> {t.outForDelivery} ({outForDeliveryOrders.length})</h3>
-                                <div className="bg-slate-200/50 dark:bg-gray-900/50 p-2 sm:p-4 rounded-lg space-y-4 min-h-[200px] flex-grow">
-                                    {outForDeliveryOrders.map(order => <OrderCard key={order.id} order={order} />)}
-                                    {outForDeliveryOrders.length === 0 && <p className="text-center text-gray-500 pt-8">No orders for delivery.</p>}
-                                </div>
-                            </div>
-                           
-                           {/* Completed Column */}
-                            <div className="flex flex-col space-y-4">
-                                <h3 className="text-lg font-bold flex items-center gap-2 sticky top-20 bg-slate-100 dark:bg-slate-900 py-2 z-10"><CheckBadgeIcon className="w-6 h-6 text-green-500" /> {t.completed} ({completedOrders.length})</h3>
-                                <div className="bg-slate-200/50 dark:bg-gray-900/50 p-2 sm:p-4 rounded-lg space-y-4 min-h-[200px] flex-grow">
-                                    {completedOrders.map(order => <OrderCard key={order.id} order={order} />)}
-                                    {completedOrders.length === 0 && <p className="text-center text-gray-500 pt-8">No completed orders.</p>}
-                                </div>
-                            </div>
-                           
-                           {/* Cancelled/Refused Column */}
-                            <div className="flex flex-col space-y-4">
-                               <h3 className="text-lg font-bold flex items-center gap-2 sticky top-20 bg-slate-100 dark:bg-slate-900 py-2 z-10"><XCircleIcon className="w-6 h-6 text-gray-500" /> {t.cancelledOrders} ({cancelledOrders.length})</h3>
-                                <div className="bg-slate-200/50 dark:bg-gray-900/50 p-2 sm:p-4 rounded-lg space-y-4 min-h-[200px] flex-grow">
-                                    {cancelledOrders.map(order => <OrderCard key={order.id} order={order} />)}
-                                    {cancelledOrders.length === 0 && <p className="text-center text-gray-500 pt-8">No cancelled orders.</p>}
-                                </div>
-                            </div>
+                              ))}
+                          </div>
                         </div>
                     </div>
                 );
@@ -282,7 +278,7 @@ export const AdminPage: React.FC<AdminPageProps> = (props) => {
             case 'productList':
                 if (!hasPermission('manage_menu')) return null;
                 return (
-                    <div>
+                    <div className='animate-fade-in'>
                         <div className="flex justify-between items-center mb-6">
                             <h2 className="text-2xl font-bold">{t.productList}</h2>
                             <button onClick={() => setEditingProduct('new')} className="bg-green-500 text-white font-bold py-2 px-4 rounded-lg hover:bg-green-600 transition-colors flex items-center gap-2">
@@ -293,31 +289,26 @@ export const AdminPage: React.FC<AdminPageProps> = (props) => {
                         {/* Mobile Card View */}
                         <div className="space-y-4 md:hidden">
                             {allProducts.map(product => (
-                                <div key={product.id} className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-4 space-y-4">
+                                <div key={product.id} className="bg-white dark:bg-slate-800 rounded-lg shadow-md p-4 space-y-4 border border-slate-200 dark:border-slate-700">
                                     <div className="flex items-center gap-4">
                                         <img src={product.image} alt={product.name[language]} className="w-16 h-16 rounded-md object-cover" />
                                         <div>
                                             <div className="font-bold">{product.name[language]}</div>
-                                            <div className="text-sm text-gray-500 dark:text-gray-400">{product.code}</div>
+                                            <div className="text-sm text-slate-500 dark:text-slate-400">{product.code}</div>
                                             <div className="text-sm font-semibold text-primary-600 dark:text-primary-400">{product.price.toFixed(2)} {t.currency}</div>
                                         </div>
                                     </div>
-                                    <div className="flex justify-between items-center border-t dark:border-gray-700 pt-3">
+                                    <div className="flex justify-between items-center border-t dark:border-slate-700 pt-3">
                                         <div className="flex flex-wrap gap-x-4 gap-y-2">
                                             <label className="flex items-center gap-2 cursor-pointer text-sm">
                                                 {t.popular}
                                                 <input type="checkbox" checked={product.isPopular} onChange={() => handleToggleProductFlag(product, 'isPopular')} className="sr-only peer" />
-                                                <div className="relative w-11 h-6 bg-gray-200 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary-600"></div>
-                                            </label>
-                                             <label className="flex items-center gap-2 cursor-pointer text-sm">
-                                                {t.new}
-                                                <input type="checkbox" checked={product.isNew} onChange={() => handleToggleProductFlag(product, 'isNew')} className="sr-only peer" />
-                                                <div className="relative w-11 h-6 bg-gray-200 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-green-600"></div>
+                                                <div className="relative w-11 h-6 bg-slate-200 rounded-full peer dark:bg-slate-700 peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary-600"></div>
                                             </label>
                                             <label className="flex items-center gap-2 cursor-pointer text-sm">
                                                 {t.visibleInMenu}
                                                 <input type="checkbox" checked={product.isVisible} onChange={() => handleToggleProductFlag(product, 'isVisible')} className="sr-only peer" />
-                                                <div className="relative w-11 h-6 bg-gray-200 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                                                <div className="relative w-11 h-6 bg-slate-200 rounded-full peer dark:bg-slate-700 peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
                                             </label>
                                         </div>
                                          <div className="flex items-center gap-2">
@@ -329,27 +320,27 @@ export const AdminPage: React.FC<AdminPageProps> = (props) => {
                             ))}
                         </div>
                         {/* Desktop Table View */}
-                        <div className="hidden md:block bg-white dark:bg-gray-800 rounded-lg shadow-md overflow-hidden">
-                             <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-                                <thead className="bg-gray-50 dark:bg-gray-700/50">
+                        <div className="hidden md:block bg-white dark:bg-slate-800 rounded-lg shadow-md overflow-hidden border border-slate-200 dark:border-slate-700">
+                             <table className="min-w-full divide-y divide-slate-200 dark:divide-slate-700">
+                                <thead className="bg-slate-50 dark:bg-slate-700/50">
                                     <tr>
-                                        <th scope="col" className="px-6 py-4 text-start text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">{t.product}</th>
-                                        <th scope="col" className="px-6 py-4 text-start text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">{t.price}</th>
-                                        <th scope="col" className="px-6 py-4 text-start text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">{t.popular}</th>
-                                        <th scope="col" className="px-6 py-4 text-start text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">{t.new}</th>
-                                        <th scope="col" className="px-6 py-4 text-start text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">{t.visibleInMenu}</th>
-                                        <th scope="col" className="px-6 py-4 text-start text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">{t.actions}</th>
+                                        <th scope="col" className="px-6 py-4 text-start text-xs font-medium text-slate-500 dark:text-slate-300 uppercase tracking-wider">{t.product}</th>
+                                        <th scope="col" className="px-6 py-4 text-start text-xs font-medium text-slate-500 dark:text-slate-300 uppercase tracking-wider">{t.price}</th>
+                                        <th scope="col" className="px-6 py-4 text-center text-xs font-medium text-slate-500 dark:text-slate-300 uppercase tracking-wider">{t.popular}</th>
+                                        <th scope="col" className="px-6 py-4 text-center text-xs font-medium text-slate-500 dark:text-slate-300 uppercase tracking-wider">{t.new}</th>
+                                        <th scope="col" className="px-6 py-4 text-center text-xs font-medium text-slate-500 dark:text-slate-300 uppercase tracking-wider">{t.visibleInMenu}</th>
+                                        <th scope="col" className="px-6 py-4 text-start text-xs font-medium text-slate-500 dark:text-slate-300 uppercase tracking-wider">{t.actions}</th>
                                     </tr>
                                 </thead>
-                                 <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
-                                    {allProducts.map((product, index) => (
-                                        <tr key={product.id} className={`${index % 2 === 0 ? 'bg-white dark:bg-gray-800' : 'bg-slate-50 dark:bg-gray-800/60'} hover:bg-slate-100 dark:hover:bg-gray-700/50 transition-colors`}>
-                                            <td className="px-6 py-4 whitespace-nowrap"><div className="flex items-center"><img src={product.image} alt={product.name[language]} className="w-12 h-12 rounded-md object-cover me-4" /><div><div className="text-sm font-semibold">{product.name[language]}</div><div className="text-xs text-gray-500 dark:text-gray-400">{product.code}</div></div></div></td>
+                                 <tbody className="divide-y divide-slate-200 dark:divide-slate-700">
+                                    {allProducts.map((product) => (
+                                        <tr key={product.id} className="odd:bg-white even:bg-slate-50 dark:odd:bg-slate-800 dark:even:bg-slate-800/50 hover:bg-slate-100 dark:hover:bg-slate-700/50 transition-colors">
+                                            <td className="px-6 py-4 whitespace-nowrap"><div className="flex items-center"><img src={product.image} alt={product.name[language]} className="w-12 h-12 rounded-md object-cover me-4" /><div><div className="text-sm font-semibold">{product.name[language]}</div><div className="text-xs text-slate-500 dark:text-slate-400">{product.code}</div></div></div></td>
                                             <td className="px-6 py-4 whitespace-nowrap"><div className="text-sm">{product.price.toFixed(2)} {t.currency}</div></td>
-                                            <td className="px-6 py-4 whitespace-nowrap"><label className="relative inline-flex items-center cursor-pointer"><input type="checkbox" checked={product.isPopular} onChange={() => handleToggleProductFlag(product, 'isPopular')} className="sr-only peer" /><div className="w-11 h-6 bg-gray-200 rounded-full peer dark:bg-gray-700 peer-focus:ring-4 peer-focus:ring-primary-300 dark:peer-focus:ring-primary-800 peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full after:content-[''] after:absolute after:top-0.5 after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary-600"></div></label></td>
-                                            <td className="px-6 py-4 whitespace-nowrap"><label className="relative inline-flex items-center cursor-pointer"><input type="checkbox" checked={product.isNew} onChange={() => handleToggleProductFlag(product, 'isNew')} className="sr-only peer" /><div className="w-11 h-6 bg-gray-200 rounded-full peer dark:bg-gray-700 peer-focus:ring-4 peer-focus:ring-green-300 dark:peer-focus:ring-green-800 peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full after:content-[''] after:absolute after:top-0.5 after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-green-600"></div></label></td>
-                                            <td className="px-6 py-4 whitespace-nowrap"><label className="relative inline-flex items-center cursor-pointer"><input type="checkbox" checked={product.isVisible} onChange={() => handleToggleProductFlag(product, 'isVisible')} className="sr-only peer" /><div className="w-11 h-6 bg-gray-200 rounded-full peer dark:bg-gray-700 peer-focus:ring-4 peer-focus:ring-blue-300 dark:peer-focus:ring-blue-800 peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full after:content-[''] after:absolute after:top-0.5 after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div></label></td>
-                                            <td className="px-6 py-4 whitespace-nowrap text-sm font-medium"><div className="flex items-center gap-4"><button onClick={() => setEditingProduct(product)} className="text-indigo-600 hover:text-indigo-900 dark:text-indigo-400 dark:hover:text-indigo-200 flex items-center gap-1"><PencilIcon className="w-4 h-4" /> Edit</button><button onClick={() => handleDeleteProduct(product.id)} className="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-200 flex items-center gap-1"><TrashIcon className="w-4 h-4" /> Delete</button></div></td>
+                                            <td className="px-6 py-4 whitespace-nowrap text-center"><label className="relative inline-flex items-center cursor-pointer"><input type="checkbox" checked={product.isPopular} onChange={() => handleToggleProductFlag(product, 'isPopular')} className="sr-only peer" /><div className="w-11 h-6 bg-slate-200 rounded-full peer dark:bg-slate-700 peer-focus:ring-4 peer-focus:ring-primary-300 dark:peer-focus:ring-primary-800 peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full after:content-[''] after:absolute after:top-0.5 after:start-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary-600"></div></label></td>
+                                            <td className="px-6 py-4 whitespace-nowrap text-center"><label className="relative inline-flex items-center cursor-pointer"><input type="checkbox" checked={product.isNew} onChange={() => handleToggleProductFlag(product, 'isNew')} className="sr-only peer" /><div className="w-11 h-6 bg-slate-200 rounded-full peer dark:bg-slate-700 peer-focus:ring-4 peer-focus:ring-green-300 dark:peer-focus:ring-green-800 peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full after:content-[''] after:absolute after:top-0.5 after:start-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-green-600"></div></label></td>
+                                            <td className="px-6 py-4 whitespace-nowrap text-center"><label className="relative inline-flex items-center cursor-pointer"><input type="checkbox" checked={product.isVisible} onChange={() => handleToggleProductFlag(product, 'isVisible')} className="sr-only peer" /><div className="w-11 h-6 bg-slate-200 rounded-full peer dark:bg-slate-700 peer-focus:ring-4 peer-focus:ring-blue-300 dark:peer-focus:ring-blue-800 peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full after:content-[''] after:absolute after:top-0.5 after:start-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div></label></td>
+                                            <td className="px-6 py-4 whitespace-nowrap text-sm font-medium"><div className="flex items-center gap-4"><button onClick={() => setEditingProduct(product)} className="text-indigo-600 hover:text-indigo-900 dark:text-indigo-400 dark:hover:text-indigo-200 flex items-center gap-1"><PencilIcon className="w-4 h-4" /> {t.actions}</button><button onClick={() => handleDeleteProduct(product.id)} className="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-200 flex items-center gap-1"><TrashIcon className="w-4 h-4" /> Delete</button></div></td>
                                         </tr>
                                     ))}
                                 </tbody>
@@ -375,15 +366,15 @@ export const AdminPage: React.FC<AdminPageProps> = (props) => {
             case 'promotions':
                  if (!hasPermission('manage_promotions')) return null;
                  return (
-                    <div>
+                    <div className='animate-fade-in'>
                         <div className="flex justify-between items-center mb-6">
                             <h2 className="text-2xl font-bold">{t.managePromotions}</h2>
                             <button onClick={() => setEditingPromotion('new')} className="bg-green-500 text-white font-bold py-2 px-4 rounded-lg hover:bg-green-600 transition-colors flex items-center gap-2"><PlusIcon className="w-5 h-5" /> {t.addNewPromotion}</button>
                         </div>
-                        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md overflow-x-auto">
-                            <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-                                <thead className="bg-gray-50 dark:bg-gray-700/50"><tr><th className="px-6 py-4 text-start text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">{t.product}</th><th className="px-6 py-4 text-start text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">{t.discountPercent}</th><th className="px-6 py-4 text-start text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider hidden sm:table-cell">{t.endDate}</th><th className="px-6 py-4 text-start text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">{t.isActive}</th><th className="px-6 py-4 text-start text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">{t.actions}</th></tr></thead>
-                                <tbody className="divide-y divide-gray-200 dark:divide-gray-700">{allPromotions.map((promo, index) => {const product = allProducts.find(p => p.id === promo.productId); return (<tr key={promo.id} className={`${index % 2 === 0 ? 'bg-white dark:bg-gray-800' : 'bg-slate-50 dark:bg-gray-800/60'} hover:bg-slate-100 dark:hover:bg-gray-700/50 transition-colors`}><td className="px-6 py-4 whitespace-nowrap"><div className="text-sm font-semibold">{promo.title[language]}</div><div className="text-xs text-gray-500">{product?.name[language] || 'N/A'}</div></td><td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-red-600 dark:text-red-400">{promo.discountPercent}%</td><td className="px-6 py-4 whitespace-nowrap text-sm hidden sm:table-cell">{new Date(promo.endDate).toLocaleDateString()}</td><td className="px-6 py-4 whitespace-nowrap"><label className="relative inline-flex items-center cursor-pointer"><input type="checkbox" checked={promo.isActive} onChange={() => handleTogglePromotionStatus(promo)} className="sr-only peer" /><div className="w-11 h-6 bg-gray-200 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-green-600"></div></label></td><td className="px-6 py-4 whitespace-nowrap text-sm font-medium"><div className="flex items-center gap-4"><button onClick={() => setEditingPromotion(promo)} className="text-indigo-600 hover:text-indigo-900 dark:text-indigo-400 dark:hover:text-indigo-200 flex items-center gap-1"><PencilIcon className="w-4 h-4" /> Edit</button><button onClick={() => handleDeletePromotion(promo.id)} className="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-200 flex items-center gap-1"><TrashIcon className="w-4 h-4" /> Delete</button></div></td></tr>)})}</tbody>
+                        <div className="bg-white dark:bg-slate-800 rounded-lg shadow-md overflow-x-auto border border-slate-200 dark:border-slate-700">
+                            <table className="min-w-full divide-y divide-slate-200 dark:divide-slate-700">
+                                <thead className="bg-slate-50 dark:bg-slate-700/50"><tr><th className="px-6 py-4 text-start text-xs font-medium text-slate-500 dark:text-slate-300 uppercase tracking-wider">{t.product}</th><th className="px-6 py-4 text-start text-xs font-medium text-slate-500 dark:text-slate-300 uppercase tracking-wider">{t.discountPercent}</th><th className="px-6 py-4 text-start text-xs font-medium text-slate-500 dark:text-slate-300 uppercase tracking-wider hidden sm:table-cell">{t.endDate}</th><th className="px-6 py-4 text-center text-xs font-medium text-slate-500 dark:text-slate-300 uppercase tracking-wider">{t.isActive}</th><th className="px-6 py-4 text-start text-xs font-medium text-slate-500 dark:text-slate-300 uppercase tracking-wider">{t.actions}</th></tr></thead>
+                                <tbody className="divide-y divide-slate-200 dark:divide-slate-700">{allPromotions.map((promo) => {const product = allProducts.find(p => p.id === promo.productId); return (<tr key={promo.id} className="odd:bg-white even:bg-slate-50 dark:odd:bg-slate-800 dark:even:bg-slate-800/50 hover:bg-slate-100 dark:hover:bg-slate-700/50 transition-colors"><td className="px-6 py-4 whitespace-nowrap"><div className="text-sm font-semibold">{promo.title[language]}</div><div className="text-xs text-slate-500">{product?.name[language] || 'N/A'}</div></td><td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-red-600 dark:text-red-400">{promo.discountPercent}%</td><td className="px-6 py-4 whitespace-nowrap text-sm hidden sm:table-cell">{new Date(promo.endDate).toLocaleDateString()}</td><td className="px-6 py-4 whitespace-nowrap text-center"><label className="relative inline-flex items-center cursor-pointer"><input type="checkbox" checked={promo.isActive} onChange={() => handleTogglePromotionStatus(promo)} className="sr-only peer" /><div className="w-11 h-6 bg-slate-200 rounded-full peer dark:bg-slate-700 peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-green-600"></div></label></td><td className="px-6 py-4 whitespace-nowrap text-sm font-medium"><div className="flex items-center gap-4"><button onClick={() => setEditingPromotion(promo)} className="text-indigo-600 hover:text-indigo-900 dark:text-indigo-400 dark:hover:text-indigo-200 flex items-center gap-1"><PencilIcon className="w-4 h-4" /> Edit</button><button onClick={() => handleDeletePromotion(promo.id)} className="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-200 flex items-center gap-1"><TrashIcon className="w-4 h-4" /> Delete</button></div></td></tr>)})}</tbody>
                             </table>
                         </div>
                     </div>
@@ -391,12 +382,12 @@ export const AdminPage: React.FC<AdminPageProps> = (props) => {
              case 'users':
                 if (!hasPermission('manage_users')) return null;
                 return (
-                    <div>
+                    <div className='animate-fade-in'>
                         <div className="flex justify-between items-center mb-6"><h2 className="text-2xl font-bold">{t.manageUsers}</h2><button onClick={() => setEditingUser('new')} className="bg-green-500 text-white font-bold py-2 px-4 rounded-lg hover:bg-green-600 transition-colors flex items-center gap-2"><PlusIcon className="w-5 h-5" />{t.addNewUser}</button></div>
-                        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md overflow-x-auto">
-                           <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-                               <thead className="bg-gray-50 dark:bg-gray-700/50"><tr><th className="px-6 py-4 text-start text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">{t.user}</th><th className="px-6 py-4 text-start text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider hidden sm:table-cell">{t.mobileNumber}</th><th className="px-6 py-4 text-start text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">{t.role}</th><th className="px-6 py-4 text-start text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">{t.actions}</th></tr></thead>
-                                <tbody className="divide-y divide-gray-200 dark:divide-gray-700">{allUsers.map((user, index) => (<tr key={user.id} className={`${index % 2 === 0 ? 'bg-white dark:bg-gray-800' : 'bg-slate-50 dark:bg-gray-800/60'} hover:bg-slate-100 dark:hover:bg-gray-700/50 transition-colors`}><td className="px-6 py-4 whitespace-nowrap text-sm font-semibold">{user.name}</td><td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600 dark:text-gray-300 hidden sm:table-cell">{user.mobile}</td><td className="px-6 py-4 whitespace-nowrap text-sm font-medium">{t[user.role as keyof typeof t] || user.role}</td><td className="px-6 py-4 whitespace-nowrap text-sm font-medium"><div className="flex items-center gap-4"><button onClick={() => setEditingUser(user)} disabled={user.id === 1 && user.role === 'superAdmin'} className="text-indigo-600 hover:text-indigo-900 dark:text-indigo-400 dark:hover:text-indigo-200 flex items-center gap-1 disabled:opacity-50 disabled:cursor-not-allowed"><PencilIcon className="w-4 h-4" /> Edit</button><button onClick={() => handleDeleteUser(user.id)} disabled={user.id === 1} className="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-200 flex items-center gap-1 disabled:opacity-50 disabled:cursor-not-allowed"><TrashIcon className="w-4 h-4" /> Delete</button></div></td></tr>))}</tbody>
+                        <div className="bg-white dark:bg-slate-800 rounded-lg shadow-md overflow-x-auto border border-slate-200 dark:border-slate-700">
+                           <table className="min-w-full divide-y divide-slate-200 dark:divide-slate-700">
+                               <thead className="bg-slate-50 dark:bg-slate-700/50"><tr><th className="px-6 py-4 text-start text-xs font-medium text-slate-500 dark:text-slate-300 uppercase tracking-wider">{t.user}</th><th className="px-6 py-4 text-start text-xs font-medium text-slate-500 dark:text-slate-300 uppercase tracking-wider hidden sm:table-cell">{t.mobileNumber}</th><th className="px-6 py-4 text-start text-xs font-medium text-slate-500 dark:text-slate-300 uppercase tracking-wider">{t.role}</th><th className="px-6 py-4 text-start text-xs font-medium text-slate-500 dark:text-slate-300 uppercase tracking-wider">{t.actions}</th></tr></thead>
+                                <tbody className="divide-y divide-slate-200 dark:divide-slate-700">{allUsers.map((user) => (<tr key={user.id} className="odd:bg-white even:bg-slate-50 dark:odd:bg-slate-800 dark:even:bg-slate-800/50 hover:bg-slate-100 dark:hover:bg-slate-700/50 transition-colors"><td className="px-6 py-4 whitespace-nowrap text-sm font-semibold">{user.name}</td><td className="px-6 py-4 whitespace-nowrap text-sm text-slate-600 dark:text-slate-300 hidden sm:table-cell">{user.mobile}</td><td className="px-6 py-4 whitespace-nowrap text-sm font-medium">{t[user.role as keyof typeof t] || user.role}</td><td className="px-6 py-4 whitespace-nowrap text-sm font-medium"><div className="flex items-center gap-4"><button onClick={() => setEditingUser(user)} disabled={user.id === 1 && user.role === 'superAdmin'} className="text-indigo-600 hover:text-indigo-900 dark:text-indigo-400 dark:hover:text-indigo-200 flex items-center gap-1 disabled:opacity-50 disabled:cursor-not-allowed"><PencilIcon className="w-4 h-4" /> Edit</button><button onClick={() => handleDeleteUser(user.id)} disabled={user.id === 1} className="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-200 flex items-center gap-1 disabled:opacity-50 disabled:cursor-not-allowed"><TrashIcon className="w-4 h-4" /> Delete</button></div></td></tr>))}</tbody>
                            </table>
                        </div>
                     </div>
@@ -404,19 +395,19 @@ export const AdminPage: React.FC<AdminPageProps> = (props) => {
             case 'roles':
                 if (!hasPermission('manage_roles')) return null;
                 return (
-                    <div>
+                    <div className='animate-fade-in'>
                         <h2 className="text-2xl font-bold mb-6">{t.manageRoles}</h2>
-                        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md overflow-x-auto">
-                           <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-                               <thead className="bg-gray-50 dark:bg-gray-700/50">
+                        <div className="bg-white dark:bg-slate-800 rounded-lg shadow-md overflow-x-auto border border-slate-200 dark:border-slate-700">
+                           <table className="min-w-full divide-y divide-slate-200 dark:divide-slate-700">
+                               <thead className="bg-slate-50 dark:bg-slate-700/50">
                                    <tr>
-                                       <th className="px-6 py-4 text-start text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">{t.role}</th>
-                                       <th className="px-6 py-4 text-start text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">{t.actions}</th>
+                                       <th className="px-6 py-4 text-start text-xs font-medium text-slate-500 dark:text-slate-300 uppercase tracking-wider">{t.role}</th>
+                                       <th className="px-6 py-4 text-start text-xs font-medium text-slate-500 dark:text-slate-300 uppercase tracking-wider">{t.actions}</th>
                                    </tr>
                                </thead>
-                                <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
-                                   {Object.keys(rolePermissions).map((role, index) => (
-                                       <tr key={role} className={`${index % 2 === 0 ? 'bg-white dark:bg-gray-800' : 'bg-slate-50 dark:bg-gray-800/60'} hover:bg-slate-100 dark:hover:bg-gray-700/50 transition-colors`}>
+                                <tbody className="divide-y divide-slate-200 dark:divide-slate-700">
+                                   {Object.keys(rolePermissions).map((role) => (
+                                       <tr key={role} className="odd:bg-white even:bg-slate-50 dark:odd:bg-slate-800 dark:even:bg-slate-800/50 hover:bg-slate-100 dark:hover:bg-slate-700/50 transition-colors">
                                            <td className="px-6 py-4 whitespace-nowrap text-sm font-semibold">{t[role as keyof typeof t] || role}</td>
                                            <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                                                 <button onClick={() => setEditingRole(role as UserRole)} className="text-indigo-600 hover:text-indigo-900 dark:text-indigo-400 dark:hover:text-indigo-200 flex items-center gap-1"><PencilIcon className="w-4 h-4" /> {t.editPermissions}</button>
@@ -443,18 +434,18 @@ export const AdminPage: React.FC<AdminPageProps> = (props) => {
                 isOpen={isSidebarOpen}
                 setIsOpen={setSidebarOpen}
             />
-            <div className={`flex flex-col min-h-screen ${language === 'ar' ? 'md:mr-64' : 'md:ml-64'}`}>
-                <header className="bg-white dark:bg-gray-800 shadow-md sticky top-0 z-20">
-                    <div className="px-4 py-3 flex justify-between items-center">
+            <div className={`flex flex-col min-h-screen transition-all duration-300 ${language === 'ar' ? 'md:mr-64' : 'md:ml-64'}`}>
+                <header className="bg-white dark:bg-slate-800/50 backdrop-blur-lg shadow-md sticky top-0 z-20 border-b border-slate-200 dark:border-slate-700" id="admin-header">
+                    <div className="px-4 h-20 flex justify-between items-center">
                         <div className="flex items-center gap-3">
                             <button className="p-2 md:hidden" onClick={() => setSidebarOpen(true)}><MenuAlt2Icon className="w-6 h-6" /></button>
                             <img src={restaurantInfo.logo} alt="logo" className="h-10 w-10 rounded-full object-cover hidden sm:block" />
-                            <h1 className="text-xl font-bold text-primary-600 dark:text-primary-400">{t.adminPanel}</h1>
+                            <h1 className="text-xl font-bold text-slate-800 dark:text-slate-100">{t.adminPanel}</h1>
                         </div>
-                        <button onClick={logout} className="bg-red-500 text-white font-bold py-2 px-4 rounded-lg hover:bg-red-600 transition-colors">{t.logout}</button>
+                        <button onClick={logout} className="text-sm font-semibold text-slate-600 dark:text-slate-300 hover:text-primary-600 dark:hover:text-primary-400 transition-colors">{t.logout}</button>
                     </div>
                 </header>
-                <main className="container mx-auto max-w-7xl px-4 py-8 flex-1">
+                <main className="container mx-auto max-w-full px-4 sm:px-6 lg:px-8 py-8 flex-1">
                     {renderContent()}
                 </main>
             </div>

@@ -65,7 +65,7 @@ export interface RestaurantInfo {
 }
 
 // New Types for Users and Orders
-export type UserRole = 'superAdmin' | 'admin' | 'employee' | 'waiter' | 'restaurantStaff' | 'delivery' | 'driver' | 'customer';
+export type UserRole = 'superAdmin' | 'admin' | 'employee' | 'waiter' | 'waiterSupervisor' | 'restaurantStaff' | 'delivery' | 'driver' | 'customer';
 
 export interface User {
   id: number;
@@ -90,6 +90,7 @@ export interface Order {
     name?: string; // for registered users
     mobile: string; // mandatory for all
   };
+  createdBy?: number; // ID of the user (waiter, admin) who created the order
   notes?: string;
   refusalReason?: string;
   customerFeedback?: {

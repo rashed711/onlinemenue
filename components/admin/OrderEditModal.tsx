@@ -49,11 +49,17 @@ export const OrderEditModal: React.FC<OrderEditModalProps> = ({ order, allProduc
         const product = allProducts.find(p => p.id === parseInt(productToAdd, 10));
         if (!product) return;
 
-        // For simplicity, we add items without options. A more complex UI could handle option selection.
+        const defaultOptions: { [key: string]: string } = {};
+        product.options?.forEach(option => {
+            if (option.values.length > 0) {
+                defaultOptions[option.name.en] = option.values[0].name.en;
+            }
+        });
+
         const newItem: CartItem = {
             product: product,
             quantity: 1,
-            options: {},
+            options: defaultOptions,
         };
         setEditedItems(prev => [...prev, newItem]);
     };

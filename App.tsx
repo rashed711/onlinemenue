@@ -10,6 +10,7 @@ import { products as initialProducts, restaurantInfo, users as initialUsers, pro
 import { ToastNotification } from './components/ToastNotification';
 import { useTranslations } from './i18n/translations';
 import { initialRolePermissions } from './data/permissions';
+import { calculateTotal } from './utils/helpers';
 
 // Subscribes to the browser's hashchange event.
 function subscribe(callback: () => void) {
@@ -187,9 +188,12 @@ const App: React.FC = () => {
     window.location.hash = '#/'; // Redirect to home page on logout
   }, []);
   const register = useCallback((newUser: Omit<User, 'id' | 'role'>) => {
-      const userWithId: User = { ...newUser, id: Date.now(), role: 'customer' };
-      setUsers(prev => [...prev, userWithId]);
+    setUsers(prev => {
+      const newId = prev.length > 0 ? Math.max(...prev.map(u => u.id)) + 1 : 1;
+      const userWithId: User = { ...newUser, id: newId, role: 'customer' };
       login(userWithId);
+      return [...prev, userWithId];
+    });
   }, [login]);
 
   // Cart Callbacks
@@ -229,27 +233,12 @@ const App: React.FC = () => {
     const newOrder: Order = {
         ...order,
         id: `ORD-${Date.now().toString().slice(-6)}`,
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
+        createdBy: currentUser?.id, // Tag order with creator's ID
     };
     setOrders(prev => [newOrder, ...prev]);
     return newOrder;
-  }, []);
-
-  const calculateTotal = (items: CartItem[]) => {
-    return items.reduce((total, item) => {
-        let itemPrice = item.product.price;
-        if(item.options && item.product.options) {
-            Object.entries(item.options).forEach(([optionKey, valueKey]) => {
-                const option = item.product.options?.find(opt => opt.name.en === optionKey);
-                const value = option?.values.find(val => val.name.en === valueKey);
-                if(value) {
-                    itemPrice += value.priceModifier;
-                }
-            });
-        }
-        return total + itemPrice * item.quantity;
-    }, 0);
-  }
+  }, [currentUser]);
 
   const updateOrder = useCallback((orderId: string, payload: Partial<Omit<Order, 'id' | 'timestamp' | 'customer'>>) => {
       const order = orders.find(o => o.id === orderId);
@@ -297,7 +286,7 @@ const App: React.FC = () => {
     setProducts(prev => {
         const newProduct: Product = {
             ...productData,
-            id: Date.now(), // Simple ID generation
+            id: prev.length > 0 ? Math.max(...prev.map(p => p.id)) + 1 : 1,
         };
         return [newProduct, ...prev];
     });
@@ -316,8 +305,13 @@ const App: React.FC = () => {
         showToast(t.permissionDenied);
         return;
     }
+    const isProductInUse = promotions.some(p => p.productId === productId);
+    if (isProductInUse) {
+        showToast(t.deleteProductError);
+        return;
+    }
     setProducts(prev => prev.filter(p => p.id !== productId));
-  }, [hasPermission, showToast, t.permissionDenied]);
+  }, [hasPermission, showToast, t.permissionDenied, promotions, t.deleteProductError]);
 
   const addPromotion = useCallback((promotionData: Omit<Promotion, 'id'>) => {
     if (!hasPermission('manage_promotions')) {
@@ -327,7 +321,7 @@ const App: React.FC = () => {
     setPromotions(prev => {
         const newPromotion: Promotion = {
             ...promotionData,
-            id: Date.now(),
+            id: prev.length > 0 ? Math.max(...prev.map(p => p.id)) + 1 : 1,
         };
         return [newPromotion, ...prev];
     });
@@ -355,7 +349,10 @@ const App: React.FC = () => {
         return;
     }
     setUsers(prev => {
-        const newUser: User = { ...userData, id: Date.now() };
+        const newUser: User = { 
+          ...userData, 
+          id: prev.length > 0 ? Math.max(...prev.map(u => u.id)) + 1 : 1,
+        };
         return [newUser, ...prev];
     });
   }, [hasPermission, showToast, t.permissionDenied]);
@@ -373,8 +370,13 @@ const App: React.FC = () => {
         showToast(t.permissionDenied);
         return;
     }
+    const isUserInUse = orders.some(o => o.customer.userId === userId || o.createdBy === userId);
+    if (isUserInUse) {
+        showToast(t.deleteUserError);
+        return;
+    }
     setUsers(prev => prev.filter(u => u.id !== userId));
-  }, [hasPermission, showToast, t.permissionDenied]);
+  }, [hasPermission, showToast, t.permissionDenied, orders, t.deleteUserError]);
   
   const updateRolePermissions = useCallback((role: UserRole, permissions: Permission[]) => {
     if (!hasPermission('manage_roles')) {
@@ -386,7 +388,13 @@ const App: React.FC = () => {
 
   const addCategory = useCallback((categoryData: Omit<Category, 'id'>) => {
     if (!hasPermission('manage_classifications')) { showToast(t.permissionDenied); return; }
-    setCategories(prev => [{ ...categoryData, id: Date.now() }, ...prev]);
+    setCategories(prev => {
+        const newCategory: Category = { 
+            ...categoryData, 
+            id: prev.length > 0 ? Math.max(...prev.map(c => c.id)) + 1 : 1 
+        };
+        return [newCategory, ...prev];
+    });
   }, [hasPermission, showToast, t.permissionDenied]);
 
   const updateCategory = useCallback((updatedCategory: Category) => {
@@ -396,13 +404,22 @@ const App: React.FC = () => {
 
   const deleteCategory = useCallback((categoryId: number) => {
     if (!hasPermission('manage_classifications')) { showToast(t.permissionDenied); return; }
+    const isCategoryInUse = products.some(p => p.categoryId === categoryId);
+    if (isCategoryInUse) {
+        showToast(t.deleteCategoryError);
+        return;
+    }
     setCategories(prev => prev.filter(c => c.id !== categoryId));
-  }, [hasPermission, showToast, t.permissionDenied]);
+  }, [hasPermission, showToast, t.permissionDenied, products, t.deleteCategoryError]);
 
-  const addTag = useCallback((tagData: Omit<Tag, 'id'> & {id: string}) => {
+  const addTag = useCallback((tagData: Tag) => {
     if (!hasPermission('manage_classifications')) { showToast(t.permissionDenied); return; }
+    if (tags.some(tag => tag.id === tagData.id)) {
+        showToast(t.addTagError);
+        return;
+    }
     setTags(prev => [tagData, ...prev]);
-  }, [hasPermission, showToast, t.permissionDenied]);
+  }, [hasPermission, showToast, t.permissionDenied, tags, t.addTagError]);
 
   const updateTag = useCallback((updatedTag: Tag) => {
     if (!hasPermission('manage_classifications')) { showToast(t.permissionDenied); return; }

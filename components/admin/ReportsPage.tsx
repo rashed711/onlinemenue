@@ -65,7 +65,7 @@ export const ReportsPage: React.FC<ReportsPageProps> = ({ language, allOrders, a
             });
         });
 
-        return Object.entries(stats)
+        const sorted = Object.entries(stats)
             .map(([productId, data]) => ({
                 product: allProducts.find(p => p.id === parseInt(productId)),
                 ...data,
@@ -73,6 +73,10 @@ export const ReportsPage: React.FC<ReportsPageProps> = ({ language, allOrders, a
             .filter(p => p.product)
             .sort((a, b) => b.quantity - a.quantity)
             .slice(0, 10);
+            
+        const maxQuantity = Math.max(...sorted.map(p => p.quantity), 0);
+        return sorted.map(p => ({ ...p, barPercent: maxQuantity > 0 ? (p.quantity / maxQuantity) * 100 : 0 }));
+
     }, [completedOrders, allProducts]);
 
     const salesByCategory = useMemo(() => {
@@ -86,7 +90,7 @@ export const ReportsPage: React.FC<ReportsPageProps> = ({ language, allOrders, a
             });
         });
 
-        return Object.entries(stats)
+        const sorted = Object.entries(stats)
             .map(([categoryId, data]) => ({
                 category: allCategories.find(c => c.id === parseInt(categoryId)),
                 orderCount: data.orders.size,
@@ -94,6 +98,10 @@ export const ReportsPage: React.FC<ReportsPageProps> = ({ language, allOrders, a
             }))
             .filter(c => c.category)
             .sort((a, b) => b.revenue - a.revenue);
+
+        const maxRevenue = Math.max(...sorted.map(c => c.revenue), 0);
+        return sorted.map(c => ({...c, barPercent: maxRevenue > 0 ? (c.revenue / maxRevenue) * 100 : 0}));
+            
     }, [completedOrders, allCategories]);
 
     const orderTypeDistribution = useMemo(() => {
@@ -111,34 +119,34 @@ export const ReportsPage: React.FC<ReportsPageProps> = ({ language, allOrders, a
     }, [filteredOrders, completedOrders]);
 
     return (
-        <div>
+        <div className='animate-fade-in'>
             <h2 className="text-3xl font-bold mb-6">{t.reports}</h2>
             
-            <div className="bg-white dark:bg-gray-800 p-4 rounded-lg shadow-md mb-8">
+            <div className="bg-white dark:bg-slate-800 p-4 rounded-lg shadow-md mb-8 border border-slate-200 dark:border-slate-700">
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
-                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">{t.startDate}</label>
-                        <input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 sm:text-sm dark:bg-gray-700 dark:border-gray-600"/>
+                        <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">{t.startDate}</label>
+                        <input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} className="mt-1 block w-full rounded-md border-slate-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 sm:text-sm dark:bg-slate-700 dark:border-slate-600"/>
                     </div>
                      <div>
-                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">{t.endDate}</label>
-                        <input type="date" value={endDate} onChange={e => setEndDate(e.target.value)} className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 sm:text-sm dark:bg-gray-700 dark:border-gray-600"/>
+                        <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">{t.endDate}</label>
+                        <input type="date" value={endDate} onChange={e => setEndDate(e.target.value)} className="mt-1 block w-full rounded-md border-slate-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 sm:text-sm dark:bg-slate-700 dark:border-slate-600"/>
                     </div>
                 </div>
             </div>
 
             <h3 className="text-xl font-semibold mb-4">{t.salesSummary}</h3>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-                <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md">
-                    <p className="text-sm font-medium text-gray-500 dark:text-gray-400">{t.totalRevenue}</p>
+                <div className="bg-white dark:bg-slate-800 p-6 rounded-lg shadow-md border border-slate-200 dark:border-slate-700">
+                    <p className="text-sm font-medium text-slate-500 dark:text-slate-400">{t.totalRevenue}</p>
                     <p className="text-3xl font-bold mt-1">{salesSummary.totalRevenue.toFixed(2)} <span className="text-lg">{t.currency}</span></p>
                 </div>
-                 <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md">
-                    <p className="text-sm font-medium text-gray-500 dark:text-gray-400">{t.totalOrders}</p>
+                 <div className="bg-white dark:bg-slate-800 p-6 rounded-lg shadow-md border border-slate-200 dark:border-slate-700">
+                    <p className="text-sm font-medium text-slate-500 dark:text-slate-400">{t.totalOrders}</p>
                     <p className="text-3xl font-bold mt-1">{salesSummary.totalOrdersCount}</p>
                 </div>
-                 <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md">
-                    <p className="text-sm font-medium text-gray-500 dark:text-gray-400">{t.avgOrderValue}</p>
+                 <div className="bg-white dark:bg-slate-800 p-6 rounded-lg shadow-md border border-slate-200 dark:border-slate-700">
+                    <p className="text-sm font-medium text-slate-500 dark:text-slate-400">{t.avgOrderValue}</p>
                     <p className="text-3xl font-bold mt-1">{salesSummary.avgOrderValue.toFixed(2)} <span className="text-lg">{t.currency}</span></p>
                 </div>
             </div>
@@ -146,20 +154,27 @@ export const ReportsPage: React.FC<ReportsPageProps> = ({ language, allOrders, a
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
                 <div>
                     <h3 className="text-xl font-semibold mb-4">{t.topSellingProducts}</h3>
-                    <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md overflow-hidden">
-                        <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-                            <thead className="bg-gray-50 dark:bg-gray-700/50">
+                    <div className="bg-white dark:bg-slate-800 rounded-lg shadow-md overflow-hidden border border-slate-200 dark:border-slate-700">
+                        <table className="min-w-full divide-y divide-slate-200 dark:divide-slate-700">
+                            <thead className="bg-slate-50 dark:bg-slate-700/50">
                                 <tr>
-                                    <th className="px-6 py-3 text-start text-xs font-medium text-gray-500 uppercase tracking-wider">{t.product}</th>
-                                    <th className="px-6 py-3 text-start text-xs font-medium text-gray-500 uppercase tracking-wider">{t.quantitySold}</th>
-                                    <th className="px-6 py-3 text-start text-xs font-medium text-gray-500 uppercase tracking-wider">{t.revenue}</th>
+                                    <th className="px-6 py-3 text-start text-xs font-medium text-slate-500 uppercase tracking-wider">{t.product}</th>
+                                    <th className="px-6 py-3 text-start text-xs font-medium text-slate-500 uppercase tracking-wider">{t.quantitySold}</th>
+                                    <th className="px-6 py-3 text-start text-xs font-medium text-slate-500 uppercase tracking-wider">{t.revenue}</th>
                                 </tr>
                             </thead>
-                            <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
-                                {topSellingProducts.map(({ product, quantity, revenue }) => (
-                                    <tr key={product!.id}>
+                            <tbody className="divide-y divide-slate-200 dark:divide-slate-700">
+                                {topSellingProducts.map(({ product, quantity, revenue, barPercent }) => (
+                                    <tr key={product!.id} className="odd:bg-white even:bg-slate-50 dark:odd:bg-slate-800 dark:even:bg-slate-800/50">
                                         <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">{product!.name[language]}</td>
-                                        <td className="px-6 py-4 whitespace-nowrap text-sm">{quantity}</td>
+                                        <td className="px-6 py-4 whitespace-nowrap text-sm">
+                                            <div className="flex items-center gap-2">
+                                                <span>{quantity}</span>
+                                                <div className="w-full bg-slate-200 dark:bg-slate-700 rounded-full h-2.5">
+                                                    <div className="bg-primary-500 h-2.5 rounded-full" style={{ width: `${barPercent}%` }}></div>
+                                                </div>
+                                            </div>
+                                        </td>
                                         <td className="px-6 py-4 whitespace-nowrap text-sm">{revenue.toFixed(2)}</td>
                                     </tr>
                                 ))}
@@ -170,21 +185,28 @@ export const ReportsPage: React.FC<ReportsPageProps> = ({ language, allOrders, a
 
                 <div>
                     <h3 className="text-xl font-semibold mb-4">{t.salesByCategory}</h3>
-                     <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md overflow-hidden">
-                        <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-                             <thead className="bg-gray-50 dark:bg-gray-700/50">
+                     <div className="bg-white dark:bg-slate-800 rounded-lg shadow-md overflow-hidden border border-slate-200 dark:border-slate-700">
+                        <table className="min-w-full divide-y divide-slate-200 dark:divide-slate-700">
+                             <thead className="bg-slate-50 dark:bg-slate-700/50">
                                 <tr>
-                                    <th className="px-6 py-3 text-start text-xs font-medium text-gray-500 uppercase tracking-wider">{t.category}</th>
-                                    <th className="px-6 py-3 text-start text-xs font-medium text-gray-500 uppercase tracking-wider">{t.orders}</th>
-                                    <th className="px-6 py-3 text-start text-xs font-medium text-gray-500 uppercase tracking-wider">{t.revenue}</th>
+                                    <th className="px-6 py-3 text-start text-xs font-medium text-slate-500 uppercase tracking-wider">{t.category}</th>
+                                    <th className="px-6 py-3 text-start text-xs font-medium text-slate-500 uppercase tracking-wider">{t.orders}</th>
+                                    <th className="px-6 py-3 text-start text-xs font-medium text-slate-500 uppercase tracking-wider">{t.revenue}</th>
                                 </tr>
                             </thead>
-                            <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
-                                {salesByCategory.map(({ category, orderCount, revenue }) => (
-                                    <tr key={category!.id}>
+                            <tbody className="divide-y divide-slate-200 dark:divide-slate-700">
+                                {salesByCategory.map(({ category, orderCount, revenue, barPercent }) => (
+                                    <tr key={category!.id} className="odd:bg-white even:bg-slate-50 dark:odd:bg-slate-800 dark:even:bg-slate-800/50">
                                         <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">{category!.name[language]}</td>
                                         <td className="px-6 py-4 whitespace-nowrap text-sm">{orderCount}</td>
-                                        <td className="px-6 py-4 whitespace-nowrap text-sm">{revenue.toFixed(2)}</td>
+                                        <td className="px-6 py-4 whitespace-nowrap text-sm">
+                                            <div className="flex items-center gap-2">
+                                                <span>{revenue.toFixed(2)}</span>
+                                                <div className="w-full bg-slate-200 dark:bg-slate-700 rounded-full h-2.5">
+                                                    <div className="bg-blue-500 h-2.5 rounded-full" style={{ width: `${barPercent}%` }}></div>
+                                                </div>
+                                            </div>
+                                        </td>
                                     </tr>
                                 ))}
                             </tbody>
@@ -192,22 +214,22 @@ export const ReportsPage: React.FC<ReportsPageProps> = ({ language, allOrders, a
                     </div>
 
                     <h3 className="text-xl font-semibold mb-4 mt-8">{t.orderTypeDistribution}</h3>
-                     <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md overflow-hidden">
-                        <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-                             <thead className="bg-gray-50 dark:bg-gray-700/50">
+                     <div className="bg-white dark:bg-slate-800 rounded-lg shadow-md overflow-hidden border border-slate-200 dark:border-slate-700">
+                        <table className="min-w-full divide-y divide-slate-200 dark:divide-slate-700">
+                             <thead className="bg-slate-50 dark:bg-slate-700/50">
                                 <tr>
-                                    <th className="px-6 py-3 text-start text-xs font-medium text-gray-500 uppercase tracking-wider">{t.orderType}</th>
-                                    <th className="px-6 py-3 text-start text-xs font-medium text-gray-500 uppercase tracking-wider">{t.orders}</th>
-                                    <th className="px-6 py-3 text-start text-xs font-medium text-gray-500 uppercase tracking-wider">{t.revenue}</th>
+                                    <th className="px-6 py-3 text-start text-xs font-medium text-slate-500 uppercase tracking-wider">{t.orderType}</th>
+                                    <th className="px-6 py-3 text-start text-xs font-medium text-slate-500 uppercase tracking-wider">{t.orders}</th>
+                                    <th className="px-6 py-3 text-start text-xs font-medium text-slate-500 uppercase tracking-wider">{t.revenue}</th>
                                 </tr>
                             </thead>
-                            <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
-                                <tr>
+                            <tbody className="divide-y divide-slate-200 dark:divide-slate-700">
+                                <tr className="odd:bg-white even:bg-slate-50 dark:odd:bg-slate-800 dark:even:bg-slate-800/50">
                                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">{t.dineIn}</td>
                                     <td className="px-6 py-4 whitespace-nowrap text-sm">{orderTypeDistribution['Dine-in'].orderCount}</td>
                                     <td className="px-6 py-4 whitespace-nowrap text-sm">{orderTypeDistribution['Dine-in'].revenue.toFixed(2)}</td>
                                 </tr>
-                                 <tr>
+                                 <tr className="odd:bg-white even:bg-slate-50 dark:odd:bg-slate-800 dark:even:bg-slate-800/50">
                                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">{t.delivery}</td>
                                     <td className="px-6 py-4 whitespace-nowrap text-sm">{orderTypeDistribution['Delivery'].orderCount}</td>
                                     <td className="px-6 py-4 whitespace-nowrap text-sm">{orderTypeDistribution['Delivery'].revenue.toFixed(2)}</td>

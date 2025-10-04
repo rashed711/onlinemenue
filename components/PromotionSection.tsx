@@ -1,8 +1,10 @@
 
-import React from 'react';
+
+import React, { useRef, useCallback, useEffect } from 'react';
 import type { Promotion, Language, Product } from '../types';
 import { useTranslations } from '../i18n/translations';
 import { useCountdown } from '../hooks/useCountdown';
+import { ChevronLeftIcon, ChevronRightIcon } from './icons/Icons';
 
 interface PromotionCardProps {
   promotion: Promotion;
@@ -22,23 +24,25 @@ const PromotionCard: React.FC<PromotionCardProps> = ({ promotion, product, langu
     const discountedPrice = product.price * (1 - promotion.discountPercent / 100);
 
     return (
-        <div onClick={() => onProductClick(product)} className="bg-gradient-to-br from-primary-500 to-primary-700 text-white rounded-2xl p-6 flex flex-col md:flex-row items-center gap-6 shadow-2xl cursor-pointer transform hover:scale-105 transition-transform duration-300">
-            <img src={product.image} alt={product.name[language]} className="w-32 h-32 rounded-full object-cover border-4 border-primary-300" />
-            <div className="flex-1 text-center md:text-left">
-                <h3 className="text-2xl font-bold">{promotion.title[language]}</h3>
-                <p className="mt-1">{promotion.description[language]}</p>
-                <div className="flex items-baseline gap-2 mt-2 justify-center md:justify-start">
-                    <span className="text-3xl font-extrabold">{discountedPrice.toFixed(2)} {t.currency}</span>
-                    <span className="line-through text-lg opacity-80">{product.price.toFixed(2)} {t.currency}</span>
+        <div onClick={() => onProductClick(product)} className="bg-gradient-to-br from-primary-500 to-primary-700 h-full text-white rounded-2xl p-6 flex flex-col md:flex-row items-center gap-6 shadow-2xl cursor-pointer transform hover:scale-[1.02] transition-transform duration-300">
+            <img src={product.image} alt={product.name[language]} className="w-full md:w-32 h-48 md:h-32 rounded-lg md:rounded-full object-cover border-4 border-primary-300 flex-shrink-0" />
+            <div className="flex flex-col flex-1 justify-between text-center md:text-start h-full w-full">
+                <div>
+                    <h3 className="text-2xl font-bold">{promotion.title[language]}</h3>
+                    <p className="mt-1">{promotion.description[language]}</p>
+                    <div className="flex items-baseline gap-2 mt-2 justify-center md:justify-start">
+                        <span className="text-3xl font-extrabold">{discountedPrice.toFixed(2)} {t.currency}</span>
+                        <span className="line-through text-lg opacity-80">{product.price.toFixed(2)} {t.currency}</span>
+                    </div>
                 </div>
-            </div>
-            <div className="text-center">
-                <p className="font-semibold uppercase text-sm opacity-90">{t.expiresIn}</p>
-                <div className="flex gap-2 text-2xl font-mono font-bold mt-1">
-                    <div className="bg-white/20 p-2 rounded-md">{String(days).padStart(2,'0')}<span className="text-xs">{t.days}</span></div>
-                    <div className="bg-white/20 p-2 rounded-md">{String(hours).padStart(2,'0')}<span className="text-xs">{t.hours}</span></div>
-                    <div className="bg-white/20 p-2 rounded-md">{String(minutes).padStart(2,'0')}<span className="text-xs">{t.minutes}</span></div>
-                    <div className="bg-white/20 p-2 rounded-md">{String(seconds).padStart(2,'0')}<span className="text-xs">{t.seconds}</span></div>
+                <div className="mt-4 md:mt-2 text-center md:text-start">
+                    <p className="font-semibold uppercase text-sm opacity-90">{t.expiresIn}</p>
+                    <div className="flex gap-2 text-2xl font-mono font-bold mt-1 justify-center md:justify-start">
+                        <div className="bg-white/20 p-2 rounded-md min-w-[50px]">{String(days).padStart(2,'0')}<span className="text-xs block">{t.days}</span></div>
+                        <div className="bg-white/20 p-2 rounded-md min-w-[50px]">{String(hours).padStart(2,'0')}<span className="text-xs block">{t.hours}</span></div>
+                        <div className="bg-white/20 p-2 rounded-md min-w-[50px]">{String(minutes).padStart(2,'0')}<span className="text-xs block">{t.minutes}</span></div>
+                        <div className="bg-white/20 p-2 rounded-md min-w-[50px]">{String(seconds).padStart(2,'0')}<span className="text-xs block">{t.seconds}</span></div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -54,22 +58,94 @@ interface PromotionSectionProps {
 
 export const PromotionSection: React.FC<PromotionSectionProps> = ({ promotions, products, language, onProductClick }) => {
   const t = useTranslations(language);
+  const sliderRef = useRef<HTMLDivElement>(null);
+  const intervalRef = useRef<number | null>(null);
+  const isRtl = language === 'ar';
   
   const activePromotions = promotions.filter(p => p.isActive);
+
+  const handleScroll = (direction: 'prev' | 'next') => {
+    if (sliderRef.current?.children[0]) {
+      const slider = sliderRef.current;
+      const card = slider.children[0] as HTMLElement;
+      let scrollAmount = card.offsetWidth;
+      if (direction === 'prev') {
+        scrollAmount = -scrollAmount;
+      }
+      
+      slider.scrollBy({ left: isRtl ? -scrollAmount : scrollAmount, behavior: 'smooth' });
+    }
+  };
+
+  const scrollNext = useCallback(() => {
+    if (sliderRef.current?.children[0]) {
+      const slider = sliderRef.current;
+      const cardWidth = (slider.children[0] as HTMLElement).offsetWidth;
+      const maxScroll = slider.scrollWidth - slider.clientWidth;
+
+      const isNearEnd = isRtl
+        ? slider.scrollLeft <= 1
+        : slider.scrollLeft >= maxScroll - 1;
+
+      if (isNearEnd) {
+        slider.scrollTo({ left: isRtl ? maxScroll : 0, behavior: 'smooth' });
+      } else {
+        slider.scrollBy({ left: isRtl ? -cardWidth : cardWidth, behavior: 'smooth' });
+      }
+    }
+  }, [isRtl]);
+
+  const startAutoPlay = useCallback(() => {
+    if (intervalRef.current) clearInterval(intervalRef.current);
+    intervalRef.current = window.setInterval(scrollNext, 3500);
+  }, [scrollNext]);
+
+  const stopAutoPlay = () => {
+    if (intervalRef.current) clearInterval(intervalRef.current);
+  };
+
+  useEffect(() => {
+    startAutoPlay();
+    return () => stopAutoPlay();
+  }, [startAutoPlay]);
   
-  if (!activePromotions || activePromotions.length === 0) {
+  if (activePromotions.length === 0) {
     return null;
   }
 
   return (
-    <section className="my-12">
-        <h2 className="text-3xl font-bold mb-6 border-b-4 border-primary-500 pb-2 inline-block">{t.todaysOffers}</h2>
-        <div className="space-y-6">
-            {activePromotions.map(promo => {
-                const product = products.find(p => p.id === promo.productId);
-                if (!product) return null;
-                return <PromotionCard key={promo.id} promotion={promo} product={product} language={language} onProductClick={onProductClick} />
-            })}
+    <section className="my-12 animate-fade-in-up">
+        <h2 className="text-3xl font-extrabold mb-8">{t.todaysOffers}</h2>
+        <div className="relative" onMouseEnter={stopAutoPlay} onMouseLeave={startAutoPlay}>
+            <div ref={sliderRef} className="flex overflow-x-auto snap-x snap-mandatory scroll-smooth scrollbar-hide -mx-2">
+                {activePromotions.map(promo => {
+                    const product = products.find(p => p.id === promo.productId);
+                    if (!product) return null;
+                    return (
+                        <div key={promo.id} className="w-full md:w-1/2 lg:w-1/3 flex-shrink-0 snap-center p-2">
+                             <PromotionCard promotion={promo} product={product} language={language} onProductClick={onProductClick} />
+                        </div>
+                    );
+                })}
+            </div>
+            {activePromotions.length > 2 && (
+                <>
+                    <button
+                        onClick={() => handleScroll('prev')}
+                        className={`absolute top-1/2 -translate-y-1/2 ${isRtl ? 'right-0' : 'left-0'} z-10 p-2 bg-white/70 dark:bg-slate-900/70 rounded-full shadow-lg hover:bg-white dark:hover:bg-slate-900 transition-colors`}
+                        aria-label="Previous Offer"
+                    >
+                        {isRtl ? <ChevronRightIcon className="w-6 h-6" /> : <ChevronLeftIcon className="w-6 h-6" />}
+                    </button>
+                    <button
+                        onClick={() => handleScroll('next')}
+                        className={`absolute top-1/2 -translate-y-1/2 ${isRtl ? 'left-0' : 'right-0'} z-10 p-2 bg-white/70 dark:bg-slate-900/70 rounded-full shadow-lg hover:bg-white dark:hover:bg-slate-900 transition-colors`}
+                        aria-label="Next Offer"
+                    >
+                        {isRtl ? <ChevronLeftIcon className="w-6 h-6" /> : <ChevronRightIcon className="w-6 h-6" />}
+                    </button>
+                </>
+            )}
         </div>
     </section>
   )

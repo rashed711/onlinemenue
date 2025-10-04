@@ -1,4 +1,5 @@
 
+
 import React from 'react';
 import { CheckCircleIcon } from './icons/Icons';
 
@@ -14,8 +15,8 @@ export const ToastNotification: React.FC<ToastNotificationProps> = ({ message, i
         isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-5 pointer-events-none'
       }`}
     >
-      <div className="flex items-center gap-3 bg-gray-800 text-white dark:bg-gray-100 dark:text-gray-800 px-6 py-3 rounded-full shadow-lg">
-        <CheckCircleIcon className="w-6 h-6 text-green-400" />
+      <div className="flex items-center gap-3 bg-slate-900 text-white dark:bg-slate-50 dark:text-slate-900 px-6 py-3 rounded-full shadow-lg border border-slate-700 dark:border-slate-200">
+        <CheckCircleIcon className="w-6 h-6 text-green-400 dark:text-green-500" />
         <span className="font-semibold">{message}</span>
       </div>
     </div>

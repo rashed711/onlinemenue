@@ -30,7 +30,12 @@ export const AdminSidebar: React.FC<AdminSidebarProps> = ({ language, currentUse
         { id: 'roles', label: t.manageRoles, icon: ShieldCheckIcon, permission: 'manage_roles' as Permission },
     ];
 
-    const NavLink = ({ item }: { item: typeof navItems[0] }) => (
+    // FIX: Explicitly type NavLink as a React.FC with a props interface
+    // to resolve TypeScript error regarding the 'key' prop.
+    interface NavLinkProps {
+        item: (typeof navItems)[0];
+    }
+    const NavLink: React.FC<NavLinkProps> = ({ item }) => (
         <button
             onClick={() => {
                 setActiveTab(item.id as AdminTab);
@@ -74,7 +79,7 @@ export const AdminSidebar: React.FC<AdminSidebarProps> = ({ language, currentUse
                  <div className="flex-1 mt-6 flex flex-col justify-between">
                     <nav>
                         {navItems.map(item => (
-                           hasPermission(item.permission) && <NavLink key={item.id} item={item} />
+                           hasPermission(item.permission) && <NavLink item={item} key={item.id} />
                         ))}
                     </nav>
                      <a href="#/" onClick={(e) => handleNav(e, '/')} className="text-center text-sm text-gray-500 hover:text-primary-500 dark:text-gray-400 dark:hover:text-primary-400">
