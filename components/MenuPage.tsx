@@ -70,14 +70,15 @@ export const MenuPage: React.FC<MenuPageProps> = (props) => {
         const fontSmall = `${13 * dpi}px ${fontName}`;
         const logoSize = 60 * dpi;
 
-        let canvasHeight = padding * 2 + logoSize + lineHeight * 4;
+        // Increased canvas height calculation to prevent clipping on longer receipts.
+        let canvasHeight = padding * 2 + logoSize + lineHeight * 6; // Increased header space
         order.items.forEach(item => {
-            canvasHeight += itemLineHeight * 1.2;
+            canvasHeight += itemLineHeight * 1.5; // Increased space per item
             if (item.options) {
-                canvasHeight += Object.keys(item.options).length * (itemLineHeight * 0.8);
+                canvasHeight += Object.keys(item.options).length * itemLineHeight; // Increased space for options
             }
         });
-        canvasHeight += lineHeight * 4;
+        canvasHeight += lineHeight * 5; // Increased footer space and buffer
         
         const canvasWidth = 420 * dpi;
         canvas.width = canvasWidth;
