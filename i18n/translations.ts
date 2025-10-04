@@ -1,11 +1,10 @@
 
+
 import type { Language } from '../types';
 
 export const translations = {
   en: {
     restaurantName: 'Zafran Restaurant',
-    heroTitle: "Experience Authentic Flavors",
-    heroSubtitle: "Fresh ingredients, exquisite taste. Explore a menu crafted with passion.",
     viewMenu: 'View Menu',
     searchPlaceholder: 'Search for dishes...',
     allCategories: 'All',
@@ -90,6 +89,8 @@ export const translations = {
     productNameAr: 'Product Name (Arabic)',
     descriptionEn: 'Description (English)',
     descriptionAr: 'Description (Arabic)',
+    heroTitleEn: 'Hero Title (English)',
+    heroTitleAr: 'Hero Title (Arabic)',
     category: 'Category',
     imageURL: 'Image URL',
     cancel: 'Cancel',
@@ -202,9 +203,7 @@ export const translations = {
     contactUs: 'Contact Us',
   },
   ar: {
-    restaurantName: 'مطعم تبوك',
-    heroTitle: "اكتشف نكهات أصيلة",
-    heroSubtitle: "مكونات طازجة، طعم رائع. استكشف قائمة طعام صنعت بشغف.",
+    restaurantName: 'فريسكو',
     viewMenu: 'عرض القائمة',
     searchPlaceholder: 'ابحث عن أطباق...',
     allCategories: 'الكل',
@@ -289,6 +288,8 @@ export const translations = {
     productNameAr: 'اسم المنتج (العربية)',
     descriptionEn: 'الوصف (الإنجليزية)',
     descriptionAr: 'الوصف (العربية)',
+    heroTitleEn: 'العنوان الرئيسي (الإنجليزية)',
+    heroTitleAr: 'العنوان الرئيسي (العربية)',
     category: 'الفئة',
     imageURL: 'رابط الصورة',
     cancel: 'إلغاء',

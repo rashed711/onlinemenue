@@ -62,13 +62,15 @@ export interface SocialLink {
   id: number;
   name: string;
   url: string;
-  icon: string; // SVG path data (d attribute)
+  icon: string; // Image URL or data URL
   isVisible: boolean;
 }
 
 export interface RestaurantInfo {
     name: LocalizedString;
     logo: string;
+    heroTitle: LocalizedString;
+    description: LocalizedString;
     whatsappNumber: string;
     socialLinks: SocialLink[];
     defaultPage: 'menu' | 'social';

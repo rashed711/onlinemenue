@@ -281,7 +281,7 @@ export const MenuPage: React.FC<MenuPageProps> = (props) => {
                 logout={logout}
             />
             
-            <HeroSection language={language} />
+            <HeroSection language={language} restaurantInfo={restaurantInfo} />
 
             <div className="container mx-auto max-w-7xl px-4 py-8">
                 <main>

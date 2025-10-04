@@ -1,6 +1,7 @@
 
+
 import React, { useState, useMemo, useEffect } from 'react';
-import type { Language, Product, RestaurantInfo, Order, OrderStatus, User, UserRole, Promotion, Permission, Category, Tag, CartItem, SocialLink } from '../../types';
+import type { Language, Product, RestaurantInfo, Order, OrderStatus, User, UserRole, Promotion, Permission, Category, Tag, CartItem, SocialLink, LocalizedString } from '../../types';
 import { useTranslations } from '../../i18n/translations';
 import { MenuAlt2Icon, PlusIcon, PencilIcon, TrashIcon, BellIcon, FireIcon, CheckBadgeIcon, XCircleIcon, TruckIcon, CheckCircleIcon, CloseIcon } from '../icons/Icons';
 import { OrderDetailsModal } from './OrderDetailsModal';
@@ -51,9 +52,25 @@ const SocialLinkEditModal: React.FC<SocialLinkEditModalProps> = ({ link, onClose
             setFormData(prev => ({ ...prev, [name]: value }));
         }
     };
+    
+    const handleIconChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (file) {
+            const reader = new FileReader();
+            reader.onloadend = () => {
+                setFormData(prev => ({ ...prev, icon: reader.result as string }));
+            };
+            reader.readAsDataURL(file);
+        }
+    };
+
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
+        if (!link && !formData.icon) {
+            alert('Please upload an icon for the new link.');
+            return;
+        }
         if (link) {
             onSave({ ...link, ...formData });
         } else {
@@ -80,9 +97,21 @@ const SocialLinkEditModal: React.FC<SocialLinkEditModalProps> = ({ link, onClose
                         <input type="text" name="url" value={formData.url} onChange={handleChange} className="w-full p-2 border rounded-md dark:bg-gray-700 dark:border-gray-600" required />
                     </div>
                     <div>
-                        <label className="block text-sm font-medium mb-1">SVG Icon Path Data</label>
-                        <textarea name="icon" value={formData.icon} onChange={handleChange} rows={3} className="w-full p-2 border rounded-md dark:bg-gray-700 dark:border-gray-600 font-mono text-xs" required placeholder='Paste the "d" attribute from an SVG <path> element here.'></textarea>
-                        <p className="text-xs text-gray-500 mt-1">Find icons on sites like heroicons.com, view source, and copy the `d="..."` value.</p>
+                        <label className="block text-sm font-medium mb-1">Icon</label>
+                        <div className="mt-2 flex items-center gap-4">
+                            {formData.icon && <img src={formData.icon} alt="Icon preview" className="w-12 h-12 object-contain rounded-md bg-slate-100 dark:bg-slate-700 p-1 border dark:border-slate-600" />}
+                            <input
+                                type="file"
+                                accept="image/*"
+                                onChange={handleIconChange}
+                                className="block w-full text-sm text-slate-500
+                                file:mr-4 file:py-2 file:px-4
+                                file:rounded-full file:border-0
+                                file:text-sm file:font-semibold
+                                file:bg-primary-50 file:text-primary-700
+                                hover:file:bg-primary-100 dark:file:bg-primary-900/50 dark:file:text-primary-200 dark:hover:file:bg-primary-900"
+                            />
+                        </div>
                     </div>
                     <div>
                         <label className="flex items-center gap-2 cursor-pointer">
@@ -109,16 +138,36 @@ interface SettingsPageProps {
     updateRestaurantInfo: (updatedInfo: Partial<RestaurantInfo>) => void;
 }
 
-const DynamicIcon: React.FC<{ d: string, className?: string }> = ({ d, className }) => (
-    <svg className={className} fill="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-        <path d={d}></path>
-    </svg>
-);
-
-
 const SettingsPage: React.FC<SettingsPageProps> = ({ language, restaurantInfo, updateRestaurantInfo }) => {
     const t = useTranslations(language);
     const [editingLink, setEditingLink] = useState<SocialLink | 'new' | null>(null);
+
+    const handleInfoChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+        const { name, value } = e.target;
+        const [field, lang] = name.split('.');
+
+        const currentLocalized = restaurantInfo[field as 'name' | 'description' | 'heroTitle'] || { en: '', ar: '' };
+
+        const newInfo = {
+            ...restaurantInfo,
+            [field]: {
+                ...currentLocalized,
+                [lang]: value,
+            }
+        };
+        updateRestaurantInfo(newInfo);
+    };
+
+    const handleLogoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (file) {
+            const reader = new FileReader();
+            reader.onloadend = () => {
+                updateRestaurantInfo({ logo: reader.result as string });
+            };
+            reader.readAsDataURL(file);
+        }
+    };
 
     const handleHomepageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         updateRestaurantInfo({ defaultPage: e.target.value as 'menu' | 'social' });
@@ -154,6 +203,60 @@ const SettingsPage: React.FC<SettingsPageProps> = ({ language, restaurantInfo, u
 
     return (
         <div className="space-y-8 animate-fade-in">
+            {/* Restaurant Info Settings */}
+            <div className="bg-white dark:bg-slate-800 p-6 rounded-lg shadow-md border border-slate-200 dark:border-slate-700">
+                <h3 className="text-xl font-semibold mb-4">Restaurant Information</h3>
+                <div className="space-y-4">
+                    <div>
+                        <label className="block text-sm font-medium mb-1">Logo</label>
+                        <div className="mt-2 flex items-center gap-4">
+                            <img src={restaurantInfo.logo} alt="Logo preview" className="w-16 h-16 object-contain rounded-full bg-slate-100 dark:bg-slate-700 p-1 border dark:border-slate-600" />
+                            <input
+                                type="file"
+                                accept="image/*"
+                                onChange={handleLogoChange}
+                                className="block w-full text-sm text-slate-500
+                                file:mr-4 file:py-2 file:px-4
+                                file:rounded-full file:border-0
+                                file:text-sm file:font-semibold
+                                file:bg-primary-50 file:text-primary-700
+                                hover:file:bg-primary-100 dark:file:bg-primary-900/50 dark:file:text-primary-200 dark:hover:file:bg-primary-900"
+                            />
+                        </div>
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <label className="block text-sm font-medium mb-1">Name (English)</label>
+                            <input type="text" name="name.en" value={restaurantInfo.name.en} onChange={handleInfoChange} className="w-full p-2 border rounded-md dark:bg-gray-700 dark:border-gray-600" />
+                        </div>
+                        <div>
+                            <label className="block text-sm font-medium mb-1">Name (Arabic)</label>
+                            <input type="text" name="name.ar" value={restaurantInfo.name.ar} onChange={handleInfoChange} className="w-full p-2 border rounded-md dark:bg-gray-700 dark:border-gray-600" />
+                        </div>
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <label className="block text-sm font-medium mb-1">{t.heroTitleEn}</label>
+                            <input type="text" name="heroTitle.en" value={restaurantInfo.heroTitle?.en || ''} onChange={handleInfoChange} className="w-full p-2 border rounded-md dark:bg-gray-700 dark:border-gray-600" />
+                        </div>
+                        <div>
+                            <label className="block text-sm font-medium mb-1">{t.heroTitleAr}</label>
+                            <input type="text" name="heroTitle.ar" value={restaurantInfo.heroTitle?.ar || ''} onChange={handleInfoChange} className="w-full p-2 border rounded-md dark:bg-gray-700 dark:border-gray-600" />
+                        </div>
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <label className="block text-sm font-medium mb-1">{t.descriptionEn}</label>
+                            <textarea name="description.en" value={restaurantInfo.description?.en || ''} onChange={handleInfoChange} rows={3} className="w-full p-2 border rounded-md dark:bg-gray-700 dark:border-gray-600"></textarea>
+                        </div>
+                        <div>
+                            <label className="block text-sm font-medium mb-1">{t.descriptionAr}</label>
+                            <textarea name="description.ar" value={restaurantInfo.description?.ar || ''} onChange={handleInfoChange} rows={3} className="w-full p-2 border rounded-md dark:bg-gray-700 dark:border-gray-600"></textarea>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
             {/* Homepage Settings */}
             <div className="bg-white dark:bg-slate-800 p-6 rounded-lg shadow-md border border-slate-200 dark:border-slate-700">
                 <h3 className="text-xl font-semibold mb-4">Homepage Settings</h3>
@@ -183,7 +286,7 @@ const SettingsPage: React.FC<SettingsPageProps> = ({ language, restaurantInfo, u
                         {restaurantInfo.socialLinks.map(link => (
                             <li key={link.id} className="p-4 flex flex-wrap justify-between items-center gap-4 hover:bg-slate-50 dark:hover:bg-gray-700/50">
                                 <div className="flex items-center gap-4">
-                                    <DynamicIcon d={link.icon} className="w-6 h-6 text-slate-500 dark:text-slate-400" />
+                                    <img src={link.icon} alt={`${link.name} icon`} className="w-6 h-6 object-contain" />
                                     <div>
                                         <div className="font-medium">{link.name}</div>
                                         <a href={link.url} target="_blank" rel="noopener noreferrer" className="text-sm text-primary-600 hover:underline truncate max-w-xs block">{link.url}</a>

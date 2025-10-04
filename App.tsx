@@ -1,4 +1,5 @@
 
+
 import React, { useState, useEffect, useMemo, useCallback, useSyncExternalStore } from 'react';
 import { MenuPage } from './components/MenuPage';
 import { LoginPage } from './components/auth/LoginPage';
@@ -11,14 +12,9 @@ import { ToastNotification } from './components/ToastNotification';
 import { useTranslations } from './i18n/translations';
 import { initialRolePermissions } from './data/permissions';
 import { calculateTotal } from './utils/helpers';
+import { ChevronRightIcon } from './components/icons/Icons';
 
 // --- NEW COMPONENT: SocialPage ---
-const DynamicIcon: React.FC<{ d: string, className?: string }> = ({ d, className }) => (
-    <svg className={className} fill="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-        <path d={d}></path>
-    </svg>
-);
-
 const SocialPage: React.FC<{ language: Language, restaurantInfo: RestaurantInfo }> = ({ language, restaurantInfo }) => {
     const t = useTranslations(language);
     const visibleLinks = restaurantInfo.socialLinks.filter(link => link.isVisible);
@@ -29,34 +25,41 @@ const SocialPage: React.FC<{ language: Language, restaurantInfo: RestaurantInfo 
     };
 
     return (
-        <div className="flex flex-col items-center justify-center min-h-screen bg-slate-100 dark:bg-slate-950 p-4">
-            <div className="w-full max-w-sm mx-auto text-center animate-fade-in-up">
-                <img src={restaurantInfo.logo} alt="logo" className="w-32 h-32 rounded-full mx-auto mb-6 shadow-lg border-4 border-white dark:border-slate-800" />
-                <h1 className="text-4xl font-bold text-slate-800 dark:text-slate-100 mb-2">{restaurantInfo.name[language]}</h1>
-                <p className="text-slate-500 dark:text-slate-400 mb-8">{t.heroSubtitle}</p>
+        <div className="flex flex-col items-center justify-center min-h-screen bg-slate-100 dark:bg-slate-950 p-4 bg-gradient-to-br from-slate-50 to-slate-200 dark:from-slate-900 dark:to-slate-950">
+            {/* Main content card with glassmorphism effect */}
+            <div className="w-full max-w-md mx-auto text-center animate-fade-in-up bg-white/50 dark:bg-slate-900/50 backdrop-blur-xl rounded-3xl p-6 sm:p-8 shadow-2xl border border-white/30 dark:border-slate-800">
+                
+                {/* Header section */}
+                <img src={restaurantInfo.logo} alt="logo" className="w-28 h-28 rounded-full mx-auto mb-4 shadow-lg border-4 border-white dark:border-slate-800" />
+                <h1 className="text-3xl font-extrabold text-slate-800 dark:text-slate-100 mb-1">{restaurantInfo.name[language]}</h1>
+                <p className="text-slate-500 dark:text-slate-400 mb-8 max-w-xs mx-auto">{restaurantInfo.description[language]}</p>
 
-                <div className="space-y-4">
-                    {visibleLinks.map(link => (
+                {/* Social links grid */}
+                <div className="grid grid-cols-2 gap-4 mb-10">
+                    {visibleLinks.map((link, index) => (
                         <a 
                             key={link.id}
                             href={link.url}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="w-full flex items-center gap-4 p-4 bg-white dark:bg-slate-800 rounded-lg shadow-md hover:shadow-xl hover:scale-105 transition-all duration-300 border border-slate-200 dark:border-slate-700"
+                            className="group flex flex-col items-center justify-center gap-2 p-4 bg-white/60 dark:bg-slate-800/60 backdrop-blur-md rounded-2xl shadow-lg hover:shadow-xl border border-white/50 dark:border-slate-700/50 hover:-translate-y-1 transition-all duration-300 animate-fade-in"
+                            style={{ animationDelay: `${index * 100}ms` }}
                         >
-                            <DynamicIcon d={link.icon} className="w-6 h-6 text-primary-500" />
-                            <span className="font-semibold text-lg text-slate-700 dark:text-slate-200">{link.name}</span>
+                            <img src={link.icon} alt={`${link.name} icon`} className="w-8 h-8 object-contain transition-transform duration-300 group-hover:scale-110" />
+                            <span className="font-semibold text-base text-slate-700 dark:text-slate-200">{link.name}</span>
                         </a>
                     ))}
                 </div>
 
-                <div className="mt-12">
+                {/* View Menu Button */}
+                <div>
                     <a
                         href="#/menu"
                         onClick={(e) => handleNav(e, '/menu')}
-                        className="bg-primary-500 hover:bg-primary-600 text-white font-bold py-3 px-8 rounded-full text-lg transition-transform transform hover:scale-105 inline-block shadow-lg"
+                        className="bg-primary-500 hover:bg-primary-600 text-white font-bold py-4 px-10 rounded-full text-lg transition-transform transform hover:scale-105 inline-flex items-center justify-center gap-2 shadow-lg shadow-primary-500/30 hover:shadow-xl hover:shadow-primary-500/40"
                     >
-                        {t.viewMenu}
+                        <span>{t.viewMenu}</span>
+                        <ChevronRightIcon className={`w-6 h-6 transition-transform ${language === 'ar' ? 'transform -scale-x-100' : ''}`} />
                     </a>
                 </div>
             </div>

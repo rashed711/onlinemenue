@@ -1,12 +1,13 @@
 import React from 'react';
-import type { Language } from '../types';
+import type { Language, RestaurantInfo } from '../types';
 import { useTranslations } from '../i18n/translations';
 
 interface HeroSectionProps {
   language: Language;
+  restaurantInfo: RestaurantInfo;
 }
 
-export const HeroSection: React.FC<HeroSectionProps> = ({ language }) => {
+export const HeroSection: React.FC<HeroSectionProps> = ({ language, restaurantInfo }) => {
   const t = useTranslations(language);
 
   const handleScrollToMenu = (e: React.MouseEvent<HTMLAnchorElement>) => {
@@ -27,10 +28,10 @@ export const HeroSection: React.FC<HeroSectionProps> = ({ language }) => {
       />
       <div className="relative z-20 p-4 animate-fade-in-up">
         <h1 className="text-4xl md:text-6xl font-extrabold tracking-tight mb-4" style={{ textShadow: '2px 2px 8px rgba(0,0,0,0.8)' }}>
-          {t.heroTitle}
+          {restaurantInfo.heroTitle?.[language] || ''}
         </h1>
         <p className="text-lg md:text-xl max-w-3xl mx-auto mb-8" style={{ textShadow: '1px 1px 4px rgba(0,0,0,0.8)' }}>
-          {t.heroSubtitle}
+          {restaurantInfo.description?.[language] || ''}
         </p>
         <a 
           href="#menu"

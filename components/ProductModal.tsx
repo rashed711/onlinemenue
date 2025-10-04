@@ -75,21 +75,21 @@ export const ProductModal: React.FC<ProductModalProps> = ({
             </button>
         </div>
 
-        <div className="p-4 sm:p-6 md:p-8 pt-0 grid grid-cols-1 md:grid-cols-5 gap-6 md:gap-8">
-          <div className="md:col-span-2 flex items-center justify-center -mt-12 md:mt-0">
-             <img src={product.image} alt={product.name[language]} className="w-full h-auto max-h-[75vh] rounded-xl object-cover shadow-lg" />
+        <div className="p-4 sm:p-6 md:p-8 pt-0 grid grid-cols-1 md:grid-cols-5 gap-4 md:gap-8">
+          <div className="md:col-span-2 flex items-center justify-center -mt-8 md:mt-0">
+             <img src={product.image} alt={product.name[language]} className="w-full h-56 md:h-auto max-h-[75vh] rounded-xl object-cover shadow-lg" />
           </div>
           <div className="md:col-span-3 flex flex-col">
-            <h2 className="text-2xl md:text-3xl font-extrabold">{product.name[language]}</h2>
-            <div className="flex items-center my-3 gap-3">
+            <h2 className="text-xl sm:text-2xl font-extrabold">{product.name[language]}</h2>
+            <div className="flex items-center my-2 gap-3">
               <div className="flex items-center bg-slate-100 dark:bg-slate-700 px-2 py-1 rounded-full">
                 <StarIcon className="w-4 h-4 text-yellow-400" />
                 <span className="text-slate-700 dark:text-slate-300 font-semibold ms-1 text-sm">{product.rating}</span>
               </div>
             </div>
-            <p className="text-slate-600 dark:text-slate-300 mb-4">{product.description[language]}</p>
+            <p className="text-slate-600 dark:text-slate-300 text-sm mb-3">{product.description[language]}</p>
             
-            <div className="flex-grow space-y-5 my-4">
+            <div className="flex-grow space-y-3 my-3">
                 {product.options?.map(option => (
                 <div key={option.name.en}>
                     <h4 className="font-semibold mb-2 text-slate-800 dark:text-slate-100">{option.name[language]}</h4>
@@ -108,7 +108,7 @@ export const ProductModal: React.FC<ProductModalProps> = ({
                 ))}
             </div>
 
-            <div className="flex items-center my-6">
+            <div className="flex items-center my-4">
               <h4 className="font-semibold me-4 text-slate-800 dark:text-slate-100">{t.quantity}:</h4>
               <div className="flex items-center border border-slate-200 dark:border-slate-600 rounded-full">
                   <button onClick={() => setQuantity(q => Math.max(1, q - 1))} className="px-4 py-2 text-xl font-bold hover:bg-slate-100 dark:hover:bg-slate-700 rounded-l-full" aria-label="Decrease quantity">-</button>
@@ -117,13 +117,13 @@ export const ProductModal: React.FC<ProductModalProps> = ({
               </div>
             </div>
 
-            <div className="mt-auto pt-6 border-t border-slate-200 dark:border-slate-700">
+            <div className="mt-auto pt-4 border-t border-slate-200 dark:border-slate-700">
               <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-4">
                 <div className="text-center sm:text-start">
                   <span className="text-slate-500 dark:text-slate-400 text-sm">{t.total}</span>
-                  <p className="text-2xl sm:text-3xl font-extrabold text-primary-600 dark:text-primary-400">{calculateTotalPrice().toFixed(2)} {t.currency}</p>
+                  <p className="text-2xl font-extrabold text-primary-600 dark:text-primary-400">{calculateTotalPrice().toFixed(2)} {t.currency}</p>
                 </div>
-                <button onClick={handleAddToCart} className="w-full sm:w-auto bg-primary-500 text-white font-bold py-3 px-6 rounded-lg hover:bg-primary-600 flex items-center justify-center gap-2 transition-all text-base sm:text-lg focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 dark:focus:ring-offset-slate-800 shadow-lg hover:shadow-xl transform hover:scale-105">
+                <button onClick={handleAddToCart} className="w-full sm:w-auto bg-primary-500 text-white font-bold py-3 px-6 rounded-lg hover:bg-primary-600 flex items-center justify-center gap-2 transition-all text-base focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 dark:focus:ring-offset-slate-800 shadow-lg hover:shadow-xl transform hover:scale-105">
                   <PlusIcon className="w-6 h-6" />
                   {t.addToCart}
                 </button>
