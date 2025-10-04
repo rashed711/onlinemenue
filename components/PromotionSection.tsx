@@ -37,11 +37,11 @@ const PromotionCard: React.FC<PromotionCardProps> = ({ promotion, product, langu
                 </div>
                 <div className="mt-4 md:mt-2 text-center md:text-start">
                     <p className="font-semibold uppercase text-sm opacity-90">{t.expiresIn}</p>
-                    <div className="flex gap-2 text-2xl font-mono font-bold mt-1 justify-center md:justify-start">
-                        <div className="bg-white/20 p-2 rounded-md min-w-[50px]">{String(days).padStart(2,'0')}<span className="text-xs block">{t.days}</span></div>
-                        <div className="bg-white/20 p-2 rounded-md min-w-[50px]">{String(hours).padStart(2,'0')}<span className="text-xs block">{t.hours}</span></div>
-                        <div className="bg-white/20 p-2 rounded-md min-w-[50px]">{String(minutes).padStart(2,'0')}<span className="text-xs block">{t.minutes}</span></div>
-                        <div className="bg-white/20 p-2 rounded-md min-w-[50px]">{String(seconds).padStart(2,'0')}<span className="text-xs block">{t.seconds}</span></div>
+                    <div className={`flex gap-2 text-2xl font-mono font-bold mt-1 justify-center md:justify-start ${language === 'ar' ? 'flex-row-reverse' : ''}`}>
+                        <div className="bg-white/20 p-2 rounded-md min-w-[50px] text-center">{String(days).padStart(2,'0')}<span className="text-xs block">{t.days}</span></div>
+                        <div className="bg-white/20 p-2 rounded-md min-w-[50px] text-center">{String(hours).padStart(2,'0')}<span className="text-xs block">{t.hours}</span></div>
+                        <div className="bg-white/20 p-2 rounded-md min-w-[50px] text-center">{String(minutes).padStart(2,'0')}<span className="text-xs block">{t.minutes}</span></div>
+                        <div className="bg-white/20 p-2 rounded-md min-w-[50px] text-center">{String(seconds).padStart(2,'0')}<span className="text-xs block">{t.seconds}</span></div>
                     </div>
                 </div>
             </div>
@@ -122,7 +122,7 @@ export const PromotionSection: React.FC<PromotionSectionProps> = ({ promotions, 
                     const product = products.find(p => p.id === promo.productId);
                     if (!product) return null;
                     return (
-                        <div key={promo.id} className="w-full md:w-1/2 lg:w-1/3 flex-shrink-0 snap-center p-2">
+                        <div key={promo.id} className="w-[90%] md:w-1/2 lg:w-1/3 flex-shrink-0 snap-center p-2">
                              <PromotionCard promotion={promo} product={product} language={language} onProductClick={onProductClick} />
                         </div>
                     );
@@ -132,14 +132,14 @@ export const PromotionSection: React.FC<PromotionSectionProps> = ({ promotions, 
                 <>
                     <button
                         onClick={() => handleScroll('prev')}
-                        className={`absolute top-1/2 -translate-y-1/2 ${isRtl ? 'right-0' : 'left-0'} z-10 p-2 bg-white/70 dark:bg-slate-900/70 rounded-full shadow-lg hover:bg-white dark:hover:bg-slate-900 transition-colors`}
+                        className={`absolute top-1/2 -translate-y-1/2 ${isRtl ? 'right-2' : 'left-2'} z-10 p-2 bg-white/70 dark:bg-slate-900/70 rounded-full shadow-lg hover:bg-white dark:hover:bg-slate-900 transition-colors`}
                         aria-label="Previous Offer"
                     >
                         {isRtl ? <ChevronRightIcon className="w-6 h-6" /> : <ChevronLeftIcon className="w-6 h-6" />}
                     </button>
                     <button
                         onClick={() => handleScroll('next')}
-                        className={`absolute top-1/2 -translate-y-1/2 ${isRtl ? 'left-0' : 'right-0'} z-10 p-2 bg-white/70 dark:bg-slate-900/70 rounded-full shadow-lg hover:bg-white dark:hover:bg-slate-900 transition-colors`}
+                        className={`absolute top-1/2 -translate-y-1/2 ${isRtl ? 'left-2' : 'right-2'} z-10 p-2 bg-white/70 dark:bg-slate-900/70 rounded-full shadow-lg hover:bg-white dark:hover:bg-slate-900 transition-colors`}
                         aria-label="Next Offer"
                     >
                         {isRtl ? <ChevronLeftIcon className="w-6 h-6" /> : <ChevronRightIcon className="w-6 h-6" />}
