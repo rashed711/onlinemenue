@@ -1,19 +1,19 @@
 import type { Product, Category, Tag, Promotion, RestaurantInfo, User } from '../types';
 
 export const restaurantInfo: RestaurantInfo = {
-    name: { en: "The Gourmet Place", ar: "مطعم زفران" },
+    name: { en: "Tabuk Restaurants", ar: "مطعم تبوك" },
     logo: "https://picsum.photos/100",
     whatsappNumber: "201028855779", // Replace with actual WhatsApp number
 };
 
-export const categories: Category[] = [
+export const initialCategories: Category[] = [
   { id: 1, name: { en: 'Main Dishes', ar: 'الأطباق الرئيسية' } },
   { id: 2, name: { en: 'Drinks', ar: 'المشروبات' } },
   { id: 3, name: { en: 'Desserts', ar: 'الحلويات' } },
   { id: 4, name: { en: 'Appetizers', ar: 'المقبلات' } },
 ];
 
-export const tags: Tag[] = [
+export const initialTags: Tag[] = [
   { id: 'vegetarian', name: { en: 'Vegetarian', ar: 'نباتي' } },
   { id: 'gluten-free', name: { en: 'Gluten-Free', ar: 'خالي من الغلوتين' } },
   { id: 'healthy', name: { en: 'Healthy', ar: 'صحي' } },
@@ -38,6 +38,7 @@ export const products: Product[] = [
     rating: 4.8,
     isPopular: true,
     isNew: false,
+    isVisible: true,
     tags: ['healthy'],
   },
   {
@@ -51,6 +52,7 @@ export const products: Product[] = [
     rating: 4.5,
     isPopular: true,
     isNew: false,
+    isVisible: true,
     tags: [],
     options: [
         { name: { en: 'Add-ons', ar: 'إضافات' }, values: [{ name: { en: 'Extra Cheese', ar: 'جبنة إضافية' }, priceModifier: 5 }, { name: { en: 'Bacon', ar: 'بيكون' }, priceModifier: 8 }] }
@@ -67,6 +69,7 @@ export const products: Product[] = [
     rating: 4.7,
     isPopular: false,
     isNew: true,
+    isVisible: true,
     tags: ['healthy', 'vegetarian'],
   },
   {
@@ -80,6 +83,7 @@ export const products: Product[] = [
     rating: 4.9,
     isPopular: true,
     isNew: false,
+    isVisible: true,
     tags: ['vegetarian'],
   },
   {
@@ -93,6 +97,7 @@ export const products: Product[] = [
     rating: 4.4,
     isPopular: false,
     isNew: true,
+    isVisible: true,
     tags: ['vegetarian', 'healthy'],
      options: [
         { name: { en: 'Sauce', ar: 'صلصة' }, values: [{ name: { en: 'Tomato', ar: 'طماطم' }, priceModifier: 0 }, { name: { en: 'Alfredo', ar: 'ألفريدو' }, priceModifier: 10 }] }
@@ -109,6 +114,7 @@ export const products: Product[] = [
     rating: 4.6,
     isPopular: false,
     isNew: false,
+    isVisible: true,
     tags: ['spicy'],
   },
   {
@@ -122,6 +128,7 @@ export const products: Product[] = [
     rating: 4.3,
     isPopular: false,
     isNew: false,
+    isVisible: true,
     tags: ['gluten-free'],
   },
   {
@@ -135,6 +142,7 @@ export const products: Product[] = [
     rating: 4.8,
     isPopular: true,
     isNew: false,
+    isVisible: true,
     tags: ['vegetarian'],
      options: [
         { name: { en: 'Size', ar: 'الحجم' }, values: [{ name: { en: 'Medium', ar: 'وسط' }, priceModifier: 0 }, { name: { en: 'Large', ar: 'كبير' }, priceModifier: 5 }] }

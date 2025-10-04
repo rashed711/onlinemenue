@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
-import type { Language, Product, RestaurantInfo, Order, OrderStatus, User, UserRole, Promotion, Permission } from '../../types';
+import type { Language, Product, RestaurantInfo, Order, OrderStatus, User, UserRole, Promotion, Permission, Category, Tag, CartItem } from '../../types';
 import { useTranslations } from '../../i18n/translations';
-import { MenuAlt2Icon, PlusIcon, PencilIcon, TrashIcon, BellIcon, FireIcon, CheckBadgeIcon, XCircleIcon } from '../icons/Icons';
+import { MenuAlt2Icon, PlusIcon, PencilIcon, TrashIcon, BellIcon, FireIcon, CheckBadgeIcon, XCircleIcon, TruckIcon, CheckCircleIcon } from '../icons/Icons';
 import { OrderDetailsModal } from './OrderDetailsModal';
 import { ProductEditModal } from './ProductEditModal';
 import { PromotionEditModal } from './PromotionEditModal';
@@ -9,16 +9,24 @@ import { AdminSidebar } from './AdminSidebar';
 import { UserEditModal } from './UserEditModal';
 import { usePermissions } from '../../hooks/usePermissions';
 import { PermissionsEditModal } from './PermissionsEditModal';
+import { ClassificationsPage } from './ClassificationsPage';
+import { CategoryEditModal } from './CategoryEditModal';
+import { TagEditModal } from './TagEditModal';
+import { RefusalReasonModal } from './RefusalReasonModal';
+import { OrderEditModal } from './OrderEditModal';
+import { ReportsPage } from './ReportsPage';
 
 interface AdminPageProps {
     language: Language;
     currentUser: User | null;
     allProducts: Product[];
+    allCategories: Category[];
+    allTags: Tag[];
     allUsers: User[];
     restaurantInfo: RestaurantInfo;
     allOrders: Order[];
     allPromotions: Promotion[];
-    updateOrderStatus: (orderId: string, status: OrderStatus) => void;
+    updateOrder: (orderId: string, payload: Partial<Omit<Order, 'id' | 'timestamp' | 'customer'>>) => void;
     logout: () => void;
     addProduct: (productData: Omit<Product, 'id' | 'rating'>) => void;
     updateProduct: (product: Product) => void;
@@ -31,16 +39,23 @@ interface AdminPageProps {
     deleteUser: (userId: number) => void;
     rolePermissions: Record<UserRole, Permission[]>;
     updateRolePermissions: (role: UserRole, permissions: Permission[]) => void;
+    addCategory: (categoryData: Omit<Category, 'id'>) => void;
+    updateCategory: (category: Category) => void;
+    deleteCategory: (categoryId: number) => void;
+    addTag: (tagData: Omit<Tag, 'id'> & {id: string}) => void;
+    updateTag: (tag: Tag) => void;
+    deleteTag: (tagId: string) => void;
 }
 
-type AdminTab = 'orders' | 'menu' | 'promotions' | 'users' | 'roles';
+type AdminTab = 'orders' | 'reports' | 'productList' | 'classifications' | 'promotions' | 'users' | 'roles';
 
 export const AdminPage: React.FC<AdminPageProps> = (props) => {
     const { 
-        language, currentUser, allProducts, allUsers, restaurantInfo, allOrders, allPromotions,
-        updateOrderStatus, logout, addProduct, updateProduct, deleteProduct, 
+        language, currentUser, allProducts, allCategories, allTags, allUsers, restaurantInfo, allOrders, allPromotions,
+        updateOrder, logout, addProduct, updateProduct, deleteProduct, 
         addPromotion, updatePromotion, deletePromotion, addUser, updateUser, deleteUser,
-        rolePermissions, updateRolePermissions
+        rolePermissions, updateRolePermissions,
+        addCategory, updateCategory, deleteCategory, addTag, updateTag, deleteTag
     } = props;
 
     const t = useTranslations(language);
@@ -50,10 +65,14 @@ export const AdminPage: React.FC<AdminPageProps> = (props) => {
     const [isSidebarOpen, setSidebarOpen] = useState(false);
     
     const [viewingOrder, setViewingOrder] = useState<Order | null>(null);
+    const [editingOrder, setEditingOrder] = useState<Order | null>(null);
     const [editingProduct, setEditingProduct] = useState<Product | 'new' | null>(null);
     const [editingPromotion, setEditingPromotion] = useState<Promotion | 'new' | null>(null);
     const [editingUser, setEditingUser] = useState<User | 'new' | null>(null);
     const [editingRole, setEditingRole] = useState<UserRole | null>(null);
+    const [editingCategory, setEditingCategory] = useState<Category | 'new' | null>(null);
+    const [editingTag, setEditingTag] = useState<Tag | 'new' | null>(null);
+    const [refusingOrder, setRefusingOrder] = useState<Order | null>(null);
 
 
     const handleSaveProduct = (productData: Product | Omit<Product, 'id' | 'rating'>) => {
@@ -71,7 +90,7 @@ export const AdminPage: React.FC<AdminPageProps> = (props) => {
         }
     };
 
-    const handleToggleProductFlag = (product: Product, flag: 'isPopular' | 'isNew') => {
+    const handleToggleProductFlag = (product: Product, flag: 'isPopular' | 'isNew' | 'isVisible') => {
         updateProduct({ ...product, [flag]: !product[flag] });
     };
     
@@ -113,39 +132,70 @@ export const AdminPage: React.FC<AdminPageProps> = (props) => {
         updateRolePermissions(role, permissions);
         setEditingRole(null);
     };
+
+    const handleSaveOrder = (updatedOrderData: {items: CartItem[], notes: string}) => {
+        if (editingOrder) {
+            updateOrder(editingOrder.id, updatedOrderData);
+        }
+        setEditingOrder(null);
+    };
     
-    const OrderCard = ({ order }: { order: Order }) => (
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-4 space-y-3 relative transition-all hover:shadow-lg hover:scale-[1.02]">
-            <div className="flex justify-between items-start">
-                <div>
-                    <p className="font-bold font-mono cursor-pointer hover:text-primary-600" onClick={() => setViewingOrder(order)}>{order.id}</p>
-                    <p className="text-sm font-semibold">{order.customer.name || 'Guest'}</p>
-                    <p className="text-xs text-gray-500 dark:text-gray-400">{new Date(order.timestamp).toLocaleTimeString(language === 'ar' ? 'ar-EG' : 'en-US', { hour: '2-digit', minute:'2-digit' })}</p>
+    const OrderCard = ({ order }: { order: Order }) => {
+        const isDriver = currentUser?.role === 'driver';
+        const canManage = hasPermission('manage_orders');
+
+        const renderActions = () => {
+            if (isDriver && order.status === 'Out for Delivery') {
+                return (
+                    <div className="flex gap-2">
+                        <button onClick={() => updateOrder(order.id, { status: 'Completed' })} className="text-xs font-bold bg-green-500 text-white px-2 py-1 rounded hover:bg-green-600">{t.markAsDelivered}</button>
+                        <button onClick={() => setRefusingOrder(order)} className="text-xs font-bold bg-red-500 text-white px-2 py-1 rounded hover:bg-red-600">{t.markAsRefused}</button>
+                    </div>
+                )
+            }
+            if(canManage) {
+                return (
+                    <select
+                        value={order.status}
+                        onChange={(e) => updateOrder(order.id, { status: e.target.value as OrderStatus })}
+                        className="text-sm rounded-md border-gray-300 dark:bg-gray-700 dark:border-gray-600 focus:ring-primary-500 focus:border-primary-500"
+                    >
+                        <option value="Pending">{t.pending}</option>
+                        <option value="In Progress">{t.inProgress}</option>
+                        <option value="Ready for Pickup">{t.readyForPickup}</option>
+                        <option value="Out for Delivery">{t.outForDelivery}</option>
+                        <option value="Completed">{t.completed}</option>
+                        <option value="Cancelled">{t.cancelled}</option>
+                        <option value="Refused">{t.refused}</option>
+                    </select>
+                )
+            }
+            return null;
+        }
+
+        return (
+            <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-4 space-y-3 relative transition-all hover:shadow-lg hover:scale-[1.02]">
+                <div className="flex justify-between items-start">
+                    <div>
+                        <p className="font-bold font-mono cursor-pointer hover:text-primary-600" onClick={() => setViewingOrder(order)}>{order.id}</p>
+                        <p className="text-sm font-semibold">{order.customer.name || 'Guest'}</p>
+                        <p className="text-xs text-gray-500 dark:text-gray-400">{new Date(order.timestamp).toLocaleTimeString(language === 'ar' ? 'ar-EG' : 'en-US', { hour: '2-digit', minute:'2-digit' })}</p>
+                    </div>
+                    <p className="font-bold text-lg">{order.total.toFixed(2)}</p>
                 </div>
-                <p className="font-bold text-lg">{order.total.toFixed(2)}</p>
+                <div>
+                    <ul className="text-xs text-gray-600 dark:text-gray-300 list-disc list-inside">
+                        {order.items.slice(0, 2).map((item, index) => <li key={index} className="truncate">{item.quantity}x {item.product.name[language]}</li>)}
+                        {order.items.length > 2 && <li className="font-semibold">... and {order.items.length - 2} more</li>}
+                    </ul>
+                </div>
+                <div className="flex justify-between items-center border-t dark:border-gray-700 pt-3">
+                     <button onClick={() => setViewingOrder(order)} className="text-sm text-primary-600 hover:underline">{t.viewOrderDetails}</button>
+                    {renderActions()}
+                </div>
             </div>
-            <div>
-                <ul className="text-xs text-gray-600 dark:text-gray-300 list-disc list-inside">
-                    {order.items.slice(0, 2).map((item, index) => <li key={index} className="truncate">{item.quantity}x {item.product.name[language]}</li>)}
-                    {order.items.length > 2 && <li className="font-semibold">... and {order.items.length - 2} more</li>}
-                </ul>
-            </div>
-            <div className="flex justify-between items-center border-t dark:border-gray-700 pt-3">
-                 <button onClick={() => setViewingOrder(order)} className="text-sm text-primary-600 hover:underline">{t.viewOrderDetails}</button>
-                <select
-                    value={order.status}
-                    onChange={(e) => updateOrderStatus(order.id, e.target.value as OrderStatus)}
-                    disabled={!hasPermission('manage_orders')}
-                    className="text-sm rounded-md border-gray-300 dark:bg-gray-700 dark:border-gray-600 focus:ring-primary-500 focus:border-primary-500 disabled:opacity-70"
-                >
-                    <option value="Pending">{t.pending}</option>
-                    <option value="In Progress">{t.inProgress}</option>
-                    <option value="Completed">{t.completed}</option>
-                    <option value="Cancelled">{t.cancelled}</option>
-                </select>
-            </div>
-        </div>
-    );
+        )
+    };
 
     const renderContent = () => {
         switch(activeTab) {
@@ -153,24 +203,20 @@ export const AdminPage: React.FC<AdminPageProps> = (props) => {
                 if (!hasPermission('view_orders')) return null;
                 const pendingOrders = allOrders.filter(o => o.status === 'Pending');
                 const inProgressOrders = allOrders.filter(o => o.status === 'In Progress');
+                const readyForPickupOrders = allOrders.filter(o => o.status === 'Ready for Pickup');
+                const outForDeliveryOrders = allOrders.filter(o => o.status === 'Out for Delivery');
                 const completedOrders = allOrders.filter(o => o.status === 'Completed');
-                const cancelledOrders = allOrders.filter(o => o.status === 'Cancelled');
-            
-                const pendingDineIn = pendingOrders.filter(o => o.orderType === 'Dine-in');
-                const pendingDelivery = pendingOrders.filter(o => o.orderType === 'Delivery');
+                const cancelledOrders = allOrders.filter(o => o.status === 'Cancelled' || o.status === 'Refused');
 
                 return (
                      <div>
                         <h2 className="text-2xl font-bold mb-6">{t.manageOrders}</h2>
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-6">
                             {/* New Orders Column */}
                             <div className="flex flex-col space-y-4">
                                 <h3 className="text-lg font-bold flex items-center gap-2 sticky top-20 bg-slate-100 dark:bg-slate-900 py-2 z-10"><BellIcon className="w-6 h-6 text-yellow-500" /> {t.newOrders} ({pendingOrders.length})</h3>
                                 <div className="bg-slate-200/50 dark:bg-gray-900/50 p-2 sm:p-4 rounded-lg space-y-4 min-h-[200px] flex-grow">
-                                    <h4 className="font-semibold text-gray-600 dark:text-gray-300 px-2">{t.dineIn} ({pendingDineIn.length})</h4>
-                                    {pendingDineIn.map(order => <OrderCard key={order.id} order={order} />)}
-                                    <h4 className="font-semibold text-gray-600 dark:text-gray-300 px-2 mt-4 border-t dark:border-gray-700 pt-2">{t.delivery} ({pendingDelivery.length})</h4>
-                                    {pendingDelivery.map(order => <OrderCard key={order.id} order={order} />)}
+                                    {pendingOrders.map(order => <OrderCard key={order.id} order={order} />)}
                                     {pendingOrders.length === 0 && <p className="text-center text-gray-500 pt-8">No new orders.</p>}
                                 </div>
                             </div>
@@ -183,24 +229,35 @@ export const AdminPage: React.FC<AdminPageProps> = (props) => {
                                     {inProgressOrders.length === 0 && <p className="text-center text-gray-500 pt-8">No orders in progress.</p>}
                                 </div>
                             </div>
-                           
-                           {/* Ready for Pickup Column */}
+
+                            {/* Ready for Pickup Column */}
                             <div className="flex flex-col space-y-4">
-                                <h3 className="text-lg font-bold flex items-center gap-2 sticky top-20 bg-slate-100 dark:bg-slate-900 py-2 z-10"><CheckBadgeIcon className="w-6 h-6 text-green-500" /> {t.readyForPickup} ({completedOrders.length})</h3>
+                                <h3 className="text-lg font-bold flex items-center gap-2 sticky top-20 bg-slate-100 dark:bg-slate-900 py-2 z-10"><CheckCircleIcon className="w-6 h-6 text-cyan-500" /> {t.readyForPickup} ({readyForPickupOrders.length})</h3>
                                 <div className="bg-slate-200/50 dark:bg-gray-900/50 p-2 sm:p-4 rounded-lg space-y-4 min-h-[200px] flex-grow">
-                                    {completedOrders.map(order => (
-                                         <div key={order.id} className="relative">
-                                            <OrderCard order={order} />
-                                            <div className={`absolute top-2 ${language === 'ar' ? 'left-2' : 'right-2'} text-xs font-bold px-2 py-1 rounded-full ${order.orderType === 'Dine-in' ? 'bg-blue-200 text-blue-800 dark:bg-blue-900/70 dark:text-blue-200' : 'bg-green-200 text-green-800 dark:bg-green-900/70 dark:text-green-200'}`}>
-                                                {order.orderType === 'Dine-in' ? t.forWaiter : t.forDriver}
-                                            </div>
-                                        </div>
-                                    ))}
-                                    {completedOrders.length === 0 && <p className="text-center text-gray-500 pt-8">No orders ready.</p>}
+                                    {readyForPickupOrders.map(order => <OrderCard key={order.id} order={order} />)}
+                                    {readyForPickupOrders.length === 0 && <p className="text-center text-gray-500 pt-8">No orders ready.</p>}
+                                </div>
+                            </div>
+
+                            {/* Out for Delivery Column */}
+                            <div className="flex flex-col space-y-4">
+                                <h3 className="text-lg font-bold flex items-center gap-2 sticky top-20 bg-slate-100 dark:bg-slate-900 py-2 z-10"><TruckIcon className="w-6 h-6 text-blue-500" /> {t.outForDelivery} ({outForDeliveryOrders.length})</h3>
+                                <div className="bg-slate-200/50 dark:bg-gray-900/50 p-2 sm:p-4 rounded-lg space-y-4 min-h-[200px] flex-grow">
+                                    {outForDeliveryOrders.map(order => <OrderCard key={order.id} order={order} />)}
+                                    {outForDeliveryOrders.length === 0 && <p className="text-center text-gray-500 pt-8">No orders for delivery.</p>}
                                 </div>
                             </div>
                            
-                           {/* Cancelled Column */}
+                           {/* Completed Column */}
+                            <div className="flex flex-col space-y-4">
+                                <h3 className="text-lg font-bold flex items-center gap-2 sticky top-20 bg-slate-100 dark:bg-slate-900 py-2 z-10"><CheckBadgeIcon className="w-6 h-6 text-green-500" /> {t.completed} ({completedOrders.length})</h3>
+                                <div className="bg-slate-200/50 dark:bg-gray-900/50 p-2 sm:p-4 rounded-lg space-y-4 min-h-[200px] flex-grow">
+                                    {completedOrders.map(order => <OrderCard key={order.id} order={order} />)}
+                                    {completedOrders.length === 0 && <p className="text-center text-gray-500 pt-8">No completed orders.</p>}
+                                </div>
+                            </div>
+                           
+                           {/* Cancelled/Refused Column */}
                             <div className="flex flex-col space-y-4">
                                <h3 className="text-lg font-bold flex items-center gap-2 sticky top-20 bg-slate-100 dark:bg-slate-900 py-2 z-10"><XCircleIcon className="w-6 h-6 text-gray-500" /> {t.cancelledOrders} ({cancelledOrders.length})</h3>
                                 <div className="bg-slate-200/50 dark:bg-gray-900/50 p-2 sm:p-4 rounded-lg space-y-4 min-h-[200px] flex-grow">
@@ -212,18 +269,67 @@ export const AdminPage: React.FC<AdminPageProps> = (props) => {
                     </div>
                 );
             }
-            case 'menu':
+            case 'reports':
+                if (!hasPermission('view_reports')) return null;
+                return (
+                    <ReportsPage
+                        language={language}
+                        allOrders={allOrders}
+                        allProducts={allProducts}
+                        allCategories={allCategories}
+                    />
+                );
+            case 'productList':
                 if (!hasPermission('manage_menu')) return null;
                 return (
                     <div>
                         <div className="flex justify-between items-center mb-6">
-                            <h2 className="text-2xl font-bold">{t.manageMenu}</h2>
+                            <h2 className="text-2xl font-bold">{t.productList}</h2>
                             <button onClick={() => setEditingProduct('new')} className="bg-green-500 text-white font-bold py-2 px-4 rounded-lg hover:bg-green-600 transition-colors flex items-center gap-2">
                                 <PlusIcon className="w-5 h-5" />
                                 {t.addNewProduct}
                             </button>
                         </div>
-                        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md overflow-hidden">
+                        {/* Mobile Card View */}
+                        <div className="space-y-4 md:hidden">
+                            {allProducts.map(product => (
+                                <div key={product.id} className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-4 space-y-4">
+                                    <div className="flex items-center gap-4">
+                                        <img src={product.image} alt={product.name[language]} className="w-16 h-16 rounded-md object-cover" />
+                                        <div>
+                                            <div className="font-bold">{product.name[language]}</div>
+                                            <div className="text-sm text-gray-500 dark:text-gray-400">{product.code}</div>
+                                            <div className="text-sm font-semibold text-primary-600 dark:text-primary-400">{product.price.toFixed(2)} {t.currency}</div>
+                                        </div>
+                                    </div>
+                                    <div className="flex justify-between items-center border-t dark:border-gray-700 pt-3">
+                                        <div className="flex flex-wrap gap-x-4 gap-y-2">
+                                            <label className="flex items-center gap-2 cursor-pointer text-sm">
+                                                {t.popular}
+                                                <input type="checkbox" checked={product.isPopular} onChange={() => handleToggleProductFlag(product, 'isPopular')} className="sr-only peer" />
+                                                <div className="relative w-11 h-6 bg-gray-200 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary-600"></div>
+                                            </label>
+                                             <label className="flex items-center gap-2 cursor-pointer text-sm">
+                                                {t.new}
+                                                <input type="checkbox" checked={product.isNew} onChange={() => handleToggleProductFlag(product, 'isNew')} className="sr-only peer" />
+                                                <div className="relative w-11 h-6 bg-gray-200 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-green-600"></div>
+                                            </label>
+                                            <label className="flex items-center gap-2 cursor-pointer text-sm">
+                                                {t.visibleInMenu}
+                                                <input type="checkbox" checked={product.isVisible} onChange={() => handleToggleProductFlag(product, 'isVisible')} className="sr-only peer" />
+                                                <div className="relative w-11 h-6 bg-gray-200 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                                            </label>
+                                        </div>
+                                         <div className="flex items-center gap-2">
+                                            <button onClick={() => setEditingProduct(product)} className="p-2 text-indigo-600 hover:text-indigo-900 dark:text-indigo-400 dark:hover:text-indigo-200"><PencilIcon className="w-5 h-5" /></button>
+                                            <button onClick={() => handleDeleteProduct(product.id)} className="p-2 text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-200"><TrashIcon className="w-5 h-5" /></button>
+                                        </div>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                        {/* Desktop Table View */}
+                        <div className="hidden md:block bg-white dark:bg-gray-800 rounded-lg shadow-md overflow-hidden">
                              <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
                                 <thead className="bg-gray-50 dark:bg-gray-700/50">
                                     <tr>
@@ -231,6 +337,7 @@ export const AdminPage: React.FC<AdminPageProps> = (props) => {
                                         <th scope="col" className="px-6 py-4 text-start text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">{t.price}</th>
                                         <th scope="col" className="px-6 py-4 text-start text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">{t.popular}</th>
                                         <th scope="col" className="px-6 py-4 text-start text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">{t.new}</th>
+                                        <th scope="col" className="px-6 py-4 text-start text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">{t.visibleInMenu}</th>
                                         <th scope="col" className="px-6 py-4 text-start text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">{t.actions}</th>
                                     </tr>
                                 </thead>
@@ -239,8 +346,9 @@ export const AdminPage: React.FC<AdminPageProps> = (props) => {
                                         <tr key={product.id} className={`${index % 2 === 0 ? 'bg-white dark:bg-gray-800' : 'bg-slate-50 dark:bg-gray-800/60'} hover:bg-slate-100 dark:hover:bg-gray-700/50 transition-colors`}>
                                             <td className="px-6 py-4 whitespace-nowrap"><div className="flex items-center"><img src={product.image} alt={product.name[language]} className="w-12 h-12 rounded-md object-cover me-4" /><div><div className="text-sm font-semibold">{product.name[language]}</div><div className="text-xs text-gray-500 dark:text-gray-400">{product.code}</div></div></div></td>
                                             <td className="px-6 py-4 whitespace-nowrap"><div className="text-sm">{product.price.toFixed(2)} {t.currency}</div></td>
-                                            <td className="px-6 py-4 whitespace-nowrap"><label className="relative inline-flex items-center cursor-pointer"><input type="checkbox" checked={product.isPopular} onChange={() => handleToggleProductFlag(product, 'isPopular')} className="sr-only peer" /><div className="w-11 h-6 bg-gray-200 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-0.5 after:start-[2px] after:bg-white after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary-600"></div></label></td>
-                                            <td className="px-6 py-4 whitespace-nowrap"><label className="relative inline-flex items-center cursor-pointer"><input type="checkbox" checked={product.isNew} onChange={() => handleToggleProductFlag(product, 'isNew')} className="sr-only peer" /><div className="w-11 h-6 bg-gray-200 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-0.5 after:start-[2px] after:bg-white after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-green-600"></div></label></td>
+                                            <td className="px-6 py-4 whitespace-nowrap"><label className="relative inline-flex items-center cursor-pointer"><input type="checkbox" checked={product.isPopular} onChange={() => handleToggleProductFlag(product, 'isPopular')} className="sr-only peer" /><div className="w-11 h-6 bg-gray-200 rounded-full peer dark:bg-gray-700 peer-focus:ring-4 peer-focus:ring-primary-300 dark:peer-focus:ring-primary-800 peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full after:content-[''] after:absolute after:top-0.5 after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary-600"></div></label></td>
+                                            <td className="px-6 py-4 whitespace-nowrap"><label className="relative inline-flex items-center cursor-pointer"><input type="checkbox" checked={product.isNew} onChange={() => handleToggleProductFlag(product, 'isNew')} className="sr-only peer" /><div className="w-11 h-6 bg-gray-200 rounded-full peer dark:bg-gray-700 peer-focus:ring-4 peer-focus:ring-green-300 dark:peer-focus:ring-green-800 peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full after:content-[''] after:absolute after:top-0.5 after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-green-600"></div></label></td>
+                                            <td className="px-6 py-4 whitespace-nowrap"><label className="relative inline-flex items-center cursor-pointer"><input type="checkbox" checked={product.isVisible} onChange={() => handleToggleProductFlag(product, 'isVisible')} className="sr-only peer" /><div className="w-11 h-6 bg-gray-200 rounded-full peer dark:bg-gray-700 peer-focus:ring-4 peer-focus:ring-blue-300 dark:peer-focus:ring-blue-800 peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full after:content-[''] after:absolute after:top-0.5 after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div></label></td>
                                             <td className="px-6 py-4 whitespace-nowrap text-sm font-medium"><div className="flex items-center gap-4"><button onClick={() => setEditingProduct(product)} className="text-indigo-600 hover:text-indigo-900 dark:text-indigo-400 dark:hover:text-indigo-200 flex items-center gap-1"><PencilIcon className="w-4 h-4" /> Edit</button><button onClick={() => handleDeleteProduct(product.id)} className="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-200 flex items-center gap-1"><TrashIcon className="w-4 h-4" /> Delete</button></div></td>
                                         </tr>
                                     ))}
@@ -248,6 +356,21 @@ export const AdminPage: React.FC<AdminPageProps> = (props) => {
                             </table>
                         </div>
                     </div>
+                );
+            case 'classifications':
+                if (!hasPermission('manage_classifications')) return null;
+                return (
+                   <ClassificationsPage
+                        language={language}
+                        categories={allCategories}
+                        tags={allTags}
+                        onEditCategory={(category) => setEditingCategory(category)}
+                        onDeleteCategory={(categoryId) => { if(window.confirm(t.confirmDeleteCategory)) deleteCategory(categoryId) }}
+                        onAddCategory={() => setEditingCategory('new')}
+                        onEditTag={(tag) => setEditingTag(tag)}
+                        onDeleteTag={(tagId) => { if(window.confirm(t.confirmDeleteTag)) deleteTag(tagId) }}
+                        onAddTag={() => setEditingTag('new')}
+                   />
                 );
             case 'promotions':
                  if (!hasPermission('manage_promotions')) return null;
@@ -260,7 +383,7 @@ export const AdminPage: React.FC<AdminPageProps> = (props) => {
                         <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md overflow-x-auto">
                             <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
                                 <thead className="bg-gray-50 dark:bg-gray-700/50"><tr><th className="px-6 py-4 text-start text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">{t.product}</th><th className="px-6 py-4 text-start text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">{t.discountPercent}</th><th className="px-6 py-4 text-start text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider hidden sm:table-cell">{t.endDate}</th><th className="px-6 py-4 text-start text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">{t.isActive}</th><th className="px-6 py-4 text-start text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">{t.actions}</th></tr></thead>
-                                <tbody className="divide-y divide-gray-200 dark:divide-gray-700">{allPromotions.map((promo, index) => {const product = allProducts.find(p => p.id === promo.productId); return (<tr key={promo.id} className={`${index % 2 === 0 ? 'bg-white dark:bg-gray-800' : 'bg-slate-50 dark:bg-gray-800/60'} hover:bg-slate-100 dark:hover:bg-gray-700/50 transition-colors`}><td className="px-6 py-4 whitespace-nowrap"><div className="text-sm font-semibold">{promo.title[language]}</div><div className="text-xs text-gray-500">{product?.name[language] || 'N/A'}</div></td><td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-red-600 dark:text-red-400">{promo.discountPercent}%</td><td className="px-6 py-4 whitespace-nowrap text-sm hidden sm:table-cell">{new Date(promo.endDate).toLocaleDateString()}</td><td className="px-6 py-4 whitespace-nowrap"><label className="relative inline-flex items-center cursor-pointer"><input type="checkbox" checked={promo.isActive} onChange={() => handleTogglePromotionStatus(promo)} className="sr-only peer" /><div className="w-11 h-6 bg-gray-200 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-0.5 after:start-[2px] after:bg-white after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-green-600"></div></label></td><td className="px-6 py-4 whitespace-nowrap text-sm font-medium"><div className="flex items-center gap-4"><button onClick={() => setEditingPromotion(promo)} className="text-indigo-600 hover:text-indigo-900 dark:text-indigo-400 dark:hover:text-indigo-200 flex items-center gap-1"><PencilIcon className="w-4 h-4" /> Edit</button><button onClick={() => handleDeletePromotion(promo.id)} className="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-200 flex items-center gap-1"><TrashIcon className="w-4 h-4" /> Delete</button></div></td></tr>)})}</tbody>
+                                <tbody className="divide-y divide-gray-200 dark:divide-gray-700">{allPromotions.map((promo, index) => {const product = allProducts.find(p => p.id === promo.productId); return (<tr key={promo.id} className={`${index % 2 === 0 ? 'bg-white dark:bg-gray-800' : 'bg-slate-50 dark:bg-gray-800/60'} hover:bg-slate-100 dark:hover:bg-gray-700/50 transition-colors`}><td className="px-6 py-4 whitespace-nowrap"><div className="text-sm font-semibold">{promo.title[language]}</div><div className="text-xs text-gray-500">{product?.name[language] || 'N/A'}</div></td><td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-red-600 dark:text-red-400">{promo.discountPercent}%</td><td className="px-6 py-4 whitespace-nowrap text-sm hidden sm:table-cell">{new Date(promo.endDate).toLocaleDateString()}</td><td className="px-6 py-4 whitespace-nowrap"><label className="relative inline-flex items-center cursor-pointer"><input type="checkbox" checked={promo.isActive} onChange={() => handleTogglePromotionStatus(promo)} className="sr-only peer" /><div className="w-11 h-6 bg-gray-200 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-green-600"></div></label></td><td className="px-6 py-4 whitespace-nowrap text-sm font-medium"><div className="flex items-center gap-4"><button onClick={() => setEditingPromotion(promo)} className="text-indigo-600 hover:text-indigo-900 dark:text-indigo-400 dark:hover:text-indigo-200 flex items-center gap-1"><PencilIcon className="w-4 h-4" /> Edit</button><button onClick={() => handleDeletePromotion(promo.id)} className="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-200 flex items-center gap-1"><TrashIcon className="w-4 h-4" /> Delete</button></div></td></tr>)})}</tbody>
                             </table>
                         </div>
                     </div>
@@ -310,7 +433,7 @@ export const AdminPage: React.FC<AdminPageProps> = (props) => {
     }
     
     return (
-        <div className={`relative min-h-screen bg-slate-100 dark:bg-slate-900 md:flex ${language === 'ar' ? 'flex-row-reverse' : ''}`}>
+        <div className={`relative min-h-screen bg-slate-100 dark:bg-slate-900`}>
             <AdminSidebar 
                 language={language}
                 currentUser={currentUser}
@@ -320,9 +443,9 @@ export const AdminPage: React.FC<AdminPageProps> = (props) => {
                 isOpen={isSidebarOpen}
                 setIsOpen={setSidebarOpen}
             />
-            <div className="flex-1 flex flex-col min-w-0">
+            <div className={`flex flex-col min-h-screen ${language === 'ar' ? 'md:mr-64' : 'md:ml-64'}`}>
                 <header className="bg-white dark:bg-gray-800 shadow-md sticky top-0 z-20">
-                    <div className="container mx-auto px-4 py-3 flex justify-between items-center">
+                    <div className="px-4 py-3 flex justify-between items-center">
                         <div className="flex items-center gap-3">
                             <button className="p-2 md:hidden" onClick={() => setSidebarOpen(true)}><MenuAlt2Icon className="w-6 h-6" /></button>
                             <img src={restaurantInfo.logo} alt="logo" className="h-10 w-10 rounded-full object-cover hidden sm:block" />
@@ -337,10 +460,28 @@ export const AdminPage: React.FC<AdminPageProps> = (props) => {
             </div>
             
             {viewingOrder && hasPermission('view_orders') && (
-                <OrderDetailsModal order={viewingOrder} onClose={() => setViewingOrder(null)} language={language}/>
+                <OrderDetailsModal 
+                    order={viewingOrder} 
+                    onClose={() => setViewingOrder(null)} 
+                    language={language}
+                    canEdit={hasPermission('edit_orders')}
+                    onEdit={(order) => {
+                        setViewingOrder(null);
+                        setEditingOrder(order);
+                    }}
+                />
+            )}
+            {editingOrder && hasPermission('edit_orders') && (
+                <OrderEditModal
+                    order={editingOrder}
+                    allProducts={allProducts}
+                    onClose={() => setEditingOrder(null)}
+                    onSave={handleSaveOrder}
+                    language={language}
+                />
             )}
             {editingProduct && hasPermission('manage_menu') && (
-                <ProductEditModal product={editingProduct === 'new' ? null : editingProduct} onClose={() => setEditingProduct(null)} onSave={handleSaveProduct} language={language}/>
+                <ProductEditModal product={editingProduct === 'new' ? null : editingProduct} categories={allCategories} onClose={() => setEditingProduct(null)} onSave={handleSaveProduct} language={language}/>
             )}
             {editingPromotion && hasPermission('manage_promotions') && (
                  <PromotionEditModal promotion={editingPromotion === 'new' ? null : editingPromotion} allProducts={allProducts} onClose={() => setEditingPromotion(null)} onSave={handleSavePromotion} language={language}/>
@@ -354,6 +495,39 @@ export const AdminPage: React.FC<AdminPageProps> = (props) => {
                     currentPermissions={rolePermissions[editingRole]}
                     onClose={() => setEditingRole(null)}
                     onSave={handleSavePermissions}
+                    language={language}
+                />
+            )}
+            {editingCategory && hasPermission('manage_classifications') && (
+                <CategoryEditModal
+                    category={editingCategory === 'new' ? null : editingCategory}
+                    onClose={() => setEditingCategory(null)}
+                    onSave={(data) => {
+                        if ('id' in data) updateCategory(data); else addCategory(data);
+                        setEditingCategory(null);
+                    }}
+                    language={language}
+                />
+            )}
+             {editingTag && hasPermission('manage_classifications') && (
+                <TagEditModal
+                    tag={editingTag === 'new' ? null : editingTag}
+                    onClose={() => setEditingTag(null)}
+                    onSave={(data) => {
+                        if (editingTag !== 'new' && 'id' in data) updateTag(data); else addTag(data as Tag);
+                        setEditingTag(null);
+                    }}
+                    language={language}
+                />
+            )}
+             {refusingOrder && (
+                <RefusalReasonModal
+                    order={refusingOrder}
+                    onClose={() => setRefusingOrder(null)}
+                    onSave={(reason) => {
+                        updateOrder(refusingOrder.id, { status: 'Refused', refusalReason: reason });
+                        setRefusingOrder(null);
+                    }}
                     language={language}
                 />
             )}

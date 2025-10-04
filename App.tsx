@@ -5,8 +5,8 @@ import { LoginPage } from './components/auth/LoginPage';
 import { RegisterPage } from './components/auth/RegisterPage';
 import { ProfilePage } from './components/profile/ProfilePage';
 import { AdminPage } from './components/admin/AdminPage';
-import type { Product, CartItem, Language, Theme, User, Order, OrderStatus, UserRole, Promotion, Permission } from './types';
-import { products as initialProducts, restaurantInfo, users as initialUsers, promotions as initialPromotions } from './data/mockData';
+import type { Product, CartItem, Language, Theme, User, Order, OrderStatus, UserRole, Promotion, Permission, Category, Tag } from './types';
+import { products as initialProducts, restaurantInfo, users as initialUsers, promotions as initialPromotions, initialCategories, initialTags } from './data/mockData';
 import { ToastNotification } from './components/ToastNotification';
 import { useTranslations } from './i18n/translations';
 import { initialRolePermissions } from './data/permissions';
@@ -34,6 +34,16 @@ const App: React.FC = () => {
   const [products, setProducts] = useState<Product[]>(() => {
     const savedProducts = localStorage.getItem('restaurant_products');
     return savedProducts ? JSON.parse(savedProducts) : initialProducts;
+  });
+  
+  const [categories, setCategories] = useState<Category[]>(() => {
+    const saved = localStorage.getItem('restaurant_categories');
+    return saved ? JSON.parse(saved) : initialCategories;
+  });
+
+  const [tags, setTags] = useState<Tag[]>(() => {
+    const saved = localStorage.getItem('restaurant_tags');
+    return saved ? JSON.parse(saved) : initialTags;
   });
 
   const [promotions, setPromotions] = useState<Promotion[]>(() => {
@@ -113,6 +123,14 @@ const App: React.FC = () => {
   useEffect(() => {
     localStorage.setItem('restaurant_products', JSON.stringify(products));
   }, [products]);
+
+  useEffect(() => {
+    localStorage.setItem('restaurant_categories', JSON.stringify(categories));
+  }, [categories]);
+
+  useEffect(() => {
+    localStorage.setItem('restaurant_tags', JSON.stringify(tags));
+  }, [tags]);
 
   useEffect(() => {
     localStorage.setItem('restaurant_promotions', JSON.stringify(promotions));
@@ -217,13 +235,58 @@ const App: React.FC = () => {
     return newOrder;
   }, []);
 
-  const updateOrderStatus = useCallback((orderId: string, status: OrderStatus) => {
-    if (!hasPermission('manage_orders')) {
-        showToast(t.permissionDenied);
-        return;
-    }
-    setOrders(prev => prev.map(o => o.id === orderId ? { ...o, status } : o));
-  }, [hasPermission, showToast, t.permissionDenied]);
+  const calculateTotal = (items: CartItem[]) => {
+    return items.reduce((total, item) => {
+        let itemPrice = item.product.price;
+        if(item.options && item.product.options) {
+            Object.entries(item.options).forEach(([optionKey, valueKey]) => {
+                const option = item.product.options?.find(opt => opt.name.en === optionKey);
+                const value = option?.values.find(val => val.name.en === valueKey);
+                if(value) {
+                    itemPrice += value.priceModifier;
+                }
+            });
+        }
+        return total + itemPrice * item.quantity;
+    }, 0);
+  }
+
+  const updateOrder = useCallback((orderId: string, payload: Partial<Omit<Order, 'id' | 'timestamp' | 'customer'>>) => {
+      const order = orders.find(o => o.id === orderId);
+      if (!order) return;
+  
+      let canUpdate = false;
+      let finalPayload: Partial<Order> = { ...payload };
+
+      const isContentEdit = payload.items || typeof payload.notes !== 'undefined';
+      const isFeedback = !!payload.customerFeedback;
+
+      if (isContentEdit) {
+          if (hasPermission('edit_orders')) {
+              canUpdate = true;
+              if (payload.items) {
+                  finalPayload.total = calculateTotal(payload.items);
+              }
+          }
+      } else if (isFeedback) {
+          if (currentUser?.id === order.customer.userId && order.status === 'Completed') {
+              canUpdate = true;
+          }
+      } else { // It must be a status change or refusal reason
+          if(hasPermission('manage_orders')) {
+            canUpdate = true;
+          } else if (currentUser?.role === 'driver' && order.status === 'Out for Delivery' && (payload.status === 'Completed' || payload.status === 'Refused')) {
+            canUpdate = true;
+          }
+      }
+  
+      if (canUpdate) {
+          setOrders(prev => prev.map(o => o.id === orderId ? { ...o, ...finalPayload } : o));
+      } else {
+          showToast(t.permissionDenied);
+      }
+  }, [orders, currentUser, hasPermission, showToast, t.permissionDenied]);
+
 
   // Admin Callbacks
   const addProduct = useCallback((productData: Omit<Product, 'id'>) => {
@@ -321,6 +384,36 @@ const App: React.FC = () => {
     setRolePermissions(prev => ({...prev, [role]: permissions}));
   }, [hasPermission, showToast, t.permissionDenied]);
 
+  const addCategory = useCallback((categoryData: Omit<Category, 'id'>) => {
+    if (!hasPermission('manage_classifications')) { showToast(t.permissionDenied); return; }
+    setCategories(prev => [{ ...categoryData, id: Date.now() }, ...prev]);
+  }, [hasPermission, showToast, t.permissionDenied]);
+
+  const updateCategory = useCallback((updatedCategory: Category) => {
+    if (!hasPermission('manage_classifications')) { showToast(t.permissionDenied); return; }
+    setCategories(prev => prev.map(c => c.id === updatedCategory.id ? updatedCategory : c));
+  }, [hasPermission, showToast, t.permissionDenied]);
+
+  const deleteCategory = useCallback((categoryId: number) => {
+    if (!hasPermission('manage_classifications')) { showToast(t.permissionDenied); return; }
+    setCategories(prev => prev.filter(c => c.id !== categoryId));
+  }, [hasPermission, showToast, t.permissionDenied]);
+
+  const addTag = useCallback((tagData: Omit<Tag, 'id'> & {id: string}) => {
+    if (!hasPermission('manage_classifications')) { showToast(t.permissionDenied); return; }
+    setTags(prev => [tagData, ...prev]);
+  }, [hasPermission, showToast, t.permissionDenied]);
+
+  const updateTag = useCallback((updatedTag: Tag) => {
+    if (!hasPermission('manage_classifications')) { showToast(t.permissionDenied); return; }
+    setTags(prev => prev.map(t => t.id === updatedTag.id ? updatedTag : t));
+  }, [hasPermission, showToast, t.permissionDenied]);
+
+  const deleteTag = useCallback((tagId: string) => {
+    if (!hasPermission('manage_classifications')) { showToast(t.permissionDenied); return; }
+    setTags(prev => prev.filter(t => t.id !== tagId));
+  }, [hasPermission, showToast, t.permissionDenied]);
+
 
   // Router
   const renderContent = () => {
@@ -336,11 +429,13 @@ const App: React.FC = () => {
             language={language} 
             currentUser={currentUser}
             allProducts={products}
+            allCategories={categories}
+            allTags={tags}
             allUsers={users}
             restaurantInfo={restaurantInfo} 
             allOrders={orders} 
             allPromotions={promotions}
-            updateOrderStatus={updateOrderStatus} 
+            updateOrder={updateOrder}
             logout={logout}
             addProduct={addProduct}
             updateProduct={updateProduct}
@@ -353,11 +448,17 @@ const App: React.FC = () => {
             deleteUser={deleteUser}
             rolePermissions={rolePermissions}
             updateRolePermissions={updateRolePermissions}
+            addCategory={addCategory}
+            updateCategory={updateCategory}
+            deleteCategory={deleteCategory}
+            addTag={addTag}
+            updateTag={updateTag}
+            deleteTag={deleteTag}
         />
       ) : null;
     }
     if (route.startsWith('#/profile')) {
-       return currentUser?.role === 'customer' ? <ProfilePage language={language} currentUser={currentUser} orders={orders} logout={logout} restaurantInfo={restaurantInfo}/> : null;
+       return currentUser?.role === 'customer' ? <ProfilePage language={language} currentUser={currentUser} orders={orders} logout={logout} restaurantInfo={restaurantInfo} updateOrder={updateOrder}/> : null;
     }
 
     return (
@@ -375,6 +476,8 @@ const App: React.FC = () => {
         placeOrder={placeOrder}
         products={products}
         promotions={promotions}
+        categories={categories}
+        tags={tags}
       />
     );
   };

@@ -1,10 +1,10 @@
 import React from 'react';
 import type { Language, Permission, User, UserRole } from '../../types';
 import { useTranslations } from '../../i18n/translations';
-import { ClipboardListIcon, CollectionIcon, TagIcon, UsersIcon, CloseIcon, ShieldCheckIcon } from '../icons/Icons';
+import { ClipboardListIcon, CollectionIcon, UsersIcon, CloseIcon, ShieldCheckIcon, BookmarkAltIcon, ChartBarIcon, TagIcon } from '../icons/Icons';
 import { usePermissions } from '../../hooks/usePermissions';
 
-type AdminTab = 'orders' | 'menu' | 'promotions' | 'users' | 'roles';
+type AdminTab = 'orders' | 'reports' | 'productList' | 'classifications' | 'promotions' | 'users' | 'roles';
 
 interface AdminSidebarProps {
     language: Language;
@@ -22,7 +22,9 @@ export const AdminSidebar: React.FC<AdminSidebarProps> = ({ language, currentUse
 
     const navItems = [
         { id: 'orders', label: t.manageOrders, icon: ClipboardListIcon, permission: 'view_orders' as Permission },
-        { id: 'menu', label: t.manageMenu, icon: CollectionIcon, permission: 'manage_menu' as Permission },
+        { id: 'reports', label: t.reports, icon: ChartBarIcon, permission: 'view_reports' as Permission },
+        { id: 'productList', label: t.productList, icon: CollectionIcon, permission: 'manage_menu' as Permission },
+        { id: 'classifications', label: t.classifications, icon: BookmarkAltIcon, permission: 'manage_classifications' as Permission },
         { id: 'promotions', label: t.managePromotions, icon: TagIcon, permission: 'manage_promotions' as Permission },
         { id: 'users', label: t.manageUsers, icon: UsersIcon, permission: 'manage_users' as Permission },
         { id: 'roles', label: t.manageRoles, icon: ShieldCheckIcon, permission: 'manage_roles' as Permission },
@@ -60,10 +62,8 @@ export const AdminSidebar: React.FC<AdminSidebarProps> = ({ language, currentUse
             ></div>
 
             {/* Sidebar */}
-            <aside className={`fixed md:relative flex flex-col w-64 h-screen px-4 py-8 bg-white dark:bg-gray-800 border-e dark:border-gray-700 transition-transform z-40 ${
-                language === 'ar' 
-                    ? `md:translate-x-0 ${isOpen ? 'translate-x-0' : 'translate-x-full'}` 
-                    : `md:translate-x-0 ${isOpen ? 'translate-x-0' : '-translate-x-full'}`
+            <aside className={`fixed top-0 bottom-0 flex flex-col w-64 h-screen px-4 py-8 bg-white dark:bg-gray-800 border-e dark:border-gray-700 transition-transform z-40 start-0 md:translate-x-0 ${
+                isOpen ? 'translate-x-0' : (language === 'ar' ? 'translate-x-full' : '-translate-x-full')
             }`}>
                 <div className="flex justify-between items-center md:hidden">
                     <h2 className="text-xl font-semibold text-primary-600 dark:text-primary-400">Admin Menu</h2>

@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useCallback } from 'react';
-import type { User, Order, Language, Theme, Product, CartItem, OrderStatus, Promotion, OrderType } from '../types';
-import { categories as initialCategories, tags as initialTags, restaurantInfo } from '../data/mockData';
+import type { User, Order, Language, Theme, Product, CartItem, OrderStatus, Promotion, OrderType, Category, Tag } from '../types';
+import { restaurantInfo } from '../data/mockData';
 import { Header } from './Header';
 import { SearchAndFilter } from './SearchAndFilter';
 import { ProductList } from './ProductList';
@@ -28,13 +28,16 @@ interface MenuPageProps {
     placeOrder: (order: Omit<Order, 'id' | 'timestamp'>) => Order;
     products: Product[];
     promotions: Promotion[];
+    categories: Category[];
+    tags: Tag[];
 }
 
 export const MenuPage: React.FC<MenuPageProps> = (props) => {
     const {
         language, theme, toggleLanguage, toggleTheme,
         cartItems, addToCart, updateCartQuantity, clearCart,
-        currentUser, logout, placeOrder, products, promotions
+        currentUser, logout, placeOrder, products, promotions,
+        categories, tags
     } = props;
     
     const t = useTranslations(language);
@@ -174,8 +177,10 @@ export const MenuPage: React.FC<MenuPageProps> = (props) => {
       });
     }, [language, t]);
 
+    const visibleProducts = useMemo(() => products.filter(p => p.isVisible), [products]);
+
     const filteredProducts = useMemo(() => {
-        return products.filter(product => {
+        return visibleProducts.filter(product => {
           const name = product.name[language] || product.name['en'];
           const description = product.description[language] || product.description['en'];
     
@@ -185,10 +190,10 @@ export const MenuPage: React.FC<MenuPageProps> = (props) => {
           
           return matchesSearch && matchesCategory && matchesTags;
         });
-      }, [searchTerm, selectedCategory, selectedTags, language, products]);
+      }, [searchTerm, selectedCategory, selectedTags, language, visibleProducts]);
       
-    const popularProducts = useMemo(() => products.filter(p => p.isPopular).slice(0, 4), [products]);
-    const newProducts = useMemo(() => products.filter(p => p.isNew).slice(0, 4), [products]);
+    const popularProducts = useMemo(() => visibleProducts.filter(p => p.isPopular).slice(0, 4), [visibleProducts]);
+    const newProducts = useMemo(() => visibleProducts.filter(p => p.isNew).slice(0, 4), [visibleProducts]);
 
     const handleAddToCartWithoutOpeningCart = useCallback((product: Product, quantity: number, options?: { [key: string]: string }) => {
         addToCart(product, quantity, options);
@@ -268,8 +273,8 @@ export const MenuPage: React.FC<MenuPageProps> = (props) => {
                     <main className="lg:col-span-2">
                         <SearchAndFilter
                             language={language}
-                            categories={initialCategories}
-                            tags={initialTags}
+                            categories={categories}
+                            tags={tags}
                             searchTerm={searchTerm}
                             setSearchTerm={setSearchTerm}
                             selectedCategory={selectedCategory}
@@ -278,7 +283,7 @@ export const MenuPage: React.FC<MenuPageProps> = (props) => {
                             setSelectedTags={setSelectedTags}
                         />
                         
-                        <PromotionSection promotions={promotions} products={products} language={language} onProductClick={setSelectedProduct} />
+                        <PromotionSection promotions={promotions} products={visibleProducts} language={language} onProductClick={setSelectedProduct} />
 
                         <ProductList 
                             titleKey="mostPopular" 

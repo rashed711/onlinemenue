@@ -1,31 +1,32 @@
 import React, { useState, useEffect } from 'react';
-import type { Product, Language, LocalizedString } from '../../types';
+import type { Product, Language, LocalizedString, Category } from '../../types';
 import { useTranslations } from '../../i18n/translations';
 import { CloseIcon } from '../icons/Icons';
-import { categories } from '../../data/mockData';
 
 interface ProductEditModalProps {
     product: Product | null;
+    categories: Category[];
     onClose: () => void;
     onSave: (productData: Product | Omit<Product, 'id' | 'rating'>) => void;
     language: Language;
 }
 
-const emptyProduct: Omit<Product, 'id' | 'rating'> = {
-    code: '',
-    name: { en: '', ar: '' },
-    description: { en: '', ar: '' },
-    price: 0,
-    image: '',
-    categoryId: categories[0]?.id || 1,
-    isPopular: false,
-    isNew: false,
-    tags: [],
-};
-
-
-export const ProductEditModal: React.FC<ProductEditModalProps> = ({ product, onClose, onSave, language }) => {
+export const ProductEditModal: React.FC<ProductEditModalProps> = ({ product, categories, onClose, onSave, language }) => {
     const t = useTranslations(language);
+    
+    const emptyProduct: Omit<Product, 'id' | 'rating'> = {
+        code: '',
+        name: { en: '', ar: '' },
+        description: { en: '', ar: '' },
+        price: 0,
+        image: '',
+        categoryId: categories[0]?.id || 1,
+        isPopular: false,
+        isNew: false,
+        isVisible: true,
+        tags: [],
+    };
+
     const [formData, setFormData] = useState<Omit<Product, 'id' | 'rating'>>(emptyProduct);
 
     useEffect(() => {
@@ -35,7 +36,7 @@ export const ProductEditModal: React.FC<ProductEditModalProps> = ({ product, onC
         } else {
             setFormData(emptyProduct);
         }
-    }, [product]);
+    }, [product, categories]);
 
     const handleTextChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
         const { name, value } = e.target;
@@ -121,14 +122,18 @@ export const ProductEditModal: React.FC<ProductEditModalProps> = ({ product, onC
                         <label className="block text-sm font-medium mb-1">{t.imageURL}</label>
                         <input type="text" name="image" value={formData.image} onChange={handleTextChange} className="w-full p-2 border rounded-md dark:bg-gray-700 dark:border-gray-600" required placeholder="https://picsum.photos/seed/example/400/300" />
                     </div>
-                     <div className="flex items-center gap-8 pt-2">
+                     <div className="flex flex-wrap items-center gap-x-8 gap-y-4 pt-2">
                         <label className="flex items-center gap-2 cursor-pointer">
                             <input type="checkbox" name="isPopular" checked={formData.isPopular} onChange={handleCheckboxChange} className="w-5 h-5 rounded text-primary-600 focus:ring-primary-500" />
                             <span className="text-sm font-medium">{t.popular}</span>
                         </label>
                         <label className="flex items-center gap-2 cursor-pointer">
-                            <input type="checkbox" name="isNew" checked={formData.isNew} onChange={handleCheckboxChange} className="w-5 h-5 rounded text-primary-600 focus:ring-primary-500" />
+                            <input type="checkbox" name="isNew" checked={formData.isNew} onChange={handleCheckboxChange} className="w-5 h-5 rounded text-green-600 focus:ring-green-500" />
                             <span className="text-sm font-medium">{t.new}</span>
+                        </label>
+                        <label className="flex items-center gap-2 cursor-pointer">
+                            <input type="checkbox" name="isVisible" checked={formData.isVisible} onChange={handleCheckboxChange} className="w-5 h-5 rounded text-blue-600 focus:ring-blue-500" />
+                            <span className="text-sm font-medium">{t.visibleInMenu}</span>
                         </label>
                     </div>
                     <div className="flex justify-end gap-4 pt-4">

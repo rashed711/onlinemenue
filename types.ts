@@ -37,6 +37,7 @@ export interface Product {
   rating: number;
   isPopular: boolean;
   isNew: boolean;
+  isVisible: boolean;
   tags: string[];
   options?: ProductOption[];
 }
@@ -74,7 +75,7 @@ export interface User {
   role: UserRole;
 }
 
-export type OrderStatus = 'Pending' | 'In Progress' | 'Completed' | 'Cancelled';
+export type OrderStatus = 'Pending' | 'In Progress' | 'Ready for Pickup' | 'Out for Delivery' | 'Completed' | 'Cancelled' | 'Refused';
 export type OrderType = 'Dine-in' | 'Delivery';
 
 export interface Order {
@@ -89,13 +90,22 @@ export interface Order {
     name?: string; // for registered users
     mobile: string; // mandatory for all
   };
+  notes?: string;
+  refusalReason?: string;
+  customerFeedback?: {
+    rating: number;
+    comment: string;
+  };
 }
 
 // Permissions Type
 export type Permission = 
   | 'view_orders'
   | 'manage_orders'
+  | 'edit_orders'
   | 'manage_menu'
   | 'manage_promotions'
   | 'manage_users'
-  | 'manage_roles';
+  | 'manage_roles'
+  | 'manage_classifications'
+  | 'view_reports';
