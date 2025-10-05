@@ -1,4 +1,5 @@
 
+
 import React, { useState, useMemo } from 'react';
 import type { Order, Language, CartItem, Product } from '../../types';
 import { useTranslations } from '../../i18n/translations';
@@ -8,7 +9,7 @@ interface OrderEditModalProps {
     order: Order;
     allProducts: Product[];
     onClose: () => void;
-    onSave: (updatedOrderData: {items: CartItem[], notes: string}) => void;
+    onSave: (updatedOrderData: {items: CartItem[], notes: string, tableNumber?: string}) => void;
     language: Language;
 }
 
@@ -30,6 +31,7 @@ export const OrderEditModal: React.FC<OrderEditModalProps> = ({ order, allProduc
     const t = useTranslations(language);
     const [editedItems, setEditedItems] = useState<CartItem[]>(() => JSON.parse(JSON.stringify(order.items)));
     const [notes, setNotes] = useState(order.notes || '');
+    const [tableNumber, setTableNumber] = useState(order.tableNumber || '');
     const [productToAdd, setProductToAdd] = useState<string>(allProducts[0]?.id.toString() || '');
 
     const total = useMemo(() => {
@@ -66,7 +68,7 @@ export const OrderEditModal: React.FC<OrderEditModalProps> = ({ order, allProduc
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
-        onSave({ items: editedItems, notes });
+        onSave({ items: editedItems, notes, tableNumber: order.orderType === 'Dine-in' ? tableNumber : undefined });
     };
 
     return (
@@ -80,6 +82,19 @@ export const OrderEditModal: React.FC<OrderEditModalProps> = ({ order, allProduc
                 </div>
 
                 <div className="p-6 space-y-6 overflow-y-auto">
+                    {order.orderType === 'Dine-in' && (
+                        <div>
+                            <label className="block text-lg font-bold mb-2">{t.tableNumber}</label>
+                            <input
+                                type="text"
+                                value={tableNumber}
+                                onChange={(e) => setTableNumber(e.target.value)}
+                                placeholder={t.enterTableNumber}
+                                className="w-full p-2 border rounded-md dark:bg-gray-700 dark:border-gray-600 focus:ring-primary-500 focus:border-primary-500"
+                            />
+                        </div>
+                    )}
+
                     {/* Items List */}
                     <div className="space-y-3">
                         <h3 className="font-bold text-lg">{t.orderItems}</h3>

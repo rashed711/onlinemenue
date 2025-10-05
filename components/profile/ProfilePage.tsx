@@ -24,22 +24,14 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({ language, currentUser,
 
     const userOrders = orders.filter(order => order.customer.userId === currentUser.id).sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
 
-    const statusToTranslationKey = (status: OrderStatus): keyof typeof t => {
-        const key = status.charAt(0).toLowerCase() + status.slice(1).replace(/ /g, '');
-        return key as keyof typeof t;
+    const getStatusDetails = (statusId: OrderStatus) => {
+        return restaurantInfo.orderStatusColumns.find(s => s.id === statusId);
     };
 
-    const getStatusChipColor = (status: OrderStatus) => {
-        switch (status) {
-            case 'Pending': return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/50 dark:text-yellow-300 border-yellow-200 dark:border-yellow-500/30';
-            case 'In Progress': return 'bg-blue-100 text-blue-800 dark:bg-blue-900/50 dark:text-blue-300 border-blue-200 dark:border-blue-500/30';
-            case 'Ready for Pickup': return 'bg-cyan-100 text-cyan-800 dark:bg-cyan-900/50 dark:text-cyan-300 border-cyan-200 dark:border-cyan-500/30';
-            case 'Out for Delivery': return 'bg-indigo-100 text-indigo-800 dark:bg-indigo-900/50 dark:text-indigo-300 border-indigo-200 dark:border-indigo-500/30';
-            case 'Completed': return 'bg-green-100 text-green-800 dark:bg-green-900/50 dark:text-green-300 border-green-200 dark:border-green-500/30';
-            case 'Refused':
-            case 'Cancelled': return 'bg-red-100 text-red-800 dark:bg-red-900/50 dark:text-red-300 border-red-200 dark:border-red-500/30';
-            default: return 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300 border-gray-200 dark:border-gray-500/30';
-        }
+    const getStatusChipColor = (statusId: OrderStatus) => {
+        const status = getStatusDetails(statusId);
+        const color = status?.color || 'slate';
+        return `bg-${color}-100 text-${color}-800 dark:bg-${color}-900/50 dark:text-${color}-300 border-${color}-200 dark:border-${color}-500/30`;
     };
     
     const handleSaveFeedback = (feedback: { rating: number; comment: string; }) => {
@@ -76,7 +68,9 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({ language, currentUser,
 
                 {userOrders.length > 0 ? (
                     <div className="space-y-6">
-                        {userOrders.map(order => (
+                        {userOrders.map(order => {
+                            const statusDetails = getStatusDetails(order.status);
+                            return (
                             <div key={order.id} className="bg-white dark:bg-slate-800 rounded-lg shadow-lg border border-slate-200 dark:border-slate-700 overflow-hidden transition-shadow hover:shadow-xl animate-fade-in-up">
                                 <div className="p-4 bg-slate-50 dark:bg-slate-800/50 border-b border-slate-200 dark:border-slate-700 flex flex-col sm:flex-row flex-wrap justify-between items-start sm:items-center gap-4">
                                     <div>
@@ -93,7 +87,7 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({ language, currentUser,
                                     </div>
                                     <div className='w-full sm:w-auto'>
                                         <span className={`px-3 py-1 text-sm leading-5 font-semibold rounded-full border ${getStatusChipColor(order.status)}`}>
-                                            {t[statusToTranslationKey(order.status)] || order.status}
+                                            {statusDetails?.name[language] || order.status}
                                         </span>
                                     </div>
                                 </div>
@@ -111,7 +105,7 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({ language, currentUser,
                                         ))}
                                     </ul>
                                 </div>
-                                {order.status === 'Completed' && (
+                                {order.status === 'completed' && (
                                      <div className="p-4 border-t border-slate-200 dark:border-slate-700 text-center bg-slate-50 dark:bg-slate-800/50">
                                         {order.customerFeedback ? (
                                             <p className='text-sm text-green-600 dark:text-green-400 font-semibold'>Thank you for your feedback!</p>
@@ -126,7 +120,7 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({ language, currentUser,
                                     </div>
                                 )}
                             </div>
-                        ))}
+                        )})}
                     </div>
                 ) : (
                     <div className="text-center py-16 bg-white dark:bg-slate-800 rounded-lg shadow-md border border-slate-200 dark:border-slate-700">

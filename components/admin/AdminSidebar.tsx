@@ -1,10 +1,10 @@
 import React from 'react';
-import type { Language, Permission, User, UserRole } from '../../types';
+import type { Language, Permission, User, UserRole, RestaurantInfo } from '../../types';
 import { useTranslations } from '../../i18n/translations';
-import { ClipboardListIcon, CollectionIcon, UsersIcon, CloseIcon, ShieldCheckIcon, BookmarkAltIcon, ChartBarIcon, TagIcon, CogIcon } from '../icons/Icons';
+import { ClipboardListIcon, CollectionIcon, UsersIcon, CloseIcon, ShieldCheckIcon, BookmarkAltIcon, ChartBarIcon, TagIcon, CogIcon, CashRegisterIcon, LogoutIcon, HomeIcon } from '../icons/Icons';
 import { usePermissions } from '../../hooks/usePermissions';
 
-type AdminTab = 'orders' | 'reports' | 'productList' | 'classifications' | 'promotions' | 'users' | 'roles' | 'settings';
+type AdminTab = 'orders' | 'cashier' | 'reports' | 'productList' | 'classifications' | 'promotions' | 'users' | 'roles' | 'settings';
 
 interface AdminSidebarProps {
     language: Language;
@@ -14,27 +14,35 @@ interface AdminSidebarProps {
     setActiveTab: (tab: AdminTab) => void;
     isOpen: boolean;
     setIsOpen: (isOpen: boolean) => void;
+    restaurantInfo: RestaurantInfo;
+    logout: () => void;
 }
 
-export const AdminSidebar: React.FC<AdminSidebarProps> = ({ language, currentUser, rolePermissions, activeTab, setActiveTab, isOpen, setIsOpen }) => {
+export const AdminSidebar: React.FC<AdminSidebarProps> = (props) => {
+    const { language, currentUser, rolePermissions, activeTab, setActiveTab, isOpen, setIsOpen, restaurantInfo, logout } = props;
     const t = useTranslations(language);
     const { hasPermission } = usePermissions(currentUser, rolePermissions);
 
-    const navItems = [
-        { id: 'orders', label: t.manageOrders, icon: ClipboardListIcon, permission: 'view_orders' as Permission },
-        { id: 'reports', label: t.reports, icon: ChartBarIcon, permission: 'view_reports' as Permission },
-        { id: 'productList', label: t.productList, icon: CollectionIcon, permission: 'manage_menu' as Permission },
-        { id: 'classifications', label: t.classifications, icon: BookmarkAltIcon, permission: 'manage_classifications' as Permission },
-        { id: 'promotions', label: t.managePromotions, icon: TagIcon, permission: 'manage_promotions' as Permission },
-        { id: 'users', label: t.manageUsers, icon: UsersIcon, permission: 'manage_users' as Permission },
-        { id: 'roles', label: t.manageRoles, icon: ShieldCheckIcon, permission: 'manage_roles' as Permission },
-        { id: 'settings', label: t.settings, icon: CogIcon, permission: 'manage_roles' as Permission },
-    ];
+    const navItems = {
+        operations: [
+            { id: 'orders', label: t.manageOrders, icon: ClipboardListIcon, permission: 'view_orders' as Permission },
+            { id: 'cashier', label: t.cashier, icon: CashRegisterIcon, permission: 'use_cashier_pos' as Permission },
+            { id: 'reports', label: t.reports, icon: ChartBarIcon, permission: 'view_reports' as Permission },
+        ],
+        management: [
+            { id: 'productList', label: t.productList, icon: CollectionIcon, permission: 'manage_menu' as Permission },
+            { id: 'classifications', label: t.classifications, icon: BookmarkAltIcon, permission: 'manage_classifications' as Permission },
+            { id: 'promotions', label: t.managePromotions, icon: TagIcon, permission: 'manage_promotions' as Permission },
+        ],
+        administration: [
+            { id: 'users', label: t.manageUsers, icon: UsersIcon, permission: 'manage_users' as Permission },
+            { id: 'roles', label: t.manageRoles, icon: ShieldCheckIcon, permission: 'manage_roles' as Permission },
+            { id: 'settings', label: t.settings, icon: CogIcon, permission: 'manage_roles' as Permission },
+        ]
+    };
 
-    // FIX: Explicitly type NavLink as a React.FC with a props interface
-    // to resolve TypeScript error regarding the 'key' prop.
     interface NavLinkProps {
-        item: (typeof navItems)[0];
+        item: { id: string; label: string; icon: React.FC<any>; };
     }
     const NavLink: React.FC<NavLinkProps> = ({ item }) => (
         <button
@@ -42,14 +50,14 @@ export const AdminSidebar: React.FC<AdminSidebarProps> = ({ language, currentUse
                 setActiveTab(item.id as AdminTab);
                 setIsOpen(false);
             }}
-            className={`w-full flex items-center p-3 my-1 rounded-lg transition-colors duration-200 ${
+            className={`w-full flex items-center p-3 my-1 rounded-lg transition-all duration-200 text-sm font-medium border-s-4 ${
                 activeTab === item.id
-                    ? 'bg-primary-500 text-white shadow-lg'
-                    : 'text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700'
+                    ? 'bg-primary-100 dark:bg-primary-900/50 text-primary-600 dark:text-primary-300 border-primary-500 font-semibold'
+                    : 'text-gray-600 dark:text-gray-300 hover:bg-gray-200/50 dark:hover:bg-gray-700/50 border-transparent'
             }`}
         >
-            <item.icon className="w-6 h-6" />
-            <span className="mx-4 font-medium">{item.label}</span>
+            <item.icon className="w-5 h-5" />
+            <span className="mx-4">{item.label}</span>
         </button>
     );
     
@@ -57,7 +65,6 @@ export const AdminSidebar: React.FC<AdminSidebarProps> = ({ language, currentUse
         e.preventDefault();
         window.location.hash = path;
     };
-
 
     return (
         <>
@@ -68,24 +75,54 @@ export const AdminSidebar: React.FC<AdminSidebarProps> = ({ language, currentUse
             ></div>
 
             {/* Sidebar */}
-            <aside className={`fixed top-0 bottom-0 flex flex-col w-64 h-screen px-4 py-8 bg-white dark:bg-gray-800 border-e dark:border-gray-700 transition-transform z-40 start-0 md:translate-x-0 ${
+            <aside className={`fixed top-0 bottom-0 flex flex-col w-64 h-screen bg-white dark:bg-gray-800 border-e dark:border-gray-700 transition-transform z-40 start-0 md:translate-x-0 ${
                 isOpen ? 'translate-x-0' : (language === 'ar' ? 'translate-x-full' : '-translate-x-full')
             }`}>
-                <div className="flex justify-between items-center md:hidden">
-                    <h2 className="text-xl font-semibold text-primary-600 dark:text-primary-400">Admin Menu</h2>
-                    <button onClick={() => setIsOpen(false)} className="p-2">
+                <div className="flex items-center justify-between px-4 h-20 border-b dark:border-gray-700">
+                    <a href="#/" onClick={(e) => handleNav(e, '/')} className="flex items-center gap-3">
+                        <img src={restaurantInfo.logo} alt="Logo" className="h-10 w-10 rounded-full" />
+                        <span className="text-lg font-bold text-gray-800 dark:text-white">{restaurantInfo.name[language]}</span>
+                    </a>
+                    <button onClick={() => setIsOpen(false)} className="p-2 md:hidden">
                         <CloseIcon className="w-6 h-6"/>
                     </button>
                 </div>
-                 <div className="flex-1 mt-6 flex flex-col justify-between">
-                    <nav>
-                        {navItems.map(item => (
-                           hasPermission(item.permission) && <NavLink item={item} key={item.id} />
-                        ))}
+                 
+                 <div className="flex-1 overflow-y-auto">
+                    <nav className="p-4 space-y-4">
+                        <div>
+                           <h3 className="px-3 text-xs font-semibold uppercase text-gray-400 mb-2">Operations</h3>
+                           {navItems.operations.map(item => hasPermission(item.permission) && <NavLink item={item} key={item.id} />)}
+                        </div>
+                         <div>
+                           <h3 className="px-3 text-xs font-semibold uppercase text-gray-400 mb-2">Management</h3>
+                           {navItems.management.map(item => hasPermission(item.permission) && <NavLink item={item} key={item.id} />)}
+                        </div>
+                         <div>
+                           <h3 className="px-3 text-xs font-semibold uppercase text-gray-400 mb-2">Administration</h3>
+                           {navItems.administration.map(item => hasPermission(item.permission) && <NavLink item={item} key={item.id} />)}
+                        </div>
                     </nav>
-                     <a href="#/" onClick={(e) => handleNav(e, '/')} className="text-center text-sm text-gray-500 hover:text-primary-500 dark:text-gray-400 dark:hover:text-primary-400">
-                        {t.backToMenu}
+                </div>
+
+                <div className="p-4 border-t dark:border-gray-700">
+                     <div className="flex items-center gap-3 mb-4">
+                        <div className="w-10 h-10 rounded-full bg-primary-100 dark:bg-primary-900 flex items-center justify-center text-primary-600 dark:text-primary-300 font-bold">
+                            {currentUser?.name.charAt(0)}
+                        </div>
+                        <div>
+                            <p className="font-semibold text-sm text-gray-800 dark:text-gray-100">{currentUser?.name}</p>
+                            <p className="text-xs text-gray-500 dark:text-gray-400">{t[currentUser?.role as keyof typeof t]}</p>
+                        </div>
+                    </div>
+                     <a href="#/" onClick={(e) => handleNav(e, '/')} className="w-full flex items-center p-3 my-1 rounded-lg text-sm font-medium text-gray-600 dark:text-gray-300 hover:bg-gray-200/50 dark:hover:bg-gray-700/50 transition-colors">
+                        <HomeIcon className="w-5 h-5"/>
+                        <span className="mx-4">{t.backToMenu}</span>
                     </a>
+                    <button onClick={logout} className="w-full flex items-center p-3 my-1 rounded-lg text-sm font-medium text-red-600 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-800/50 transition-colors">
+                        <LogoutIcon className="w-5 h-5" />
+                        <span className="mx-4">{t.logout}</span>
+                    </button>
                 </div>
             </aside>
         </>

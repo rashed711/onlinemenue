@@ -26,6 +26,11 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({ isOpen, onClose, rec
 
     if (!isOpen) return null;
 
+    const handleCloseAndClear = () => {
+        clearCart();
+        onClose();
+    };
+
     const handleShare = async () => {
         setIsSharing(true);
         const whatsAppMessage = language === 'ar' ? 'تفضل إيصال طلبي' : 'Here is my order receipt';
@@ -43,12 +48,11 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({ isOpen, onClose, rec
                     title: t.receiptTitle,
                     text: whatsAppMessage,
                 });
-                clearCart();
-                onClose();
+                handleCloseAndClear();
             } else {
                 // Fallback for browsers that claim to support share but can't share the file
                 window.open(whatsappUrl, '_blank', 'noopener,noreferrer');
-                clearCart();
+                handleCloseAndClear();
             }
         } catch (error) {
             console.error('Error sharing receipt:', error);
@@ -112,10 +116,7 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({ isOpen, onClose, rec
                                     href={whatsappUrl}
                                     target="_blank"
                                     rel="noopener noreferrer"
-                                    onClick={() => {
-                                        clearCart();
-                                        onClose();
-                                    }}
+                                    onClick={handleCloseAndClear}
                                     className="w-full bg-green-500 text-white font-bold py-3 px-4 rounded-lg hover:bg-green-600 transition-colors block text-center"
                                 >
                                 {t.openWhatsApp}

@@ -1,5 +1,5 @@
 import React from 'react';
-import type { CartItem, Language, OrderType } from '../types';
+import type { CartItem, Language, OrderType, RestaurantInfo } from '../types';
 import { CartContents } from './CartContents';
 
 interface CartSidebarProps {
@@ -12,6 +12,9 @@ interface CartSidebarProps {
   onPlaceOrder: () => void;
   orderType: OrderType;
   setOrderType: (type: OrderType) => void;
+  tableNumber: string;
+  setTableNumber: (table: string) => void;
+  restaurantInfo: RestaurantInfo;
 }
 
 export const CartSidebar: React.FC<CartSidebarProps> = (props) => {

@@ -1,8 +1,9 @@
 import React, { useMemo } from 'react';
-import type { CartItem, Language, OrderType } from '../types';
+import type { CartItem, Language, OrderType, RestaurantInfo } from '../types';
 import { useTranslations } from '../i18n/translations';
 import { PlusIcon, MinusIcon, CloseIcon } from './icons/Icons';
 import { calculateTotal } from '../utils/helpers';
+import { TableSelector } from './TableSelector';
 
 interface CartContentsProps {
   cartItems: CartItem[];
@@ -12,8 +13,11 @@ interface CartContentsProps {
   onPlaceOrder: () => void;
   orderType: OrderType;
   setOrderType: (type: OrderType) => void;
+  tableNumber?: string;
+  setTableNumber?: (table: string) => void;
   isSidebar?: boolean;
   onClose?: () => void;
+  restaurantInfo: RestaurantInfo;
 }
 
 export const CartContents: React.FC<CartContentsProps> = ({
@@ -24,8 +28,11 @@ export const CartContents: React.FC<CartContentsProps> = ({
   onPlaceOrder,
   orderType,
   setOrderType,
+  tableNumber,
+  setTableNumber,
   isSidebar = false,
   onClose,
+  restaurantInfo,
 }) => {
   const t = useTranslations(language);
 
@@ -45,6 +52,8 @@ export const CartContents: React.FC<CartContentsProps> = ({
   const orderTypeClasses = "w-full py-2.5 text-sm font-bold transition-colors duration-200 rounded-md";
   const activeOrderTypeClasses = "bg-primary-600 text-white shadow";
   const inactiveOrderTypeClasses = "text-slate-700 dark:text-slate-200";
+  
+  const isPlaceOrderDisabled = orderType === 'Dine-in' && !tableNumber?.trim();
 
   return (
     <div className="flex flex-col h-full bg-white dark:bg-slate-900">
@@ -112,13 +121,25 @@ export const CartContents: React.FC<CartContentsProps> = ({
             >{t.delivery}</button>
           </div>
 
+           {orderType === 'Dine-in' && setTableNumber && (
+            <div>
+                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">{t.tableNumber}</label>
+                 <TableSelector
+                    tableCount={restaurantInfo.tableCount || 0}
+                    selectedTable={tableNumber || ''}
+                    onSelectTable={setTableNumber}
+                />
+            </div>
+           )}
+
           <div className="flex justify-between font-bold text-lg">
             <span>{t.total}</span>
             <span>{subtotal.toFixed(2)} {t.currency}</span>
           </div>
           <button
             onClick={handlePlaceOrderClick}
-            className="w-full bg-green-500 text-white font-bold py-3 px-4 rounded-lg hover:bg-green-600 transition-all flex justify-center items-center shadow-lg hover:shadow-xl transform hover:scale-105"
+            disabled={isPlaceOrderDisabled}
+            className="w-full bg-green-500 text-white font-bold py-3 px-4 rounded-lg hover:bg-green-600 transition-all flex justify-center items-center shadow-lg hover:shadow-xl transform hover:scale-105 disabled:bg-gray-400 disabled:cursor-not-allowed disabled:scale-100 disabled:shadow-none"
           >
             {t.placeOrder}
           </button>

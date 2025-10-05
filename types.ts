@@ -66,14 +66,22 @@ export interface SocialLink {
   isVisible: boolean;
 }
 
+export interface OrderStatusColumn {
+  id: string; // e.g., 'pending', 'in-progress'
+  name: LocalizedString;
+  color: string; // e.g., 'yellow', 'blue'
+}
+
 export interface RestaurantInfo {
     name: LocalizedString;
     logo: string;
     heroTitle: LocalizedString;
     description: LocalizedString;
     whatsappNumber: string;
+    tableCount: number;
     socialLinks: SocialLink[];
     defaultPage: 'menu' | 'social';
+    orderStatusColumns: OrderStatusColumn[];
 }
 
 // New Types for Users and Orders
@@ -87,7 +95,7 @@ export interface User {
   role: UserRole;
 }
 
-export type OrderStatus = 'Pending' | 'In Progress' | 'Ready for Pickup' | 'Out for Delivery' | 'Completed' | 'Cancelled' | 'Refused';
+export type OrderStatus = string; // Was a union type, now a string to support dynamic statuses
 export type OrderType = 'Dine-in' | 'Delivery';
 
 export interface Order {
@@ -97,6 +105,7 @@ export interface Order {
   status: OrderStatus;
   timestamp: string;
   orderType: OrderType;
+  tableNumber?: string;
   customer: {
     userId?: number; // for registered users
     name?: string; // for registered users
@@ -112,13 +121,4 @@ export interface Order {
 }
 
 // Permissions Type
-export type Permission = 
-  | 'view_orders'
-  | 'manage_orders'
-  | 'edit_orders'
-  | 'manage_menu'
-  | 'manage_promotions'
-  | 'manage_users'
-  | 'manage_roles'
-  | 'manage_classifications'
-  | 'view_reports';
+export type Permission = string; // Was a union type, now a string to support dynamic permissions

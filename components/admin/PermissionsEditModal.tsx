@@ -1,8 +1,8 @@
-import React, { useState } from 'react';
-import type { Permission, Language, UserRole } from '../../types';
+import React, { useState, useMemo } from 'react';
+import type { Permission, Language, UserRole, RestaurantInfo } from '../../types';
 import { useTranslations } from '../../i18n/translations';
 import { CloseIcon } from '../icons/Icons';
-import { ALL_PERMISSIONS } from '../../data/permissions';
+import { STATIC_PERMISSIONS } from '../../data/permissions';
 
 interface PermissionsEditModalProps {
   role: UserRole;
@@ -10,11 +10,24 @@ interface PermissionsEditModalProps {
   onClose: () => void;
   onSave: (role: UserRole, permissions: Permission[]) => void;
   language: Language;
+  restaurantInfo: RestaurantInfo;
 }
 
-export const PermissionsEditModal: React.FC<PermissionsEditModalProps> = ({ role, currentPermissions, onClose, onSave, language }) => {
+export const PermissionsEditModal: React.FC<PermissionsEditModalProps> = ({ role, currentPermissions, onClose, onSave, language, restaurantInfo }) => {
   const t = useTranslations(language);
   const [selectedPermissions, setSelectedPermissions] = useState<Permission[]>(currentPermissions);
+  
+  const allPermissions = useMemo(() => {
+      const staticPerms = STATIC_PERMISSIONS.map(p => ({
+          id: p.id,
+          name: t[p.nameKey]
+      }));
+      const dynamicPerms = restaurantInfo.orderStatusColumns.map(status => ({
+          id: `view_status_${status.id}`,
+          name: `${language === 'ar' ? 'عرض' : 'View'} "${status.name[language]}"`
+      }));
+      return [...staticPerms, ...dynamicPerms];
+  }, [restaurantInfo.orderStatusColumns, language, t]);
 
   const handleCheckboxChange = (permissionId: Permission, isChecked: boolean) => {
     if (isChecked) {
@@ -47,7 +60,7 @@ export const PermissionsEditModal: React.FC<PermissionsEditModalProps> = ({ role
             </div>
           )}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            {ALL_PERMISSIONS.map(permission => (
+            {allPermissions.map(permission => (
               <label key={permission.id} className={`flex items-center gap-3 p-3 rounded-lg transition-colors ${isSuperAdminRole ? 'cursor-not-allowed opacity-70' : 'cursor-pointer hover:bg-slate-50 dark:hover:bg-gray-700/50'}`}>
                 <input
                   type="checkbox"
@@ -56,7 +69,7 @@ export const PermissionsEditModal: React.FC<PermissionsEditModalProps> = ({ role
                   onChange={e => handleCheckboxChange(permission.id, e.target.checked)}
                   disabled={isSuperAdminRole}
                 />
-                <span className="font-medium">{t[permission.nameKey]}</span>
+                <span className="font-medium">{permission.name}</span>
               </label>
             ))}
           </div>

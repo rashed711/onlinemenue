@@ -45,6 +45,7 @@ export const MenuPage: React.FC<MenuPageProps> = (props) => {
     const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
     const [isGuestCheckoutOpen, setIsGuestCheckoutOpen] = useState(false);
     const [orderType, setOrderType] = useState<OrderType>('Dine-in');
+    const [tableNumber, setTableNumber] = useState('');
     
     const [isReceiptModalOpen, setIsReceiptModalOpen] = useState(false);
     const [receiptImageUrl, setReceiptImageUrl] = useState('');
@@ -141,6 +142,10 @@ export const MenuPage: React.FC<MenuPageProps> = (props) => {
             ctx.fillText(`${t.date}: ${new Date(order.timestamp).toLocaleString(language === 'ar' ? 'ar-EG' : 'en-US')}`, mainX, y);
             y += lineHeight;
             ctx.fillText(`${t.orderType}: ${t[order.orderType === 'Dine-in' ? 'dineIn' : 'delivery']}`, mainX, y);
+            if(order.tableNumber){
+                 y += lineHeight;
+                 ctx.fillText(`${t.tableNumber}: ${order.tableNumber}`, mainX, y);
+            }
             y += lineHeight * 1.5;
             
             ctx.strokeStyle = '#e5e7eb';
@@ -237,6 +242,7 @@ export const MenuPage: React.FC<MenuPageProps> = (props) => {
                 total: calculateTotal(cartItems),
                 status: 'Pending' as OrderStatus,
                 orderType: orderType,
+                tableNumber: orderType === 'Dine-in' ? tableNumber : undefined,
                 customer: {
                     userId: currentUser.id,
                     name: currentUser.name,
@@ -258,6 +264,7 @@ export const MenuPage: React.FC<MenuPageProps> = (props) => {
             total: calculateTotal(cartItems),
             status: 'Pending' as OrderStatus,
             orderType: orderType,
+            tableNumber: orderType === 'Dine-in' ? tableNumber : undefined,
             customer: { mobile }
         };
         const newOrder = placeOrder(orderData);
@@ -340,6 +347,9 @@ export const MenuPage: React.FC<MenuPageProps> = (props) => {
                 onPlaceOrder={handlePlaceOrder}
                 orderType={orderType}
                 setOrderType={setOrderType}
+                tableNumber={tableNumber}
+                setTableNumber={setTableNumber}
+                restaurantInfo={restaurantInfo}
             />
 
             {selectedProduct && (
@@ -360,7 +370,10 @@ export const MenuPage: React.FC<MenuPageProps> = (props) => {
 
             <ReceiptModal
               isOpen={isReceiptModalOpen}
-              onClose={() => setIsReceiptModalOpen(false)}
+              onClose={() => {
+                  setIsReceiptModalOpen(false);
+                  setTableNumber('');
+              }}
               receiptImageUrl={receiptImageUrl}
               language={language}
               whatsappNumber={restaurantInfo.whatsappNumber}

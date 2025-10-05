@@ -1,5 +1,3 @@
-
-
 import type { Language } from '../types';
 
 export const translations = {
@@ -202,6 +200,22 @@ export const translations = {
     settings: 'Settings',
     contactUs: 'Contact Us',
     backToMenu: '← Back to Menu',
+    cashier: 'Cashier',
+    tableNumber: 'Table Number',
+    table: 'Table',
+    enterTableNumber: 'Enter Table #',
+    permission_use_cashier_pos: 'Use Cashier POS',
+    orderSentToKitchen: 'Order Sent to Kitchen!',
+    orderStatusManagement: 'Order Status Management',
+    addNewStatus: 'Add New Status',
+    editStatus: 'Edit Status',
+    statusId: 'Status ID',
+    statusIdHelper: 'Unique identifier (e.g., "baking"). Cannot be changed later.',
+    statusNameEn: 'Status Name (English)',
+    statusNameAr: 'Status Name (Arabic)',
+    statusColor: 'Color',
+    confirmDeleteStatus: 'Are you sure you want to delete this status column?',
+    deleteStatusError: 'Cannot delete: This status is currently used by one or more orders.',
   },
   ar: {
     restaurantName: 'فريسكو',
@@ -402,6 +416,22 @@ export const translations = {
     settings: 'الإعدادات',
     contactUs: 'تواصل معنا',
     backToMenu: '← الرجوع الي المنيو',
+    cashier: 'الكاشير',
+    tableNumber: 'رقم الطاولة',
+    table: 'طاولة',
+    enterTableNumber: 'أدخل رقم الطاولة',
+    permission_use_cashier_pos: 'استخدام نقطة بيع الكاشير',
+    orderSentToKitchen: 'تم إرسال الطلب للمطبخ!',
+    orderStatusManagement: 'إدارة حالات الطلب',
+    addNewStatus: 'إضافة حالة جديدة',
+    editStatus: 'تعديل الحالة',
+    statusId: 'معرف الحالة (ID)',
+    statusIdHelper: 'معرف فريد (مثال: "baking"). لا يمكن تغييره لاحقًا.',
+    statusNameEn: 'اسم الحالة (الإنجليزية)',
+    statusNameAr: 'اسم الحالة (العربية)',
+    statusColor: 'اللون',
+    confirmDeleteStatus: 'هل أنت متأكد أنك تريد حذف عمود الحالة هذا؟',
+    deleteStatusError: 'لا يمكن الحذف: هذه الحالة مستخدمة حاليًا في طلب واحد أو أكثر.',
   },
 };
 

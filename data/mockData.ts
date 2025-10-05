@@ -6,6 +6,7 @@ export const restaurantInfo: RestaurantInfo = {
     heroTitle: { en: "Experience Authentic Flavors", ar: "اكتشف نكهات أصيلة" },
     description: { en: "Fresh ingredients, exquisite taste. Explore a menu crafted with passion.", ar: "مكونات طازجة، طعم رائع. استكشف قائمة طعام صنعت بشغف." },
     whatsappNumber: "201060637363", // Replace with actual WhatsApp number
+    tableCount: 5,
     defaultPage: 'menu',
     socialLinks: [
         { id: 1, name: 'Instagram', url: 'https://instagram.com', icon: 'https://img.icons8.com/color/48/instagram-new--v1.png', isVisible: true },
@@ -15,6 +16,14 @@ export const restaurantInfo: RestaurantInfo = {
         { id: 5, name: '0132722678', url: 'tel:+20132722678', icon: 'https://img.icons8.com/color/48/phone.png', isVisible: true },
         { id: 6, name: 'For Complaints', url: 'tel:+201024423777', icon: 'https://img.icons8.com/color/48/phone.png', isVisible: true },
     ],
+    orderStatusColumns: [
+        { id: 'pending', name: { en: 'New Orders', ar: 'طلبات جديدة' }, color: 'yellow' },
+        { id: 'in_progress', name: { en: 'In the Kitchen', ar: 'في المطبخ' }, color: 'orange' },
+        { id: 'ready_for_pickup', name: { en: 'Ready for Pickup', ar: 'جاهز للتسليم' }, color: 'cyan' },
+        { id: 'out_for_delivery', name: { en: 'Out for Delivery', ar: 'قيد التوصيل' }, color: 'blue' },
+        { id: 'completed', name: { en: 'Completed', ar: 'مكتمل' }, color: 'green' },
+        { id: 'cancelled', name: { en: 'Cancelled & Refused', ar: 'ملغي ومرفوض' }, color: 'slate' },
+    ]
 };
 
 export const initialCategories: Category[] = [

@@ -1,7 +1,5 @@
-
-
 import React, { useState, useMemo, useEffect } from 'react';
-import type { Language, Product, RestaurantInfo, Order, OrderStatus, User, UserRole, Promotion, Permission, Category, Tag, CartItem, SocialLink, LocalizedString } from '../../types';
+import type { Language, Product, RestaurantInfo, Order, OrderStatus, User, UserRole, Promotion, Permission, Category, Tag, CartItem, SocialLink, LocalizedString, OrderStatusColumn } from '../../types';
 import { useTranslations } from '../../i18n/translations';
 import { MenuAlt2Icon, PlusIcon, PencilIcon, TrashIcon, BellIcon, FireIcon, CheckBadgeIcon, XCircleIcon, TruckIcon, CheckCircleIcon, CloseIcon } from '../icons/Icons';
 import { OrderDetailsModal } from './OrderDetailsModal';
@@ -17,6 +15,8 @@ import { TagEditModal } from './TagEditModal';
 import { RefusalReasonModal } from './RefusalReasonModal';
 import { OrderEditModal } from './OrderEditModal';
 import { ReportsPage } from './ReportsPage';
+import { CashierPage } from './CashierPage';
+import { OrderStatusEditModal } from './OrderStatusEditModal';
 
 // --- START: Inlined SocialLinkEditModal ---
 interface SocialLinkEditModalProps {
@@ -136,9 +136,13 @@ interface SettingsPageProps {
     language: Language;
     restaurantInfo: RestaurantInfo;
     updateRestaurantInfo: (updatedInfo: Partial<RestaurantInfo>) => void;
+    onAddOrderStatus: () => void;
+    onEditOrderStatus: (column: OrderStatusColumn) => void;
+    onDeleteOrderStatus: (columnId: string) => void;
 }
 
-const SettingsPage: React.FC<SettingsPageProps> = ({ language, restaurantInfo, updateRestaurantInfo }) => {
+const SettingsPage: React.FC<SettingsPageProps> = (props) => {
+    const { language, restaurantInfo, updateRestaurantInfo, onAddOrderStatus, onEditOrderStatus, onDeleteOrderStatus } = props;
     const t = useTranslations(language);
     const [editingLink, setEditingLink] = useState<SocialLink | 'new' | null>(null);
 
@@ -156,6 +160,12 @@ const SettingsPage: React.FC<SettingsPageProps> = ({ language, restaurantInfo, u
             }
         };
         updateRestaurantInfo(newInfo);
+    };
+
+    const handleNonLocalizedChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const { name, value, type } = e.target;
+        const finalValue = type === 'number' ? (parseInt(value, 10) || 0) : value;
+        updateRestaurantInfo({ [name]: finalValue });
     };
 
     const handleLogoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -257,6 +267,53 @@ const SettingsPage: React.FC<SettingsPageProps> = ({ language, restaurantInfo, u
                 </div>
             </div>
 
+             {/* Table Management Settings */}
+            <div className="bg-white dark:bg-slate-800 p-6 rounded-lg shadow-md border border-slate-200 dark:border-slate-700">
+                <h3 className="text-xl font-semibold mb-4">Table Management</h3>
+                <div>
+                    <label className="block text-sm font-medium mb-1">Total Number of Tables</label>
+                    <input 
+                        type="number" 
+                        name="tableCount" 
+                        value={restaurantInfo.tableCount || 0} 
+                        onChange={handleNonLocalizedChange} 
+                        className="w-full max-w-xs p-2 border rounded-md dark:bg-gray-700 dark:border-gray-600"
+                        min="0"
+                    />
+                </div>
+            </div>
+
+            {/* Order Status Management */}
+            <div>
+                <div className="flex justify-between items-center mb-4">
+                    <h3 className="text-xl font-semibold">{t.orderStatusManagement}</h3>
+                    <button onClick={onAddOrderStatus} className="bg-green-500 text-white font-bold py-2 px-3 rounded-lg hover:bg-green-600 transition-colors flex items-center gap-2 text-sm">
+                        <PlusIcon className="w-5 h-5" />
+                        {t.addNewStatus}
+                    </button>
+                </div>
+                <div className="bg-white dark:bg-slate-800 rounded-lg shadow-md border border-slate-200 dark:border-slate-700">
+                    <ul className="divide-y divide-gray-200 dark:divide-gray-700">
+                        {restaurantInfo.orderStatusColumns.map(status => (
+                            <li key={status.id} className="p-4 flex flex-wrap justify-between items-center gap-4 hover:bg-slate-50 dark:hover:bg-gray-700/50">
+                                <div className="flex items-center gap-4">
+                                    <div className={`w-4 h-4 rounded-full bg-${status.color}-500`}></div>
+                                    <div>
+                                        <div className="font-medium">{status.name[language]}</div>
+                                        <div className="text-sm text-slate-500 dark:text-slate-400 font-mono">{status.id}</div>
+                                    </div>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                    <button onClick={() => onEditOrderStatus(status)} className="p-2 text-indigo-600 hover:bg-indigo-100 dark:hover:bg-indigo-900/50 rounded-full"><PencilIcon className="w-5 h-5" /></button>
+                                    <button onClick={() => { if(window.confirm(t.confirmDeleteStatus)) onDeleteOrderStatus(status.id); }} className="p-2 text-red-600 hover:bg-red-100 dark:hover:bg-red-900/50 rounded-full"><TrashIcon className="w-5 h-5" /></button>
+                                </div>
+                            </li>
+                        ))}
+                    </ul>
+                </div>
+            </div>
+
+
             {/* Homepage Settings */}
             <div className="bg-white dark:bg-slate-800 p-6 rounded-lg shadow-md border border-slate-200 dark:border-slate-700">
                 <h3 className="text-xl font-semibold mb-4">Homepage Settings</h3>
@@ -329,6 +386,8 @@ interface AdminPageProps {
     restaurantInfo: RestaurantInfo;
     allOrders: Order[];
     allPromotions: Promotion[];
+    placeOrder: (order: Omit<Order, 'id' | 'timestamp'>) => Order;
+    showToast: (message: string) => void;
     updateOrder: (orderId: string, payload: Partial<Omit<Order, 'id' | 'timestamp' | 'customer'>>) => void;
     logout: () => void;
     addProduct: (productData: Omit<Product, 'id' | 'rating'>) => void;
@@ -349,18 +408,21 @@ interface AdminPageProps {
     updateTag: (tag: Tag) => void;
     deleteTag: (tagId: string) => void;
     updateRestaurantInfo: (updatedInfo: Partial<RestaurantInfo>) => void;
+    addOrderStatusColumn: (column: OrderStatusColumn) => void;
+    updateOrderStatusColumn: (column: OrderStatusColumn) => void;
+    deleteOrderStatusColumn: (columnId: string) => void;
 }
 
-type AdminTab = 'orders' | 'reports' | 'productList' | 'classifications' | 'promotions' | 'users' | 'roles' | 'settings';
+type AdminTab = 'orders' | 'cashier' | 'reports' | 'productList' | 'classifications' | 'promotions' | 'users' | 'roles' | 'settings';
 
 export const AdminPage: React.FC<AdminPageProps> = (props) => {
     const { 
         language, currentUser, allProducts, allCategories, allTags, allUsers, restaurantInfo, allOrders, allPromotions,
-        updateOrder, logout, addProduct, updateProduct, deleteProduct, 
+        placeOrder, showToast, updateOrder, logout, addProduct, updateProduct, deleteProduct, 
         addPromotion, updatePromotion, deletePromotion, addUser, updateUser, deleteUser,
         rolePermissions, updateRolePermissions,
         addCategory, updateCategory, deleteCategory, addTag, updateTag, deleteTag,
-        updateRestaurantInfo
+        updateRestaurantInfo, addOrderStatusColumn, updateOrderStatusColumn, deleteOrderStatusColumn,
     } = props;
 
     const t = useTranslations(language);
@@ -378,6 +440,7 @@ export const AdminPage: React.FC<AdminPageProps> = (props) => {
     const [editingCategory, setEditingCategory] = useState<Category | 'new' | null>(null);
     const [editingTag, setEditingTag] = useState<Tag | 'new' | null>(null);
     const [refusingOrder, setRefusingOrder] = useState<Order | null>(null);
+    const [editingOrderStatus, setEditingOrderStatus] = useState<OrderStatusColumn | 'new' | null>(null);
 
     const ordersToDisplay = useMemo(() => {
         if (!currentUser || !hasPermission('view_orders')) {
@@ -459,117 +522,164 @@ export const AdminPage: React.FC<AdminPageProps> = (props) => {
         setEditingRole(null);
     };
 
-    const handleSaveOrder = (updatedOrderData: {items: CartItem[], notes: string}) => {
+    const handleSaveOrder = (updatedOrderData: {items: CartItem[], notes: string, tableNumber?: string}) => {
         if (editingOrder) {
             updateOrder(editingOrder.id, updatedOrderData);
         }
         setEditingOrder(null);
     };
     
-    // FIX: Explicitly type OrderCard as a React.FC with a props interface
-    // to resolve TypeScript error regarding the 'key' prop.
     interface OrderCardProps {
         order: Order;
     }
+
+    const getStatusColorClass = (color: string) => {
+        const colorMap: Record<string, string> = {
+            yellow: 'text-yellow-500',
+            orange: 'text-orange-500',
+            cyan: 'text-cyan-500',
+            blue: 'text-blue-500',
+            green: 'text-green-500',
+            slate: 'text-slate-500',
+            red: 'text-red-500',
+            indigo: 'text-indigo-500',
+            purple: 'text-purple-500',
+            pink: 'text-pink-500',
+        };
+        return colorMap[color] || 'text-gray-500';
+    };
+
     const OrderCard: React.FC<OrderCardProps> = ({ order }) => {
         const isDriver = currentUser?.role === 'driver';
         const canManage = hasPermission('manage_orders');
 
+        const currentStatusDetails = restaurantInfo.orderStatusColumns.find(s => s.id === order.status);
+
         const renderActions = () => {
-            if (isDriver && order.status === 'Out for Delivery') {
+            if (isDriver && order.status === 'out_for_delivery') {
                 return (
                     <div className="flex gap-2">
-                        <button onClick={() => updateOrder(order.id, { status: 'Completed' })} className="text-xs font-bold bg-green-500 text-white px-2 py-1 rounded hover:bg-green-600">{t.markAsDelivered}</button>
-                        <button onClick={() => setRefusingOrder(order)} className="text-xs font-bold bg-red-500 text-white px-2 py-1 rounded hover:bg-red-600">{t.markAsRefused}</button>
+                        <button onClick={(e) => { e.stopPropagation(); updateOrder(order.id, { status: 'completed' }); }} className="text-xs font-bold bg-green-500 text-white px-2 py-1 rounded hover:bg-green-600">{t.markAsDelivered}</button>
+                        <button onClick={(e) => { e.stopPropagation(); setRefusingOrder(order); }} className="text-xs font-bold bg-red-500 text-white px-2 py-1 rounded hover:bg-red-600">{t.markAsRefused}</button>
                     </div>
-                )
+                );
             }
-            if(canManage) {
+            if (canManage) {
                 return (
                     <select
                         value={order.status}
-                        onChange={(e) => updateOrder(order.id, { status: e.target.value as OrderStatus })}
-                        className="text-sm rounded-md border-gray-300 dark:bg-gray-700 dark:border-gray-600 focus:ring-primary-500 focus:border-primary-500"
+                        onChange={(e) => {
+                            e.stopPropagation();
+                            const newStatus = e.target.value as OrderStatus;
+                            // When marking refused from dropdown, also show modal
+                            if (newStatus === 'refused' && order.status !== 'refused') {
+                                setRefusingOrder(order);
+                            } else {
+                                updateOrder(order.id, { status: newStatus });
+                            }
+                        }}
+                        onClick={(e) => e.stopPropagation()} // Prevent card click
+                        className="text-sm rounded-full border-slate-300 dark:bg-slate-700 dark:border-slate-600 focus:ring-primary-500 focus:border-primary-500 px-3 py-1 font-semibold bg-slate-100 hover:bg-slate-200"
                     >
-                        <option value="Pending">{t.pending}</option>
-                        <option value="In Progress">{t.inProgress}</option>
-                        <option value="Ready for Pickup">{t.readyForPickup}</option>
-                        <option value="Out for Delivery">{t.outForDelivery}</option>
-                        <option value="Completed">{t.completed}</option>
-                        <option value="Cancelled">{t.cancelled}</option>
-                        <option value="Refused">{t.refused}</option>
+                       {restaurantInfo.orderStatusColumns.map(status => (
+                            <option key={status.id} value={status.id}>{status.name[language]}</option>
+                       ))}
                     </select>
-                )
+                );
             }
             return null;
-        }
+        };
 
         return (
-            <div className="bg-white dark:bg-slate-800 rounded-lg shadow-md p-4 space-y-3 relative transition-all hover:shadow-lg hover:scale-[1.02] border border-slate-200 dark:border-slate-700">
-                <div className="flex justify-between items-start">
-                    <div>
-                        <p className="font-bold font-mono cursor-pointer hover:text-primary-600 dark:hover:text-primary-400" onClick={() => setViewingOrder(order)}>{order.id}</p>
-                        <p className="text-sm font-semibold">{order.customer.name || 'Guest'}</p>
-                        <p className="text-xs text-slate-500 dark:text-slate-400">{new Date(order.timestamp).toLocaleTimeString(language === 'ar' ? 'ar-EG' : 'en-US', { hour: '2-digit', minute:'2-digit' })}</p>
-                    </div>
-                    <p className="font-bold text-lg text-primary-600 dark:text-primary-400">{order.total.toFixed(2)}</p>
+            <div onClick={() => setViewingOrder(order)} className="bg-white dark:bg-slate-800 rounded-lg shadow-md p-4 space-y-3 cursor-pointer transition-all hover:shadow-lg hover:-translate-y-1 border border-slate-200 dark:border-slate-700">
+                <div className="flex justify-between items-center">
+                    <p className="font-extrabold text-lg text-amber-800 bg-amber-300 dark:bg-amber-400 dark:text-amber-900 px-3 py-0.5 rounded-md">
+                        {order.total.toFixed(2)}
+                    </p>
+                    <p className="font-bold font-mono text-slate-500 dark:text-slate-400 text-sm">
+                        {order.id}
+                    </p>
                 </div>
-                <div>
+
+                <div className="space-y-2">
+                    {currentStatusDetails && (
+                        <div className={`flex items-center gap-2 font-bold text-base ${getStatusColorClass(currentStatusDetails.color)}`}>
+                            <span>{currentStatusDetails.name[language]}</span>
+                        </div>
+                    )}
+                    <div className="text-sm font-semibold text-slate-600 dark:text-slate-300">
+                        {order.orderType === 'Dine-in' && order.tableNumber ? (
+                            `${t.table}: ${order.tableNumber}`
+                        ) : (
+                            order.customer.name || 'Guest'
+                        )}
+                    </div>
+                </div>
+
+                <div className="bg-slate-50 dark:bg-slate-800/50 p-3 my-1 rounded-md border border-slate-200 dark:border-slate-700">
                     <ul className="text-xs text-slate-600 dark:text-slate-300 list-disc list-inside space-y-1">
                         {order.items.slice(0, 2).map((item, index) => <li key={index} className="truncate">{item.quantity}x {item.product.name[language]}</li>)}
                         {order.items.length > 2 && <li className="font-semibold text-slate-400">... and {order.items.length - 2} more</li>}
                     </ul>
                 </div>
-                <div className="flex justify-between items-center border-t dark:border-slate-700 pt-3">
-                     <button onClick={() => setViewingOrder(order)} className="text-sm text-primary-600 hover:underline">{t.viewOrderDetails}</button>
-                    {renderActions()}
+
+                <div className="flex justify-between items-center pt-2">
+                    <div>
+                        {renderActions()}
+                    </div>
+                    <button onClick={(e) => { e.stopPropagation(); setViewingOrder(order); }} className="text-sm font-bold text-primary-600 hover:underline dark:text-primary-400">
+                        {t.viewOrderDetails}
+                    </button>
                 </div>
             </div>
-        )
+        );
     };
 
     const renderContent = () => {
         switch(activeTab) {
             case 'orders': {
                 if (!hasPermission('view_orders')) return null;
-                const ordersByStatus = {
-                    Pending: ordersToDisplay.filter(o => o.status === 'Pending'),
-                    'In Progress': ordersToDisplay.filter(o => o.status === 'In Progress'),
-                    'Ready for Pickup': ordersToDisplay.filter(o => o.status === 'Ready for Pickup'),
-                    'Out for Delivery': ordersToDisplay.filter(o => o.status === 'Out for Delivery'),
-                    Completed: ordersToDisplay.filter(o => o.status === 'Completed'),
-                    Cancelled: ordersToDisplay.filter(o => o.status === 'Cancelled' || o.status === 'Refused'),
-                }
-                const boardColumns: {titleKey: keyof typeof t, icon: React.FC<any>, color: string, orders: Order[]}[] = [
-                    {titleKey: 'newOrders', icon: BellIcon, color: 'text-yellow-500', orders: ordersByStatus['Pending']},
-                    {titleKey: 'inTheKitchen', icon: FireIcon, color: 'text-orange-500', orders: ordersByStatus['In Progress']},
-                    {titleKey: 'readyForPickup', icon: CheckCircleIcon, color: 'text-cyan-500', orders: ordersByStatus['Ready for Pickup']},
-                    {titleKey: 'outForDelivery', icon: TruckIcon, color: 'text-blue-500', orders: ordersByStatus['Out for Delivery']},
-                    {titleKey: 'completed', icon: CheckBadgeIcon, color: 'text-green-500', orders: ordersByStatus['Completed']},
-                    {titleKey: 'cancelledOrders', icon: XCircleIcon, color: 'text-slate-500', orders: ordersByStatus['Cancelled']},
-                ]
-
+                const visibleColumns = restaurantInfo.orderStatusColumns.filter(
+                    col => hasPermission(`view_status_${col.id}`)
+                );
+                
                 return (
                      <div className='animate-fade-in'>
                         <h2 className="text-2xl font-bold mb-6">{t.manageOrders}</h2>
                         <div className="w-full overflow-x-auto pb-4">
-                          <div className="inline-grid grid-cols-6 gap-6 min-w-max">
-                              {boardColumns.map(col => (
-                                <div key={col.titleKey} className="w-80 flex flex-col">
-                                  <h3 className={`text-lg font-bold flex items-center gap-2 p-2 sticky top-[88px] bg-slate-100 dark:bg-slate-900 z-10 ${col.color}`}>
-                                    <col.icon className="w-6 h-6"/> {t[col.titleKey]} ({col.orders.length})
+                          <div className={`inline-grid grid-cols-${visibleColumns.length} gap-6 min-w-max`}>
+                              {visibleColumns.map(col => {
+                                const colOrders = allOrders.filter(o => o.status === col.id || (col.id === 'cancelled' && o.status === 'Refused'));
+                                return (
+                                <div key={col.id} className="w-80 flex flex-col">
+                                  <h3 className={`text-lg font-bold flex items-center gap-2 p-3 sticky bg-white dark:bg-slate-800 z-10 border-b-2 border-slate-200 dark:border-slate-700 ${getStatusColorClass(col.color)}`}>
+                                     {col.name[language]} ({colOrders.length})
                                   </h3>
-                                  <div className="bg-slate-200/50 dark:bg-slate-900/50 p-2 sm:p-4 rounded-lg space-y-4 min-h-[calc(100vh-250px)] flex-grow">
-                                      {col.orders.map(order => <OrderCard order={order} key={order.id} />)}
-                                      {col.orders.length === 0 && <div className="h-full flex items-center justify-center"><p className="text-center text-slate-500 p-8">No orders.</p></div>}
+                                  <div className="bg-slate-200/50 dark:bg-slate-900/50 p-2 sm:p-4 rounded-b-lg space-y-4 min-h-[calc(100vh-250px)] flex-grow">
+                                      {colOrders.map(order => <OrderCard order={order} key={order.id} />)}
+                                      {colOrders.length === 0 && <div className="h-full flex items-center justify-center"><p className="text-center text-slate-500 p-8">No orders.</p></div>}
                                   </div>
                                 </div>
-                              ))}
+                                )
+                              })}
                           </div>
                         </div>
                     </div>
                 );
             }
+            case 'cashier':
+                if (!hasPermission('use_cashier_pos')) return null;
+                return (
+                    <CashierPage
+                        language={language}
+                        currentUser={currentUser}
+                        allProducts={allProducts}
+                        allCategories={allCategories}
+                        placeOrder={placeOrder}
+                        showToast={showToast}
+                        restaurantInfo={restaurantInfo}
+                    />
+                );
             case 'reports':
                 if (!hasPermission('view_reports')) return null;
                 return (
@@ -731,6 +841,9 @@ export const AdminPage: React.FC<AdminPageProps> = (props) => {
                         language={language}
                         restaurantInfo={restaurantInfo}
                         updateRestaurantInfo={updateRestaurantInfo}
+                        onAddOrderStatus={() => setEditingOrderStatus('new')}
+                        onEditOrderStatus={(col) => setEditingOrderStatus(col)}
+                        onDeleteOrderStatus={deleteOrderStatusColumn}
                     />
                 );
             default: return null;
@@ -747,16 +860,16 @@ export const AdminPage: React.FC<AdminPageProps> = (props) => {
                 setActiveTab={setActiveTab}
                 isOpen={isSidebarOpen}
                 setIsOpen={setSidebarOpen}
+                restaurantInfo={restaurantInfo}
+                logout={logout}
             />
             <div className={`flex flex-col min-h-screen transition-all duration-300 ${language === 'ar' ? 'md:mr-64' : 'md:ml-64'}`}>
-                <header className="bg-white dark:bg-slate-800/50 backdrop-blur-lg shadow-md sticky top-0 z-20 border-b border-slate-200 dark:border-slate-700" id="admin-header">
+                <header className="bg-white/80 dark:bg-slate-900/80 backdrop-blur-lg shadow-sm sticky top-0 z-20 border-b border-slate-200 dark:border-slate-700" id="admin-header">
                     <div className="px-4 h-20 flex justify-between items-center">
                         <div className="flex items-center gap-3">
                             <button className="p-2 md:hidden" onClick={() => setSidebarOpen(true)}><MenuAlt2Icon className="w-6 h-6" /></button>
-                            <img src={restaurantInfo.logo} alt="logo" className="h-10 w-10 rounded-full object-cover hidden sm:block" />
                             <h1 className="text-xl font-bold text-slate-800 dark:text-slate-100">{t.adminPanel}</h1>
                         </div>
-                        <button onClick={logout} className="text-sm font-semibold text-slate-600 dark:text-slate-300 hover:text-primary-600 dark:hover:text-primary-400 transition-colors">{t.logout}</button>
                     </div>
                 </header>
                 <main className="container mx-auto max-w-full px-4 sm:px-6 lg:px-8 py-8 flex-1">
@@ -774,6 +887,7 @@ export const AdminPage: React.FC<AdminPageProps> = (props) => {
                         setViewingOrder(null);
                         setEditingOrder(order);
                     }}
+                    restaurantInfo={restaurantInfo}
                 />
             )}
             {editingOrder && hasPermission('edit_orders') && (
@@ -801,6 +915,7 @@ export const AdminPage: React.FC<AdminPageProps> = (props) => {
                     onClose={() => setEditingRole(null)}
                     onSave={handleSavePermissions}
                     language={language}
+                    restaurantInfo={restaurantInfo}
                 />
             )}
             {editingCategory && hasPermission('manage_classifications') && (
@@ -830,10 +945,26 @@ export const AdminPage: React.FC<AdminPageProps> = (props) => {
                     order={refusingOrder}
                     onClose={() => setRefusingOrder(null)}
                     onSave={(reason) => {
-                        updateOrder(refusingOrder.id, { status: 'Refused', refusalReason: reason });
+                        updateOrder(refusingOrder.id, { status: 'refused', refusalReason: reason });
                         setRefusingOrder(null);
                     }}
                     language={language}
+                />
+            )}
+            {editingOrderStatus && hasPermission('manage_roles') && (
+                <OrderStatusEditModal
+                    statusColumn={editingOrderStatus === 'new' ? null : editingOrderStatus}
+                    onClose={() => setEditingOrderStatus(null)}
+                    onSave={(data) => {
+                        if (editingOrderStatus !== 'new' && 'id' in data) {
+                           updateOrderStatusColumn(data as OrderStatusColumn);
+                        } else {
+                           addOrderStatusColumn(data as OrderStatusColumn);
+                        }
+                        setEditingOrderStatus(null);
+                    }}
+                    language={language}
+                    existingIds={restaurantInfo.orderStatusColumns.map(c => c.id)}
                 />
             )}
         </div>

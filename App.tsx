@@ -1,12 +1,13 @@
 
 
+
 import React, { useState, useEffect, useMemo, useCallback, useSyncExternalStore } from 'react';
 import { MenuPage } from './components/MenuPage';
 import { LoginPage } from './components/auth/LoginPage';
 import { RegisterPage } from './components/auth/RegisterPage';
 import { ProfilePage } from './components/profile/ProfilePage';
 import { AdminPage } from './components/admin/AdminPage';
-import type { Product, CartItem, Language, Theme, User, Order, OrderStatus, UserRole, Promotion, Permission, Category, Tag, RestaurantInfo } from './types';
+import type { Product, CartItem, Language, Theme, User, Order, OrderStatus, UserRole, Promotion, Permission, Category, Tag, RestaurantInfo, OrderStatusColumn } from './types';
 import { products as initialProducts, restaurantInfo as initialRestaurantInfo, users as initialUsers, promotions as initialPromotions, initialCategories, initialTags } from './data/mockData';
 import { ToastNotification } from './components/ToastNotification';
 import { useTranslations } from './i18n/translations';
@@ -243,6 +244,13 @@ const App: React.FC = () => {
     if (!currentUser) return false;
     // Super Admins always have all permissions, regardless of the roles object
     if (currentUser.role === 'superAdmin') return true;
+
+    // Handle dynamic status permissions
+    if (permission.startsWith('view_status_')) {
+        const userPermissions = rolePermissions[currentUser.role];
+        return userPermissions?.includes(permission) ?? false;
+    }
+    
     const userPermissions = rolePermissions[currentUser.role];
     return userPermissions?.includes(permission) ?? false;
   }, [currentUser, rolePermissions]);
@@ -304,11 +312,12 @@ const App: React.FC = () => {
         ...order,
         id: `ORD-${Date.now().toString().slice(-6)}`,
         timestamp: new Date().toISOString(),
+        status: restaurantInfo.orderStatusColumns[0]?.id || 'pending', // Default to first status
         createdBy: currentUser?.id, // Tag order with creator's ID
     };
     setOrders(prev => [newOrder, ...prev]);
     return newOrder;
-  }, [currentUser]);
+  }, [currentUser, restaurantInfo.orderStatusColumns]);
 
   const updateOrder = useCallback((orderId: string, payload: Partial<Omit<Order, 'id' | 'timestamp' | 'customer'>>) => {
       const order = orders.find(o => o.id === orderId);
@@ -317,7 +326,7 @@ const App: React.FC = () => {
       let canUpdate = false;
       let finalPayload: Partial<Order> = { ...payload };
 
-      const isContentEdit = payload.items || typeof payload.notes !== 'undefined';
+      const isContentEdit = payload.items || typeof payload.notes !== 'undefined' || typeof payload.tableNumber !== 'undefined';
       const isFeedback = !!payload.customerFeedback;
 
       if (isContentEdit) {
@@ -328,13 +337,13 @@ const App: React.FC = () => {
               }
           }
       } else if (isFeedback) {
-          if (currentUser?.id === order.customer.userId && order.status === 'Completed') {
+          if (currentUser?.id === order.customer.userId && order.status === 'completed') {
               canUpdate = true;
           }
       } else { // It must be a status change or refusal reason
           if(hasPermission('manage_orders')) {
             canUpdate = true;
-          } else if (currentUser?.role === 'driver' && order.status === 'Out for Delivery' && (payload.status === 'Completed' || payload.status === 'Refused')) {
+          } else if (currentUser?.role === 'driver' && order.status === 'out_for_delivery' && (payload.status === 'completed' || payload.status === 'refused')) {
             canUpdate = true;
           }
       }
@@ -501,6 +510,51 @@ const App: React.FC = () => {
     setTags(prev => prev.filter(t => t.id !== tagId));
   }, [hasPermission, showToast, t.permissionDenied]);
 
+  // Order Status Columns Callbacks
+    const addOrderStatusColumn = useCallback((column: OrderStatusColumn) => {
+        if (!hasPermission('manage_roles')) { showToast(t.permissionDenied); return; }
+        
+        // Add column to restaurant info
+        updateRestaurantInfo({ orderStatusColumns: [...restaurantInfo.orderStatusColumns, column] });
+
+        // Add new permission to superAdmin role
+        const newPermission: Permission = `view_status_${column.id}`;
+        setRolePermissions(prev => {
+            const newPerms = { ...prev };
+            newPerms.superAdmin = [...newPerms.superAdmin, newPermission];
+            return newPerms;
+        });
+    }, [hasPermission, showToast, t.permissionDenied, updateRestaurantInfo, restaurantInfo.orderStatusColumns]);
+
+    const updateOrderStatusColumn = useCallback((updatedColumn: OrderStatusColumn) => {
+        if (!hasPermission('manage_roles')) { showToast(t.permissionDenied); return; }
+        const updatedColumns = restaurantInfo.orderStatusColumns.map(c => c.id === updatedColumn.id ? updatedColumn : c);
+        updateRestaurantInfo({ orderStatusColumns: updatedColumns });
+    }, [hasPermission, showToast, t.permissionDenied, updateRestaurantInfo, restaurantInfo.orderStatusColumns]);
+
+    const deleteOrderStatusColumn = useCallback((columnId: string) => {
+        if (!hasPermission('manage_roles')) { showToast(t.permissionDenied); return; }
+
+        if (orders.some(order => order.status === columnId)) {
+            showToast(t.deleteStatusError);
+            return;
+        }
+
+        // Remove column from restaurant info
+        const updatedColumns = restaurantInfo.orderStatusColumns.filter(c => c.id !== columnId);
+        updateRestaurantInfo({ orderStatusColumns: updatedColumns });
+
+        // Remove permission from all roles
+        const permissionToRemove: Permission = `view_status_${columnId}`;
+        setRolePermissions(prev => {
+            const newPerms = { ...prev };
+            for (const role in newPerms) {
+                newPerms[role as UserRole] = newPerms[role as UserRole].filter(p => p !== permissionToRemove);
+            }
+            return newPerms;
+        });
+    }, [hasPermission, showToast, t.permissionDenied, t.deleteStatusError, orders, updateRestaurantInfo, restaurantInfo.orderStatusColumns]);
+
 
   // Router
   const renderContent = () => {
@@ -522,6 +576,8 @@ const App: React.FC = () => {
             restaurantInfo={restaurantInfo} 
             allOrders={orders} 
             allPromotions={promotions}
+            placeOrder={placeOrder}
+            showToast={showToast}
             updateOrder={updateOrder}
             logout={logout}
             addProduct={addProduct}
@@ -542,6 +598,9 @@ const App: React.FC = () => {
             updateTag={updateTag}
             deleteTag={deleteTag}
             updateRestaurantInfo={updateRestaurantInfo}
+            addOrderStatusColumn={addOrderStatusColumn}
+            updateOrderStatusColumn={updateOrderStatusColumn}
+            deleteOrderStatusColumn={deleteOrderStatusColumn}
         />
       ) : null;
     }
