@@ -1,3 +1,4 @@
+
 import React from 'react';
 import type { Language, RestaurantInfo } from '../types';
 import { useTranslations } from '../i18n/translations';
@@ -17,6 +18,11 @@ export const HeroSection: React.FC<HeroSectionProps> = ({ language, restaurantIn
       menuElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
   };
+  
+  const handleNav = (e: React.MouseEvent<HTMLAnchorElement>, path: string) => {
+    e.preventDefault();
+    window.location.hash = path;
+  };
 
   return (
     <section className="relative h-[60vh] min-h-[400px] max-h-[600px] flex items-center justify-center text-white text-center">
@@ -33,13 +39,22 @@ export const HeroSection: React.FC<HeroSectionProps> = ({ language, restaurantIn
         <p className="text-lg md:text-xl max-w-3xl mx-auto mb-8" style={{ textShadow: '1px 1px 4px rgba(0,0,0,0.8)' }}>
           {restaurantInfo.description?.[language] || ''}
         </p>
-        <a 
-          href="#menu"
-          onClick={handleScrollToMenu}
-          className="bg-primary-500 hover:bg-primary-600 text-white font-bold py-3 px-8 rounded-full text-lg transition-transform transform hover:scale-105 inline-block shadow-lg"
-        >
-          {t.viewMenu}
-        </a>
+        <div className="flex flex-row items-center justify-center gap-3">
+          <a 
+            href="#menu"
+            onClick={handleScrollToMenu}
+            className="bg-primary-500 hover:bg-primary-600 text-white font-bold py-2.5 px-6 rounded-full text-base transition-transform transform hover:scale-105 inline-block shadow-lg shadow-primary-500/30 whitespace-nowrap"
+          >
+            {t.viewMenu}
+          </a>
+           <a 
+            href="#/social"
+            onClick={(e) => handleNav(e, '/social')}
+            className="bg-white/20 hover:bg-white/30 backdrop-blur-sm border-2 border-white text-white font-bold py-2.5 px-6 rounded-full text-base transition-colors transform hover:scale-105 inline-block shadow-lg whitespace-nowrap"
+          >
+            {t.contactUs}
+          </a>
+        </div>
       </div>
     </section>
   );
