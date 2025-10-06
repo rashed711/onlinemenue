@@ -1,4 +1,5 @@
 import React, { useState, useMemo } from 'react';
+import ReactDOM from 'react-dom';
 import type { Permission, Language, UserRole, RestaurantInfo } from '../../types';
 import { useTranslations } from '../../i18n/translations';
 import { CloseIcon } from '../icons/Icons';
@@ -17,6 +18,9 @@ export const PermissionsEditModal: React.FC<PermissionsEditModalProps> = ({ role
   const t = useTranslations(language);
   const [selectedPermissions, setSelectedPermissions] = useState<Permission[]>(currentPermissions);
   
+  const portalRoot = document.getElementById('portal-root');
+  if (!portalRoot) return null;
+
   const allPermissions = useMemo(() => {
       const staticPerms = STATIC_PERMISSIONS.map(p => ({
           id: p.id,
@@ -44,16 +48,16 @@ export const PermissionsEditModal: React.FC<PermissionsEditModalProps> = ({ role
 
   const isSuperAdminRole = role === 'superAdmin';
 
-  return (
+  return ReactDOM.createPortal(
     <div className="fixed inset-0 bg-black bg-opacity-60 z-50 flex justify-center items-center p-4" onClick={onClose}>
-      <div className="bg-white dark:bg-gray-800 rounded-2xl w-full max-w-lg max-h-[90vh] flex flex-col" onClick={e => e.stopPropagation()}>
+      <div className="bg-white dark:bg-gray-800 rounded-2xl w-full max-w-md max-h-[90vh] flex flex-col" onClick={e => e.stopPropagation()}>
         <div className="p-4 flex justify-between items-center border-b border-gray-200 dark:border-gray-700 shrink-0">
-          <h2 className="text-xl font-bold">{t.editPermissions}: <span className="text-primary-600">{t[role as keyof typeof t]}</span></h2>
+          <h2 className="text-lg font-bold">{t.editPermissions}: <span className="text-primary-600">{t[role as keyof typeof t]}</span></h2>
           <button onClick={onClose} className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700">
             <CloseIcon className="w-6 h-6"/>
           </button>
         </div>
-        <div className="p-6 space-y-4 overflow-y-auto">
+        <div className="p-5 space-y-4 overflow-y-auto">
           {isSuperAdminRole && (
             <div className="bg-yellow-100 dark:bg-yellow-900/50 text-yellow-800 dark:text-yellow-200 p-3 rounded-lg text-sm">
               Super Admin permissions cannot be changed.
@@ -69,7 +73,7 @@ export const PermissionsEditModal: React.FC<PermissionsEditModalProps> = ({ role
                   onChange={e => handleCheckboxChange(permission.id, e.target.checked)}
                   disabled={isSuperAdminRole}
                 />
-                <span className="font-medium">{permission.name}</span>
+                <span className="font-medium text-sm">{permission.name}</span>
               </label>
             ))}
           </div>
@@ -85,6 +89,7 @@ export const PermissionsEditModal: React.FC<PermissionsEditModalProps> = ({ role
           </button>
         </div>
       </div>
-    </div>
+    </div>,
+    portalRoot
   );
 };

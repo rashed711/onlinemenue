@@ -112,6 +112,7 @@ export interface Order {
     userId?: number; // for registered users
     name?: string; // for registered users
     mobile: string; // mandatory for all
+    address?: string;
   };
   createdBy?: number; // ID of the user (waiter, admin) who created the order
   notes?: string;

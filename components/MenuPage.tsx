@@ -8,7 +8,7 @@ import { ProductModal } from './ProductModal';
 import { PromotionSection } from './PromotionSection';
 import { Footer } from './Footer';
 import { ReceiptModal } from './ReceiptModal';
-import { GuestCheckoutModal } from './GuestCheckoutModal';
+import { DeliveryDetailsModal } from './GuestCheckoutModal';
 import { HeroSection } from './HeroSection';
 import { useTranslations } from '../i18n/translations';
 import { calculateTotal, formatDateTime } from '../utils/helpers';
@@ -43,7 +43,7 @@ export const MenuPage: React.FC<MenuPageProps> = (props) => {
     const t = useTranslations(language);
     const [isCartOpen, setIsCartOpen] = useState(false);
     const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
-    const [isGuestCheckoutOpen, setIsGuestCheckoutOpen] = useState(false);
+    const [isDeliveryDetailsModalOpen, setIsDeliveryDetailsModalOpen] = useState(false);
     const [orderType, setOrderType] = useState<OrderType>('Dine-in');
     const [tableNumber, setTableNumber] = useState('');
     
@@ -75,7 +75,7 @@ export const MenuPage: React.FC<MenuPageProps> = (props) => {
         const getWrappedLines = (context: CanvasRenderingContext2D, text: string, maxWidth: number): string[] => {
             const words = text.split(' ');
             const lines = [];
-            let currentLine = words[0];
+            let currentLine = words[0] || '';
 
             for (let i = 1; i < words.length; i++) {
                 const word = words[i];
@@ -94,6 +94,12 @@ export const MenuPage: React.FC<MenuPageProps> = (props) => {
         // Pre-calculate canvas height
         let canvasHeight = padding * 2 + logoSize + lineHeight * 6;
         ctx.font = font; // Set font for measurement
+        if (order.customer.address) {
+            const addressText = `${t.address}: ${order.customer.address}`;
+            const addressLines = getWrappedLines(ctx, addressText, canvasWidth - padding * 2);
+            canvasHeight += addressLines.length * (itemLineHeight * 1.2);
+        }
+
         const textMaxWidth = canvasWidth - padding * 2 - (80 * dpi);
         order.items.forEach(item => {
             const itemText = `${item.quantity} x ${item.product.name[language]}`;
@@ -145,6 +151,14 @@ export const MenuPage: React.FC<MenuPageProps> = (props) => {
             if(order.tableNumber){
                  y += lineHeight;
                  ctx.fillText(`${t.tableNumber}: ${order.tableNumber}`, mainX, y);
+            }
+            if (order.customer.address) {
+                const addressText = `${t.address}: ${order.customer.address}`;
+                const addressLines = getWrappedLines(ctx, addressText, canvasWidth - padding * 2);
+                addressLines.forEach(line => {
+                    y += itemLineHeight * 1.2;
+                    ctx.fillText(line, mainX, y);
+                });
             }
             y += lineHeight * 1.5;
             
@@ -236,39 +250,53 @@ export const MenuPage: React.FC<MenuPageProps> = (props) => {
     }, [addToCart]);
       
     const handlePlaceOrder = async () => {
-        if(currentUser) {
-            const orderData = {
-                items: cartItems,
-                total: calculateTotal(cartItems),
-                status: 'Pending' as OrderStatus,
-                orderType: orderType,
-                tableNumber: orderType === 'Dine-in' ? tableNumber : undefined,
-                customer: {
-                    userId: currentUser.id,
-                    name: currentUser.name,
-                    mobile: currentUser.mobile
-                }
-            };
-            const newOrder = placeOrder(orderData);
-            const imageUrl = await generateReceiptImage(newOrder);
-            setReceiptImageUrl(imageUrl);
-            setIsReceiptModalOpen(true);
-        } else {
-            setIsGuestCheckoutOpen(true);
+        if (orderType === 'Delivery') {
+            setIsDeliveryDetailsModalOpen(true);
+            return;
         }
-    }
 
-    const handleGuestCheckoutConfirm = async (mobile: string) => {
-         const orderData = {
+        // From here, it's a Dine-in order.
+        const customerDetails = currentUser
+            ? { userId: currentUser.id, name: currentUser.name, mobile: currentUser.mobile }
+            : { name: `${t.table} ${tableNumber}`, mobile: `table-${tableNumber}` }; // Guest user for Dine-in
+
+        const orderData = {
             items: cartItems,
             total: calculateTotal(cartItems),
             status: 'Pending' as OrderStatus,
-            orderType: orderType,
-            tableNumber: orderType === 'Dine-in' ? tableNumber : undefined,
-            customer: { mobile }
+            orderType: 'Dine-in' as OrderType,
+            tableNumber: tableNumber,
+            customer: customerDetails,
+        };
+
+        const newOrder = placeOrder(orderData);
+        clearCart();
+        const imageUrl = await generateReceiptImage(newOrder);
+        setReceiptImageUrl(imageUrl);
+        setIsReceiptModalOpen(true);
+    }
+
+    const handleDeliveryConfirm = async (details: { mobile: string; address: string }) => {
+        const customerDetails = {
+            ...(currentUser && { userId: currentUser.id, name: currentUser.name }),
+            mobile: details.mobile,
+            address: details.address,
+        };
+
+        if (!currentUser) {
+            customerDetails.name = `Guest (${details.mobile})`;
+        }
+
+        const orderData = {
+            items: cartItems,
+            total: calculateTotal(cartItems),
+            status: 'Pending' as OrderStatus,
+            orderType: 'Delivery' as OrderType,
+            customer: customerDetails
         };
         const newOrder = placeOrder(orderData);
-        setIsGuestCheckoutOpen(false);
+        clearCart();
+        setIsDeliveryDetailsModalOpen(false);
         const imageUrl = await generateReceiptImage(newOrder);
         setReceiptImageUrl(imageUrl);
         setIsReceiptModalOpen(true);
@@ -361,11 +389,12 @@ export const MenuPage: React.FC<MenuPageProps> = (props) => {
                 />
             )}
             
-            <GuestCheckoutModal 
-                isOpen={isGuestCheckoutOpen}
-                onClose={() => setIsGuestCheckoutOpen(false)}
-                onConfirm={handleGuestCheckoutConfirm}
+            <DeliveryDetailsModal 
+                isOpen={isDeliveryDetailsModalOpen}
+                onClose={() => setIsDeliveryDetailsModalOpen(false)}
+                onConfirm={handleDeliveryConfirm}
                 language={language}
+                currentUser={currentUser}
             />
 
             <ReceiptModal

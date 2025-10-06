@@ -56,8 +56,9 @@ export const CartContents: React.FC<CartContentsProps> = ({
   const isPlaceOrderDisabled = orderType === 'Dine-in' && !tableNumber?.trim();
 
   return (
-    <div className="flex flex-col h-full bg-white dark:bg-slate-900">
-      <div className="flex justify-between items-center p-4 border-b border-slate-200 dark:border-slate-800 shrink-0">
+    <>
+      <div className="relative flex justify-between items-center p-4 pt-5 sm:pt-4 border-b border-slate-200 dark:border-slate-800 shrink-0">
+        <div className="absolute top-2 left-1/2 -translate-x-1/2 w-10 h-1.5 bg-slate-300 dark:bg-slate-600 rounded-full sm:hidden" aria-hidden="true"></div>
         <h2 id="cart-heading" className="text-2xl font-bold text-slate-800 dark:text-slate-100">{t.cart}</h2>
         {isSidebar && onClose && (
           <button onClick={onClose} className="p-2 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800" aria-label={t.close}>
@@ -151,6 +152,6 @@ export const CartContents: React.FC<CartContentsProps> = ({
           </button>
         </div>
       )}
-    </div>
+    </>
   );
 };

@@ -142,6 +142,14 @@ export const AdminPage: React.FC<AdminPageProps> = (props) => {
     
     }, [allOrders, currentUser, allUsers, hasPermission]);
 
+    const usersToDisplay = useMemo(() => {
+        if (currentUser?.role === 'superAdmin') {
+            return allUsers; // Super admin sees everyone
+        }
+        // Other roles don't see super admins at all
+        return allUsers.filter(user => user.role !== 'superAdmin');
+    }, [allUsers, currentUser]);
+
 
     const handleSaveProduct = (productData: Product | Omit<Product, 'id' | 'rating'>) => {
         if ('id' in productData) {
@@ -485,10 +493,32 @@ export const AdminPage: React.FC<AdminPageProps> = (props) => {
                 return (
                     <div>
                         <div className="flex justify-between items-center mb-6"><h2 className="text-2xl font-bold">{t.manageUsers}</h2><button onClick={() => setEditingUser('new')} className="bg-green-500 text-white font-bold py-2 px-4 rounded-lg hover:bg-green-600 transition-colors flex items-center gap-2"><PlusIcon className="w-5 h-5" />{t.addNewUser}</button></div>
-                        <div className="bg-white dark:bg-slate-800 rounded-lg shadow-md overflow-x-auto border border-slate-200 dark:border-slate-700">
+                        {/* Mobile Card View */}
+                        <div className="space-y-4 md:hidden">
+                            {usersToDisplay.map(user => (
+                                <div key={user.id} className="bg-white dark:bg-slate-800 rounded-lg shadow-md p-4 space-y-3 border border-slate-200 dark:border-slate-700">
+                                     <div className="flex items-center gap-4">
+                                        <img src={user.profilePicture} alt={user.name} className="w-12 h-12 rounded-full object-cover" />
+                                        <div>
+                                            <div className="font-bold text-slate-900 dark:text-slate-100">{user.name}</div>
+                                            <div className="text-sm text-slate-500 dark:text-slate-400">{user.mobile}</div>
+                                            <div className="text-sm font-semibold text-primary-600 dark:text-primary-400">{t[user.role as keyof typeof t] || user.role}</div>
+                                        </div>
+                                    </div>
+                                     <div className="flex justify-end items-center border-t dark:border-slate-700 pt-3">
+                                         <div className="flex items-center gap-2">
+                                            <button onClick={() => setEditingUser(user)} disabled={user.role === 'superAdmin'} className="p-2 text-indigo-600 hover:text-indigo-900 dark:text-indigo-400 dark:hover:text-indigo-200 disabled:opacity-50 disabled:cursor-not-allowed"><PencilIcon className="w-5 h-5" /></button>
+                                            <button onClick={() => handleDeleteUser(user.id)} disabled={user.role === 'superAdmin'} className="p-2 text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-200 disabled:opacity-50 disabled:cursor-not-allowed"><TrashIcon className="w-5 h-5" /></button>
+                                        </div>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                        {/* Desktop Table View */}
+                        <div className="hidden md:block bg-white dark:bg-slate-800 rounded-lg shadow-md overflow-x-auto border border-slate-200 dark:border-slate-700">
                            <table className="min-w-full divide-y divide-slate-200 dark:divide-slate-700">
                                <thead className="bg-slate-50 dark:bg-slate-700/50"><tr><th className="px-6 py-4 text-start text-xs font-medium text-slate-500 dark:text-slate-300 uppercase tracking-wider">{t.user}</th><th className="px-6 py-4 text-start text-xs font-medium text-slate-500 dark:text-slate-300 uppercase tracking-wider hidden sm:table-cell">{t.mobileNumber}</th><th className="px-6 py-4 text-start text-xs font-medium text-slate-500 dark:text-slate-300 uppercase tracking-wider">{t.role}</th><th className="px-6 py-4 text-start text-xs font-medium text-slate-500 dark:text-slate-300 uppercase tracking-wider">{t.actions}</th></tr></thead>
-                                <tbody className="divide-y divide-slate-200 dark:divide-slate-700">{allUsers.map((user) => (<tr key={user.id} className="odd:bg-white even:bg-slate-50 dark:odd:bg-slate-800 dark:even:bg-slate-800/50 hover:bg-slate-100 dark:hover:bg-slate-700/50 transition-colors"><td className="px-6 py-4 whitespace-nowrap text-sm font-semibold text-slate-900 dark:text-slate-100">{user.name}</td><td className="px-6 py-4 whitespace-nowrap text-sm text-slate-600 dark:text-slate-300 hidden sm:table-cell">{user.mobile}</td><td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-slate-600 dark:text-slate-300">{t[user.role as keyof typeof t] || user.role}</td><td className="px-6 py-4 whitespace-nowrap text-sm font-medium"><div className="flex items-center gap-4"><button onClick={() => setEditingUser(user)} disabled={user.id === 1 && user.role === 'superAdmin'} className="text-indigo-600 hover:text-indigo-900 dark:text-indigo-400 dark:hover:text-indigo-200 flex items-center gap-1 disabled:opacity-50 disabled:cursor-not-allowed"><PencilIcon className="w-4 h-4" /> Edit</button><button onClick={() => handleDeleteUser(user.id)} disabled={user.id === 1} className="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-200 flex items-center gap-1 disabled:opacity-50 disabled:cursor-not-allowed"><TrashIcon className="w-4 h-4" /> Delete</button></div></td></tr>))}</tbody>
+                                <tbody className="divide-y divide-slate-200 dark:divide-slate-700">{usersToDisplay.map((user) => (<tr key={user.id} className="odd:bg-white even:bg-slate-50 dark:odd:bg-slate-800 dark:even:bg-slate-800/50 hover:bg-slate-100 dark:hover:bg-slate-700/50 transition-colors"><td className="px-6 py-4 whitespace-nowrap text-sm font-semibold text-slate-900 dark:text-slate-100">{user.name}</td><td className="px-6 py-4 whitespace-nowrap text-sm text-slate-600 dark:text-slate-300 hidden sm:table-cell">{user.mobile}</td><td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-slate-600 dark:text-slate-300">{t[user.role as keyof typeof t] || user.role}</td><td className="px-6 py-4 whitespace-nowrap text-sm font-medium"><div className="flex items-center gap-4"><button onClick={() => setEditingUser(user)} disabled={user.role === 'superAdmin'} className="text-indigo-600 hover:text-indigo-900 dark:text-indigo-400 dark:hover:text-indigo-200 flex items-center gap-1 disabled:opacity-50 disabled:cursor-not-allowed"><PencilIcon className="w-4 h-4" /> Edit</button><button onClick={() => handleDeleteUser(user.id)} disabled={user.role === 'superAdmin'} className="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-200 flex items-center gap-1 disabled:opacity-50 disabled:cursor-not-allowed"><TrashIcon className="w-4 h-4" /> Delete</button></div></td></tr>))}</tbody>
                            </table>
                        </div>
                     </div>
@@ -599,7 +629,13 @@ export const AdminPage: React.FC<AdminPageProps> = (props) => {
                  <PromotionEditModal promotion={editingPromotion === 'new' ? null : editingPromotion} allProducts={allProducts} onClose={() => setEditingPromotion(null)} onSave={handleSavePromotion} language={language}/>
             )}
             {editingUser && hasPermission('manage_users') && (
-                <UserEditModal user={editingUser === 'new' ? null : editingUser} onClose={() => setEditingUser(null)} onSave={handleSaveUser} language={language}/>
+                <UserEditModal
+                    user={editingUser === 'new' ? null : editingUser}
+                    currentUser={currentUser}
+                    onClose={() => setEditingUser(null)}
+                    onSave={handleSaveUser}
+                    language={language}
+                />
             )}
             {editingRole && hasPermission('manage_roles') && (
                 <PermissionsEditModal

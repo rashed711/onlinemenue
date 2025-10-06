@@ -1,5 +1,6 @@
 
 import React, { useState, useMemo } from 'react';
+import ReactDOM from 'react-dom';
 import type { Order, Language, CartItem, Product } from '../../types';
 import { useTranslations } from '../../i18n/translations';
 import { CloseIcon, PlusIcon, TrashIcon, MinusIcon } from '../icons/Icons';
@@ -34,6 +35,9 @@ export const OrderEditModal: React.FC<OrderEditModalProps> = ({ order, allProduc
     const [tableNumber, setTableNumber] = useState(order.tableNumber || '');
     const [productToAdd, setProductToAdd] = useState<string>(allProducts[0]?.id.toString() || '');
     const [addingProductWithOptions, setAddingProductWithOptions] = useState<Product | null>(null);
+
+    const portalRoot = document.getElementById('portal-root');
+    if (!portalRoot) return null;
 
     const total = useMemo(() => {
         return editedItems.reduce((acc, item) => acc + calculateItemTotal(item), 0);
@@ -83,17 +87,17 @@ export const OrderEditModal: React.FC<OrderEditModalProps> = ({ order, allProduc
         onSave({ items: editedItems, notes, tableNumber: order.orderType === 'Dine-in' ? tableNumber : undefined });
     };
 
-    return (
+    return ReactDOM.createPortal(
         <div className="fixed inset-0 bg-black bg-opacity-60 z-50 flex justify-center items-center p-4 animate-fade-in-up" onClick={onClose}>
-            <form onSubmit={handleSubmit} className="bg-white dark:bg-gray-800 rounded-2xl w-full max-w-3xl max-h-[90vh] flex flex-col" onClick={e => e.stopPropagation()}>
+            <form onSubmit={handleSubmit} className="bg-white dark:bg-gray-800 rounded-2xl w-full max-w-2xl max-h-[90vh] flex flex-col" onClick={e => e.stopPropagation()}>
                 <div className="p-4 flex justify-between items-center border-b border-gray-200 dark:border-gray-700 shrink-0">
-                    <h2 className="text-xl font-bold">{t.editOrder} - <span className="font-mono text-primary-600">{order.id}</span></h2>
+                    <h2 className="text-lg font-bold">{t.editOrder} - <span className="font-mono text-primary-600">{order.id}</span></h2>
                     <button type="button" onClick={onClose} className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700">
                         <CloseIcon className="w-6 h-6"/>
                     </button>
                 </div>
 
-                <div className="p-6 space-y-6 overflow-y-auto">
+                <div className="p-5 space-y-4 overflow-y-auto">
                     {order.orderType === 'Dine-in' && (
                         <div>
                             <label className="block text-lg font-bold mb-2">{t.tableNumber}</label>
@@ -170,7 +174,7 @@ export const OrderEditModal: React.FC<OrderEditModalProps> = ({ order, allProduc
                 <div className="p-4 mt-auto flex justify-between items-center border-t border-gray-200 dark:border-gray-700 shrink-0">
                     <div>
                         <span className="text-sm text-gray-500 dark:text-gray-400">{t.total}</span>
-                        <p className="font-extrabold text-2xl text-primary-600 dark:text-primary-400">{total.toFixed(2)} {t.currency}</p>
+                        <p className="font-extrabold text-xl text-primary-600 dark:text-primary-400">{total.toFixed(2)} {t.currency}</p>
                     </div>
                     <div className="flex gap-4">
                         <button type="button" onClick={onClose} className="px-4 py-2 rounded-lg bg-gray-200 dark:bg-gray-600 hover:bg-gray-300 dark:hover:bg-gray-500 transition-colors">{t.cancel}</button>
@@ -186,6 +190,7 @@ export const OrderEditModal: React.FC<OrderEditModalProps> = ({ order, allProduc
                     language={language}
                 />
             )}
-        </div>
+        </div>,
+        portalRoot
     );
 };

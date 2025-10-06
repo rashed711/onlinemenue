@@ -573,12 +573,16 @@ const App: React.FC = () => {
       ) : null;
     }
     if (displayedRoute.startsWith('#/profile')) {
+       const userOrders = currentUser ? orders.filter(o => o.customer.userId === currentUser.id) : [];
        return currentUser ? <ProfilePage 
          language={language} 
          currentUser={currentUser} 
+         orders={userOrders}
+         restaurantInfo={restaurantInfo}
          logout={logout} 
          onChangePasswordClick={() => setIsChangePasswordModalOpen(true)}
          onUpdateProfile={updateUserProfile}
+         updateOrder={updateOrder}
        /> : null;
     }
 

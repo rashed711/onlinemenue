@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import ReactDOM from 'react-dom';
 import type { Promotion, Language, LocalizedString, Product } from '../../types';
 import { useTranslations } from '../../i18n/translations';
 import { CloseIcon } from '../icons/Icons';
@@ -23,6 +24,9 @@ const emptyPromotion: Omit<Promotion, 'id'> = {
 export const PromotionEditModal: React.FC<PromotionEditModalProps> = ({ promotion, allProducts, onClose, onSave, language }) => {
     const t = useTranslations(language);
     const [formData, setFormData] = useState<Omit<Promotion, 'id'>>(emptyPromotion);
+    
+    const portalRoot = document.getElementById('portal-root');
+    if (!portalRoot) return null;
 
     useEffect(() => {
         if (promotion) {
@@ -73,16 +77,16 @@ export const PromotionEditModal: React.FC<PromotionEditModalProps> = ({ promotio
         return new Date(date.getTime() - (date.getTimezoneOffset() * 60000)).toISOString().slice(0, 16);
     };
 
-    return (
+    return ReactDOM.createPortal(
         <div className="fixed inset-0 bg-black bg-opacity-60 z-50 flex justify-center items-center p-4 animate-fade-in-up" onClick={onClose}>
-            <div className="bg-white dark:bg-gray-800 rounded-2xl w-full max-w-2xl max-h-[90vh] flex flex-col" onClick={e => e.stopPropagation()}>
+            <div className="bg-white dark:bg-gray-800 rounded-2xl w-full max-w-lg max-h-[90vh] flex flex-col" onClick={e => e.stopPropagation()}>
                 <div className="p-4 flex justify-between items-center border-b border-gray-200 dark:border-gray-700 shrink-0">
-                    <h2 className="text-xl font-bold">{promotion ? t.editPromotion : t.addNewPromotion}</h2>
+                    <h2 className="text-lg font-bold">{promotion ? t.editPromotion : t.addNewPromotion}</h2>
                     <button onClick={onClose} className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700">
                         <CloseIcon className="w-6 h-6"/>
                     </button>
                 </div>
-                <form onSubmit={handleSubmit} className="p-6 space-y-4 overflow-y-auto">
+                <form onSubmit={handleSubmit} className="p-5 space-y-4 overflow-y-auto">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
                             <label className="block text-sm font-medium mb-1">{t.promotionTitleEn}</label>
@@ -135,6 +139,7 @@ export const PromotionEditModal: React.FC<PromotionEditModalProps> = ({ promotio
                     </div>
                 </form>
             </div>
-        </div>
+        </div>,
+        portalRoot
     );
 };

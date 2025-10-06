@@ -278,6 +278,10 @@ export const translations = {
     security: 'Security',
     backToAdminPanel: '← Back to Admin Panel',
     profileUpdatedSuccess: 'Profile updated successfully!',
+    address: 'Address',
+    deliveryDetails: 'Delivery Details',
+    enterAddressPrompt: 'Please enter your delivery address.',
+    addressRequired: 'Address is required for delivery.',
   },
   ar: {
     restaurantName: 'مطعم زفران',
@@ -556,6 +560,10 @@ export const translations = {
     security: 'الأمان',
     backToAdminPanel: '→ العودة للوحة التحكم',
     profileUpdatedSuccess: 'تم تحديث الملف الشخصي بنجاح!',
+    address: 'العنوان',
+    deliveryDetails: 'تفاصيل التوصيل',
+    enterAddressPrompt: 'يرجى إدخال عنوان التوصيل الخاص بك.',
+    addressRequired: 'العنوان مطلوب لطلبات التوصيل.',
   }
 };
 

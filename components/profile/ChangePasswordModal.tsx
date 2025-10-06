@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import ReactDOM from 'react-dom';
 import type { Language } from '../../types';
 import { useTranslations } from '../../i18n/translations';
 import { CloseIcon } from '../icons/Icons';
@@ -16,6 +17,9 @@ export const ChangePasswordModal: React.FC<ChangePasswordModalProps> = ({ langua
     const [confirmPassword, setConfirmPassword] = useState('');
     const [error, setError] = useState('');
     const [isSaving, setIsSaving] = useState(false);
+
+    const portalRoot = document.getElementById('portal-root');
+    if (!portalRoot) return null;
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -39,16 +43,16 @@ export const ChangePasswordModal: React.FC<ChangePasswordModalProps> = ({ langua
         }
     };
 
-    return (
+    return ReactDOM.createPortal(
         <div className="fixed inset-0 bg-black bg-opacity-60 z-50 flex justify-center items-center p-4" onClick={onClose}>
-            <div className="bg-white dark:bg-gray-800 rounded-2xl w-full max-w-md" onClick={e => e.stopPropagation()}>
+            <div className="bg-white dark:bg-gray-800 rounded-2xl w-full max-w-sm" onClick={e => e.stopPropagation()}>
                 <div className="p-4 flex justify-between items-center border-b border-gray-200 dark:border-gray-700">
-                    <h2 className="text-xl font-bold">{t.changePassword}</h2>
+                    <h2 className="text-lg font-bold">{t.changePassword}</h2>
                     <button onClick={onClose} className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700">
                         <CloseIcon className="w-6 h-6"/>
                     </button>
                 </div>
-                <form onSubmit={handleSubmit} className="p-6 space-y-4">
+                <form onSubmit={handleSubmit} className="p-5 space-y-4">
                     <div>
                         <label className="block text-sm font-medium mb-1">{t.currentPassword}</label>
                         <input
@@ -88,6 +92,7 @@ export const ChangePasswordModal: React.FC<ChangePasswordModalProps> = ({ langua
                     </div>
                 </form>
             </div>
-        </div>
+        </div>,
+        portalRoot
     );
 };

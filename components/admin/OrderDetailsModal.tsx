@@ -1,6 +1,5 @@
-
-
 import React from 'react';
+import ReactDOM from 'react-dom';
 import type { Order, Language, OrderStatus, RestaurantInfo } from '../../types';
 import { useTranslations } from '../../i18n/translations';
 import { CloseIcon, DocumentTextIcon, PencilIcon } from '../icons/Icons';
@@ -36,12 +35,15 @@ export const OrderDetailsModal: React.FC<OrderDetailsModalProps> = ({ order, onC
     const t = useTranslations(language);
     const statusDetails = restaurantInfo.orderStatusColumns.find(s => s.id === order.status);
 
-    return (
+    const portalRoot = document.getElementById('portal-root');
+    if (!portalRoot) return null;
+
+    return ReactDOM.createPortal(
         <div className="fixed inset-0 bg-black bg-opacity-60 z-50 flex justify-center items-center p-4 animate-fade-in" onClick={onClose}>
-            <div className="bg-white dark:bg-slate-800 rounded-2xl w-full max-w-2xl max-h-[90vh] flex flex-col" onClick={e => e.stopPropagation()}>
+            <div className="bg-white dark:bg-slate-800 rounded-2xl w-full max-w-xl max-h-[90vh] flex flex-col" onClick={e => e.stopPropagation()}>
                 <div className="p-4 flex justify-between items-center border-b border-slate-200 dark:border-slate-700 shrink-0">
                     <div>
-                        <h2 className="text-xl font-bold text-slate-800 dark:text-slate-100">{t.orderDetails}</h2>
+                        <h2 className="text-lg font-bold text-slate-800 dark:text-slate-100">{t.orderDetails}</h2>
                         <p className="font-mono text-sm text-slate-500 dark:text-slate-400">{order.id}</p>
                     </div>
                     <div className="flex items-center gap-2">
@@ -61,12 +63,15 @@ export const OrderDetailsModal: React.FC<OrderDetailsModalProps> = ({ order, onC
                     </div>
                 </div>
                 
-                <div className="p-6 space-y-6 overflow-y-auto flex-grow">
-                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-6 text-sm">
-                         <div>
-                            <p className="font-semibold text-slate-500 dark:text-slate-400 mb-1">{t.customer}</p>
+                <div className="p-5 space-y-4 overflow-y-auto flex-grow">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
+                         <div className="sm:col-span-2">
+                            <p className="font-semibold text-slate-500 dark:text-slate-400 mb-1">{t.customerInfo}</p>
                             <p className="font-bold truncate">{order.customer.name || 'Guest'}</p>
                             <p className="text-xs text-slate-600 dark:text-slate-300">{order.customer.mobile}</p>
+                            {order.customer.address && (
+                                <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 whitespace-pre-wrap">{order.customer.address}</p>
+                            )}
                         </div>
                         <div>
                             <p className="font-semibold text-slate-500 dark:text-slate-400 mb-1">{t.date}</p>
@@ -121,7 +126,7 @@ export const OrderDetailsModal: React.FC<OrderDetailsModalProps> = ({ order, onC
                                 {formatNumber(order.items.length)} {language === 'ar' ? 'أصناف' : 'Items'}
                             </span>
                         </div>
-                        <div className="max-h-72 overflow-y-auto pr-2 space-y-3 -mr-2">
+                        <div className="max-h-64 overflow-y-auto pr-2 space-y-3 -mr-2">
                             {order.items.map((item, index) => (
                                 <div key={`${item.product.id}-${index}`} className="flex items-start gap-4 py-3 border-b dark:border-slate-700 last:border-b-0">
                                     <img src={item.product.image} alt={item.product.name[language]} className="w-16 h-16 rounded-lg object-cover" />
@@ -152,10 +157,11 @@ export const OrderDetailsModal: React.FC<OrderDetailsModalProps> = ({ order, onC
                 <div className="p-4 border-t dark:border-slate-700 shrink-0 bg-slate-50 dark:bg-slate-800/50 rounded-b-2xl">
                     <div className="text-end">
                         <p className="font-semibold text-slate-500 dark:text-slate-400 text-sm">{t.total}</p>
-                        <p className="font-extrabold text-2xl text-primary-600 dark:text-primary-400">{order.total.toFixed(2)} {t.currency}</p>
+                        <p className="font-extrabold text-xl text-primary-600 dark:text-primary-400">{order.total.toFixed(2)} {t.currency}</p>
                     </div>
                 </div>
             </div>
-        </div>
+        </div>,
+        portalRoot
     );
 };
