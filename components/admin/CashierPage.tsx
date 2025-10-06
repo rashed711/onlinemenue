@@ -3,7 +3,7 @@ import type { Language, User, Product, Category, CartItem, Order, OrderStatus, R
 import { useTranslations } from '../../i18n/translations';
 import { calculateTotal, formatNumber } from '../../utils/helpers';
 import { ProductModal } from '../ProductModal';
-import { MinusIcon, PlusIcon, TrashIcon } from '../icons/Icons';
+import { MinusIcon, PlusIcon, TrashIcon, CloseIcon, CartIcon } from '../icons/Icons';
 import { TableSelector } from '../TableSelector';
 
 interface CashierPageProps {
@@ -16,6 +16,20 @@ interface CashierPageProps {
     restaurantInfo: RestaurantInfo;
 }
 
+const calculateItemTotal = (item: CartItem): number => {
+    let itemPrice = item.product.price;
+    if (item.options && item.product.options) {
+        Object.entries(item.options).forEach(([optionKey, valueKey]) => {
+            const option = item.product.options?.find(opt => opt.name.en === optionKey);
+            const value = option?.values.find(val => val.name.en === valueKey);
+            if (value) {
+                itemPrice += value.priceModifier;
+            }
+        });
+    }
+    return itemPrice * item.quantity;
+}
+
 export const CashierPage: React.FC<CashierPageProps> = ({ language, currentUser, allProducts, allCategories, placeOrder, showToast, restaurantInfo }) => {
     const t = useTranslations(language);
 
@@ -24,6 +38,7 @@ export const CashierPage: React.FC<CashierPageProps> = ({ language, currentUser,
     const [notes, setNotes] = useState('');
     const [selectedCategory, setSelectedCategory] = useState<number | null>(allCategories[0]?.id || null);
     const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
+    const [isCartOpen, setIsCartOpen] = useState(false);
 
     const visibleProducts = useMemo(() => allProducts.filter(p => p.isVisible), [allProducts]);
     
@@ -79,19 +94,21 @@ export const CashierPage: React.FC<CashierPageProps> = ({ language, currentUser,
         const orderData: Omit<Order, 'id' | 'timestamp'> = {
             items: cartItems,
             total: total,
-            status: 'Pending' as OrderStatus,
+            status: 'pending', 
             orderType: 'Dine-in',
             tableNumber: tableNumber,
             notes: notes,
             customer: {
                 name: `${t.table} ${tableNumber}`,
-                mobile: tableNumber, // Using table number as a placeholder identifier
+                mobile: tableNumber, 
             },
+            createdBy: currentUser?.id,
         };
         
         placeOrder(orderData);
         showToast(t.orderSentToKitchen);
         clearCart();
+        setIsCartOpen(false);
     };
 
     const handleProductClick = (product: Product) => {
@@ -106,10 +123,10 @@ export const CashierPage: React.FC<CashierPageProps> = ({ language, currentUser,
     
     return (
         <>
-            <div className="flex flex-col md:flex-row h-[calc(100vh-5rem)]">
+            <div className="flex flex-col md:flex-row h-[calc(100vh-5rem)] overflow-hidden">
                 {/* Product Selection Panel */}
-                <div className="flex-[2] flex flex-col bg-slate-100/50 dark:bg-slate-900/50">
-                    <div className="p-4 border-b border-slate-200 dark:border-slate-700">
+                <div className="flex-1 flex flex-col bg-slate-100/50 dark:bg-slate-900/50">
+                    <div className="p-4 border-b border-slate-200 dark:border-slate-700 shrink-0">
                         <div className="flex overflow-x-auto space-x-2 space-x-reverse pb-2 scrollbar-hide">
                             {allCategories.map(category => (
                                 <button
@@ -137,18 +154,37 @@ export const CashierPage: React.FC<CashierPageProps> = ({ language, currentUser,
                     </div>
                 </div>
 
+                {/* Mobile overlay background */}
+                 <div
+                    className={`fixed inset-0 bg-black bg-opacity-60 z-40 transition-opacity duration-300 md:hidden ${
+                    isCartOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'
+                    }`}
+                    onClick={() => setIsCartOpen(false)}
+                    aria-hidden="true"
+                />
+
                 {/* Cart/Order Panel */}
-                <div className="flex-1 w-full md:max-w-md bg-white dark:bg-slate-800 flex flex-col shadow-lg border-l border-slate-200 dark:border-slate-700">
-                    <div className="p-4 border-b dark:border-slate-700">
+                <div className={`
+                    fixed bottom-0 inset-x-0 h-[85vh] transition-transform duration-300 ease-in-out z-50
+                    md:relative md:h-auto md:w-[400px] md:translate-y-0 md:flex-shrink-0
+                    bg-white dark:bg-slate-800 flex flex-col shadow-lg 
+                    border-l border-slate-200 dark:border-slate-700
+                    ${ isCartOpen ? 'translate-y-0' : 'translate-y-full md:translate-y-0' }
+                `}>
+                    <div className="p-4 border-b dark:border-slate-700 flex justify-between items-center shrink-0">
                         <h3 className="text-xl font-bold">{t.newOrder}</h3>
-                         <div>
-                            <label htmlFor="table-number-cashier" className="block text-sm font-medium text-slate-700 dark:text-slate-300 mt-2 mb-2">{t.tableNumber}</label>
-                            <TableSelector
-                                tableCount={restaurantInfo.tableCount || 0}
-                                selectedTable={tableNumber}
-                                onSelectTable={setTableNumber}
-                            />
-                        </div>
+                        <button onClick={() => setIsCartOpen(false)} className="p-2 rounded-full hover:bg-slate-100 dark:hover:bg-slate-700 md:hidden">
+                            <CloseIcon className="w-6 h-6"/>
+                        </button>
+                    </div>
+                    
+                    <div className="p-4 border-b dark:border-slate-700 shrink-0">
+                        <label htmlFor="table-number-cashier" className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">{t.tableNumber}</label>
+                        <TableSelector
+                            tableCount={restaurantInfo.tableCount || 0}
+                            selectedTable={tableNumber}
+                            onSelectTable={setTableNumber}
+                        />
                     </div>
 
                     <div className="flex-grow overflow-y-auto p-4 space-y-3">
@@ -171,7 +207,7 @@ export const CashierPage: React.FC<CashierPageProps> = ({ language, currentUser,
                                                 })}
                                             </div>
                                         )}
-                                        <p className="text-xs text-slate-500 mt-1">{calculateTotal([item]).toFixed(2)} {t.currency}</p>
+                                        <p className="text-xs text-slate-500 mt-1">{calculateItemTotal(item).toFixed(2)} {t.currency}</p>
                                     </div>
                                     <div className="flex items-center gap-2">
                                         <button onClick={() => updateCartQuantity(index, item.quantity - 1)} className="p-1 rounded-full bg-slate-200 dark:bg-slate-700"><MinusIcon className="w-4 h-4" /></button>
@@ -183,7 +219,7 @@ export const CashierPage: React.FC<CashierPageProps> = ({ language, currentUser,
                         )}
                     </div>
 
-                    <div className="p-4 border-t dark:border-slate-700 space-y-4 bg-slate-50 dark:bg-slate-800/50">
+                    <div className="p-4 border-t dark:border-slate-700 space-y-4 bg-slate-50 dark:bg-slate-800/50 shrink-0">
                          <div>
                              <textarea value={notes} onChange={e => setNotes(e.target.value)} placeholder={t.orderNotes} rows={2} className="w-full p-2 border rounded-md dark:bg-gray-700 dark:border-gray-600 focus:ring-primary-500 focus:border-primary-500"></textarea>
                         </div>
@@ -204,6 +240,23 @@ export const CashierPage: React.FC<CashierPageProps> = ({ language, currentUser,
                     </div>
                 </div>
             </div>
+
+            {/* Floating Action Button for Mobile */}
+            {!isCartOpen && (
+                <button
+                    onClick={() => setIsCartOpen(true)}
+                    className="md:hidden fixed bottom-6 end-6 z-30 bg-primary-600 text-white rounded-full shadow-lg hover:bg-primary-700 transition-all duration-300 flex items-center justify-center p-4"
+                    aria-label={t.viewOrder}
+                >
+                    <CartIcon className="w-6 h-6" />
+                     {cartItems.length > 0 && (
+                         <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs font-bold rounded-full h-5 w-5 flex items-center justify-center">
+                            {formatNumber(cartItems.reduce((acc, item) => acc + item.quantity, 0))}
+                        </span>
+                     )}
+                </button>
+            )}
+
              {selectedProduct && (
                 <ProductModal
                 product={selectedProduct}

@@ -24,6 +24,11 @@ export const CartSidebar: React.FC<CartSidebarProps> = (props) => {
   const portalRoot = document.getElementById('portal-root');
   if (!portalRoot) return null;
 
+  // Mobile: slides up from the bottom.
+  // Desktop (md+): slides in from the right.
+  const openClasses = 'translate-y-0 md:translate-x-0';
+  const closedClasses = 'translate-y-full md:translate-y-0 md:translate-x-full';
+
   return ReactDOM.createPortal(
     <>
       <div
@@ -34,8 +39,8 @@ export const CartSidebar: React.FC<CartSidebarProps> = (props) => {
         aria-hidden="true"
       />
       <div
-        className={`fixed bottom-0 inset-x-0 sm:top-0 ltr:sm:right-0 rtl:sm:left-0 w-full sm:max-w-md bg-white dark:bg-slate-900 shadow-2xl z-50 flex flex-col transition-transform duration-300 ease-in-out rounded-t-2xl sm:rounded-none max-h-[85vh] sm:max-h-full ${
-          isOpen ? 'translate-y-0' : 'translate-y-full ltr:sm:translate-x-full rtl:sm:-translate-x-full sm:translate-y-0'
+        className={`fixed bottom-0 inset-x-0 md:top-0 md:right-0 md:inset-x-auto w-full md:max-w-md bg-white dark:bg-slate-900 shadow-2xl z-50 flex flex-col transition-transform duration-300 ease-in-out rounded-t-2xl md:rounded-none max-h-[85vh] md:max-h-full ${
+          isOpen ? openClasses : closedClasses
         }`}
         role="dialog"
         aria-modal="true"
