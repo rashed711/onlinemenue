@@ -94,6 +94,7 @@ export interface User {
   mobile: string;
   password: string; // In a real app, this should be a hash
   role: UserRole;
+  profilePicture?: string;
 }
 
 export type OrderStatus = string; // Was a union type, now a string to support dynamic statuses

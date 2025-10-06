@@ -164,8 +164,8 @@ export const Header: React.FC<HeaderProps> = ({
                         <p className="font-semibold text-sm truncate">{currentUser.name}</p>
                         <p className="text-xs text-slate-500 truncate">{currentUser.mobile}</p>
                       </div>
-                      <a href={isAdmin ? '#/admin' : '#/profile'} onClick={(e) => handleNav(e, isAdmin ? '/admin' : '/profile')} className="block w-full text-start px-3 py-2 text-sm hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors">
-                        {isAdmin ? t.adminPanel : t.profile}
+                      <a href="#/profile" onClick={(e) => handleNav(e, '/profile')} className="block w-full text-start px-3 py-2 text-sm hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors">
+                        {t.myProfile}
                       </a>
                       <button onClick={() => { logout(); setIsUserMenuOpen(false); }} className="block w-full text-start px-3 py-2 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/50 transition-colors">
                         {t.logout}

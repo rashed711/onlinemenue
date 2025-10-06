@@ -59,6 +59,7 @@ interface AdminPageProps {
     deleteOrderStatusColumn: (columnId: string) => void;
     setProgress: (progress: number | ((prev: number) => number)) => void;
     setShowProgress: (show: boolean) => void;
+    onChangePasswordClick: () => void;
 }
 
 type AdminTab = 'orders' | 'cashier' | 'reports' | 'productList' | 'classifications' | 'promotions' | 'users' | 'roles' | 'settings';
@@ -71,7 +72,7 @@ export const AdminPage: React.FC<AdminPageProps> = (props) => {
         rolePermissions, updateRolePermissions,
         addCategory, updateCategory, deleteCategory, addTag, updateTag, deleteTag,
         updateRestaurantInfo, addOrderStatusColumn, updateOrderStatusColumn, deleteOrderStatusColumn,
-        setProgress, setShowProgress,
+        setProgress, setShowProgress, onChangePasswordClick
     } = props;
 
     const t = useTranslations(language);
@@ -547,6 +548,7 @@ export const AdminPage: React.FC<AdminPageProps> = (props) => {
                 setIsOpen={setSidebarOpen}
                 restaurantInfo={restaurantInfo}
                 logout={logout}
+                onChangePasswordClick={onChangePasswordClick}
             />
             <div className={`flex flex-col min-h-screen transition-all duration-300 ${language === 'ar' ? 'md:mr-64' : 'md:ml-64'}`}>
                 <header className="bg-white/80 dark:bg-slate-900/80 backdrop-blur-lg shadow-sm sticky top-0 z-20 border-b border-slate-200 dark:border-slate-700" id="admin-header">

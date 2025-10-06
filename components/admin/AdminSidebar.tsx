@@ -1,7 +1,7 @@
 import React from 'react';
 import type { Language, Permission, User, UserRole, RestaurantInfo } from '../../types';
 import { useTranslations } from '../../i18n/translations';
-import { ClipboardListIcon, CollectionIcon, UsersIcon, CloseIcon, ShieldCheckIcon, BookmarkAltIcon, ChartBarIcon, TagIcon, CogIcon, CashRegisterIcon, LogoutIcon, HomeIcon } from '../icons/Icons';
+import { ClipboardListIcon, CollectionIcon, UsersIcon, CloseIcon, ShieldCheckIcon, BookmarkAltIcon, ChartBarIcon, TagIcon, CogIcon, CashRegisterIcon, LogoutIcon, HomeIcon, KeyIcon } from '../icons/Icons';
 import { usePermissions } from '../../hooks/usePermissions';
 
 type AdminTab = 'orders' | 'cashier' | 'reports' | 'productList' | 'classifications' | 'promotions' | 'users' | 'roles' | 'settings';
@@ -16,10 +16,11 @@ interface AdminSidebarProps {
     setIsOpen: (isOpen: boolean) => void;
     restaurantInfo: RestaurantInfo;
     logout: () => void;
+    onChangePasswordClick: () => void;
 }
 
 export const AdminSidebar: React.FC<AdminSidebarProps> = (props) => {
-    const { language, currentUser, rolePermissions, activeTab, setActiveTab, isOpen, setIsOpen, restaurantInfo, logout } = props;
+    const { language, currentUser, rolePermissions, activeTab, setActiveTab, isOpen, setIsOpen, restaurantInfo, logout, onChangePasswordClick } = props;
     const t = useTranslations(language);
     const { hasPermission } = usePermissions(currentUser, rolePermissions);
 
@@ -63,6 +64,7 @@ export const AdminSidebar: React.FC<AdminSidebarProps> = (props) => {
     
     const handleNav = (e: React.MouseEvent<HTMLAnchorElement>, path: string) => {
         e.preventDefault();
+        setIsOpen(false);
         window.location.hash = path;
     };
 
@@ -106,23 +108,19 @@ export const AdminSidebar: React.FC<AdminSidebarProps> = (props) => {
                 </div>
 
                 <div className="p-4 border-t dark:border-gray-700">
-                     <div className="flex items-center gap-3 mb-4">
-                        <div className="w-10 h-10 rounded-full bg-primary-100 dark:bg-primary-900 flex items-center justify-center text-primary-600 dark:text-primary-300 font-bold">
-                            {currentUser?.name.charAt(0)}
+                     <a href="#/profile" onClick={(e) => handleNav(e, '/profile')} className="block p-2 rounded-lg hover:bg-gray-200/50 dark:hover:bg-gray-700/50 transition-colors">
+                        <div className="flex items-center gap-3">
+                            <img src={currentUser?.profilePicture} alt="User" className="w-10 h-10 rounded-full bg-slate-200 object-cover" />
+                            <div>
+                                <p className="font-semibold text-sm text-gray-800 dark:text-gray-100">{currentUser?.name}</p>
+                                <p className="text-xs text-gray-500 dark:text-gray-400">{t[currentUser?.role as keyof typeof t]}</p>
+                            </div>
                         </div>
-                        <div>
-                            <p className="font-semibold text-sm text-gray-800 dark:text-gray-100">{currentUser?.name}</p>
-                            <p className="text-xs text-gray-500 dark:text-gray-400">{t[currentUser?.role as keyof typeof t]}</p>
-                        </div>
-                    </div>
-                     <a href="#/" onClick={(e) => handleNav(e, '/')} className="w-full flex items-center p-3 my-1 rounded-lg text-sm font-medium text-gray-600 dark:text-gray-300 hover:bg-gray-200/50 dark:hover:bg-gray-700/50 transition-colors">
+                     </a>
+                     <a href="#/" onClick={(e) => handleNav(e, '/')} className="w-full flex items-center p-3 mt-2 rounded-lg text-sm font-medium text-gray-600 dark:text-gray-300 hover:bg-gray-200/50 dark:hover:bg-gray-700/50 transition-colors">
                         <HomeIcon className="w-5 h-5"/>
                         <span className="mx-4">{t.backToMenu}</span>
                     </a>
-                    <button onClick={logout} className="w-full flex items-center p-3 my-1 rounded-lg text-sm font-medium text-red-600 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-800/50 transition-colors">
-                        <LogoutIcon className="w-5 h-5" />
-                        <span className="mx-4">{t.logout}</span>
-                    </button>
                 </div>
             </aside>
         </>

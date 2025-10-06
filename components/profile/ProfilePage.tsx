@@ -1,143 +1,135 @@
-import React, { useState } from 'react';
-import type { Language, Order, User, OrderStatus, RestaurantInfo } from '../../types';
+import React, { useState, useRef } from 'react';
+import type { Language, User } from '../../types';
 import { useTranslations } from '../../i18n/translations';
-import { UserIcon } from '../icons/Icons';
-import { FeedbackModal } from './FeedbackModal';
-import { formatDateTime, formatNumber } from '../../utils/helpers';
+// FIX: Import ChevronRightIcon
+import { PencilIcon, CameraIcon, ChevronLeftIcon, KeyIcon, LogoutIcon, ChevronRightIcon } from '../icons/Icons';
 
 interface ProfilePageProps {
     language: Language;
     currentUser: User;
-    orders: Order[];
     logout: () => void;
-    restaurantInfo: RestaurantInfo;
-    updateOrder: (orderId: string, payload: { customerFeedback: { rating: number; comment: string; } }) => void;
+    onChangePasswordClick: () => void;
+    onUpdateProfile: (userId: number, updates: { name?: string; profilePicture?: string }) => void;
 }
 
-export const ProfilePage: React.FC<ProfilePageProps> = ({ language, currentUser, orders, logout, restaurantInfo, updateOrder }) => {
+export const ProfilePage: React.FC<ProfilePageProps> = ({ language, currentUser, logout, onChangePasswordClick, onUpdateProfile }) => {
     const t = useTranslations(language);
-    const [feedbackOrder, setFeedbackOrder] = useState<Order | null>(null);
+    const [isEditingName, setIsEditingName] = useState(false);
+    const [name, setName] = useState(currentUser.name);
+    const profilePicInputRef = useRef<HTMLInputElement>(null);
+    
+    const isAdminOrStaff = currentUser.role !== 'customer';
 
     const handleNav = (e: React.MouseEvent<HTMLAnchorElement>, path: string) => {
         e.preventDefault();
         window.location.hash = path;
     };
-
-    const userOrders = orders.filter(order => order.customer.userId === currentUser.id).sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
-
-    const getStatusDetails = (statusId: OrderStatus) => {
-        return restaurantInfo.orderStatusColumns.find(s => s.id === statusId);
-    };
-
-    const getStatusChipColor = (statusId: OrderStatus) => {
-        const status = getStatusDetails(statusId);
-        const color = status?.color || 'slate';
-        return `bg-${color}-100 text-${color}-800 dark:bg-${color}-900/50 dark:text-${color}-300 border-${color}-200 dark:border-${color}-500/30`;
-    };
     
-    const handleSaveFeedback = (feedback: { rating: number; comment: string; }) => {
-        if (feedbackOrder) {
-            updateOrder(feedbackOrder.id, { customerFeedback: feedback });
-            setFeedbackOrder(null);
+    const handleSaveName = () => {
+        if (name.trim() && name.trim() !== currentUser.name) {
+            onUpdateProfile(currentUser.id, { name: name.trim() });
+        }
+        setIsEditingName(false);
+    };
+
+    const handlePictureChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (file) {
+            const reader = new FileReader();
+            reader.onloadend = () => {
+                onUpdateProfile(currentUser.id, { profilePicture: reader.result as string });
+            };
+            reader.readAsDataURL(file);
         }
     };
+    
+    const backLinkPath = isAdminOrStaff ? '/admin' : '/';
+    const backLinkText = isAdminOrStaff ? t.backToAdminPanel : t.backToMenu;
 
     return (
-        <div className="min-h-screen bg-slate-100 dark:bg-slate-900">
-             <header className="bg-white dark:bg-slate-800 shadow-md sticky top-0 z-10 border-b border-slate-200 dark:border-slate-700">
-                <div className="container mx-auto max-w-5xl px-4 py-3 h-20 flex justify-between items-center">
-                    <a href="#/" onClick={(e) => handleNav(e, '/')} className="flex items-center gap-3 cursor-pointer group">
-                        <img src={restaurantInfo.logo} alt="logo" className="h-12 w-12 rounded-full object-cover transition-transform group-hover:scale-110" />
-                        <h1 className="text-xl font-bold text-slate-800 dark:text-slate-100 group-hover:text-primary-600 transition-colors">{restaurantInfo.name[language]}</h1>
-                    </a>
-                    <div className="flex items-center gap-4">
-                        <div className="flex items-center gap-2 text-slate-600 dark:text-slate-200">
-                            <UserIcon className="w-6 h-6" />
-                            <span className="font-semibold">{currentUser.name}</span>
-                        </div>
-                        <button
-                            onClick={logout}
-                            className="text-sm font-semibold text-slate-600 dark:text-slate-300 hover:text-primary-600 dark:hover:text-primary-400 transition-colors"
+        <div className="min-h-screen bg-slate-100 dark:bg-slate-950 p-4 sm:p-6 md:p-8">
+            <div className="max-w-2xl mx-auto">
+                <a href={`#${backLinkPath}`} onClick={(e) => handleNav(e, backLinkPath)} className="inline-flex items-center gap-2 text-primary-600 dark:text-primary-400 font-semibold hover:underline mb-6">
+                    <ChevronLeftIcon className={`w-5 h-5 ${language === 'ar' && 'transform -scale-x-100'}`} />
+                    {backLinkText}
+                </a>
+
+                <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-xl border border-slate-200 dark:border-slate-700 p-6 sm:p-8 text-center animate-fade-in-up">
+                    <div className="relative w-32 h-32 mx-auto mb-4">
+                        <img 
+                            src={currentUser.profilePicture} 
+                            alt={t.profilePicture} 
+                            className="w-full h-full rounded-full object-cover border-4 border-white dark:border-slate-700 shadow-lg"
+                        />
+                        <input
+                            type="file"
+                            ref={profilePicInputRef}
+                            onChange={handlePictureChange}
+                            accept="image/*"
+                            className="sr-only"
+                        />
+                        <button 
+                            onClick={() => profilePicInputRef.current?.click()}
+                            className="absolute bottom-0 end-0 bg-primary-500 text-white rounded-full p-2 hover:bg-primary-600 transition-transform transform hover:scale-110 shadow-md"
+                            aria-label={t.changeProfilePicture}
+                            title={t.changeProfilePicture}
                         >
-                            {t.logout}
+                            <CameraIcon className="w-5 h-5"/>
                         </button>
                     </div>
-                </div>
-            </header>
-            <main className="container mx-auto max-w-5xl px-4 py-8">
-                <h1 className="text-3xl font-bold mb-8 text-slate-800 dark:text-slate-100">{t.yourOrders}</h1>
 
-                {userOrders.length > 0 ? (
-                    <div className="space-y-6">
-                        {userOrders.map(order => {
-                            const statusDetails = getStatusDetails(order.status);
-                            return (
-                            <div key={order.id} className="bg-white dark:bg-slate-800 rounded-lg shadow-lg border border-slate-200 dark:border-slate-700 overflow-hidden transition-shadow hover:shadow-xl animate-fade-in-up">
-                                <div className="p-4 bg-slate-50 dark:bg-slate-800/50 border-b border-slate-200 dark:border-slate-700 flex flex-col sm:flex-row flex-wrap justify-between items-start sm:items-center gap-4">
-                                    <div>
-                                        <p className="text-sm text-slate-500 dark:text-slate-400">{t.orderId}</p>
-                                        <p className="font-bold font-mono text-slate-800 dark:text-slate-100">{order.id}</p>
-                                    </div>
-                                    <div className='flex-grow'>
-                                        <p className="text-sm text-slate-500 dark:text-slate-400">{t.date}</p>
-                                        <p className="font-semibold text-slate-800 dark:text-slate-100">{formatDateTime(order.timestamp)}</p>
-                                    </div>
-                                    <div className="text-start sm:text-end">
-                                        <p className="text-sm text-slate-500 dark:text-slate-400">{t.total}</p>
-                                        <p className="font-bold text-lg text-primary-600 dark:text-primary-400">{order.total.toFixed(2)} {t.currency}</p>
-                                    </div>
-                                    <div className='w-full sm:w-auto'>
-                                        <span className={`px-3 py-1 text-sm leading-5 font-semibold rounded-full border ${getStatusChipColor(order.status)}`}>
-                                            {statusDetails?.name[language] || order.status}
-                                        </span>
-                                    </div>
-                                </div>
-                                <div className="p-4">
-                                    <ul className="space-y-3">
-                                        {order.items.map((item, index) => (
-                                            <li key={`${item.product.id}-${index}`} className="flex items-center gap-4">
-                                                <img src={item.product.image} alt={item.product.name[language]} className="w-12 h-12 rounded-md object-cover" />
-                                                <div className="flex-grow">
-                                                    <p className="font-semibold">{item.product.name[language]}</p>
-                                                    <p className="text-sm text-slate-500 dark:text-slate-400">{t.quantity}: {formatNumber(item.quantity)}</p>
-                                                </div>
-                                                <p className="font-semibold text-slate-700 dark:text-slate-200">{(item.product.price * item.quantity).toFixed(2)} {t.currency}</p>
-                                            </li>
-                                        ))}
-                                    </ul>
-                                </div>
-                                {order.status === 'completed' && (
-                                     <div className="p-4 border-t border-slate-200 dark:border-slate-700 text-center bg-slate-50 dark:bg-slate-800/50">
-                                        {order.customerFeedback ? (
-                                            <p className='text-sm text-green-600 dark:text-green-400 font-semibold'>Thank you for your feedback!</p>
-                                        ) : (
-                                            <button 
-                                                onClick={() => setFeedbackOrder(order)}
-                                                className="bg-primary-500 text-white font-bold py-2 px-4 rounded-lg hover:bg-primary-600 transition-all shadow-sm hover:shadow-md transform hover:scale-105"
-                                            >
-                                                {t.leaveFeedback}
-                                            </button>
-                                        )}
-                                    </div>
-                                )}
+                    {!isEditingName ? (
+                        <div className="flex items-center justify-center gap-2">
+                            <h1 className="text-3xl font-bold text-slate-800 dark:text-slate-100">{currentUser.name}</h1>
+                            <button onClick={() => setIsEditingName(true)} className="text-slate-500 hover:text-primary-600 p-1">
+                                <PencilIcon className="w-5 h-5" />
+                            </button>
+                        </div>
+                    ) : (
+                        <div className="flex items-center justify-center gap-2">
+                             <input
+                                type="text"
+                                value={name}
+                                onChange={(e) => setName(e.target.value)}
+                                onBlur={handleSaveName}
+                                onKeyDown={(e) => e.key === 'Enter' && handleSaveName()}
+                                className="text-3xl font-bold text-center bg-transparent border-b-2 border-primary-500 focus:outline-none"
+                                autoFocus
+                            />
+                        </div>
+                    )}
+
+                    <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">{currentUser.mobile}</p>
+                    <span className="mt-2 inline-block bg-primary-100 text-primary-800 text-xs font-semibold px-3 py-1 rounded-full dark:bg-primary-900/50 dark:text-primary-300">
+                        {t[currentUser.role as keyof typeof t]}
+                    </span>
+
+                    <div className="mt-8 pt-8 border-t border-slate-200 dark:border-slate-700 space-y-4">
+                         <h2 className="text-lg font-bold text-slate-700 dark:text-slate-200 text-start">{t.security}</h2>
+                         <button 
+                            onClick={onChangePasswordClick}
+                            className="w-full flex justify-between items-center text-start p-4 rounded-lg bg-slate-100 hover:bg-slate-200 dark:bg-slate-700/50 dark:hover:bg-slate-700 transition-colors"
+                        >
+                            <div className="flex items-center gap-4">
+                                <KeyIcon className="w-6 h-6 text-slate-500 dark:text-slate-400" />
+                                <span className="font-semibold">{t.changePassword}</span>
                             </div>
-                        )})}
+                            <ChevronRightIcon className={`w-5 h-5 text-slate-500 dark:text-slate-400 ${language === 'ar' && 'transform -scale-x-100'}`} />
+                        </button>
+                        
+                        <button 
+                            onClick={logout}
+                            className="w-full flex justify-between items-center text-start p-4 rounded-lg text-red-600 dark:text-red-400 bg-red-50 hover:bg-red-100 dark:bg-red-900/20 dark:hover:bg-red-900/40 transition-colors"
+                        >
+                            <div className="flex items-center gap-4">
+                                <LogoutIcon className="w-6 h-6" />
+                                <span className="font-semibold">{t.logout}</span>
+                            </div>
+                        </button>
                     </div>
-                ) : (
-                    <div className="text-center py-16 bg-white dark:bg-slate-800 rounded-lg shadow-md border border-slate-200 dark:border-slate-700">
-                        <p className="text-slate-500 dark:text-slate-400 text-lg">You have no orders yet.</p>
-                        <a href="#/" onClick={(e) => handleNav(e, '/')} className="mt-4 inline-block bg-primary-500 text-white font-bold py-3 px-6 rounded-lg hover:bg-primary-600 transition-transform transform hover:scale-105 shadow-lg">Start Shopping</a>
-                    </div>
-                )}
-            </main>
-            {feedbackOrder && (
-                <FeedbackModal
-                    order={feedbackOrder}
-                    onClose={() => setFeedbackOrder(null)}
-                    onSave={handleSaveFeedback}
-                    language={language}
-                />
-            )}
+
+                </div>
+            </div>
         </div>
     );
 };

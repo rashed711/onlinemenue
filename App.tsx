@@ -15,6 +15,8 @@ import { usePersistentState } from './hooks/usePersistentState';
 import { initialRolePermissions } from './data/permissions';
 import { calculateTotal } from './utils/helpers';
 import { TopProgressBar } from './components/TopProgressBar';
+import { ForgotPasswordPage } from './components/auth/ForgotPasswordPage';
+import { ChangePasswordModal } from './components/profile/ChangePasswordModal';
 
 
 // Subscribes to the browser's hashchange event.
@@ -35,6 +37,8 @@ const App: React.FC = () => {
   const [language, setLanguage] = usePersistentState<Language>('restaurant_language', 'ar');
   const [theme, setTheme] = usePersistentState<Theme>('restaurant_theme', 'light');
   const [toast, setToast] = useState<{ message: string; isVisible: boolean }>({ message: '', isVisible: false });
+  const [isChangePasswordModalOpen, setIsChangePasswordModalOpen] = useState(false);
+
 
   // Data State
   const [products, setProducts] = usePersistentState<Product[]>('restaurant_products', initialProducts);
@@ -65,7 +69,7 @@ const App: React.FC = () => {
   const [progress, setProgress] = useState(100);
   const [showProgress, setShowProgress] = useState(false);
 
-  const isAdmin = useMemo(() => currentUser?.role === 'admin' || currentUser?.role === 'superAdmin', [currentUser]);
+  const isAdmin = useMemo(() => currentUser?.role !== 'customer', [currentUser]);
 
 
   // Effect for route-based redirection for authentication
@@ -74,12 +78,12 @@ const App: React.FC = () => {
     if (route.startsWith('#/admin') && !isAdmin) {
       window.location.hash = '#/login';
     } 
-    // Redirect non-customers trying to access profile page
-    else if (route.startsWith('#/profile') && currentUser?.role !== 'customer') {
+    // Redirect logged-out users trying to access profile page
+    else if (route.startsWith('#/profile') && !currentUser) {
       window.location.hash = '#/login';
     }
-    // Redirect logged-in users trying to access login/register pages
-    else if ((route.startsWith('#/login') || route.startsWith('#/register')) && currentUser) {
+    // Redirect logged-in users trying to access login/register/forgot-password pages
+    else if ((route.startsWith('#/login') || route.startsWith('#/register') || route.startsWith('#/forgot-password')) && currentUser) {
       window.location.hash = isAdmin ? '#/admin' : '#/profile';
     }
   }, [route, currentUser, isAdmin]);
@@ -169,14 +173,68 @@ const App: React.FC = () => {
     setCurrentUser(null);
     window.location.hash = '#/'; // Redirect to home page on logout
   }, []);
-  const register = useCallback((newUser: Omit<User, 'id' | 'role'>) => {
+  const register = useCallback((newUser: Omit<User, 'id' | 'role' | 'profilePicture'>) => {
     setUsers(prev => {
       const newId = prev.length > 0 ? Math.max(...prev.map(u => u.id)) + 1 : 1;
-      const userWithId: User = { ...newUser, id: newId, role: 'customer' };
+      const firstLetter = newUser.name.charAt(0).toUpperCase() || 'U';
+      const userWithId: User = { 
+          ...newUser, 
+          id: newId, 
+          role: 'customer',
+          profilePicture: `https://placehold.co/512x512/60a5fa/white?text=${firstLetter}`
+      };
       login(userWithId);
       return [...prev, userWithId];
     });
   }, [login, setUsers]);
+  
+  const updateUserProfile = useCallback((userId: number, updates: { name?: string; profilePicture?: string }) => {
+    let updatedUser: User | null = null;
+    setUsers(prev => prev.map(u => {
+        if (u.id === userId) {
+            updatedUser = { ...u, ...updates };
+            return updatedUser;
+        }
+        return u;
+    }));
+    if (currentUser?.id === userId && updatedUser) {
+        setCurrentUser(updatedUser);
+    }
+    showToast(t.profileUpdatedSuccess);
+  }, [setUsers, currentUser, setCurrentUser, showToast, t.profileUpdatedSuccess]);
+
+  const updateUserPassword = useCallback((mobile: string, newPassword: string): boolean => {
+      let userFound = false;
+      setUsers(prev => {
+          const newUsers = prev.map(u => {
+              if (u.mobile === mobile) {
+                  userFound = true;
+                  return { ...u, password: newPassword };
+              }
+              return u;
+          });
+          return newUsers;
+      });
+      return userFound;
+  }, [setUsers]);
+
+  const changeCurrentUserPassword = useCallback(async (currentPassword: string, newPassword: string): Promise<boolean> => {
+      if (!currentUser) return false;
+
+      if (currentUser.password !== currentPassword) {
+          // Error is shown inside the modal now
+          return false;
+      }
+
+      const success = updateUserPassword(currentUser.mobile, newPassword);
+      if (success) {
+          // Also update the currentUser state to keep it in sync without needing a re-login
+          setCurrentUser(prev => prev ? { ...prev, password: newPassword } : null);
+          showToast(t.passwordChangedSuccess);
+          return true;
+      }
+      return false;
+  }, [currentUser, showToast, t.passwordChangedSuccess, updateUserPassword]);
 
   // Cart Callbacks
   const addToCart = useCallback((product: Product, quantity: number, options?: { [key: string]: string }) => {
@@ -468,6 +526,9 @@ const App: React.FC = () => {
     if (displayedRoute.startsWith('#/register')) {
       return currentUser ? null : <RegisterPage language={language} register={register} />;
     }
+     if (displayedRoute.startsWith('#/forgot-password')) {
+      return currentUser ? null : <ForgotPasswordPage language={language} users={users} onPasswordReset={updateUserPassword} />;
+    }
     if (displayedRoute.startsWith('#/admin')) {
       return isAdmin ? (
         <AdminPage 
@@ -507,11 +568,18 @@ const App: React.FC = () => {
             deleteOrderStatusColumn={deleteOrderStatusColumn}
             setProgress={setProgress}
             setShowProgress={setShowProgress}
+            onChangePasswordClick={() => setIsChangePasswordModalOpen(true)}
         />
       ) : null;
     }
     if (displayedRoute.startsWith('#/profile')) {
-       return currentUser?.role === 'customer' ? <ProfilePage language={language} currentUser={currentUser} orders={orders} logout={logout} restaurantInfo={restaurantInfo} updateOrder={updateOrder}/> : null;
+       return currentUser ? <ProfilePage 
+         language={language} 
+         currentUser={currentUser} 
+         logout={logout} 
+         onChangePasswordClick={() => setIsChangePasswordModalOpen(true)}
+         onUpdateProfile={updateUserProfile}
+       /> : null;
     }
 
     if (displayedRoute.startsWith('#/social')) {
@@ -565,6 +633,13 @@ const App: React.FC = () => {
         {renderContent()}
       </div>
       <ToastNotification message={toast.message} isVisible={toast.isVisible} />
+       {isChangePasswordModalOpen && currentUser && (
+          <ChangePasswordModal
+              language={language}
+              onClose={() => setIsChangePasswordModalOpen(false)}
+              onSave={changeCurrentUserPassword}
+          />
+      )}
     </div>
   );
 };

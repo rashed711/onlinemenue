@@ -70,13 +70,13 @@ export const LoginPage: React.FC<LoginPageProps> = ({ language, users, login }) 
                         {t.login}
                     </button>
                 </form>
-                <div className="text-center text-sm">
-                    <span className="text-gray-600 dark:text-gray-400">{t.dontHaveAccount} </span>
-                    <a href="#/register" onClick={(e) => handleNav(e, '/register')} className="font-medium text-primary-600 hover:underline dark:text-primary-500">
-                        {t.register}
+                 <div className="flex justify-between items-center text-sm">
+                    <span className="text-gray-600 dark:text-gray-400">{t.dontHaveAccount} <a href="#/register" onClick={(e) => handleNav(e, '/register')} className="font-medium text-primary-600 hover:underline dark:text-primary-500">{t.register}</a></span>
+                    <a href="#/forgot-password" onClick={(e) => handleNav(e, '/forgot-password')} className="font-medium text-primary-600 hover:underline dark:text-primary-500">
+                        {t.forgotPassword}
                     </a>
                 </div>
-                 <div className="text-center border-t border-slate-200 dark:border-slate-700 pt-4">
+                 <div className="text-center border-t border-slate-200 dark:border-slate-700 pt-4 mt-4">
                     <a href="#/" onClick={(e) => handleNav(e, '/')} className="text-sm text-primary-600 hover:underline dark:text-primary-500">
                         {t.backToMenu}
                     </a>
