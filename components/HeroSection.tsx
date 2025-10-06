@@ -28,7 +28,7 @@ export const HeroSection: React.FC<HeroSectionProps> = ({ language, restaurantIn
     <section className="relative h-[60vh] min-h-[400px] max-h-[600px] flex items-center justify-center text-white text-center">
       <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/40 to-black/10 z-10"></div>
       <img 
-        src="https://picsum.photos/seed/foods/1600/900" 
+        src={restaurantInfo.heroImage} 
         alt="Delicious food spread" 
         className="absolute inset-0 w-full h-full object-cover"
       />

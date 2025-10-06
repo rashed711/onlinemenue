@@ -2,7 +2,8 @@ import type { Product, Category, Tag, Promotion, RestaurantInfo, User } from '..
 
 export const restaurantInfo: RestaurantInfo = {
     name: { en: "Fresco Restaurants", ar: "فريسكو" },
-    logo: "https://scontent.fcai19-12.fna.fbcdn.net/v/t39.30808-6/326784659_640082784584921_8943838091858707104_n.jpg?_nc_cat=110&ccb=1-7&_nc_sid=6ee11a&_nc_ohc=hDSAS50k57YQ7kNvwHyjCEH&_nc_oc=Adk4knaBHBvjAESF47VphTsJWWgKPiYprMuJdtONFsXURmSHD4nBBUeqUwO-yg8e2TE&_nc_zt=23&_nc_ht=scontent.fcai19-12.fna&_nc_gid=_eUOtrGErkewBVWyptkJJg&oh=00_AfchBFd41HJG_59OcxQ8NRsiZ7i-4KZk0DQNlILQeCpEJw&oe=68E71BD2",
+    logo: "https://placehold.co/512x512/f59e0b/white?text=F",
+    heroImage: "https://picsum.photos/seed/foods/1600/900",
     heroTitle: { en: "Experience Authentic Flavors", ar: "اكتشف نكهات أصيلة" },
     description: { en: "Fresh ingredients, exquisite taste. Explore a menu crafted with passion.", ar: "مكونات طازجة، طعم رائع. استكشف قائمة طعام صنعت بشغف." },
     whatsappNumber: "201060637363", // Replace with actual WhatsApp number
@@ -133,7 +134,7 @@ export const products: Product[] = [
     categoryId: 4,
     rating: 4.6,
     isPopular: false,
-    isNew: false,
+    isNew: true,
     isVisible: true,
     tags: ['spicy'],
   },

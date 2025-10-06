@@ -75,6 +75,7 @@ export interface OrderStatusColumn {
 export interface RestaurantInfo {
     name: LocalizedString;
     logo: string;
+    heroImage: string;
     heroTitle: LocalizedString;
     description: LocalizedString;
     whatsappNumber: string;
@@ -91,7 +92,7 @@ export interface User {
   id: number;
   name: string;
   mobile: string;
-  password; // In a real app, this should be a hash
+  password: string; // In a real app, this should be a hash
   role: UserRole;
 }
 

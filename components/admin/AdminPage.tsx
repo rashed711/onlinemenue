@@ -1,8 +1,9 @@
 
+
 import React, { useState, useMemo, useEffect } from 'react';
 import type { Language, Product, RestaurantInfo, Order, OrderStatus, User, UserRole, Promotion, Permission, Category, Tag, CartItem, SocialLink, LocalizedString, OrderStatusColumn } from '../../types';
 import { useTranslations } from '../../i18n/translations';
-import { MenuAlt2Icon, PlusIcon, PencilIcon, TrashIcon, BellIcon, FireIcon, CheckBadgeIcon, XCircleIcon, TruckIcon, CheckCircleIcon, CloseIcon } from '../icons/Icons';
+import { MenuAlt2Icon, PlusIcon, PencilIcon, TrashIcon } from '../icons/Icons';
 import { OrderDetailsModal } from './OrderDetailsModal';
 import { ProductEditModal } from './ProductEditModal';
 import { PromotionEditModal } from './PromotionEditModal';
@@ -18,364 +19,7 @@ import { OrderEditModal } from './OrderEditModal';
 import { ReportsPage } from './ReportsPage';
 import { CashierPage } from './CashierPage';
 import { OrderStatusEditModal } from './OrderStatusEditModal';
-
-// --- START: Inlined SocialLinkEditModal ---
-interface SocialLinkEditModalProps {
-    link: SocialLink | null;
-    onClose: () => void;
-    onSave: (linkData: SocialLink | Omit<SocialLink, 'id'>) => void;
-}
-
-const emptyLink: Omit<SocialLink, 'id'> = {
-    name: '',
-    url: '',
-    icon: '',
-    isVisible: true,
-};
-
-const SocialLinkEditModal: React.FC<SocialLinkEditModalProps> = ({ link, onClose, onSave }) => {
-    const [formData, setFormData] = useState<Omit<SocialLink, 'id'>>(emptyLink);
-
-    useEffect(() => {
-        if (link) {
-            const { id, ...editableData } = link;
-            setFormData(editableData);
-        } else {
-            setFormData(emptyLink);
-        }
-    }, [link]);
-
-    const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-        const { name, value, type } = e.target;
-        if (type === 'checkbox') {
-            setFormData(prev => ({ ...prev, [name]: (e.target as HTMLInputElement).checked }));
-        } else {
-            setFormData(prev => ({ ...prev, [name]: value }));
-        }
-    };
-    
-    const handleIconChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const file = e.target.files?.[0];
-        if (file) {
-            const reader = new FileReader();
-            reader.onloadend = () => {
-                setFormData(prev => ({ ...prev, icon: reader.result as string }));
-            };
-            reader.readAsDataURL(file);
-        }
-    };
-
-
-    const handleSubmit = (e: React.FormEvent) => {
-        e.preventDefault();
-        if (!link && !formData.icon) {
-            alert('Please upload an icon for the new link.');
-            return;
-        }
-        if (link) {
-            onSave({ ...link, ...formData });
-        } else {
-            onSave(formData);
-        }
-    };
-
-    return (
-        <div className="fixed inset-0 bg-black bg-opacity-60 z-50 flex justify-center items-center p-4" onClick={onClose}>
-            <div className="bg-white dark:bg-gray-800 rounded-2xl w-full max-w-lg" onClick={e => e.stopPropagation()}>
-                <div className="p-4 flex justify-between items-center border-b border-gray-200 dark:border-gray-700">
-                    <h2 className="text-xl font-bold">{link ? 'Edit Link' : 'Add New Link'}</h2>
-                    <button onClick={onClose} className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700">
-                        <CloseIcon className="w-6 h-6"/>
-                    </button>
-                </div>
-                <form onSubmit={handleSubmit} className="p-6 space-y-4">
-                    <div>
-                        <label className="block text-sm font-medium mb-1">Name (e.g., Instagram)</label>
-                        <input type="text" name="name" value={formData.name} onChange={handleChange} className="w-full p-2 border rounded-md dark:bg-gray-700 dark:border-gray-600" required />
-                    </div>
-                     <div>
-                        <label className="block text-sm font-medium mb-1">URL (e.g., https://instagram.com/user)</label>
-                        <input type="text" name="url" value={formData.url} onChange={handleChange} className="w-full p-2 border rounded-md dark:bg-gray-700 dark:border-gray-600" required />
-                    </div>
-                    <div>
-                        <label className="block text-sm font-medium mb-1">Icon</label>
-                        <div className="mt-2 flex items-center gap-4">
-                            {formData.icon && <img src={formData.icon} alt="Icon preview" className="w-12 h-12 object-contain rounded-md bg-slate-100 dark:bg-slate-700 p-1 border dark:border-slate-600" />}
-                            <input
-                                type="file"
-                                accept="image/*"
-                                onChange={handleIconChange}
-                                className="block w-full text-sm text-slate-500
-                                file:mr-4 file:py-2 file:px-4
-                                file:rounded-full file:border-0
-                                file:text-sm file:font-semibold
-                                file:bg-primary-50 file:text-primary-700
-                                hover:file:bg-primary-100 dark:file:bg-primary-900/50 dark:file:text-primary-200 dark:hover:file:bg-primary-900"
-                            />
-                        </div>
-                    </div>
-                    <div>
-                        <label className="flex items-center gap-2 cursor-pointer">
-                            <input type="checkbox" name="isVisible" checked={formData.isVisible} onChange={handleChange} className="w-5 h-5 rounded text-primary-600 focus:ring-primary-500" />
-                            <span className="text-sm font-medium">Visible on page</span>
-                        </label>
-                    </div>
-                    <div className="flex justify-end gap-4 pt-4">
-                        <button type="button" onClick={onClose} className="px-4 py-2 rounded-lg bg-gray-200 dark:bg-gray-600 hover:bg-gray-300 dark:hover:bg-gray-500">Cancel</button>
-                        <button type="submit" className="px-4 py-2 rounded-lg bg-primary-500 text-white hover:bg-primary-600">Save</button>
-                    </div>
-                </form>
-            </div>
-        </div>
-    );
-};
-// --- END: Inlined SocialLinkEditModal ---
-
-
-// --- START: Inlined SettingsPage ---
-interface SettingsPageProps {
-    language: Language;
-    restaurantInfo: RestaurantInfo;
-    updateRestaurantInfo: (updatedInfo: Partial<RestaurantInfo>) => void;
-    onAddOrderStatus: () => void;
-    onEditOrderStatus: (column: OrderStatusColumn) => void;
-    onDeleteOrderStatus: (columnId: string) => void;
-}
-
-const SettingsPage: React.FC<SettingsPageProps> = (props) => {
-    const { language, restaurantInfo, updateRestaurantInfo, onAddOrderStatus, onEditOrderStatus, onDeleteOrderStatus } = props;
-    const t = useTranslations(language);
-    const [editingLink, setEditingLink] = useState<SocialLink | 'new' | null>(null);
-
-    const handleInfoChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-        const { name, value } = e.target;
-        const [field, lang] = name.split('.');
-
-        const currentLocalized = restaurantInfo[field as 'name' | 'description' | 'heroTitle'] || { en: '', ar: '' };
-
-        const newInfo = {
-            ...restaurantInfo,
-            [field]: {
-                ...currentLocalized,
-                [lang]: value,
-            }
-        };
-        updateRestaurantInfo(newInfo);
-    };
-
-    const handleNonLocalizedChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const { name, value, type } = e.target;
-        const finalValue = type === 'number' ? (parseInt(value, 10) || 0) : value;
-        updateRestaurantInfo({ [name]: finalValue });
-    };
-
-    const handleLogoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const file = e.target.files?.[0];
-        if (file) {
-            const reader = new FileReader();
-            reader.onloadend = () => {
-                updateRestaurantInfo({ logo: reader.result as string });
-            };
-            reader.readAsDataURL(file);
-        }
-    };
-
-    const handleHomepageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        updateRestaurantInfo({ defaultPage: e.target.value as 'menu' | 'social' });
-    };
-
-    const handleToggleVisibility = (linkId: number) => {
-        const updatedLinks = restaurantInfo.socialLinks.map(link => 
-            link.id === linkId ? { ...link, isVisible: !link.isVisible } : link
-        );
-        updateRestaurantInfo({ socialLinks: updatedLinks });
-    };
-
-    const handleDeleteLink = (linkId: number) => {
-        if (window.confirm("Are you sure you want to delete this link?")) {
-            const updatedLinks = restaurantInfo.socialLinks.filter(link => link.id !== linkId);
-            updateRestaurantInfo({ socialLinks: updatedLinks });
-        }
-    };
-    
-    const handleSaveLink = (linkData: SocialLink | Omit<SocialLink, 'id'>) => {
-        if ('id' in linkData) { // Editing existing
-            const updatedLinks = restaurantInfo.socialLinks.map(link => link.id === linkData.id ? linkData : link);
-            updateRestaurantInfo({ socialLinks: updatedLinks });
-        } else { // Adding new
-            const newLink: SocialLink = {
-                ...linkData,
-                id: restaurantInfo.socialLinks.length > 0 ? Math.max(...restaurantInfo.socialLinks.map(l => l.id)) + 1 : 1,
-            };
-            updateRestaurantInfo({ socialLinks: [...restaurantInfo.socialLinks, newLink] });
-        }
-        setEditingLink(null);
-    };
-
-    return (
-        <div className="space-y-8 animate-fade-in">
-            {/* Restaurant Info Settings */}
-            <div className="bg-white dark:bg-slate-800 p-6 rounded-lg shadow-md border border-slate-200 dark:border-slate-700">
-                <h3 className="text-xl font-semibold mb-4">Restaurant Information</h3>
-                <div className="space-y-4">
-                    <div>
-                        <label className="block text-sm font-medium mb-1">Logo</label>
-                        <div className="mt-2 flex items-center gap-4">
-                            <img src={restaurantInfo.logo} alt="Logo preview" className="w-16 h-16 object-contain rounded-full bg-slate-100 dark:bg-slate-700 p-1 border dark:border-slate-600" />
-                            <input
-                                type="file"
-                                accept="image/*"
-                                onChange={handleLogoChange}
-                                className="block w-full text-sm text-slate-500
-                                file:mr-4 file:py-2 file:px-4
-                                file:rounded-full file:border-0
-                                file:text-sm file:font-semibold
-                                file:bg-primary-50 file:text-primary-700
-                                hover:file:bg-primary-100 dark:file:bg-primary-900/50 dark:file:text-primary-200 dark:hover:file:bg-primary-900"
-                            />
-                        </div>
-                    </div>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div>
-                            <label className="block text-sm font-medium mb-1">Name (English)</label>
-                            <input type="text" name="name.en" value={restaurantInfo.name.en} onChange={handleInfoChange} className="w-full p-2 border rounded-md dark:bg-gray-700 dark:border-gray-600" />
-                        </div>
-                        <div>
-                            <label className="block text-sm font-medium mb-1">Name (Arabic)</label>
-                            <input type="text" name="name.ar" value={restaurantInfo.name.ar} onChange={handleInfoChange} className="w-full p-2 border rounded-md dark:bg-gray-700 dark:border-gray-600" />
-                        </div>
-                    </div>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div>
-                            <label className="block text-sm font-medium mb-1">{t.heroTitleEn}</label>
-                            <input type="text" name="heroTitle.en" value={restaurantInfo.heroTitle?.en || ''} onChange={handleInfoChange} className="w-full p-2 border rounded-md dark:bg-gray-700 dark:border-gray-600" />
-                        </div>
-                        <div>
-                            <label className="block text-sm font-medium mb-1">{t.heroTitleAr}</label>
-                            <input type="text" name="heroTitle.ar" value={restaurantInfo.heroTitle?.ar || ''} onChange={handleInfoChange} className="w-full p-2 border rounded-md dark:bg-gray-700 dark:border-gray-600" />
-                        </div>
-                    </div>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div>
-                            <label className="block text-sm font-medium mb-1">{t.descriptionEn}</label>
-                            <textarea name="description.en" value={restaurantInfo.description?.en || ''} onChange={handleInfoChange} rows={3} className="w-full p-2 border rounded-md dark:bg-gray-700 dark:border-gray-600"></textarea>
-                        </div>
-                        <div>
-                            <label className="block text-sm font-medium mb-1">{t.descriptionAr}</label>
-                            <textarea name="description.ar" value={restaurantInfo.description?.ar || ''} onChange={handleInfoChange} rows={3} className="w-full p-2 border rounded-md dark:bg-gray-700 dark:border-gray-600"></textarea>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-             {/* Table Management Settings */}
-            <div className="bg-white dark:bg-slate-800 p-6 rounded-lg shadow-md border border-slate-200 dark:border-slate-700">
-                <h3 className="text-xl font-semibold mb-4">Table Management</h3>
-                <div>
-                    <label className="block text-sm font-medium mb-1">Total Number of Tables</label>
-                    <input 
-                        type="number" 
-                        name="tableCount" 
-                        value={restaurantInfo.tableCount || 0} 
-                        onChange={handleNonLocalizedChange} 
-                        className="w-full max-w-xs p-2 border rounded-md dark:bg-gray-700 dark:border-gray-600"
-                        min="0"
-                    />
-                </div>
-            </div>
-
-            {/* Order Status Management */}
-            <div>
-                <div className="flex justify-between items-center mb-4">
-                    <h3 className="text-xl font-semibold">{t.orderStatusManagement}</h3>
-                    <button onClick={onAddOrderStatus} className="bg-green-500 text-white font-bold py-2 px-3 rounded-lg hover:bg-green-600 transition-colors flex items-center gap-2 text-sm">
-                        <PlusIcon className="w-5 h-5" />
-                        {t.addNewStatus}
-                    </button>
-                </div>
-                <div className="bg-white dark:bg-slate-800 rounded-lg shadow-md border border-slate-200 dark:border-slate-700">
-                    <ul className="divide-y divide-gray-200 dark:divide-gray-700">
-                        {restaurantInfo.orderStatusColumns.map(status => (
-                            <li key={status.id} className="p-4 flex flex-wrap justify-between items-center gap-4 hover:bg-slate-50 dark:hover:bg-gray-700/50">
-                                <div className="flex items-center gap-4">
-                                    <div className={`w-4 h-4 rounded-full bg-${status.color}-500`}></div>
-                                    <div>
-                                        <div className="font-medium">{status.name[language]}</div>
-                                        <div className="text-sm text-slate-500 dark:text-slate-400 font-mono">{status.id}</div>
-                                    </div>
-                                </div>
-                                <div className="flex items-center gap-2">
-                                    <button onClick={() => onEditOrderStatus(status)} className="p-2 text-indigo-600 hover:bg-indigo-100 dark:hover:bg-indigo-900/50 rounded-full"><PencilIcon className="w-5 h-5" /></button>
-                                    <button onClick={() => { if(window.confirm(t.confirmDeleteStatus)) onDeleteOrderStatus(status.id); }} className="p-2 text-red-600 hover:bg-red-100 dark:hover:bg-red-900/50 rounded-full"><TrashIcon className="w-5 h-5" /></button>
-                                </div>
-                            </li>
-                        ))}
-                    </ul>
-                </div>
-            </div>
-
-
-            {/* Homepage Settings */}
-            <div className="bg-white dark:bg-slate-800 p-6 rounded-lg shadow-md border border-slate-200 dark:border-slate-700">
-                <h3 className="text-xl font-semibold mb-4">Homepage Settings</h3>
-                <div className="flex items-center space-x-6 rtl:space-x-reverse">
-                    <label className="flex items-center gap-2 cursor-pointer">
-                        <input type="radio" name="homepage" value="menu" checked={restaurantInfo.defaultPage === 'menu'} onChange={handleHomepageChange} className="w-5 h-5 text-primary-600 focus:ring-primary-500" />
-                        <span>Menu Page</span>
-                    </label>
-                    <label className="flex items-center gap-2 cursor-pointer">
-                        <input type="radio" name="homepage" value="social" checked={restaurantInfo.defaultPage === 'social'} onChange={handleHomepageChange} className="w-5 h-5 text-primary-600 focus:ring-primary-500" />
-                        <span>Social Links Page</span>
-                    </label>
-                </div>
-            </div>
-
-            {/* Social Links Management */}
-            <div>
-                <div className="flex justify-between items-center mb-4">
-                    <h3 className="text-xl font-semibold">Social & Contact Links</h3>
-                    <button onClick={() => setEditingLink('new')} className="bg-green-500 text-white font-bold py-2 px-3 rounded-lg hover:bg-green-600 transition-colors flex items-center gap-2 text-sm">
-                        <PlusIcon className="w-5 h-5" />
-                        Add New Link
-                    </button>
-                </div>
-                <div className="bg-white dark:bg-slate-800 rounded-lg shadow-md border border-slate-200 dark:border-slate-700">
-                    <ul className="divide-y divide-gray-200 dark:divide-gray-700">
-                        {restaurantInfo.socialLinks.map(link => (
-                            <li key={link.id} className="p-4 flex flex-wrap justify-between items-center gap-4 hover:bg-slate-50 dark:hover:bg-gray-700/50">
-                                <div className="flex items-center gap-4">
-                                    <img src={link.icon} alt={`${link.name} icon`} className="w-6 h-6 object-contain" />
-                                    <div>
-                                        <div className="font-medium">{link.name}</div>
-                                        <a href={link.url} target="_blank" rel="noopener noreferrer" className="text-sm text-primary-600 hover:underline truncate max-w-xs block">{link.url}</a>
-                                    </div>
-                                </div>
-                                <div className="flex items-center gap-4">
-                                     <label className="relative inline-flex items-center cursor-pointer">
-                                        <input type="checkbox" checked={link.isVisible} onChange={() => handleToggleVisibility(link.id)} className="sr-only peer" />
-                                        <div className="w-11 h-6 bg-slate-200 rounded-full peer dark:bg-slate-700 peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full after:content-[''] after:absolute after:top-0.5 after:start-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-green-600"></div>
-                                    </label>
-                                    <button onClick={() => setEditingLink(link)} className="p-2 text-indigo-600 hover:bg-indigo-100 dark:hover:bg-indigo-900/50 rounded-full"><PencilIcon className="w-5 h-5" /></button>
-                                    <button onClick={() => handleDeleteLink(link.id)} className="p-2 text-red-600 hover:bg-red-100 dark:hover:bg-red-900/50 rounded-full"><TrashIcon className="w-5 h-5" /></button>
-                                </div>
-                            </li>
-                        ))}
-                    </ul>
-                </div>
-            </div>
-            
-            {editingLink && (
-                <SocialLinkEditModal
-                    link={editingLink === 'new' ? null : editingLink}
-                    onClose={() => setEditingLink(null)}
-                    onSave={handleSaveLink}
-                />
-            )}
-        </div>
-    );
-};
-// --- END: Inlined SettingsPage ---
-
+import { SettingsPage } from './SettingsPage';
 
 interface AdminPageProps {
     language: Language;
@@ -564,6 +208,7 @@ export const AdminPage: React.FC<AdminPageProps> = (props) => {
     
     interface OrderCardProps {
         order: Order;
+        style?: React.CSSProperties;
     }
 
     const getStatusColorClass = (color: string) => {
@@ -582,7 +227,7 @@ export const AdminPage: React.FC<AdminPageProps> = (props) => {
         return colorMap[color] || 'text-gray-500';
     };
 
-    const OrderCard: React.FC<OrderCardProps> = ({ order }) => {
+    const OrderCard: React.FC<OrderCardProps> = ({ order, style }) => {
         const isDriver = currentUser?.role === 'driver';
         const canManage = hasPermission('manage_orders');
 
@@ -624,7 +269,7 @@ export const AdminPage: React.FC<AdminPageProps> = (props) => {
         };
 
         return (
-            <div onClick={() => setViewingOrder(order)} className="bg-white dark:bg-slate-800 rounded-lg shadow-md p-4 space-y-3 cursor-pointer transition-all hover:shadow-lg hover:-translate-y-1 border border-slate-200 dark:border-slate-700">
+            <div onClick={() => setViewingOrder(order)} style={style} className="bg-white dark:bg-slate-800 rounded-lg shadow-md p-4 space-y-3 cursor-pointer transition-all hover:shadow-lg hover:-translate-y-1 border border-slate-200 dark:border-slate-700">
                 <div className="flex justify-between items-center">
                     <p className="font-extrabold text-lg text-amber-800 bg-amber-300 dark:bg-amber-400 dark:text-amber-900 px-3 py-0.5 rounded-md">
                         {order.total.toFixed(2)}
@@ -649,11 +294,16 @@ export const AdminPage: React.FC<AdminPageProps> = (props) => {
                     </div>
                 </div>
 
-                <div className="bg-slate-50 dark:bg-slate-800/50 p-3 my-1 rounded-md border border-slate-200 dark:border-slate-700">
-                    <ul className="text-xs text-slate-600 dark:text-slate-300 list-disc list-inside space-y-1">
-                        {order.items.slice(0, 2).map((item, index) => <li key={index} className="truncate">{item.quantity}x {item.product.name[language]}</li>)}
-                        {order.items.length > 2 && <li className="font-semibold text-slate-400">... and {order.items.length - 2} more</li>}
-                    </ul>
+                <div className="bg-slate-50 dark:bg-slate-900/50 p-2.5 my-1 rounded-md border border-slate-200 dark:border-slate-700/50">
+                    <div className="space-y-1.5 text-xs text-slate-600 dark:text-slate-300">
+                        {order.items.slice(0, 2).map((item, index) => (
+                            <div key={index} className="flex justify-between items-center">
+                                <span className="truncate flex-1 pr-2">{item.product.name[language]}</span>
+                                <span className="font-mono font-semibold bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-200 text-[10px] px-1.5 py-0.5 rounded">x{item.quantity}</span>
+                            </div>
+                        ))}
+                        {order.items.length > 2 && <p className="text-center font-semibold text-slate-400 text-[11px] pt-1">... and {order.items.length - 2} more</p>}
+                    </div>
                 </div>
 
                 <div className="flex justify-between items-center pt-2">
@@ -689,7 +339,7 @@ export const AdminPage: React.FC<AdminPageProps> = (props) => {
                                      {col.name[language]} ({colOrders.length})
                                   </h3>
                                   <div className="bg-slate-200/50 dark:bg-slate-900/50 p-2 sm:p-4 rounded-b-lg space-y-4 min-h-[calc(100vh-250px)] flex-grow">
-                                      {colOrders.map(order => <OrderCard order={order} key={order.id} />)}
+                                      {colOrders.map((order, index) => <OrderCard order={order} key={order.id} style={{ animationDelay: `${index * 50}ms` }} className="animate-fade-in-up" />)}
                                       {colOrders.length === 0 && <div className="h-full flex items-center justify-center"><p className="text-center text-slate-500 p-8">No orders.</p></div>}
                                   </div>
                                 </div>

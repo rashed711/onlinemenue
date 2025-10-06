@@ -6,68 +6,15 @@ import { LoginPage } from './components/auth/LoginPage';
 import { RegisterPage } from './components/auth/RegisterPage';
 import { ProfilePage } from './components/profile/ProfilePage';
 import { AdminPage } from './components/admin/AdminPage';
+import { SocialPage } from './components/SocialPage';
 import type { Product, CartItem, Language, Theme, User, Order, OrderStatus, UserRole, Promotion, Permission, Category, Tag, RestaurantInfo, OrderStatusColumn } from './types';
 import { products as initialProducts, restaurantInfo as initialRestaurantInfo, users as initialUsers, promotions as initialPromotions, initialCategories, initialTags } from './data/mockData';
 import { ToastNotification } from './components/ToastNotification';
 import { useTranslations } from './i18n/translations';
+import { usePersistentState } from './hooks/usePersistentState';
 import { initialRolePermissions } from './data/permissions';
 import { calculateTotal } from './utils/helpers';
-import { ChevronRightIcon } from './components/icons/Icons';
 import { TopProgressBar } from './components/TopProgressBar';
-
-
-// --- NEW COMPONENT: SocialPage ---
-const SocialPage: React.FC<{ language: Language, restaurantInfo: RestaurantInfo }> = ({ language, restaurantInfo }) => {
-    const t = useTranslations(language);
-    const visibleLinks = restaurantInfo.socialLinks.filter(link => link.isVisible);
-
-    const handleNav = (e: React.MouseEvent<HTMLAnchorElement>, path: string) => {
-        e.preventDefault();
-        window.location.hash = path;
-    };
-
-    return (
-        <div className="flex flex-col items-center justify-center min-h-screen bg-slate-100 dark:bg-slate-950 p-4 bg-gradient-to-br from-slate-50 to-slate-200 dark:from-slate-900 dark:to-slate-950">
-            {/* Main content card with glassmorphism effect */}
-            <div className="w-full max-w-md mx-auto text-center animate-fade-in-up bg-white/50 dark:bg-slate-900/50 backdrop-blur-xl rounded-3xl p-6 sm:p-8 shadow-2xl border border-white/30 dark:border-slate-800">
-                
-                {/* Header section */}
-                <img src={restaurantInfo.logo} alt="logo" className="w-28 h-28 rounded-full mx-auto mb-4 shadow-lg border-4 border-white dark:border-slate-800" />
-                <h1 className="text-3xl font-extrabold text-slate-800 dark:text-slate-100 mb-1">{restaurantInfo.name[language]}</h1>
-                <p className="text-slate-500 dark:text-slate-400 mb-8 max-w-xs mx-auto">{restaurantInfo.description[language]}</p>
-
-                {/* Social links grid */}
-                <div className="grid grid-cols-2 gap-4 mb-10">
-                    {visibleLinks.map((link, index) => (
-                        <a 
-                            key={link.id}
-                            href={link.url}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="group flex flex-col items-center justify-center gap-2 p-4 bg-white/60 dark:bg-slate-800/60 backdrop-blur-md rounded-2xl shadow-lg hover:shadow-xl border border-white/50 dark:border-slate-700/50 hover:-translate-y-1 transition-all duration-300 animate-fade-in"
-                            style={{ animationDelay: `${index * 100}ms` }}
-                        >
-                            <img src={link.icon} alt={`${link.name} icon`} className="w-8 h-8 object-contain transition-transform duration-300 group-hover:scale-110" />
-                            <span className="font-semibold text-base text-slate-700 dark:text-slate-200">{link.name}</span>
-                        </a>
-                    ))}
-                </div>
-
-                {/* View Menu Button */}
-                <div>
-                    <a
-                        href="#/menu"
-                        onClick={(e) => handleNav(e, '/menu')}
-                        className="bg-primary-500 hover:bg-primary-600 text-white font-bold py-4 px-10 rounded-full text-lg transition-transform transform hover:scale-105 inline-flex items-center justify-center gap-2 shadow-lg shadow-primary-500/30 hover:shadow-xl hover:shadow-primary-500/40"
-                    >
-                        <span>{t.viewMenu}</span>
-                        <ChevronRightIcon className={`w-6 h-6 transition-transform ${language === 'ar' ? 'transform -scale-x-100' : ''}`} />
-                    </a>
-                </div>
-            </div>
-        </div>
-    );
-};
 
 
 // Subscribes to the browser's hashchange event.
@@ -85,60 +32,20 @@ function getSnapshot() {
 
 const App: React.FC = () => {
   // UI State
-  const [language, setLanguage] = useState<Language>(() => (localStorage.getItem('restaurant_language') as Language) || 'ar');
-  const [theme, setTheme] = useState<Theme>(() => (localStorage.getItem('restaurant_theme') as Theme) || 'light');
+  const [language, setLanguage] = usePersistentState<Language>('restaurant_language', 'ar');
+  const [theme, setTheme] = usePersistentState<Theme>('restaurant_theme', 'light');
   const [toast, setToast] = useState<{ message: string; isVisible: boolean }>({ message: '', isVisible: false });
 
   // Data State
-  const [products, setProducts] = useState<Product[]>(() => {
-    const savedProducts = localStorage.getItem('restaurant_products');
-    return savedProducts ? JSON.parse(savedProducts) : initialProducts;
-  });
-  
-  const [categories, setCategories] = useState<Category[]>(() => {
-    const saved = localStorage.getItem('restaurant_categories');
-    return saved ? JSON.parse(saved) : initialCategories;
-  });
-
-  const [tags, setTags] = useState<Tag[]>(() => {
-    const saved = localStorage.getItem('restaurant_tags');
-    return saved ? JSON.parse(saved) : initialTags;
-  });
-
-  const [promotions, setPromotions] = useState<Promotion[]>(() => {
-    const savedPromotions = localStorage.getItem('restaurant_promotions');
-    return savedPromotions ? JSON.parse(savedPromotions) : initialPromotions;
-  });
-
-  const [cartItems, setCartItems] = useState<CartItem[]>(() => {
-    try {
-      const savedCart = localStorage.getItem('restaurant_cart');
-      return savedCart ? JSON.parse(savedCart) : [];
-    } catch (error) {
-      console.error("Could not parse cart from localStorage", error);
-      return [];
-    }
-  });
-
-  const [users, setUsers] = useState<User[]>(() => {
-    const savedUsers = localStorage.getItem('restaurant_users');
-    return savedUsers ? JSON.parse(savedUsers) : initialUsers;
-  });
-
-  const [orders, setOrders] = useState<Order[]>(() => {
-      const savedOrders = localStorage.getItem('restaurant_orders');
-      return savedOrders ? JSON.parse(savedOrders) : [];
-  });
-  
-  const [rolePermissions, setRolePermissions] = useState<Record<UserRole, Permission[]>>(() => {
-    const saved = localStorage.getItem('restaurant_role_permissions');
-    return saved ? JSON.parse(saved) : initialRolePermissions;
-  });
-  
-  const [restaurantInfo, setRestaurantInfo] = useState<RestaurantInfo>(() => {
-    const saved = localStorage.getItem('restaurant_info');
-    return saved ? JSON.parse(saved) : initialRestaurantInfo;
-  });
+  const [products, setProducts] = usePersistentState<Product[]>('restaurant_products', initialProducts);
+  const [categories, setCategories] = usePersistentState<Category[]>('restaurant_categories', initialCategories);
+  const [tags, setTags] = usePersistentState<Tag[]>('restaurant_tags', initialTags);
+  const [promotions, setPromotions] = usePersistentState<Promotion[]>('restaurant_promotions', initialPromotions);
+  const [cartItems, setCartItems] = usePersistentState<CartItem[]>('restaurant_cart', []);
+  const [users, setUsers] = usePersistentState<User[]>('restaurant_users', initialUsers);
+  const [orders, setOrders] = usePersistentState<Order[]>('restaurant_orders', []);
+  const [rolePermissions, setRolePermissions] = usePersistentState<Record<UserRole, Permission[]>>('restaurant_role_permissions', initialRolePermissions);
+  const [restaurantInfo, setRestaurantInfo] = usePersistentState<RestaurantInfo>('restaurant_info', initialRestaurantInfo);
 
 
   // Auth State
@@ -208,49 +115,15 @@ const App: React.FC = () => {
 
   // UI Persistence Effects
   useEffect(() => {
-    localStorage.setItem('restaurant_language', language);
     document.documentElement.lang = language;
     document.documentElement.dir = language === 'ar' ? 'rtl' : 'ltr';
   }, [language]);
 
   useEffect(() => {
-    localStorage.setItem('restaurant_theme', theme);
     document.documentElement.classList.toggle('dark', theme === 'dark');
   }, [theme]);
   
-  // Data Persistence Effects
-  useEffect(() => {
-    localStorage.setItem('restaurant_products', JSON.stringify(products));
-  }, [products]);
-
-  useEffect(() => {
-    localStorage.setItem('restaurant_categories', JSON.stringify(categories));
-  }, [categories]);
-
-  useEffect(() => {
-    localStorage.setItem('restaurant_tags', JSON.stringify(tags));
-  }, [tags]);
-
-  useEffect(() => {
-    localStorage.setItem('restaurant_promotions', JSON.stringify(promotions));
-  }, [promotions]);
-
-  useEffect(() => {
-    localStorage.setItem('restaurant_cart', JSON.stringify(cartItems));
-  }, [cartItems]);
-  
-  useEffect(() => {
-      localStorage.setItem('restaurant_users', JSON.stringify(users));
-  }, [users]);
-  
-  useEffect(() => {
-      localStorage.setItem('restaurant_orders', JSON.stringify(orders));
-  }, [orders]);
-  
-  useEffect(() => {
-      localStorage.setItem('restaurant_role_permissions', JSON.stringify(rolePermissions));
-  }, [rolePermissions]);
-  
+  // Auth Persistence Effect
   useEffect(() => {
       if (currentUser) {
         sessionStorage.setItem('restaurant_currentUser', JSON.stringify(currentUser));
@@ -259,15 +132,11 @@ const App: React.FC = () => {
       }
   }, [currentUser]);
 
-  useEffect(() => {
-    localStorage.setItem('restaurant_info', JSON.stringify(restaurantInfo));
-  }, [restaurantInfo]);
-
 
   // Callbacks
-  const toggleTheme = useCallback(() => setTheme(prev => prev === 'light' ? 'dark' : 'light'), []);
-  const toggleLanguage = useCallback(() => setLanguage(prev => prev === 'en' ? 'ar' : 'en'), []);
-  const clearCart = useCallback(() => setCartItems([]), []);
+  const toggleTheme = useCallback(() => setTheme(prev => prev === 'light' ? 'dark' : 'light'), [setTheme]);
+  const toggleLanguage = useCallback(() => setLanguage(prev => prev === 'en' ? 'ar' : 'en'), [setLanguage]);
+  const clearCart = useCallback(() => setCartItems([]), [setCartItems]);
   const showToast = useCallback((message: string) => {
     setToast({ message, isVisible: true });
     setTimeout(() => {
@@ -292,7 +161,7 @@ const App: React.FC = () => {
   
   const updateRestaurantInfo = useCallback((updatedInfo: Partial<RestaurantInfo>) => {
     setRestaurantInfo(prev => ({...prev, ...updatedInfo}));
-  }, []);
+  }, [setRestaurantInfo]);
 
   // Auth Callbacks
   const login = useCallback((user: User) => setCurrentUser(user), []);
@@ -307,7 +176,7 @@ const App: React.FC = () => {
       login(userWithId);
       return [...prev, userWithId];
     });
-  }, [login]);
+  }, [login, setUsers]);
 
   // Cart Callbacks
   const addToCart = useCallback((product: Product, quantity: number, options?: { [key: string]: string }) => {
@@ -325,7 +194,7 @@ const App: React.FC = () => {
       return [...prevItems, { product, quantity, options }];
     });
     showToast(t.addedToCart);
-  }, [showToast, t]);
+  }, [showToast, t.addedToCart, setCartItems]);
 
   const updateCartQuantity = useCallback((productId: number, options: { [key: string]: string } | undefined, newQuantity: number) => {
     const itemVariantId = productId + JSON.stringify(options || {});
@@ -339,7 +208,7 @@ const App: React.FC = () => {
             : item
       );
     });
-  }, []);
+  }, [setCartItems]);
 
   // Order Callbacks
   const placeOrder = useCallback((order: Omit<Order, 'id' | 'timestamp'>): Order => {
@@ -352,7 +221,7 @@ const App: React.FC = () => {
     };
     setOrders(prev => [newOrder, ...prev]);
     return newOrder;
-  }, [currentUser, restaurantInfo.orderStatusColumns]);
+  }, [currentUser, restaurantInfo.orderStatusColumns, setOrders]);
 
   const updateOrder = useCallback((orderId: string, payload: Partial<Omit<Order, 'id' | 'timestamp' | 'customer'>>) => {
       const order = orders.find(o => o.id === orderId);
@@ -388,7 +257,7 @@ const App: React.FC = () => {
       } else {
           showToast(t.permissionDenied);
       }
-  }, [orders, currentUser, hasPermission, showToast, t.permissionDenied]);
+  }, [orders, currentUser, hasPermission, showToast, t.permissionDenied, setOrders]);
 
 
   // Admin Callbacks
@@ -404,7 +273,7 @@ const App: React.FC = () => {
         };
         return [newProduct, ...prev];
     });
-  }, [hasPermission, showToast, t.permissionDenied]);
+  }, [hasPermission, showToast, t.permissionDenied, setProducts]);
 
   const updateProduct = useCallback((updatedProduct: Product) => {
     if (!hasPermission('manage_menu')) {
@@ -412,7 +281,7 @@ const App: React.FC = () => {
         return;
     }
     setProducts(prev => prev.map(p => p.id === updatedProduct.id ? updatedProduct : p));
-  }, [hasPermission, showToast, t.permissionDenied]);
+  }, [hasPermission, showToast, t.permissionDenied, setProducts]);
 
   const deleteProduct = useCallback((productId: number) => {
     if (!hasPermission('manage_menu')) {
@@ -425,7 +294,7 @@ const App: React.FC = () => {
         return;
     }
     setProducts(prev => prev.filter(p => p.id !== productId));
-  }, [hasPermission, showToast, t.permissionDenied, promotions, t.deleteProductError]);
+  }, [hasPermission, showToast, t.permissionDenied, promotions, t.deleteProductError, setProducts]);
 
   const addPromotion = useCallback((promotionData: Omit<Promotion, 'id'>) => {
     if (!hasPermission('manage_promotions')) {
@@ -439,7 +308,7 @@ const App: React.FC = () => {
         };
         return [newPromotion, ...prev];
     });
-  }, [hasPermission, showToast, t.permissionDenied]);
+  }, [hasPermission, showToast, t.permissionDenied, setPromotions]);
 
   const updatePromotion = useCallback((updatedPromotion: Promotion) => {
     if (!hasPermission('manage_promotions')) {
@@ -447,7 +316,7 @@ const App: React.FC = () => {
         return;
     }
     setPromotions(prev => prev.map(p => p.id === updatedPromotion.id ? updatedPromotion : p));
-  }, [hasPermission, showToast, t.permissionDenied]);
+  }, [hasPermission, showToast, t.permissionDenied, setPromotions]);
 
   const deletePromotion = useCallback((promotionId: number) => {
     if (!hasPermission('manage_promotions')) {
@@ -455,7 +324,7 @@ const App: React.FC = () => {
         return;
     }
     setPromotions(prev => prev.filter(p => p.id !== promotionId));
-  }, [hasPermission, showToast, t.permissionDenied]);
+  }, [hasPermission, showToast, t.permissionDenied, setPromotions]);
   
   const addUser = useCallback((userData: Omit<User, 'id'>) => {
     if (!hasPermission('manage_users')) {
@@ -469,7 +338,7 @@ const App: React.FC = () => {
         };
         return [newUser, ...prev];
     });
-  }, [hasPermission, showToast, t.permissionDenied]);
+  }, [hasPermission, showToast, t.permissionDenied, setUsers]);
   
   const updateUser = useCallback((updatedUser: User) => {
     if (!hasPermission('manage_users')) {
@@ -477,7 +346,7 @@ const App: React.FC = () => {
         return;
     }
     setUsers(prev => prev.map(u => u.id === updatedUser.id ? updatedUser : u));
-  }, [hasPermission, showToast, t.permissionDenied]);
+  }, [hasPermission, showToast, t.permissionDenied, setUsers]);
 
   const deleteUser = useCallback((userId: number) => {
     if (!hasPermission('manage_users')) {
@@ -490,7 +359,7 @@ const App: React.FC = () => {
         return;
     }
     setUsers(prev => prev.filter(u => u.id !== userId));
-  }, [hasPermission, showToast, t.permissionDenied, orders, t.deleteUserError]);
+  }, [hasPermission, showToast, t.permissionDenied, orders, t.deleteUserError, setUsers]);
   
   const updateRolePermissions = useCallback((role: UserRole, permissions: Permission[]) => {
     if (!hasPermission('manage_roles')) {
@@ -498,7 +367,7 @@ const App: React.FC = () => {
         return;
     }
     setRolePermissions(prev => ({...prev, [role]: permissions}));
-  }, [hasPermission, showToast, t.permissionDenied]);
+  }, [hasPermission, showToast, t.permissionDenied, setRolePermissions]);
 
   const addCategory = useCallback((categoryData: Omit<Category, 'id'>) => {
     if (!hasPermission('manage_classifications')) { showToast(t.permissionDenied); return; }
@@ -509,12 +378,12 @@ const App: React.FC = () => {
         };
         return [newCategory, ...prev];
     });
-  }, [hasPermission, showToast, t.permissionDenied]);
+  }, [hasPermission, showToast, t.permissionDenied, setCategories]);
 
   const updateCategory = useCallback((updatedCategory: Category) => {
     if (!hasPermission('manage_classifications')) { showToast(t.permissionDenied); return; }
     setCategories(prev => prev.map(c => c.id === updatedCategory.id ? updatedCategory : c));
-  }, [hasPermission, showToast, t.permissionDenied]);
+  }, [hasPermission, showToast, t.permissionDenied, setCategories]);
 
   const deleteCategory = useCallback((categoryId: number) => {
     if (!hasPermission('manage_classifications')) { showToast(t.permissionDenied); return; }
@@ -524,7 +393,7 @@ const App: React.FC = () => {
         return;
     }
     setCategories(prev => prev.filter(c => c.id !== categoryId));
-  }, [hasPermission, showToast, t.permissionDenied, products, t.deleteCategoryError]);
+  }, [hasPermission, showToast, t.permissionDenied, products, t.deleteCategoryError, setCategories]);
 
   const addTag = useCallback((tagData: Tag) => {
     if (!hasPermission('manage_classifications')) { showToast(t.permissionDenied); return; }
@@ -533,17 +402,17 @@ const App: React.FC = () => {
         return;
     }
     setTags(prev => [tagData, ...prev]);
-  }, [hasPermission, showToast, t.permissionDenied, tags, t.addTagError]);
+  }, [hasPermission, showToast, t.permissionDenied, tags, t.addTagError, setTags]);
 
   const updateTag = useCallback((updatedTag: Tag) => {
     if (!hasPermission('manage_classifications')) { showToast(t.permissionDenied); return; }
     setTags(prev => prev.map(t => t.id === updatedTag.id ? updatedTag : t));
-  }, [hasPermission, showToast, t.permissionDenied]);
+  }, [hasPermission, showToast, t.permissionDenied, setTags]);
 
   const deleteTag = useCallback((tagId: string) => {
     if (!hasPermission('manage_classifications')) { showToast(t.permissionDenied); return; }
     setTags(prev => prev.filter(t => t.id !== tagId));
-  }, [hasPermission, showToast, t.permissionDenied]);
+  }, [hasPermission, showToast, t.permissionDenied, setTags]);
 
   // Order Status Columns Callbacks
     const addOrderStatusColumn = useCallback((column: OrderStatusColumn) => {
@@ -559,7 +428,7 @@ const App: React.FC = () => {
             newPerms.superAdmin = [...newPerms.superAdmin, newPermission];
             return newPerms;
         });
-    }, [hasPermission, showToast, t.permissionDenied, updateRestaurantInfo, restaurantInfo.orderStatusColumns]);
+    }, [hasPermission, showToast, t.permissionDenied, updateRestaurantInfo, restaurantInfo.orderStatusColumns, setRolePermissions]);
 
     const updateOrderStatusColumn = useCallback((updatedColumn: OrderStatusColumn) => {
         if (!hasPermission('manage_roles')) { showToast(t.permissionDenied); return; }
@@ -588,7 +457,7 @@ const App: React.FC = () => {
             }
             return newPerms;
         });
-    }, [hasPermission, showToast, t.permissionDenied, t.deleteStatusError, orders, updateRestaurantInfo, restaurantInfo.orderStatusColumns]);
+    }, [hasPermission, showToast, t.permissionDenied, t.deleteStatusError, orders, updateRestaurantInfo, restaurantInfo.orderStatusColumns, setRolePermissions]);
 
 
   // Router

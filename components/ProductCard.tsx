@@ -28,7 +28,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product, language, onP
     >
       <div className="relative">
         <img src={product.image} alt={product.name[language]} className="w-full h-40 sm:h-48 object-cover" />
-        {product.isNew && <div className="absolute top-3 end-3 bg-green-500 text-white text-xs font-bold px-3 py-1 rounded-full shadow-md">{t.newItems.slice(0,-1)}</div>}
+        {product.isNew && <div className="absolute top-3 end-3 bg-green-500 text-white text-xs font-bold px-3 py-1 rounded-full shadow-md">{t.newItem}</div>}
         {product.isPopular && !product.isNew && <div className="absolute top-3 end-3 bg-primary-500 text-white text-xs font-bold px-3 py-1 rounded-full shadow-md">{t.mostPopular}</div>}
          <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent"></div>
       </div>

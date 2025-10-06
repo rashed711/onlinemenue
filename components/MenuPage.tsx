@@ -292,18 +292,6 @@ export const MenuPage: React.FC<MenuPageProps> = (props) => {
 
             <div className="container mx-auto max-w-7xl px-4 py-8">
                 <main>
-                    <SearchAndFilter
-                        language={language}
-                        categories={categories}
-                        tags={tags}
-                        searchTerm={searchTerm}
-                        setSearchTerm={setSearchTerm}
-                        selectedCategory={selectedCategory}
-                        setSelectedCategory={setSelectedCategory}
-                        selectedTags={selectedTags}
-                        setSelectedTags={setSelectedTags}
-                    />
-                    
                     <PromotionSection promotions={promotions} products={visibleProducts} language={language} onProductClick={setSelectedProduct} />
 
                     <ProductList 
@@ -322,6 +310,18 @@ export const MenuPage: React.FC<MenuPageProps> = (props) => {
                         onProductClick={setSelectedProduct} 
                         addToCart={handleAddToCartWithoutOpeningCart}
                     />
+                    
+                    <SearchAndFilter
+                        language={language}
+                        categories={categories}
+                        tags={tags}
+                        searchTerm={searchTerm}
+                        setSearchTerm={setSearchTerm}
+                        selectedCategory={selectedCategory}
+                        setSelectedCategory={setSelectedCategory}
+                        selectedTags={selectedTags}
+                        setSelectedTags={setSelectedTags}
+                    />
 
                     <ProductList 
                         titleKey="fullMenu"
@@ -335,7 +335,7 @@ export const MenuPage: React.FC<MenuPageProps> = (props) => {
             </div>
 
 
-            <Footer language={language}/>
+            <Footer language={language} restaurantInfo={restaurantInfo} />
 
             <CartSidebar
                 isOpen={isCartOpen}
