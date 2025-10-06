@@ -126,6 +126,7 @@ export const translations = {
     passwordRequired: 'Password is required for new users.',
     passwordOptional: 'Leave blank to keep current password.',
     newOrders: 'New Orders',
+    newOrder: 'New Order',
     inTheKitchen: 'In the Kitchen',
     // FIX: Removed duplicate `readyForPickup` key. It's already defined above as an order status.
     cancelledOrders: 'Cancelled Orders',
@@ -342,6 +343,7 @@ export const translations = {
     passwordRequired: 'كلمة المرور مطلوبة للمستخدمين الجدد.',
     passwordOptional: 'اترك الحقل فارغًا للإبقاء على كلمة المرور الحالية.',
     newOrders: 'طلبات جديدة',
+    newOrder: 'طلب جديد',
     inTheKitchen: 'في المطبخ',
     // FIX: Removed duplicate `readyForPickup` key. It's already defined above as an order status.
     cancelledOrders: 'طلبات ملغاة',

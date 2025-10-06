@@ -140,7 +140,7 @@ export const CashierPage: React.FC<CashierPageProps> = ({ language, currentUser,
                 {/* Cart/Order Panel */}
                 <div className="flex-1 w-full md:max-w-md bg-white dark:bg-slate-800 flex flex-col shadow-lg border-l border-slate-200 dark:border-slate-700">
                     <div className="p-4 border-b dark:border-slate-700">
-                        <h3 className="text-xl font-bold">{t.new} {t.orders.slice(0,-1)}</h3>
+                        <h3 className="text-xl font-bold">{t.newOrder}</h3>
                          <div>
                             <label htmlFor="table-number-cashier" className="block text-sm font-medium text-slate-700 dark:text-slate-300 mt-2 mb-2">{t.tableNumber}</label>
                             <TableSelector

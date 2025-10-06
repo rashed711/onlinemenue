@@ -1,9 +1,9 @@
 
-
 import React, { useState, useMemo } from 'react';
 import type { Order, Language, CartItem, Product } from '../../types';
 import { useTranslations } from '../../i18n/translations';
-import { CloseIcon, PlusIcon, TrashIcon } from '../icons/Icons';
+import { CloseIcon, PlusIcon, TrashIcon, MinusIcon } from '../icons/Icons';
+import { ProductModal } from '../ProductModal';
 
 interface OrderEditModalProps {
     order: Order;
@@ -33,13 +33,17 @@ export const OrderEditModal: React.FC<OrderEditModalProps> = ({ order, allProduc
     const [notes, setNotes] = useState(order.notes || '');
     const [tableNumber, setTableNumber] = useState(order.tableNumber || '');
     const [productToAdd, setProductToAdd] = useState<string>(allProducts[0]?.id.toString() || '');
+    const [addingProductWithOptions, setAddingProductWithOptions] = useState<Product | null>(null);
 
     const total = useMemo(() => {
         return editedItems.reduce((acc, item) => acc + calculateItemTotal(item), 0);
     }, [editedItems]);
 
     const handleQuantityChange = (itemIndex: number, newQuantity: number) => {
-        if (newQuantity < 1) return;
+        if (newQuantity < 1) {
+            handleRemoveItem(itemIndex);
+            return;
+        };
         setEditedItems(prev => prev.map((item, index) => index === itemIndex ? { ...item, quantity: newQuantity } : item));
     };
 
@@ -51,19 +55,27 @@ export const OrderEditModal: React.FC<OrderEditModalProps> = ({ order, allProduc
         const product = allProducts.find(p => p.id === parseInt(productToAdd, 10));
         if (!product) return;
 
-        const defaultOptions: { [key: string]: string } = {};
-        product.options?.forEach(option => {
-            if (option.values.length > 0) {
-                defaultOptions[option.name.en] = option.values[0].name.en;
-            }
-        });
+        if (product.options && product.options.length > 0) {
+            setAddingProductWithOptions(product);
+        } else {
+             const newItem: CartItem = { product, quantity: 1 };
+             setEditedItems(prev => [...prev, newItem]);
+        }
+    };
 
-        const newItem: CartItem = {
-            product: product,
-            quantity: 1,
-            options: defaultOptions,
-        };
-        setEditedItems(prev => [...prev, newItem]);
+     const handleAddFromModal = (product: Product, quantity: number, options?: { [key: string]: string }) => {
+        const itemVariantId = product.id + JSON.stringify(options || {});
+        const existingItemIndex = editedItems.findIndex(item => (item.product.id + JSON.stringify(item.options || {})) === itemVariantId);
+
+        if (existingItemIndex > -1) {
+            setEditedItems(prev => prev.map((item, index) => 
+                index === existingItemIndex ? { ...item, quantity: item.quantity + quantity } : item
+            ));
+        } else {
+            const newItem: CartItem = { product, quantity, options };
+            setEditedItems(prev => [...prev, newItem]);
+        }
+        setAddingProductWithOptions(null);
     };
 
     const handleSubmit = (e: React.FormEvent) => {
@@ -104,13 +116,21 @@ export const OrderEditModal: React.FC<OrderEditModalProps> = ({ order, allProduc
                                 <div className="flex-grow">
                                     <p className="font-semibold">{item.product.name[language]}</p>
                                 </div>
-                                <input
-                                    type="number"
-                                    value={item.quantity}
-                                    onChange={(e) => handleQuantityChange(index, parseInt(e.target.value, 10))}
-                                    className="w-16 p-1 border rounded-md text-center dark:bg-gray-700 dark:border-gray-600"
-                                    min="1"
-                                />
+                                <div className="flex items-center border border-slate-200 dark:border-slate-600 rounded-full">
+                                    <button type="button" onClick={() => handleQuantityChange(index, item.quantity - 1)} className="p-2 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-l-full" aria-label="Decrease quantity">
+                                        <MinusIcon className="w-4 h-4" />
+                                    </button>
+                                    <input
+                                        type="number"
+                                        value={item.quantity}
+                                        onChange={(e) => handleQuantityChange(index, parseInt(e.target.value, 10) || 1)}
+                                        className="w-12 p-1 text-center bg-transparent border-x dark:border-slate-600 focus:outline-none appearance-none [-moz-appearance:textfield]"
+                                        min="1"
+                                    />
+                                    <button type="button" onClick={() => handleQuantityChange(index, item.quantity + 1)} className="p-2 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-r-full" aria-label="Increase quantity">
+                                        <PlusIcon className="w-4 h-4" />
+                                    </button>
+                                </div>
                                 <button type="button" onClick={() => handleRemoveItem(index)} className="p-2 text-red-500 hover:bg-red-100 dark:hover:bg-red-900/50 rounded-full">
                                     <TrashIcon className="w-5 h-5" />
                                 </button>
@@ -158,6 +178,14 @@ export const OrderEditModal: React.FC<OrderEditModalProps> = ({ order, allProduc
                     </div>
                 </div>
             </form>
+             {addingProductWithOptions && (
+                <ProductModal
+                    product={addingProductWithOptions}
+                    onClose={() => setAddingProductWithOptions(null)}
+                    addToCart={handleAddFromModal}
+                    language={language}
+                />
+            )}
         </div>
     );
 };

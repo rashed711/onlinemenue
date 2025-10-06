@@ -1,6 +1,5 @@
 
 
-
 import React, { useState, useEffect, useMemo, useCallback, useSyncExternalStore } from 'react';
 import { MenuPage } from './components/MenuPage';
 import { LoginPage } from './components/auth/LoginPage';
@@ -14,6 +13,8 @@ import { useTranslations } from './i18n/translations';
 import { initialRolePermissions } from './data/permissions';
 import { calculateTotal } from './utils/helpers';
 import { ChevronRightIcon } from './components/icons/Icons';
+import { TopProgressBar } from './components/TopProgressBar';
+
 
 // --- NEW COMPONENT: SocialPage ---
 const SocialPage: React.FC<{ language: Language, restaurantInfo: RestaurantInfo }> = ({ language, restaurantInfo }) => {
@@ -151,6 +152,12 @@ const App: React.FC = () => {
   const route = useMemo(() => hash || '#/', [hash]);
   const t = useTranslations(language);
 
+  // Transition state
+  const [transitionStage, setTransitionStage] = useState<'in' | 'out'>('in');
+  const [displayedRoute, setDisplayedRoute] = useState(route);
+  const [progress, setProgress] = useState(100);
+  const [showProgress, setShowProgress] = useState(false);
+
   const isAdmin = useMemo(() => currentUser?.role === 'admin' || currentUser?.role === 'superAdmin', [currentUser]);
 
 
@@ -169,6 +176,34 @@ const App: React.FC = () => {
       window.location.hash = isAdmin ? '#/admin' : '#/profile';
     }
   }, [route, currentUser, isAdmin]);
+  
+  // Effects for handling page transitions
+  useEffect(() => {
+    if (route !== displayedRoute) {
+      setShowProgress(true);
+      setProgress(0); // Start progress
+      setTransitionStage('out');
+
+      // Animate progress bar during transition
+      const progressInterval = setInterval(() => {
+        setProgress(p => Math.min(p + 20, 90));
+      }, 60);
+
+      // Switch content after animation out
+      const timer = setTimeout(() => {
+        clearInterval(progressInterval);
+        setDisplayedRoute(route);
+        setTransitionStage('in');
+        setProgress(100); // Finish progress
+        setTimeout(() => setShowProgress(false), 400); // Hide after a bit
+      }, 300); // Corresponds to CSS duration
+
+      return () => {
+        clearTimeout(timer);
+        clearInterval(progressInterval);
+      };
+    }
+  }, [route, displayedRoute]);
 
 
   // UI Persistence Effects
@@ -558,13 +593,13 @@ const App: React.FC = () => {
 
   // Router
   const renderContent = () => {
-    if (route.startsWith('#/login')) {
+    if (displayedRoute.startsWith('#/login')) {
       return currentUser ? null : <LoginPage language={language} users={users} login={login} />;
     }
-    if (route.startsWith('#/register')) {
+    if (displayedRoute.startsWith('#/register')) {
       return currentUser ? null : <RegisterPage language={language} register={register} />;
     }
-    if (route.startsWith('#/admin')) {
+    if (displayedRoute.startsWith('#/admin')) {
       return isAdmin ? (
         <AdminPage 
             language={language} 
@@ -601,14 +636,16 @@ const App: React.FC = () => {
             addOrderStatusColumn={addOrderStatusColumn}
             updateOrderStatusColumn={updateOrderStatusColumn}
             deleteOrderStatusColumn={deleteOrderStatusColumn}
+            setProgress={setProgress}
+            setShowProgress={setShowProgress}
         />
       ) : null;
     }
-    if (route.startsWith('#/profile')) {
+    if (displayedRoute.startsWith('#/profile')) {
        return currentUser?.role === 'customer' ? <ProfilePage language={language} currentUser={currentUser} orders={orders} logout={logout} restaurantInfo={restaurantInfo} updateOrder={updateOrder}/> : null;
     }
 
-    if (route.startsWith('#/social')) {
+    if (displayedRoute.startsWith('#/social')) {
       return <SocialPage language={language} restaurantInfo={restaurantInfo} />;
     }
 
@@ -633,11 +670,11 @@ const App: React.FC = () => {
       />
     );
     
-    if (route.startsWith('#/menu')) {
+    if (displayedRoute.startsWith('#/menu')) {
         return menuPageComponent;
     }
 
-    if (route === '#/' || route === '') {
+    if (displayedRoute === '#/' || displayedRoute === '') {
         if (restaurantInfo.defaultPage === 'social') {
             return <SocialPage language={language} restaurantInfo={restaurantInfo} />;
         }
@@ -647,8 +684,17 @@ const App: React.FC = () => {
   };
 
   return (
-    <div className={`min-h-screen bg-slate-50 dark:bg-slate-950 text-gray-800 dark:text-gray-200 transition-colors duration-300 ${language === 'ar' ? 'font-cairo' : 'font-sans'}`}>
-      {renderContent()}
+    <div className={`min-h-screen overflow-x-hidden bg-slate-50 dark:bg-slate-950 text-gray-800 dark:text-gray-200 transition-colors duration-300 ${language === 'ar' ? 'font-cairo' : 'font-sans'}`}>
+      <TopProgressBar progress={progress} show={showProgress} />
+      <div 
+        className={`transition-all duration-300 ease-in-out ${
+            transitionStage === 'out' 
+                ? 'opacity-0 -translate-y-5' 
+                : 'opacity-100 translate-y-0'
+        }`}
+      >
+        {renderContent()}
+      </div>
       <ToastNotification message={toast.message} isVisible={toast.isVisible} />
     </div>
   );

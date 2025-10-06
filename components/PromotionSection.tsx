@@ -118,13 +118,13 @@ export const PromotionSection: React.FC<PromotionSectionProps> = ({ promotions, 
   return (
     <section className="my-12 animate-fade-in-up">
         <h2 className="text-3xl font-extrabold mb-8">{t.todaysOffers}</h2>
-        <div className="relative" onMouseEnter={stopAutoPlay} onMouseLeave={startAutoPlay} onTouchStart={stopAutoPlay} onTouchEnd={startAutoPlay}>
-            <div ref={sliderRef} className="flex overflow-x-auto snap-x snap-mandatory scroll-smooth scrollbar-hide -mx-2">
+        <div className="relative -mx-4" onMouseEnter={stopAutoPlay} onMouseLeave={startAutoPlay} onTouchStart={stopAutoPlay} onTouchEnd={startAutoPlay}>
+            <div ref={sliderRef} className="flex overflow-x-auto snap-x snap-mandatory scroll-smooth scrollbar-hide px-2">
                 {activePromotions.map(promo => {
                     const product = products.find(p => p.id === promo.productId);
                     if (!product) return null;
                     return (
-                        <div key={promo.id} className="w-full md:w-1/2 lg:w-5/12 xl:w-1/2 flex-shrink-0 snap-center p-2">
+                        <div key={promo.id} className="w-5/6 md:w-1/2 lg:w-5/12 xl:w-1/2 flex-shrink-0 snap-center p-2">
                              <PromotionCard promotion={promo} product={product} language={language} onProductClick={onProductClick} />
                         </div>
                     );
@@ -134,14 +134,14 @@ export const PromotionSection: React.FC<PromotionSectionProps> = ({ promotions, 
                 <>
                     <button
                         onClick={() => handleScroll('prev')}
-                        className={`absolute top-1/2 -translate-y-1/2 ${isRtl ? 'right-2' : 'left-2'} z-10 p-2 bg-white/70 dark:bg-slate-900/70 rounded-full shadow-lg hover:bg-white dark:hover:bg-slate-900 transition-colors`}
+                        className={`absolute top-1/2 -translate-y-1/2 ${isRtl ? 'right-4' : 'left-4'} z-10 p-2 bg-white/70 dark:bg-slate-900/70 rounded-full shadow-lg hover:bg-white dark:hover:bg-slate-900 transition-colors`}
                         aria-label="Previous Offer"
                     >
                         {isRtl ? <ChevronRightIcon className="w-6 h-6" /> : <ChevronLeftIcon className="w-6 h-6" />}
                     </button>
                     <button
                         onClick={() => handleScroll('next')}
-                        className={`absolute top-1/2 -translate-y-1/2 ${isRtl ? 'left-2' : 'right-2'} z-10 p-2 bg-white/70 dark:bg-slate-900/70 rounded-full shadow-lg hover:bg-white dark:hover:bg-slate-900 transition-colors`}
+                        className={`absolute top-1/2 -translate-y-1/2 ${isRtl ? 'left-4' : 'right-4'} z-10 p-2 bg-white/70 dark:bg-slate-900/70 rounded-full shadow-lg hover:bg-white dark:hover:bg-slate-900 transition-colors`}
                         aria-label="Next Offer"
                     >
                         {isRtl ? <ChevronLeftIcon className="w-6 h-6" /> : <ChevronRightIcon className="w-6 h-6" />}

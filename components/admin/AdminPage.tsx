@@ -1,3 +1,4 @@
+
 import React, { useState, useMemo, useEffect } from 'react';
 import type { Language, Product, RestaurantInfo, Order, OrderStatus, User, UserRole, Promotion, Permission, Category, Tag, CartItem, SocialLink, LocalizedString, OrderStatusColumn } from '../../types';
 import { useTranslations } from '../../i18n/translations';
@@ -411,6 +412,8 @@ interface AdminPageProps {
     addOrderStatusColumn: (column: OrderStatusColumn) => void;
     updateOrderStatusColumn: (column: OrderStatusColumn) => void;
     deleteOrderStatusColumn: (columnId: string) => void;
+    setProgress: (progress: number | ((prev: number) => number)) => void;
+    setShowProgress: (show: boolean) => void;
 }
 
 type AdminTab = 'orders' | 'cashier' | 'reports' | 'productList' | 'classifications' | 'promotions' | 'users' | 'roles' | 'settings';
@@ -423,6 +426,7 @@ export const AdminPage: React.FC<AdminPageProps> = (props) => {
         rolePermissions, updateRolePermissions,
         addCategory, updateCategory, deleteCategory, addTag, updateTag, deleteTag,
         updateRestaurantInfo, addOrderStatusColumn, updateOrderStatusColumn, deleteOrderStatusColumn,
+        setProgress, setShowProgress,
     } = props;
 
     const t = useTranslations(language);
@@ -441,6 +445,35 @@ export const AdminPage: React.FC<AdminPageProps> = (props) => {
     const [editingTag, setEditingTag] = useState<Tag | 'new' | null>(null);
     const [refusingOrder, setRefusingOrder] = useState<Order | null>(null);
     const [editingOrderStatus, setEditingOrderStatus] = useState<OrderStatusColumn | 'new' | null>(null);
+
+    // Transition state for tabs
+    const [transitionStage, setTransitionStage] = useState<'in' | 'out'>('in');
+    const [displayedTab, setDisplayedTab] = useState(activeTab);
+
+    useEffect(() => {
+        if (activeTab !== displayedTab) {
+            setShowProgress(true);
+            setProgress(0);
+            setTransitionStage('out');
+
+            const progressInterval = setInterval(() => {
+                setProgress(p => Math.min(p + 20, 90));
+            }, 60);
+
+            const timer = setTimeout(() => {
+                clearInterval(progressInterval);
+                setDisplayedTab(activeTab);
+                setTransitionStage('in');
+                setProgress(100);
+                setTimeout(() => setShowProgress(false), 400);
+            }, 300); // Corresponds to CSS transition duration
+
+            return () => {
+                clearTimeout(timer);
+                clearInterval(progressInterval);
+            };
+        }
+    }, [activeTab, displayedTab, setProgress, setShowProgress]);
 
     const ordersToDisplay = useMemo(() => {
         if (!currentUser || !hasPermission('view_orders')) {
@@ -636,7 +669,7 @@ export const AdminPage: React.FC<AdminPageProps> = (props) => {
     };
 
     const renderContent = () => {
-        switch(activeTab) {
+        switch(displayedTab) {
             case 'orders': {
                 if (!hasPermission('view_orders')) return null;
                 const visibleColumns = restaurantInfo.orderStatusColumns.filter(
@@ -644,7 +677,7 @@ export const AdminPage: React.FC<AdminPageProps> = (props) => {
                 );
                 
                 return (
-                     <div className='animate-fade-in'>
+                     <div>
                         <h2 className="text-2xl font-bold mb-6">{t.manageOrders}</h2>
                         <div className="w-full overflow-x-auto pb-4">
                           <div className={`inline-grid grid-cols-${visibleColumns.length} gap-6 min-w-max`}>
@@ -693,7 +726,7 @@ export const AdminPage: React.FC<AdminPageProps> = (props) => {
             case 'productList':
                 if (!hasPermission('manage_menu')) return null;
                 return (
-                    <div className='animate-fade-in'>
+                    <div>
                         <div className="flex justify-between items-center mb-6">
                             <h2 className="text-2xl font-bold">{t.productList}</h2>
                             <button onClick={() => setEditingProduct('new')} className="bg-green-500 text-white font-bold py-2 px-4 rounded-lg hover:bg-green-600 transition-colors flex items-center gap-2">
@@ -781,7 +814,7 @@ export const AdminPage: React.FC<AdminPageProps> = (props) => {
             case 'promotions':
                  if (!hasPermission('manage_promotions')) return null;
                  return (
-                    <div className='animate-fade-in'>
+                    <div>
                         <div className="flex justify-between items-center mb-6">
                             <h2 className="text-2xl font-bold">{t.managePromotions}</h2>
                             <button onClick={() => setEditingPromotion('new')} className="bg-green-500 text-white font-bold py-2 px-4 rounded-lg hover:bg-green-600 transition-colors flex items-center gap-2"><PlusIcon className="w-5 h-5" /> {t.addNewPromotion}</button>
@@ -797,7 +830,7 @@ export const AdminPage: React.FC<AdminPageProps> = (props) => {
              case 'users':
                 if (!hasPermission('manage_users')) return null;
                 return (
-                    <div className='animate-fade-in'>
+                    <div>
                         <div className="flex justify-between items-center mb-6"><h2 className="text-2xl font-bold">{t.manageUsers}</h2><button onClick={() => setEditingUser('new')} className="bg-green-500 text-white font-bold py-2 px-4 rounded-lg hover:bg-green-600 transition-colors flex items-center gap-2"><PlusIcon className="w-5 h-5" />{t.addNewUser}</button></div>
                         <div className="bg-white dark:bg-slate-800 rounded-lg shadow-md overflow-x-auto border border-slate-200 dark:border-slate-700">
                            <table className="min-w-full divide-y divide-slate-200 dark:divide-slate-700">
@@ -810,7 +843,7 @@ export const AdminPage: React.FC<AdminPageProps> = (props) => {
             case 'roles':
                 if (!hasPermission('manage_roles')) return null;
                 return (
-                    <div className='animate-fade-in'>
+                    <div>
                         <h2 className="text-2xl font-bold mb-6">{t.manageRoles}</h2>
                         <div className="bg-white dark:bg-slate-800 rounded-lg shadow-md overflow-x-auto border border-slate-200 dark:border-slate-700">
                            <table className="min-w-full divide-y divide-slate-200 dark:divide-slate-700">
@@ -873,7 +906,13 @@ export const AdminPage: React.FC<AdminPageProps> = (props) => {
                     </div>
                 </header>
                 <main className="container mx-auto max-w-full px-4 sm:px-6 lg:px-8 py-8 flex-1">
-                    {renderContent()}
+                    <div className={`transition-all duration-300 ease-in-out ${
+                        transitionStage === 'out' 
+                            ? 'opacity-0 -translate-y-5' 
+                            : 'opacity-100 translate-y-0'
+                    }`}>
+                        {renderContent()}
+                    </div>
                 </main>
             </div>
             
