@@ -11,7 +11,7 @@ import { ReceiptModal } from './ReceiptModal';
 import { GuestCheckoutModal } from './GuestCheckoutModal';
 import { HeroSection } from './HeroSection';
 import { useTranslations } from '../i18n/translations';
-import { calculateTotal } from '../utils/helpers';
+import { calculateTotal, formatDateTime } from '../utils/helpers';
 
 interface MenuPageProps {
     language: Language;
@@ -139,7 +139,7 @@ export const MenuPage: React.FC<MenuPageProps> = (props) => {
             ctx.font = font;
             ctx.fillText(`${t.orderId}: ${order.id}`, mainX, y);
             y += lineHeight;
-            ctx.fillText(`${t.date}: ${new Date(order.timestamp).toLocaleString(language === 'ar' ? 'ar-EG' : 'en-US')}`, mainX, y);
+            ctx.fillText(`${t.date}: ${formatDateTime(order.timestamp)}`, mainX, y);
             y += lineHeight;
             ctx.fillText(`${t.orderType}: ${t[order.orderType === 'Dine-in' ? 'dineIn' : 'delivery']}`, mainX, y);
             if(order.tableNumber){

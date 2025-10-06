@@ -1,4 +1,5 @@
 import React from 'react';
+import { formatNumber } from '../utils/helpers';
 
 interface TableSelectorProps {
     tableCount: number;
@@ -27,7 +28,7 @@ export const TableSelector: React.FC<TableSelectorProps> = ({ tableCount, select
                             : 'bg-slate-100 dark:bg-slate-700 border-slate-200 dark:border-slate-600 hover:bg-slate-200 dark:hover:bg-slate-600'
                         }`}
                     >
-                        {tableNum}
+                        {formatNumber(tableNum)}
                     </button>
                 );
             })}

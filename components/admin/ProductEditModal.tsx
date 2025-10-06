@@ -64,6 +64,17 @@ export const ProductEditModal: React.FC<ProductEditModalProps> = ({ product, cat
         const { name, checked } = e.target;
         setFormData(prev => ({ ...prev, [name]: checked }));
     };
+    
+    const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (file) {
+            const reader = new FileReader();
+            reader.onloadend = () => {
+                setFormData(prev => ({ ...prev, image: reader.result as string }));
+            };
+            reader.readAsDataURL(file);
+        }
+    };
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
@@ -174,9 +185,33 @@ export const ProductEditModal: React.FC<ProductEditModalProps> = ({ product, cat
                             </select>
                         </div>
                     </div>
-                    <div>
-                        <label className="block text-sm font-medium mb-1">{t.imageURL}</label>
-                        <input type="text" name="image" value={formData.image} onChange={handleTextChange} className="w-full p-2 border rounded-md dark:bg-gray-700 dark:border-gray-600" required placeholder="https://picsum.photos/seed/example/400/300" />
+                     <div>
+                        <label className="block text-sm font-medium mb-1">{t.productImage}</label>
+                        <div className="mt-2 flex flex-col sm:flex-row items-center gap-4 p-4 border-2 border-dashed border-slate-300 dark:border-slate-600 rounded-lg">
+                            {formData.image && (
+                                <img 
+                                    src={formData.image} 
+                                    alt={t.imagePreview} 
+                                    className="w-32 h-24 object-cover rounded-lg bg-slate-100 dark:bg-slate-700 p-1 border dark:border-slate-600 flex-shrink-0" 
+                                />
+                            )}
+                            <div className="flex-grow text-center sm:text-start">
+                                <input
+                                    id="product-image-upload"
+                                    type="file"
+                                    accept="image/*"
+                                    onChange={handleFileChange}
+                                    className="sr-only"
+                                />
+                                <label 
+                                    htmlFor="product-image-upload" 
+                                    className="cursor-pointer bg-white dark:bg-gray-700 text-sm text-primary-600 dark:text-primary-400 font-semibold py-2 px-4 border border-primary-300 dark:border-primary-600 rounded-lg hover:bg-primary-50 dark:hover:bg-primary-900/50 transition-colors inline-block"
+                                >
+                                    {t.changeImage}
+                                </label>
+                                <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">{t.uploadImageHelpText}</p> 
+                            </div>
+                        </div>
                     </div>
                      <div className="flex flex-wrap items-center gap-x-8 gap-y-4 pt-2">
                         <label className="flex items-center gap-2 cursor-pointer">
@@ -222,7 +257,7 @@ export const ProductEditModal: React.FC<ProductEditModalProps> = ({ product, cat
                                                 </button>
                                             </div>
                                         ))}
-                                        <button type="button" onClick={() => addOptionValue(groupIndex)} className="text-sm text-green-600 hover:text-green-800 font-semibold flex items-center gap-1">
+                                        <button type="button" onClick={() => addOptionValue(groupIndex)} className="text-sm text-green-600 dark:text-green-400 hover:text-green-800 dark:hover:text-green-300 font-semibold flex items-center gap-1">
                                             <PlusIcon className="w-4 h-4" /> {t.addValue}
                                         </button>
                                     </div>

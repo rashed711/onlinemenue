@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useCallback } from 'react';
 import type { Language, User, Product, Category, CartItem, Order, OrderStatus, RestaurantInfo } from '../../types';
 import { useTranslations } from '../../i18n/translations';
-import { calculateTotal } from '../../utils/helpers';
+import { calculateTotal, formatNumber } from '../../utils/helpers';
 import { ProductModal } from '../ProductModal';
 import { MinusIcon, PlusIcon, TrashIcon } from '../icons/Icons';
 import { TableSelector } from '../TableSelector';
@@ -175,7 +175,7 @@ export const CashierPage: React.FC<CashierPageProps> = ({ language, currentUser,
                                     </div>
                                     <div className="flex items-center gap-2">
                                         <button onClick={() => updateCartQuantity(index, item.quantity - 1)} className="p-1 rounded-full bg-slate-200 dark:bg-slate-700"><MinusIcon className="w-4 h-4" /></button>
-                                        <span className="font-bold w-6 text-center">{item.quantity}</span>
+                                        <span className="font-bold w-6 text-center">{formatNumber(item.quantity)}</span>
                                         <button onClick={() => updateCartQuantity(index, item.quantity + 1)} className="p-1 rounded-full bg-slate-200 dark:bg-slate-700"><PlusIcon className="w-4 h-4" /></button>
                                     </div>
                                 </div>

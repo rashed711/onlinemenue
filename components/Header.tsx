@@ -1,8 +1,8 @@
-
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import type { Language, Theme, RestaurantInfo, User } from '../types';
 import { useTranslations } from '../i18n/translations';
 import { SunIcon, MoonIcon, CartIcon, LanguageIcon, UserIcon, LinkIcon } from './icons/Icons';
+import { formatNumber } from '../utils/helpers';
 
 interface HeaderProps {
   language: Language;
@@ -82,7 +82,7 @@ export const Header: React.FC<HeaderProps> = ({
               <CartIcon className="w-6 h-6" />
               {cartItemCount > 0 && (
                 <span className="absolute top-0 right-0 bg-red-500 text-white text-xs font-bold rounded-full h-5 w-5 flex items-center justify-center transform translate-x-1/4 -translate-y-1/4 ring-2 ring-white dark:ring-slate-900">
-                  {cartItemCount}
+                  {formatNumber(cartItemCount)}
                 </span>
               )}
             </button>

@@ -2,7 +2,7 @@ import React, { useMemo } from 'react';
 import type { CartItem, Language, OrderType, RestaurantInfo } from '../types';
 import { useTranslations } from '../i18n/translations';
 import { PlusIcon, MinusIcon, CloseIcon } from './icons/Icons';
-import { calculateTotal } from '../utils/helpers';
+import { calculateTotal, formatNumber } from '../utils/helpers';
 import { TableSelector } from './TableSelector';
 
 interface CartContentsProps {
@@ -99,7 +99,7 @@ export const CartContents: React.FC<CartContentsProps> = ({
               <div className="flex flex-col items-end gap-2">
                 <div className="flex items-center border border-slate-200 dark:border-slate-700 rounded-full">
                   <button onClick={() => updateCartQuantity(item.product.id, item.options, item.quantity - 1)} className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-l-full" aria-label="Decrease quantity"><MinusIcon className="w-4 h-4" /></button>
-                  <span className="px-2 font-semibold text-sm" aria-live="polite">{item.quantity}</span>
+                  <span className="px-2 font-semibold text-sm" aria-live="polite">{formatNumber(item.quantity)}</span>
                   <button onClick={() => updateCartQuantity(item.product.id, item.options, item.quantity + 1)} className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-r-full" aria-label="Increase quantity"><PlusIcon className="w-4 h-4" /></button>
                 </div>
               </div>

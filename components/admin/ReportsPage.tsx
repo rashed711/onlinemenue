@@ -1,6 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import type { Language, Order, Product, Category, CartItem } from '../../types';
 import { useTranslations } from '../../i18n/translations';
+import { formatNumber } from '../../utils/helpers';
 
 interface ReportsPageProps {
     language: Language;
@@ -143,7 +144,7 @@ export const ReportsPage: React.FC<ReportsPageProps> = ({ language, allOrders, a
                 </div>
                  <div className="bg-white dark:bg-slate-800 p-6 rounded-lg shadow-md border border-slate-200 dark:border-slate-700">
                     <p className="text-sm font-medium text-slate-500 dark:text-slate-400">{t.totalOrders}</p>
-                    <p className="text-3xl font-bold mt-1">{salesSummary.totalOrdersCount}</p>
+                    <p className="text-3xl font-bold mt-1">{formatNumber(salesSummary.totalOrdersCount)}</p>
                 </div>
                  <div className="bg-white dark:bg-slate-800 p-6 rounded-lg shadow-md border border-slate-200 dark:border-slate-700">
                     <p className="text-sm font-medium text-slate-500 dark:text-slate-400">{t.avgOrderValue}</p>
@@ -169,7 +170,7 @@ export const ReportsPage: React.FC<ReportsPageProps> = ({ language, allOrders, a
                                         <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">{product!.name[language]}</td>
                                         <td className="px-6 py-4 whitespace-nowrap text-sm">
                                             <div className="flex items-center gap-2">
-                                                <span>{quantity}</span>
+                                                <span>{formatNumber(quantity)}</span>
                                                 <div className="w-full bg-slate-200 dark:bg-slate-700 rounded-full h-2.5">
                                                     <div className="bg-primary-500 h-2.5 rounded-full" style={{ width: `${barPercent}%` }}></div>
                                                 </div>
@@ -198,7 +199,7 @@ export const ReportsPage: React.FC<ReportsPageProps> = ({ language, allOrders, a
                                 {salesByCategory.map(({ category, orderCount, revenue, barPercent }) => (
                                     <tr key={category!.id} className="odd:bg-white even:bg-slate-50 dark:odd:bg-slate-800 dark:even:bg-slate-800/50">
                                         <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">{category!.name[language]}</td>
-                                        <td className="px-6 py-4 whitespace-nowrap text-sm">{orderCount}</td>
+                                        <td className="px-6 py-4 whitespace-nowrap text-sm">{formatNumber(orderCount)}</td>
                                         <td className="px-6 py-4 whitespace-nowrap text-sm">
                                             <div className="flex items-center gap-2">
                                                 <span>{revenue.toFixed(2)}</span>
@@ -226,12 +227,12 @@ export const ReportsPage: React.FC<ReportsPageProps> = ({ language, allOrders, a
                             <tbody className="divide-y divide-slate-200 dark:divide-slate-700">
                                 <tr className="odd:bg-white even:bg-slate-50 dark:odd:bg-slate-800 dark:even:bg-slate-800/50">
                                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">{t.dineIn}</td>
-                                    <td className="px-6 py-4 whitespace-nowrap text-sm">{orderTypeDistribution['Dine-in'].orderCount}</td>
+                                    <td className="px-6 py-4 whitespace-nowrap text-sm">{formatNumber(orderTypeDistribution['Dine-in'].orderCount)}</td>
                                     <td className="px-6 py-4 whitespace-nowrap text-sm">{orderTypeDistribution['Dine-in'].revenue.toFixed(2)}</td>
                                 </tr>
                                  <tr className="odd:bg-white even:bg-slate-50 dark:odd:bg-slate-800 dark:even:bg-slate-800/50">
                                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">{t.delivery}</td>
-                                    <td className="px-6 py-4 whitespace-nowrap text-sm">{orderTypeDistribution['Delivery'].orderCount}</td>
+                                    <td className="px-6 py-4 whitespace-nowrap text-sm">{formatNumber(orderTypeDistribution['Delivery'].orderCount)}</td>
                                     <td className="px-6 py-4 whitespace-nowrap text-sm">{orderTypeDistribution['Delivery'].revenue.toFixed(2)}</td>
                                 </tr>
                             </tbody>

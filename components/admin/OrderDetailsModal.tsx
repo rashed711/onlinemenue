@@ -5,6 +5,7 @@ import type { Order, Language, OrderStatus, RestaurantInfo } from '../../types';
 import { useTranslations } from '../../i18n/translations';
 import { CloseIcon, DocumentTextIcon, PencilIcon } from '../icons/Icons';
 import { StarRating } from '../StarRating';
+import { formatDateTime, formatNumber } from '../../utils/helpers';
 
 interface OrderDetailsModalProps {
     order: Order;
@@ -69,13 +70,13 @@ export const OrderDetailsModal: React.FC<OrderDetailsModalProps> = ({ order, onC
                         </div>
                         <div>
                             <p className="font-semibold text-slate-500 dark:text-slate-400 mb-1">{t.date}</p>
-                            <p>{new Date(order.timestamp).toLocaleString(language === 'ar' ? 'ar-EG' : 'en-US', { dateStyle: 'short', timeStyle: 'short' })}</p>
+                            <p>{formatDateTime(order.timestamp)}</p>
                         </div>
                         <div>
                             <p className="font-semibold text-slate-500 dark:text-slate-400 mb-1">{t.orderType}</p>
                             <div className="flex items-baseline gap-2">
                                 <p className="font-bold">{t[order.orderType === 'Dine-in' ? 'dineIn' : 'delivery']}</p>
-                                {order.tableNumber && <p className="text-xs text-slate-500 dark:text-slate-400">({t.table} {order.tableNumber})</p>}
+                                {order.tableNumber && <p className="text-xs text-slate-500 dark:text-slate-400">({t.table} {formatNumber(parseInt(order.tableNumber, 10))})</p>}
                             </div>
                         </div>
                          <div>
@@ -117,7 +118,7 @@ export const OrderDetailsModal: React.FC<OrderDetailsModalProps> = ({ order, onC
                         <div className="flex justify-between items-center">
                             <h3 className="font-bold text-lg">{t.orderItems}</h3>
                             <span className="text-sm font-semibold bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 px-2.5 py-1 rounded-full">
-                                {order.items.length} {language === 'ar' ? 'أصناف' : 'Items'}
+                                {formatNumber(order.items.length)} {language === 'ar' ? 'أصناف' : 'Items'}
                             </span>
                         </div>
                         <div className="max-h-72 overflow-y-auto pr-2 space-y-3 -mr-2">
@@ -126,7 +127,7 @@ export const OrderDetailsModal: React.FC<OrderDetailsModalProps> = ({ order, onC
                                     <img src={item.product.image} alt={item.product.name[language]} className="w-16 h-16 rounded-lg object-cover" />
                                     <div className="flex-grow">
                                         <p className="font-semibold">{item.product.name[language]}</p>
-                                        <p className="text-sm text-slate-500 dark:text-slate-400">{t.quantity}: {item.quantity}</p>
+                                        <p className="text-sm text-slate-500 dark:text-slate-400">{t.quantity}: {formatNumber(item.quantity)}</p>
                                         {item.options && (
                                             <div className="text-xs text-slate-500 dark:text-slate-400 mt-1">
                                                 {Object.entries(item.options).map(([optionKey, valueKey]) => {

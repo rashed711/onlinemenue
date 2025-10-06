@@ -3,6 +3,7 @@ import type { Language, Order, User, OrderStatus, RestaurantInfo } from '../../t
 import { useTranslations } from '../../i18n/translations';
 import { UserIcon } from '../icons/Icons';
 import { FeedbackModal } from './FeedbackModal';
+import { formatDateTime, formatNumber } from '../../utils/helpers';
 
 interface ProfilePageProps {
     language: Language;
@@ -79,7 +80,7 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({ language, currentUser,
                                     </div>
                                     <div className='flex-grow'>
                                         <p className="text-sm text-slate-500 dark:text-slate-400">{t.date}</p>
-                                        <p className="font-semibold text-slate-800 dark:text-slate-100">{new Date(order.timestamp).toLocaleString(language === 'ar' ? 'ar-EG' : 'en-US', { dateStyle: 'medium', timeStyle: 'short' })}</p>
+                                        <p className="font-semibold text-slate-800 dark:text-slate-100">{formatDateTime(order.timestamp)}</p>
                                     </div>
                                     <div className="text-start sm:text-end">
                                         <p className="text-sm text-slate-500 dark:text-slate-400">{t.total}</p>
@@ -98,7 +99,7 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({ language, currentUser,
                                                 <img src={item.product.image} alt={item.product.name[language]} className="w-12 h-12 rounded-md object-cover" />
                                                 <div className="flex-grow">
                                                     <p className="font-semibold">{item.product.name[language]}</p>
-                                                    <p className="text-sm text-slate-500 dark:text-slate-400">{t.quantity}: {item.quantity}</p>
+                                                    <p className="text-sm text-slate-500 dark:text-slate-400">{t.quantity}: {formatNumber(item.quantity)}</p>
                                                 </div>
                                                 <p className="font-semibold text-slate-700 dark:text-slate-200">{(item.product.price * item.quantity).toFixed(2)} {t.currency}</p>
                                             </li>

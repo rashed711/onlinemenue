@@ -82,7 +82,7 @@ export const OrderStatusEditModal: React.FC<OrderStatusEditModalProps> = (props)
                     <div>
                         <label className="block text-sm font-medium mb-1">{t.statusId}</label>
                         <input type="text" name="id" value={id} onChange={(e) => setId(e.target.value)} className="w-full p-2 border rounded-md dark:bg-gray-700 dark:border-gray-600 disabled:opacity-50" required disabled={!!statusColumn} />
-                        <p className="text-xs text-slate-500 mt-1">{t.statusIdHelper}</p>
+                        <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">{t.statusIdHelper}</p>
                          {error && <p className="text-xs text-red-500 mt-1">{error}</p>}
                     </div>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

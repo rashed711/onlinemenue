@@ -13,25 +13,44 @@ interface SettingsPageProps {
     onDeleteOrderStatus: (columnId: string) => void;
 }
 
+type SettingsTab = 'general' | 'operations' | 'social' | 'statuses';
+
+// A reusable Card component for consistent styling
+const SettingsCard: React.FC<{ title: string, subtitle: string, children: React.ReactNode, actions?: React.ReactNode }> = ({ title, subtitle, children, actions }) => (
+    <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-lg border border-slate-200 dark:border-slate-700">
+        <div className="p-4 sm:p-6 border-b border-slate-200 dark:border-slate-700 flex flex-col sm:flex-row justify-between sm:items-center gap-2">
+            <div>
+                <h3 className="text-xl font-bold text-slate-800 dark:text-slate-100">{title}</h3>
+                <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">{subtitle}</p>
+            </div>
+            {actions && <div className="self-start sm:self-center">{actions}</div>}
+        </div>
+        <div className="p-4 sm:p-6 space-y-6">
+            {children}
+        </div>
+    </div>
+);
+
+// A reusable Form Group component
+const FormGroup: React.FC<{ label: string, children: React.ReactNode, helperText?: string }> = ({ label, children, helperText }) => (
+    <div>
+        <label className="block font-semibold text-sm text-slate-600 dark:text-slate-300 mb-1.5">{label}</label>
+        {children}
+        {helperText && <p className="text-xs text-slate-500 dark:text-slate-400 mt-1.5">{helperText}</p>}
+    </div>
+);
+
 export const SettingsPage: React.FC<SettingsPageProps> = (props) => {
     const { language, restaurantInfo, updateRestaurantInfo, onAddOrderStatus, onEditOrderStatus, onDeleteOrderStatus } = props;
     const t = useTranslations(language);
     const [editingLink, setEditingLink] = useState<SocialLink | 'new' | null>(null);
+    const [activeTab, setActiveTab] = useState<SettingsTab>('general');
 
     const handleInfoChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
         const { name, value } = e.target;
         const [field, lang] = name.split('.');
-
         const currentLocalized = restaurantInfo[field as 'name' | 'description' | 'heroTitle'] || { en: '', ar: '' };
-
-        const newInfo = {
-            ...restaurantInfo,
-            [field]: {
-                ...currentLocalized,
-                [lang]: value,
-            }
-        };
-        updateRestaurantInfo(newInfo);
+        updateRestaurantInfo({ [field]: { ...currentLocalized, [lang]: value } });
     };
 
     const handleNonLocalizedChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -40,12 +59,12 @@ export const SettingsPage: React.FC<SettingsPageProps> = (props) => {
         updateRestaurantInfo({ [name]: finalValue });
     };
 
-    const handleLogoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>, field: 'logo' | 'heroImage') => {
         const file = e.target.files?.[0];
         if (file) {
             const reader = new FileReader();
             reader.onloadend = () => {
-                updateRestaurantInfo({ logo: reader.result as string });
+                updateRestaurantInfo({ [field]: reader.result as string });
             };
             reader.readAsDataURL(file);
         }
@@ -56,24 +75,24 @@ export const SettingsPage: React.FC<SettingsPageProps> = (props) => {
     };
 
     const handleToggleVisibility = (linkId: number) => {
-        const updatedLinks = restaurantInfo.socialLinks.map(link => 
+        const updatedLinks = restaurantInfo.socialLinks.map(link =>
             link.id === linkId ? { ...link, isVisible: !link.isVisible } : link
         );
         updateRestaurantInfo({ socialLinks: updatedLinks });
     };
 
     const handleDeleteLink = (linkId: number) => {
-        if (window.confirm("Are you sure you want to delete this link?")) {
+        if (window.confirm(t.confirmDeleteLink)) {
             const updatedLinks = restaurantInfo.socialLinks.filter(link => link.id !== linkId);
             updateRestaurantInfo({ socialLinks: updatedLinks });
         }
     };
-    
+
     const handleSaveLink = (linkData: SocialLink | Omit<SocialLink, 'id'>) => {
-        if ('id' in linkData) { // Editing existing
+        if ('id' in linkData) {
             const updatedLinks = restaurantInfo.socialLinks.map(link => link.id === linkData.id ? linkData : link);
             updateRestaurantInfo({ socialLinks: updatedLinks });
-        } else { // Adding new
+        } else {
             const newLink: SocialLink = {
                 ...linkData,
                 id: restaurantInfo.socialLinks.length > 0 ? Math.max(...restaurantInfo.socialLinks.map(l => l.id)) + 1 : 1,
@@ -83,183 +102,192 @@ export const SettingsPage: React.FC<SettingsPageProps> = (props) => {
         setEditingLink(null);
     };
 
+    const tabs = [
+        { id: 'general', label: t.settingsTabGeneralBranding },
+        { id: 'operations', label: t.settingsTabOperations },
+        { id: 'social', label: t.settingsTabSocial },
+        { id: 'statuses', label: t.settingsTabStatuses },
+    ];
+    
+    const formInputClasses = "w-full p-2.5 border border-slate-300 rounded-lg bg-slate-50 dark:bg-slate-700/50 dark:border-slate-600 focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-colors duration-200 placeholder:text-slate-400 dark:placeholder:text-slate-500 text-slate-900 dark:text-slate-100 shadow-sm";
+    const fileInputClasses = "block w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-primary-100 file:text-primary-700 hover:file:bg-primary-200 dark:file:bg-primary-900/50 dark:file:text-primary-200 dark:hover:file:bg-primary-900 cursor-pointer";
+    const btnPrimarySmClasses = "bg-primary-500 text-white font-bold py-2 px-4 rounded-lg hover:bg-primary-600 transition-all duration-200 flex items-center gap-2 text-sm shadow-sm hover:shadow-md transform hover:-translate-y-0.5";
+    const btnIconSecondaryClasses = "p-2 text-indigo-600 hover:bg-indigo-100 dark:text-indigo-400 dark:hover:bg-indigo-900/50 rounded-full transition-colors";
+    const btnIconDangerClasses = "p-2 text-red-600 hover:bg-red-100 dark:text-red-400 dark:hover:bg-red-900/50 rounded-full transition-colors";
+
     return (
-        <div className="space-y-8 animate-fade-in">
-            {/* Restaurant Info Settings */}
-            <div className="bg-white dark:bg-slate-800 p-6 rounded-lg shadow-md border border-slate-200 dark:border-slate-700">
-                <h3 className="text-xl font-semibold mb-4">Restaurant Information</h3>
-                <div className="space-y-4">
-                    <div>
-                        <label className="block text-sm font-medium mb-1">Logo</label>
-                        <div className="mt-2 flex items-center gap-4">
-                            <img src={restaurantInfo.logo} alt="Logo preview" className="w-16 h-16 object-contain rounded-full bg-slate-100 dark:bg-slate-700 p-1 border dark:border-slate-600" />
-                            <input
-                                type="file"
-                                accept="image/*"
-                                onChange={handleLogoChange}
-                                className="block w-full text-sm text-slate-500
-                                file:mr-4 file:py-2 file:px-4
-                                file:rounded-full file:border-0
-                                file:text-sm file:font-semibold
-                                file:bg-primary-50 file:text-primary-700
-                                hover:file:bg-primary-100 dark:file:bg-primary-900/50 dark:file:text-primary-200 dark:hover:file:bg-primary-900"
-                            />
-                        </div>
-                    </div>
-                    <div>
-                        <label className="block text-sm font-medium mb-1">Hero Image URL</label>
-                        <div className="flex items-center gap-4">
-                            <input
-                                type="text"
-                                name="heroImage"
-                                value={restaurantInfo.heroImage || ''}
-                                onChange={handleNonLocalizedChange}
-                                className="w-full p-2 border rounded-md dark:bg-gray-700 dark:border-gray-600"
-                                placeholder="https://example.com/hero.jpg"
-                            />
-                            {restaurantInfo.heroImage && (
-                                <img
-                                    src={restaurantInfo.heroImage}
-                                    alt="Hero preview"
-                                    className="w-24 h-16 object-cover rounded-md bg-slate-100 dark:bg-slate-700 p-1 border dark:border-slate-600"
-                                />
-                            )}
-                        </div>
-                    </div>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div>
-                            <label className="block text-sm font-medium mb-1">Name (English)</label>
-                            <input type="text" name="name.en" value={restaurantInfo.name.en} onChange={handleInfoChange} className="w-full p-2 border rounded-md dark:bg-gray-700 dark:border-gray-600" />
-                        </div>
-                        <div>
-                            <label className="block text-sm font-medium mb-1">Name (Arabic)</label>
-                            <input type="text" name="name.ar" value={restaurantInfo.name.ar} onChange={handleInfoChange} className="w-full p-2 border rounded-md dark:bg-gray-700 dark:border-gray-600" />
-                        </div>
-                    </div>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div>
-                            <label className="block text-sm font-medium mb-1">{t.heroTitleEn}</label>
-                            <input type="text" name="heroTitle.en" value={restaurantInfo.heroTitle?.en || ''} onChange={handleInfoChange} className="w-full p-2 border rounded-md dark:bg-gray-700 dark:border-gray-600" />
-                        </div>
-                        <div>
-                            <label className="block text-sm font-medium mb-1">{t.heroTitleAr}</label>
-                            <input type="text" name="heroTitle.ar" value={restaurantInfo.heroTitle?.ar || ''} onChange={handleInfoChange} className="w-full p-2 border rounded-md dark:bg-gray-700 dark:border-gray-600" />
-                        </div>
-                    </div>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div>
-                            <label className="block text-sm font-medium mb-1">{t.descriptionEn}</label>
-                            <textarea name="description.en" value={restaurantInfo.description?.en || ''} onChange={handleInfoChange} rows={3} className="w-full p-2 border rounded-md dark:bg-gray-700 dark:border-gray-600"></textarea>
-                        </div>
-                        <div>
-                            <label className="block text-sm font-medium mb-1">{t.descriptionAr}</label>
-                            <textarea name="description.ar" value={restaurantInfo.description?.ar || ''} onChange={handleInfoChange} rows={3} className="w-full p-2 border rounded-md dark:bg-gray-700 dark:border-gray-600"></textarea>
-                        </div>
-                    </div>
-                </div>
+        <div className="animate-fade-in">
+            <h2 className="text-3xl font-bold text-slate-900 dark:text-slate-50 mb-6">{t.settings}</h2>
+
+            <div className="border-b border-slate-200 dark:border-slate-700">
+                <nav className="-mb-px flex space-x-6 rtl:space-x-reverse overflow-x-auto" aria-label="Tabs">
+                    {tabs.map(tab => (
+                        <button
+                            key={tab.id}
+                            onClick={() => setActiveTab(tab.id as SettingsTab)}
+                            className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition-colors ${activeTab === tab.id
+                                    ? 'border-primary-500 text-primary-600 dark:text-primary-400'
+                                    : 'border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300 dark:text-slate-400 dark:hover:text-slate-200 dark:hover:border-slate-600'
+                                }`}
+                        >
+                            {tab.label}
+                        </button>
+                    ))}
+                </nav>
             </div>
 
-             {/* Table Management Settings */}
-            <div className="bg-white dark:bg-slate-800 p-6 rounded-lg shadow-md border border-slate-200 dark:border-slate-700">
-                <h3 className="text-xl font-semibold mb-4">Table Management</h3>
-                <div>
-                    <label className="block text-sm font-medium mb-1">Total Number of Tables</label>
-                    <input 
-                        type="number" 
-                        name="tableCount" 
-                        value={restaurantInfo.tableCount || 0} 
-                        onChange={handleNonLocalizedChange} 
-                        className="w-full max-w-xs p-2 border rounded-md dark:bg-gray-700 dark:border-gray-600"
-                        min="0"
-                    />
-                </div>
-            </div>
+            <div className="mt-8">
+                {activeTab === 'general' && (
+                    <div className="grid grid-cols-1 xl:grid-cols-2 gap-8">
+                        <SettingsCard title={t.restaurantInformation} subtitle={t.settingsInfoDescription}>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                <FormGroup label={t.productNameEn}>
+                                    <input type="text" name="name.en" value={restaurantInfo.name.en} onChange={handleInfoChange} className={formInputClasses} />
+                                </FormGroup>
+                                <FormGroup label={t.productNameAr}>
+                                    <input type="text" name="name.ar" value={restaurantInfo.name.ar} onChange={handleInfoChange} className={formInputClasses} />
+                                </FormGroup>
+                            </div>
+                            <hr className="border-slate-200 dark:border-slate-700"/>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                <FormGroup label={t.descriptionEn}>
+                                    <textarea name="description.en" value={restaurantInfo.description?.en || ''} onChange={handleInfoChange} rows={3} className={formInputClasses}></textarea>
+                                </FormGroup>
+                                <FormGroup label={t.descriptionAr}>
+                                    <textarea name="description.ar" value={restaurantInfo.description?.ar || ''} onChange={handleInfoChange} rows={3} className={formInputClasses}></textarea>
+                                </FormGroup>
+                            </div>
+                        </SettingsCard>
 
-            {/* Order Status Management */}
-            <div>
-                <div className="flex justify-between items-center mb-4">
-                    <h3 className="text-xl font-semibold">{t.orderStatusManagement}</h3>
-                    <button onClick={onAddOrderStatus} className="bg-green-500 text-white font-bold py-2 px-3 rounded-lg hover:bg-green-600 transition-colors flex items-center gap-2 text-sm">
-                        <PlusIcon className="w-5 h-5" />
-                        {t.addNewStatus}
-                    </button>
-                </div>
-                <div className="bg-white dark:bg-slate-800 rounded-lg shadow-md border border-slate-200 dark:border-slate-700">
-                    <ul className="divide-y divide-gray-200 dark:divide-gray-700">
-                        {restaurantInfo.orderStatusColumns.map(status => (
-                            <li key={status.id} className="p-4 flex flex-wrap justify-between items-center gap-4 hover:bg-slate-50 dark:hover:bg-gray-700/50">
+                        <SettingsCard title={t.settingsBranding} subtitle={t.settingsHeroDescription}>
+                             <FormGroup label={t.logo} helperText={t.settingsLogoDescription}>
                                 <div className="flex items-center gap-4">
-                                    <div className={`w-4 h-4 rounded-full bg-${status.color}-500`}></div>
-                                    <div>
-                                        <div className="font-medium">{status.name[language]}</div>
-                                        <div className="text-sm text-slate-500 dark:text-slate-400 font-mono">{status.id}</div>
-                                    </div>
+                                    <img src={restaurantInfo.logo} alt="Logo preview" className="w-20 h-20 object-contain rounded-full bg-slate-100 dark:bg-slate-700/50 p-1 border-2 border-white dark:border-slate-600 shadow-md" />
+                                    <input type="file" accept="image/*" onChange={(e) => handleFileChange(e, 'logo')} className={fileInputClasses} />
                                 </div>
-                                <div className="flex items-center gap-2">
-                                    <button onClick={() => onEditOrderStatus(status)} className="p-2 text-indigo-600 hover:bg-indigo-100 dark:hover:bg-indigo-900/50 rounded-full"><PencilIcon className="w-5 h-5" /></button>
-                                    <button onClick={() => { if(window.confirm(t.confirmDeleteStatus)) onDeleteOrderStatus(status.id); }} className="p-2 text-red-600 hover:bg-red-100 dark:hover:bg-red-900/50 rounded-full"><TrashIcon className="w-5 h-5" /></button>
-                                </div>
-                            </li>
-                        ))}
-                    </ul>
-                </div>
-            </div>
-
-
-            {/* Homepage Settings */}
-            <div className="bg-white dark:bg-slate-800 p-6 rounded-lg shadow-md border border-slate-200 dark:border-slate-700">
-                <h3 className="text-xl font-semibold mb-4">Homepage Settings</h3>
-                <div className="flex items-center space-x-6 rtl:space-x-reverse">
-                    <label className="flex items-center gap-2 cursor-pointer">
-                        <input type="radio" name="homepage" value="menu" checked={restaurantInfo.defaultPage === 'menu'} onChange={handleHomepageChange} className="w-5 h-5 text-primary-600 focus:ring-primary-500" />
-                        <span>Menu Page</span>
-                    </label>
-                    <label className="flex items-center gap-2 cursor-pointer">
-                        <input type="radio" name="homepage" value="social" checked={restaurantInfo.defaultPage === 'social'} onChange={handleHomepageChange} className="w-5 h-5 text-primary-600 focus:ring-primary-500" />
-                        <span>Social Links Page</span>
-                    </label>
-                </div>
-            </div>
-
-            {/* Social Links Management */}
-            <div>
-                <div className="flex justify-between items-center mb-4">
-                    <h3 className="text-xl font-semibold">Social & Contact Links</h3>
-                    <button onClick={() => setEditingLink('new')} className="bg-green-500 text-white font-bold py-2 px-3 rounded-lg hover:bg-green-600 transition-colors flex items-center gap-2 text-sm">
-                        <PlusIcon className="w-5 h-5" />
-                        Add New Link
-                    </button>
-                </div>
-                <div className="bg-white dark:bg-slate-800 rounded-lg shadow-md border border-slate-200 dark:border-slate-700">
-                    <ul className="divide-y divide-gray-200 dark:divide-gray-700">
-                        {restaurantInfo.socialLinks.map(link => (
-                            <li key={link.id} className="p-4 flex flex-wrap justify-between items-center gap-4 hover:bg-slate-50 dark:hover:bg-gray-700/50">
+                            </FormGroup>
+                            <hr className="border-slate-200 dark:border-slate-700"/>
+                             <FormGroup label={t.heroImage} helperText={t.settingsHeroDescription}>
                                 <div className="flex items-center gap-4">
-                                    <img src={link.icon} alt={`${link.name} icon`} className="w-6 h-6 object-contain" />
-                                    <div>
-                                        <div className="font-medium">{link.name}</div>
-                                        <a href={link.url} target="_blank" rel="noopener noreferrer" className="text-sm text-primary-600 hover:underline truncate max-w-xs block">{link.url}</a>
-                                    </div>
+                                    {restaurantInfo.heroImage && <img src={restaurantInfo.heroImage} alt="Hero preview" className="w-28 h-20 object-cover rounded-lg bg-slate-100 dark:bg-slate-700 p-1 border-2 border-white dark:border-slate-600 shadow-md" />}
+                                    <input type="file" accept="image/*" onChange={(e) => handleFileChange(e, 'heroImage')} className={fileInputClasses} />
                                 </div>
-                                <div className="flex items-center gap-4">
-                                     <label className="relative inline-flex items-center cursor-pointer">
-                                        <input type="checkbox" checked={link.isVisible} onChange={() => handleToggleVisibility(link.id)} className="sr-only peer" />
-                                        <div className="w-11 h-6 bg-slate-200 rounded-full peer dark:bg-slate-700 peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full after:content-[''] after:absolute after:top-0.5 after:start-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-green-600"></div>
+                            </FormGroup>
+                            <hr className="border-slate-200 dark:border-slate-700"/>
+                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                <FormGroup label={t.heroTitleEn}>
+                                    <input type="text" name="heroTitle.en" value={restaurantInfo.heroTitle?.en || ''} onChange={handleInfoChange} className={formInputClasses} />
+                                </FormGroup>
+                                <FormGroup label={t.heroTitleAr}>
+                                    <input type="text" name="heroTitle.ar" value={restaurantInfo.heroTitle?.ar || ''} onChange={handleInfoChange} className={formInputClasses} />
+                                </FormGroup>
+                            </div>
+                            <hr className="border-slate-200 dark:border-slate-700"/>
+                             <FormGroup label={t.defaultHomepage} helperText={t.settingsHomepageDescription}>
+                                <div className="flex items-center space-x-6 rtl:space-x-reverse bg-slate-100 dark:bg-slate-900/50 p-4 rounded-xl">
+                                    <label className="flex items-center gap-3 cursor-pointer">
+                                        <input type="radio" name="homepage" value="menu" checked={restaurantInfo.defaultPage === 'menu'} onChange={handleHomepageChange} className="w-5 h-5 text-primary-600 focus:ring-primary-500" />
+                                        <span className='font-medium'>{t.menuPage}</span>
                                     </label>
-                                    <button onClick={() => setEditingLink(link)} className="p-2 text-indigo-600 hover:bg-indigo-100 dark:hover:bg-indigo-900/50 rounded-full"><PencilIcon className="w-5 h-5" /></button>
-                                    <button onClick={() => handleDeleteLink(link.id)} className="p-2 text-red-600 hover:bg-red-100 dark:hover:bg-red-900/50 rounded-full"><TrashIcon className="w-5 h-5" /></button>
+                                    <label className="flex items-center gap-3 cursor-pointer">
+                                        <input type="radio" name="homepage" value="social" checked={restaurantInfo.defaultPage === 'social'} onChange={handleHomepageChange} className="w-5 h-5 text-primary-600 focus:ring-primary-500" />
+                                        <span className='font-medium'>{t.socialLinksPage}</span>
+                                    </label>
                                 </div>
-                            </li>
-                        ))}
-                    </ul>
-                </div>
+                            </FormGroup>
+                        </SettingsCard>
+                    </div>
+                )}
+
+                {activeTab === 'operations' && (
+                     <div className="grid grid-cols-1 xl:grid-cols-2 gap-8">
+                        <SettingsCard title={t.settingsOrdering} subtitle="Manage your order and operational settings.">
+                            <FormGroup label={t.whatsappNumberLabel} helperText={t.settingsWhatsappDescription}>
+                                <input type="text" name="whatsappNumber" value={restaurantInfo.whatsappNumber || ''} onChange={handleNonLocalizedChange} className={formInputClasses} />
+                            </FormGroup>
+                            <hr className="border-slate-200 dark:border-slate-700"/>
+                            <FormGroup label={t.totalTables} helperText={t.settingsTablesDescription}>
+                                <input type="number" name="tableCount" value={restaurantInfo.tableCount || 0} onChange={handleNonLocalizedChange} className={formInputClasses} min="0" />
+                            </FormGroup>
+                        </SettingsCard>
+                    </div>
+                )}
+                
+                {activeTab === 'social' && (
+                     <SettingsCard 
+                        title={t.socialLinksManagement} 
+                        subtitle="Manage your social media and contact links."
+                        actions={
+                             <button onClick={() => setEditingLink('new')} className={btnPrimarySmClasses}>
+                                <PlusIcon className="w-5 h-5" />
+                                {t.addNewLink}
+                            </button>
+                        }
+                    >
+                         <ul className="divide-y divide-gray-200 dark:divide-gray-700 -m-4 sm:-m-6">
+                            {restaurantInfo.socialLinks.length > 0 ? restaurantInfo.socialLinks.map(link => (
+                                <li key={link.id} className="p-3 flex flex-col sm:flex-row justify-between sm:items-center gap-4 hover:bg-slate-50 dark:hover:bg-gray-700/50">
+                                    <div className="flex items-center gap-4 flex-grow">
+                                        <img src={link.icon} alt={`${link.name} icon`} className="w-8 h-8 object-contain flex-shrink-0" />
+                                        <div className="flex-grow">
+                                            <div className="font-medium">{link.name}</div>
+                                            <a href={link.url} target="_blank" rel="noopener noreferrer" className="text-sm text-primary-600 dark:text-primary-400 hover:underline truncate max-w-[200px] sm:max-w-xs block">{link.url}</a>
+                                        </div>
+                                    </div>
+                                    <div className="flex items-center gap-2 self-end sm:self-center">
+                                        <label className="relative inline-flex items-center cursor-pointer" title={t.visibleOnPage}>
+                                            <input type="checkbox" checked={link.isVisible} onChange={() => handleToggleVisibility(link.id)} className="sr-only peer" />
+                                            <div className="w-11 h-6 bg-slate-200 rounded-full peer dark:bg-slate-700 peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full after:content-[''] after:absolute after:top-0.5 after:start-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-green-600"></div>
+                                        </label>
+                                        <button onClick={() => setEditingLink(link)} className={btnIconSecondaryClasses} title={t.editLink}><PencilIcon className="w-5 h-5" /></button>
+                                        <button onClick={() => handleDeleteLink(link.id)} className={btnIconDangerClasses} title={t.cancel}><TrashIcon className="w-5 h-5" /></button>
+                                    </div>
+                                </li>
+                            )) : (
+                                <p className="p-6 text-center text-slate-500">No social links added yet.</p>
+                            )}
+                        </ul>
+                    </SettingsCard>
+                )}
+
+                 {activeTab === 'statuses' && (
+                     <SettingsCard 
+                        title={t.orderStatusManagement} 
+                        subtitle="Define the stages for your order workflow."
+                        actions={
+                            <button onClick={onAddOrderStatus} className={btnPrimarySmClasses}>
+                                <PlusIcon className="w-5 h-5" />
+                                {t.addNewStatus}
+                            </button>
+                        }
+                     >
+                        <ul className="divide-y divide-gray-200 dark:divide-gray-700 -m-4 sm:-m-6">
+                            {restaurantInfo.orderStatusColumns.map(status => (
+                                <li key={status.id} className="p-3 flex justify-between items-center gap-4 hover:bg-slate-50 dark:hover:bg-gray-700/50">
+                                    <div className="flex items-center gap-3">
+                                        <div className={`w-4 h-4 rounded-full bg-${status.color}-500 flex-shrink-0`}></div>
+                                        <div>
+                                            <div className="font-medium">{status.name[language]}</div>
+                                            <div className="text-xs text-slate-500 dark:text-slate-400 font-mono">{status.id}</div>
+                                        </div>
+                                    </div>
+                                    <div className="flex items-center gap-1">
+                                        <button onClick={() => onEditOrderStatus(status)} className={btnIconSecondaryClasses} title={t.editStatus}><PencilIcon className="w-5 h-5" /></button>
+                                        <button onClick={() => { if (window.confirm(t.confirmDeleteStatus)) onDeleteOrderStatus(status.id); }} className={btnIconDangerClasses} title={t.cancel}><TrashIcon className="w-5 h-5" /></button>
+                                    </div>
+                                </li>
+                            ))}
+                        </ul>
+                    </SettingsCard>
+                )}
             </div>
-            
+
             {editingLink && (
                 <SocialLinkEditModal
                     link={editingLink === 'new' ? null : editingLink}
                     onClose={() => setEditingLink(null)}
                     onSave={handleSaveLink}
+                    language={language}
                 />
             )}
         </div>

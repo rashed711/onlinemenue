@@ -2,6 +2,7 @@ import React from 'react';
 import type { Product, Language } from '../types';
 import { useTranslations } from '../i18n/translations';
 import { StarIcon, PlusIcon } from './icons/Icons';
+import { formatNumber } from '../utils/helpers';
 
 interface ProductCardProps {
   product: Product;
@@ -42,7 +43,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product, language, onP
           </p>
            <div className="flex items-center bg-slate-100 dark:bg-slate-700 px-2 py-1 rounded-full">
             <StarIcon className="w-4 h-4 text-yellow-400" />
-            <span className="text-slate-700 dark:text-slate-300 font-semibold ms-1 text-xs sm:text-sm">{product.rating}</span>
+            <span className="text-slate-700 dark:text-slate-300 font-semibold ms-1 text-xs sm:text-sm">{formatNumber(product.rating)}</span>
           </div>
         </div>
       </div>

@@ -4,6 +4,7 @@ import React, { useState } from 'react';
 import type { Language, Category, Tag } from '../types';
 import { useTranslations } from '../i18n/translations';
 import { SearchIcon, FilterIcon } from './icons/Icons';
+import { formatNumber } from '../utils/helpers';
 
 interface SearchAndFilterProps {
   language: Language;
@@ -62,7 +63,7 @@ export const SearchAndFilter: React.FC<SearchAndFilterProps> = ({
           <span>{t.filterByTags}</span>
           {selectedTags.length > 0 && (
             <span className="bg-primary-500 text-white text-xs font-bold rounded-full h-5 w-5 flex items-center justify-center">
-              {selectedTags.length}
+              {formatNumber(selectedTags.length)}
             </span>
           )}
         </button>

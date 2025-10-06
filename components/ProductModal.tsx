@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import type { Product, Language } from '../types';
 import { useTranslations } from '../i18n/translations';
 import { StarIcon, PlusIcon, CloseIcon } from './icons/Icons';
+import { formatNumber } from '../utils/helpers';
 
 interface ProductModalProps {
   product: Product;
@@ -84,7 +85,7 @@ export const ProductModal: React.FC<ProductModalProps> = ({
             <div className="flex items-center my-2 gap-3">
               <div className="flex items-center bg-slate-100 dark:bg-slate-700 px-2 py-1 rounded-full">
                 <StarIcon className="w-4 h-4 text-yellow-400" />
-                <span className="text-slate-700 dark:text-slate-300 font-semibold ms-1 text-sm">{product.rating}</span>
+                <span className="text-slate-700 dark:text-slate-300 font-semibold ms-1 text-sm">{formatNumber(product.rating)}</span>
               </div>
             </div>
             <p className="text-slate-600 dark:text-slate-300 text-sm mb-3">{product.description[language]}</p>
@@ -112,7 +113,7 @@ export const ProductModal: React.FC<ProductModalProps> = ({
               <h4 className="font-semibold me-4 text-slate-800 dark:text-slate-100">{t.quantity}:</h4>
               <div className="flex items-center border border-slate-200 dark:border-slate-600 rounded-full">
                   <button onClick={() => setQuantity(q => Math.max(1, q - 1))} className="px-4 py-2 text-xl font-bold hover:bg-slate-100 dark:hover:bg-slate-700 rounded-l-full" aria-label="Decrease quantity">-</button>
-                  <span className="px-4 font-bold text-lg w-12 text-center" aria-live="polite">{quantity}</span>
+                  <span className="px-4 font-bold text-lg w-12 text-center" aria-live="polite">{formatNumber(quantity)}</span>
                   <button onClick={() => setQuantity(q => q + 1)} className="px-4 py-2 text-xl font-bold hover:bg-slate-100 dark:hover:bg-slate-700 rounded-r-full" aria-label="Increase quantity">+</button>
               </div>
             </div>
