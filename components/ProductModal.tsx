@@ -22,6 +22,19 @@ export const ProductModal: React.FC<ProductModalProps> = ({
   const [quantity, setQuantity] = useState(1);
   const [selectedOptions, setSelectedOptions] = useState<{ [key: string]: string }>({});
 
+  // Effect to initialize the state ONLY when the product changes.
+  useEffect(() => {
+    const defaultOptions: { [key: string]: string } = {};
+    product.options?.forEach(option => {
+      if (option.values.length > 0) {
+        defaultOptions[option.name.en] = option.values[0].name.en;
+      }
+    });
+    setSelectedOptions(defaultOptions);
+    setQuantity(1);
+  }, [product]);
+
+  // Effect to manage side-effects like keyboard listeners and body scroll.
   useEffect(() => {
     const handleEsc = (event: KeyboardEvent) => {
        if (event.key === 'Escape') {
@@ -31,20 +44,11 @@ export const ProductModal: React.FC<ProductModalProps> = ({
     window.addEventListener('keydown', handleEsc);
     document.body.style.overflow = 'hidden';
 
-    const defaultOptions: { [key: string]: string } = {};
-    product.options?.forEach(option => {
-      if (option.values.length > 0) {
-        defaultOptions[option.name.en] = option.values[0].name.en;
-      }
-    });
-    setSelectedOptions(defaultOptions);
-    setQuantity(1);
-
     return () => {
       window.removeEventListener('keydown', handleEsc);
       document.body.style.overflow = 'auto';
     };
-  }, [product, onClose]);
+  }, [onClose]);
 
   const handleAddToCart = () => {
     addToCart(product, quantity, selectedOptions);

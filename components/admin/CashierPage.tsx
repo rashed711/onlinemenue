@@ -177,65 +177,67 @@ export const CashierPage: React.FC<CashierPageProps> = ({ language, currentUser,
                             <CloseIcon className="w-6 h-6"/>
                         </button>
                     </div>
-                    
-                    <div className="p-4 border-b dark:border-slate-700 shrink-0">
-                        <label htmlFor="table-number-cashier" className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">{t.tableNumber}</label>
-                        <TableSelector
-                            tableCount={restaurantInfo.tableCount || 0}
-                            selectedTable={tableNumber}
-                            onSelectTable={setTableNumber}
-                        />
-                    </div>
 
-                    <div className="flex-grow overflow-y-auto p-4 space-y-3">
-                        {cartItems.length === 0 ? (
-                             <p className="text-center text-slate-500 py-10">{t.emptyCart}</p>
-                        ) : (
-                            cartItems.map((item, index) => (
-                                <div key={index} className="flex items-start gap-3">
-                                    <div className="flex-grow">
-                                        <p className="font-semibold text-sm">{item.product.name[language]}</p>
-                                        {item.options && (
-                                            <div className="text-xs text-slate-500 dark:text-slate-400 mt-1 pl-2">
-                                                {Object.entries(item.options).map(([optionKey, valueKey]) => {
-                                                    const option = item.product.options?.find(o => o.name.en === optionKey);
-                                                    const value = option?.values.find(v => v.name.en === valueKey);
-                                                    if (option && value) {
-                                                        return <div key={optionKey}>- {value.name[language]}</div>
-                                                    }
-                                                    return null;
-                                                })}
-                                            </div>
-                                        )}
-                                        <p className="text-xs text-slate-500 mt-1">{calculateItemTotal(item).toFixed(2)} {t.currency}</p>
-                                    </div>
-                                    <div className="flex items-center gap-2">
-                                        <button onClick={() => updateCartQuantity(index, item.quantity - 1)} className="p-1 rounded-full bg-slate-200 dark:bg-slate-700"><MinusIcon className="w-4 h-4" /></button>
-                                        <span className="font-bold w-6 text-center">{formatNumber(item.quantity)}</span>
-                                        <button onClick={() => updateCartQuantity(index, item.quantity + 1)} className="p-1 rounded-full bg-slate-200 dark:bg-slate-700"><PlusIcon className="w-4 h-4" /></button>
-                                    </div>
-                                </div>
-                            ))
-                        )}
-                    </div>
+                    <div className="flex-1 overflow-y-auto">
+                        <div className="p-4 border-b dark:border-slate-700">
+                            <label htmlFor="table-number-cashier" className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">{t.tableNumber}</label>
+                            <TableSelector
+                                tableCount={restaurantInfo.tableCount || 0}
+                                selectedTable={tableNumber}
+                                onSelectTable={setTableNumber}
+                            />
+                        </div>
 
-                    <div className="p-4 border-t dark:border-slate-700 space-y-4 bg-slate-50 dark:bg-slate-800/50 shrink-0">
-                         <div>
-                             <textarea value={notes} onChange={e => setNotes(e.target.value)} placeholder={t.orderNotes} rows={2} className="w-full p-2 border rounded-md dark:bg-gray-700 dark:border-gray-600 focus:ring-primary-500 focus:border-primary-500"></textarea>
+                        <div className="p-4 space-y-3">
+                            {cartItems.length === 0 ? (
+                                 <p className="text-center text-slate-500 py-10">{t.emptyCart}</p>
+                            ) : (
+                                cartItems.map((item, index) => (
+                                    <div key={index} className="flex items-start gap-3">
+                                        <div className="flex-grow">
+                                            <p className="font-semibold text-sm">{item.product.name[language]}</p>
+                                            {item.options && (
+                                                <div className="text-xs text-slate-500 dark:text-slate-400 mt-1 pl-2">
+                                                    {Object.entries(item.options).map(([optionKey, valueKey]) => {
+                                                        const option = item.product.options?.find(o => o.name.en === optionKey);
+                                                        const value = option?.values.find(v => v.name.en === valueKey);
+                                                        if (option && value) {
+                                                            return <div key={optionKey}>- {value.name[language]}</div>
+                                                        }
+                                                        return null;
+                                                    })}
+                                                </div>
+                                            )}
+                                            <p className="text-xs text-slate-500 mt-1">{calculateItemTotal(item).toFixed(2)} {t.currency}</p>
+                                        </div>
+                                        <div className="flex items-center gap-2">
+                                            <button onClick={() => updateCartQuantity(index, item.quantity - 1)} className="p-1 rounded-full bg-slate-200 dark:bg-slate-700"><MinusIcon className="w-4 h-4" /></button>
+                                            <span className="font-bold w-6 text-center">{formatNumber(item.quantity)}</span>
+                                            <button onClick={() => updateCartQuantity(index, item.quantity + 1)} className="p-1 rounded-full bg-slate-200 dark:bg-slate-700"><PlusIcon className="w-4 h-4" /></button>
+                                        </div>
+                                    </div>
+                                ))
+                            )}
                         </div>
-                        <div className="flex justify-between font-bold text-xl">
-                            <span>{t.total}</span>
-                            <span>{total.toFixed(2)} {t.currency}</span>
-                        </div>
-                        <div className="flex gap-2">
-                            <button onClick={clearCart} className="w-1/4 bg-red-500 text-white p-3 rounded-lg font-bold hover:bg-red-600 flex items-center justify-center"><TrashIcon className="w-6 h-6"/></button>
-                            <button 
-                                onClick={handlePlaceOrder} 
-                                className="w-3/4 bg-green-500 text-white p-3 rounded-lg font-bold hover:bg-green-600 disabled:bg-gray-400 disabled:cursor-not-allowed"
-                                disabled={isPlaceOrderDisabled}
-                            >
-                                {t.placeOrder}
-                            </button>
+
+                        <div className="p-4 border-t dark:border-slate-700 space-y-4 bg-slate-50 dark:bg-slate-800/50">
+                             <div>
+                                 <textarea value={notes} onChange={e => setNotes(e.target.value)} placeholder={t.orderNotes} rows={2} className="w-full p-2 border rounded-md dark:bg-gray-700 dark:border-gray-600 focus:ring-primary-500 focus:border-primary-500"></textarea>
+                            </div>
+                            <div className="flex justify-between font-bold text-xl">
+                                <span>{t.total}</span>
+                                <span>{total.toFixed(2)} {t.currency}</span>
+                            </div>
+                            <div className="flex gap-2">
+                                <button onClick={clearCart} className="w-1/4 bg-red-500 text-white p-3 rounded-lg font-bold hover:bg-red-600 flex items-center justify-center"><TrashIcon className="w-6 h-6"/></button>
+                                <button 
+                                    onClick={handlePlaceOrder} 
+                                    className="w-3/4 bg-green-500 text-white p-3 rounded-lg font-bold hover:bg-green-600 disabled:bg-gray-400 disabled:cursor-not-allowed"
+                                    disabled={isPlaceOrderDisabled}
+                                >
+                                    {t.placeOrder}
+                                </button>
+                            </div>
                         </div>
                     </div>
                 </div>
