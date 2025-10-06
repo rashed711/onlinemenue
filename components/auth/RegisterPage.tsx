@@ -25,8 +25,8 @@ export const RegisterPage: React.FC<RegisterPageProps> = ({ language, register }
             setError('Please fill all fields');
             return;
         }
+        // Set the user state. The useEffect in App.tsx will handle the redirect.
         register({ name, mobile, password });
-        window.location.hash = '#/profile';
     };
 
     return (

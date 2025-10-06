@@ -24,13 +24,8 @@ export const LoginPage: React.FC<LoginPageProps> = ({ language, users, login }) 
         const user = users.find(u => u.mobile === mobile && u.password === password);
         
         if (user) {
-            login(user);
+            login(user); // Set the current user state. The useEffect in App.tsx will handle the redirect.
             setError('');
-            if(user.role === 'admin' || user.role === 'superAdmin') {
-                window.location.hash = '#/admin';
-            } else {
-                window.location.hash = '#/profile';
-            }
         } else {
             setError(t.invalidCredentials);
         }
