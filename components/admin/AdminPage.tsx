@@ -210,7 +210,6 @@ export const AdminPage: React.FC<AdminPageProps> = (props) => {
     interface OrderCardProps {
         order: Order;
         style?: React.CSSProperties;
-        // FIX: Add className prop to allow passing CSS classes for styling.
         className?: string;
     }
 
@@ -230,7 +229,6 @@ export const AdminPage: React.FC<AdminPageProps> = (props) => {
         return colorMap[color] || 'text-gray-500';
     };
 
-    // FIX: Accept className prop to apply it to the component.
     const OrderCard: React.FC<OrderCardProps> = ({ order, style, className }) => {
         const isDriver = currentUser?.role === 'driver';
         const canManage = hasPermission('manage_orders');
@@ -273,7 +271,6 @@ export const AdminPage: React.FC<AdminPageProps> = (props) => {
         };
 
         return (
-            // FIX: Apply the passed className to the root div of the component.
             <div onClick={() => setViewingOrder(order)} style={style} className={`bg-white dark:bg-slate-800 rounded-lg shadow-md p-4 space-y-3 cursor-pointer transition-all hover:shadow-lg hover:-translate-y-1 border border-slate-200 dark:border-slate-700 ${className || ''}`}>
                 <div className="flex justify-between items-center">
                     <p className="font-extrabold text-lg text-amber-800 bg-amber-300 dark:bg-amber-400 dark:text-amber-900 px-3 py-0.5 rounded-md">

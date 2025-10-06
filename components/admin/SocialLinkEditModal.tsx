@@ -99,7 +99,8 @@ export const SocialLinkEditModal: React.FC<SocialLinkEditModalProps> = ({ link, 
                                 hover:file:bg-primary-100 dark:file:bg-primary-900/50 dark:file:text-primary-200 dark:hover:file:bg-primary-900"
                             />
                         </div>
-                        <p className="text-xs text-slate-500 dark:text-slate-400 mt-1.5">{t.uploadIconHelpText}</p>
+                        {/* FIX: Corrected translation key from 'uploadIconHelpText' to 'uploadImageHelpText' */}
+                        <p className="text-xs text-slate-500 dark:text-slate-400 mt-1.5">{t.uploadImageHelpText}</p>
                     </div>
                     <div>
                         <label className="flex items-center gap-2 cursor-pointer">
