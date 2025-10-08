@@ -1,6 +1,4 @@
-
-
-import React, { useRef, useCallback, useEffect } from 'react';
+import React, { useRef, useCallback, useEffect, useMemo } from 'react';
 import type { Promotion, Language, Product } from '../types';
 import { useTranslations } from '../i18n/translations';
 import { useCountdown } from '../hooks/useCountdown';
@@ -17,7 +15,8 @@ const PromotionCard: React.FC<PromotionCardProps> = ({ promotion, product, langu
     const t = useTranslations(language);
     const { days, hours, minutes, seconds } = useCountdown(promotion.endDate);
 
-    if (!product || (days + hours + minutes + seconds <= 0)) {
+    // This check is a safeguard; primary filtering is now done in the parent.
+    if (!product) {
         return null;
     }
     
@@ -64,7 +63,19 @@ export const PromotionSection: React.FC<PromotionSectionProps> = ({ promotions, 
   const intervalRef = useRef<number | null>(null);
   const isRtl = language === 'ar';
   
-  const activePromotions = promotions.filter(p => p.isActive);
+  const displayablePromotions = useMemo(() => {
+    const now = new Date();
+    return promotions
+      .map(promo => {
+        const product = products.find(p => p.id === promo.productId);
+        // An offer is displayable only if it's active, not expired, and linked to a valid, VISIBLE product.
+        if (!promo.isActive || new Date(promo.endDate) <= now || !product || !product.isVisible) {
+          return null;
+        }
+        return { promo, product };
+      })
+      .filter((item): item is { promo: Promotion; product: Product } => item !== null);
+  }, [promotions, products]);
 
   const handleScroll = (direction: 'prev' | 'next') => {
     if (sliderRef.current?.children[0]) {
@@ -111,7 +122,7 @@ export const PromotionSection: React.FC<PromotionSectionProps> = ({ promotions, 
     return () => stopAutoPlay();
   }, [startAutoPlay]);
   
-  if (activePromotions.length === 0) {
+  if (displayablePromotions.length === 0) {
     return null;
   }
 
@@ -120,9 +131,7 @@ export const PromotionSection: React.FC<PromotionSectionProps> = ({ promotions, 
         <h2 className="text-3xl font-extrabold mb-8">{t.todaysOffers}</h2>
         <div className="relative -mx-4" onMouseEnter={stopAutoPlay} onMouseLeave={startAutoPlay} onTouchStart={stopAutoPlay} onTouchEnd={startAutoPlay}>
             <div ref={sliderRef} className="flex overflow-x-auto snap-x snap-mandatory scroll-smooth scrollbar-hide px-2">
-                {activePromotions.map(promo => {
-                    const product = products.find(p => p.id === promo.productId);
-                    if (!product) return null;
+                {displayablePromotions.map(({ promo, product }) => {
                     return (
                         <div key={promo.id} className="w-5/6 md:w-1/2 lg:w-5/12 xl:w-1/2 flex-shrink-0 snap-center p-2">
                              <PromotionCard promotion={promo} product={product} language={language} onProductClick={onProductClick} />
@@ -130,7 +139,7 @@ export const PromotionSection: React.FC<PromotionSectionProps> = ({ promotions, 
                     );
                 })}
             </div>
-            {activePromotions.length > 2 && (
+            {displayablePromotions.length > 2 && (
                 <>
                     <button
                         onClick={() => handleScroll('prev')}

@@ -165,23 +165,4 @@ export const products: Product[] = [
   },
 ];
 
-export const promotions: Promotion[] = [
-    {
-        id: 1,
-        title: { en: "Today's Special", ar: "عرض اليوم الخاص" },
-        description: { en: "Get 20% off on our Classic Beef Burger!", ar: "احصل على خصم 20% على برجر اللحم الكلاسيكي!" },
-        productId: 2,
-        discountPercent: 20,
-        endDate: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(), // 24 hours from now
-        isActive: true,
-    },
-    {
-        id: 2,
-        title: { en: "Happy Hour!", ar: "ساعة السعادة!" },
-        description: { en: "50% off on all drinks for the next 3 hours.", ar: "خصم 50% على جميع المشروبات للساعات الثلاث القادمة." },
-        productId: 3, // Example for one drink
-        discountPercent: 50,
-        endDate: new Date(Date.now() + 3 * 60 * 60 * 1000).toISOString(), // 3 hours from now
-        isActive: true,
-    }
-];
+export const promotions: Promotion[] = [];

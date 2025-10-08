@@ -1,16 +1,16 @@
-import React, { useState } from 'react';
-import type { Language, OrderStatusColumn, RestaurantInfo, SocialLink } from '../../types';
+import React, { useState, useEffect } from 'react';
+import type { Language, Order, OrderStatusColumn, RestaurantInfo, SocialLink } from '../../types';
 import { useTranslations } from '../../i18n/translations';
 import { PlusIcon, PencilIcon, TrashIcon } from '../icons/Icons';
 import { SocialLinkEditModal } from './SocialLinkEditModal';
+import { OrderStatusEditModal } from './OrderStatusEditModal';
 
 interface SettingsPageProps {
     language: Language;
     restaurantInfo: RestaurantInfo;
     updateRestaurantInfo: (updatedInfo: Partial<RestaurantInfo>) => void;
-    onAddOrderStatus: () => void;
-    onEditOrderStatus: (column: OrderStatusColumn) => void;
-    onDeleteOrderStatus: (columnId: string) => void;
+    allOrders: Order[];
+    showToast: (message: string) => void;
 }
 
 type SettingsTab = 'general' | 'operations' | 'social' | 'statuses';
@@ -41,22 +41,38 @@ const FormGroup: React.FC<{ label: string, children: React.ReactNode, helperText
 );
 
 export const SettingsPage: React.FC<SettingsPageProps> = (props) => {
-    const { language, restaurantInfo, updateRestaurantInfo, onAddOrderStatus, onEditOrderStatus, onDeleteOrderStatus } = props;
+    const { language, restaurantInfo, updateRestaurantInfo, allOrders, showToast } = props;
     const t = useTranslations(language);
+
+    const [localInfo, setLocalInfo] = useState<RestaurantInfo>(restaurantInfo);
+    const [isDirty, setIsDirty] = useState(false);
     const [editingLink, setEditingLink] = useState<SocialLink | 'new' | null>(null);
+    const [editingOrderStatus, setEditingOrderStatus] = useState<OrderStatusColumn | 'new' | null>(null);
     const [activeTab, setActiveTab] = useState<SettingsTab>('general');
+
+    // Reset local state when the source prop changes (e.g., after a successful save)
+    useEffect(() => {
+        setLocalInfo(restaurantInfo);
+    }, [restaurantInfo]);
+
+    // Check for changes between local state and original props to show/hide save bar
+    useEffect(() => {
+        setIsDirty(JSON.stringify(localInfo) !== JSON.stringify(restaurantInfo));
+    }, [localInfo, restaurantInfo]);
 
     const handleInfoChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
         const { name, value } = e.target;
         const [field, lang] = name.split('.');
-        const currentLocalized = restaurantInfo[field as 'name' | 'description' | 'heroTitle'] || { en: '', ar: '' };
-        updateRestaurantInfo({ [field]: { ...currentLocalized, [lang]: value } });
+        setLocalInfo(prev => ({
+            ...prev,
+            [field]: { ...prev[field as 'name' | 'description' | 'heroTitle'], [lang]: value }
+        }));
     };
 
     const handleNonLocalizedChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const { name, value, type } = e.target;
         const finalValue = type === 'number' ? (parseInt(value, 10) || 0) : value;
-        updateRestaurantInfo({ [name]: finalValue });
+        setLocalInfo(prev => ({ ...prev, [name]: finalValue }));
     };
 
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>, field: 'logo' | 'heroImage') => {
@@ -64,42 +80,77 @@ export const SettingsPage: React.FC<SettingsPageProps> = (props) => {
         if (file) {
             const reader = new FileReader();
             reader.onloadend = () => {
-                updateRestaurantInfo({ [field]: reader.result as string });
+                setLocalInfo(prev => ({ ...prev, [field]: reader.result as string }));
             };
             reader.readAsDataURL(file);
         }
     };
 
     const handleHomepageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        updateRestaurantInfo({ defaultPage: e.target.value as 'menu' | 'social' });
+        setLocalInfo(prev => ({ ...prev, defaultPage: e.target.value as 'menu' | 'social' }));
     };
 
     const handleToggleVisibility = (linkId: number) => {
-        const updatedLinks = restaurantInfo.socialLinks.map(link =>
-            link.id === linkId ? { ...link, isVisible: !link.isVisible } : link
-        );
-        updateRestaurantInfo({ socialLinks: updatedLinks });
+        setLocalInfo(prev => ({
+            ...prev,
+            socialLinks: prev.socialLinks.map(link =>
+                link.id === linkId ? { ...link, isVisible: !link.isVisible } : link
+            )
+        }));
     };
 
     const handleDeleteLink = (linkId: number) => {
         if (window.confirm(t.confirmDeleteLink)) {
-            const updatedLinks = restaurantInfo.socialLinks.filter(link => link.id !== linkId);
-            updateRestaurantInfo({ socialLinks: updatedLinks });
+            setLocalInfo(prev => ({
+                ...prev,
+                socialLinks: prev.socialLinks.filter(link => link.id !== linkId)
+            }));
         }
     };
 
     const handleSaveLink = (linkData: SocialLink | Omit<SocialLink, 'id'>) => {
         if ('id' in linkData) {
-            const updatedLinks = restaurantInfo.socialLinks.map(link => link.id === linkData.id ? linkData : link);
-            updateRestaurantInfo({ socialLinks: updatedLinks });
+            setLocalInfo(prev => ({
+                ...prev,
+                socialLinks: prev.socialLinks.map(link => link.id === linkData.id ? linkData : link)
+            }));
         } else {
             const newLink: SocialLink = {
                 ...linkData,
-                id: restaurantInfo.socialLinks.length > 0 ? Math.max(...restaurantInfo.socialLinks.map(l => l.id)) + 1 : 1,
+                id: localInfo.socialLinks.length > 0 ? Math.max(...localInfo.socialLinks.map(l => l.id)) + 1 : 1,
             };
-            updateRestaurantInfo({ socialLinks: [...restaurantInfo.socialLinks, newLink] });
+            setLocalInfo(prev => ({ ...prev, socialLinks: [...prev.socialLinks, newLink] }));
         }
         setEditingLink(null);
+    };
+    
+    const handleDeleteStatus = (columnId: string) => {
+        if (allOrders.some(order => order.status === columnId)) {
+            showToast(t.deleteStatusError);
+            return;
+        }
+        if (window.confirm(t.confirmDeleteStatus)) {
+            setLocalInfo(prev => ({
+                ...prev,
+                orderStatusColumns: prev.orderStatusColumns.filter(c => c.id !== columnId)
+            }));
+        }
+    };
+
+    const handleSaveStatus = (data: OrderStatusColumn) => {
+        const isEditing = localInfo.orderStatusColumns.some(c => c.id === data.id);
+        if (isEditing) {
+            setLocalInfo(prev => ({
+                ...prev,
+                orderStatusColumns: prev.orderStatusColumns.map(c => c.id === data.id ? data : c)
+            }));
+        } else {
+            setLocalInfo(prev => ({
+                ...prev,
+                orderStatusColumns: [...prev.orderStatusColumns, data]
+            }));
+        }
+        setEditingOrderStatus(null);
     };
 
     const tabs = [
@@ -116,7 +167,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = (props) => {
     const btnIconDangerClasses = "p-2 text-red-600 hover:bg-red-100 dark:text-red-400 dark:hover:bg-red-900/50 rounded-full transition-colors";
 
     return (
-        <div className="animate-fade-in">
+        <div className="animate-fade-in pb-20"> {/* Padding bottom to account for sticky bar */}
             <h2 className="text-3xl font-bold text-slate-900 dark:text-slate-50 mb-6">{t.settings}</h2>
 
             <div className="border-b border-slate-200 dark:border-slate-700">
@@ -142,19 +193,19 @@ export const SettingsPage: React.FC<SettingsPageProps> = (props) => {
                         <SettingsCard title={t.restaurantInformation} subtitle={t.settingsInfoDescription}>
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                 <FormGroup label={t.productNameEn}>
-                                    <input type="text" name="name.en" value={restaurantInfo.name.en} onChange={handleInfoChange} className={formInputClasses} />
+                                    <input type="text" name="name.en" value={localInfo.name.en} onChange={handleInfoChange} className={formInputClasses} />
                                 </FormGroup>
                                 <FormGroup label={t.productNameAr}>
-                                    <input type="text" name="name.ar" value={restaurantInfo.name.ar} onChange={handleInfoChange} className={formInputClasses} />
+                                    <input type="text" name="name.ar" value={localInfo.name.ar} onChange={handleInfoChange} className={formInputClasses} />
                                 </FormGroup>
                             </div>
                             <hr className="border-slate-200 dark:border-slate-700"/>
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                 <FormGroup label={t.descriptionEn}>
-                                    <textarea name="description.en" value={restaurantInfo.description?.en || ''} onChange={handleInfoChange} rows={3} className={formInputClasses}></textarea>
+                                    <textarea name="description.en" value={localInfo.description?.en || ''} onChange={handleInfoChange} rows={3} className={formInputClasses}></textarea>
                                 </FormGroup>
                                 <FormGroup label={t.descriptionAr}>
-                                    <textarea name="description.ar" value={restaurantInfo.description?.ar || ''} onChange={handleInfoChange} rows={3} className={formInputClasses}></textarea>
+                                    <textarea name="description.ar" value={localInfo.description?.ar || ''} onChange={handleInfoChange} rows={3} className={formInputClasses}></textarea>
                                 </FormGroup>
                             </div>
                         </SettingsCard>
@@ -162,35 +213,35 @@ export const SettingsPage: React.FC<SettingsPageProps> = (props) => {
                         <SettingsCard title={t.settingsBranding} subtitle={t.settingsHeroDescription}>
                              <FormGroup label={t.logo} helperText={t.settingsLogoDescription}>
                                 <div className="flex items-center gap-4">
-                                    <img src={restaurantInfo.logo} alt="Logo preview" className="w-20 h-20 object-contain rounded-full bg-slate-100 dark:bg-slate-700/50 p-1 border-2 border-white dark:border-slate-600 shadow-md" />
+                                    <img src={localInfo.logo} alt="Logo preview" className="w-20 h-20 object-contain rounded-full bg-slate-100 dark:bg-slate-700/50 p-1 border-2 border-white dark:border-slate-600 shadow-md" />
                                     <input type="file" accept="image/*" onChange={(e) => handleFileChange(e, 'logo')} className={fileInputClasses} />
                                 </div>
                             </FormGroup>
                             <hr className="border-slate-200 dark:border-slate-700"/>
                              <FormGroup label={t.heroImage} helperText={t.settingsHeroDescription}>
                                 <div className="flex items-center gap-4">
-                                    {restaurantInfo.heroImage && <img src={restaurantInfo.heroImage} alt="Hero preview" className="w-28 h-20 object-cover rounded-lg bg-slate-100 dark:bg-slate-700 p-1 border-2 border-white dark:border-slate-600 shadow-md" />}
+                                    {localInfo.heroImage && <img src={localInfo.heroImage} alt="Hero preview" className="w-28 h-20 object-cover rounded-lg bg-slate-100 dark:bg-slate-700 p-1 border-2 border-white dark:border-slate-600 shadow-md" />}
                                     <input type="file" accept="image/*" onChange={(e) => handleFileChange(e, 'heroImage')} className={fileInputClasses} />
                                 </div>
                             </FormGroup>
                             <hr className="border-slate-200 dark:border-slate-700"/>
                              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                 <FormGroup label={t.heroTitleEn}>
-                                    <input type="text" name="heroTitle.en" value={restaurantInfo.heroTitle?.en || ''} onChange={handleInfoChange} className={formInputClasses} />
+                                    <input type="text" name="heroTitle.en" value={localInfo.heroTitle?.en || ''} onChange={handleInfoChange} className={formInputClasses} />
                                 </FormGroup>
                                 <FormGroup label={t.heroTitleAr}>
-                                    <input type="text" name="heroTitle.ar" value={restaurantInfo.heroTitle?.ar || ''} onChange={handleInfoChange} className={formInputClasses} />
+                                    <input type="text" name="heroTitle.ar" value={localInfo.heroTitle?.ar || ''} onChange={handleInfoChange} className={formInputClasses} />
                                 </FormGroup>
                             </div>
                             <hr className="border-slate-200 dark:border-slate-700"/>
                              <FormGroup label={t.defaultHomepage} helperText={t.settingsHomepageDescription}>
                                 <div className="flex items-center space-x-6 rtl:space-x-reverse bg-slate-100 dark:bg-slate-900/50 p-4 rounded-xl">
                                     <label className="flex items-center gap-3 cursor-pointer">
-                                        <input type="radio" name="homepage" value="menu" checked={restaurantInfo.defaultPage === 'menu'} onChange={handleHomepageChange} className="w-5 h-5 text-primary-600 focus:ring-primary-500" />
+                                        <input type="radio" name="homepage" value="menu" checked={localInfo.defaultPage === 'menu'} onChange={handleHomepageChange} className="w-5 h-5 text-primary-600 focus:ring-primary-500" />
                                         <span className='font-medium'>{t.menuPage}</span>
                                     </label>
                                     <label className="flex items-center gap-3 cursor-pointer">
-                                        <input type="radio" name="homepage" value="social" checked={restaurantInfo.defaultPage === 'social'} onChange={handleHomepageChange} className="w-5 h-5 text-primary-600 focus:ring-primary-500" />
+                                        <input type="radio" name="homepage" value="social" checked={localInfo.defaultPage === 'social'} onChange={handleHomepageChange} className="w-5 h-5 text-primary-600 focus:ring-primary-500" />
                                         <span className='font-medium'>{t.socialLinksPage}</span>
                                     </label>
                                 </div>
@@ -203,11 +254,11 @@ export const SettingsPage: React.FC<SettingsPageProps> = (props) => {
                      <div className="grid grid-cols-1 xl:grid-cols-2 gap-8">
                         <SettingsCard title={t.settingsOrdering} subtitle="Manage your order and operational settings.">
                             <FormGroup label={t.whatsappNumberLabel} helperText={t.settingsWhatsappDescription}>
-                                <input type="text" name="whatsappNumber" value={restaurantInfo.whatsappNumber || ''} onChange={handleNonLocalizedChange} className={formInputClasses} />
+                                <input type="text" name="whatsappNumber" value={localInfo.whatsappNumber || ''} onChange={handleNonLocalizedChange} className={formInputClasses} />
                             </FormGroup>
                             <hr className="border-slate-200 dark:border-slate-700"/>
                             <FormGroup label={t.totalTables} helperText={t.settingsTablesDescription}>
-                                <input type="number" name="tableCount" value={restaurantInfo.tableCount || 0} onChange={handleNonLocalizedChange} className={formInputClasses} min="0" />
+                                <input type="number" name="tableCount" value={localInfo.tableCount || 0} onChange={handleNonLocalizedChange} className={formInputClasses} min="0" />
                             </FormGroup>
                         </SettingsCard>
                     </div>
@@ -225,7 +276,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = (props) => {
                         }
                     >
                          <ul className="divide-y divide-gray-200 dark:divide-gray-700 -m-4 sm:-m-6">
-                            {restaurantInfo.socialLinks.length > 0 ? restaurantInfo.socialLinks.map(link => (
+                            {localInfo.socialLinks.length > 0 ? localInfo.socialLinks.map(link => (
                                 <li key={link.id} className="p-3 flex flex-col sm:flex-row justify-between sm:items-center gap-4 hover:bg-slate-50 dark:hover:bg-gray-700/50">
                                     <div className="flex items-center gap-4 flex-grow">
                                         <img src={link.icon} alt={`${link.name} icon`} className="w-8 h-8 object-contain flex-shrink-0" />
@@ -255,14 +306,14 @@ export const SettingsPage: React.FC<SettingsPageProps> = (props) => {
                         title={t.orderStatusManagement} 
                         subtitle="Define the stages for your order workflow."
                         actions={
-                            <button onClick={onAddOrderStatus} className={btnPrimarySmClasses}>
+                            <button onClick={() => setEditingOrderStatus('new')} className={btnPrimarySmClasses}>
                                 <PlusIcon className="w-5 h-5" />
                                 {t.addNewStatus}
                             </button>
                         }
                      >
                         <ul className="divide-y divide-gray-200 dark:divide-gray-700 -m-4 sm:-m-6">
-                            {restaurantInfo.orderStatusColumns.map(status => (
+                            {localInfo.orderStatusColumns.map(status => (
                                 <li key={status.id} className="p-3 flex justify-between items-center gap-4 hover:bg-slate-50 dark:hover:bg-gray-700/50">
                                     <div className="flex items-center gap-3">
                                         <div className={`w-4 h-4 rounded-full bg-${status.color}-500 flex-shrink-0`}></div>
@@ -272,8 +323,8 @@ export const SettingsPage: React.FC<SettingsPageProps> = (props) => {
                                         </div>
                                     </div>
                                     <div className="flex items-center gap-1">
-                                        <button onClick={() => onEditOrderStatus(status)} className={btnIconSecondaryClasses} title={t.editStatus}><PencilIcon className="w-5 h-5" /></button>
-                                        <button onClick={() => { if (window.confirm(t.confirmDeleteStatus)) onDeleteOrderStatus(status.id); }} className={btnIconDangerClasses} title={t.cancel}><TrashIcon className="w-5 h-5" /></button>
+                                        <button onClick={() => setEditingOrderStatus(status)} className={btnIconSecondaryClasses} title={t.editStatus}><PencilIcon className="w-5 h-5" /></button>
+                                        <button onClick={() => handleDeleteStatus(status.id)} className={btnIconDangerClasses} title={t.cancel}><TrashIcon className="w-5 h-5" /></button>
                                     </div>
                                 </li>
                             ))}
@@ -289,6 +340,38 @@ export const SettingsPage: React.FC<SettingsPageProps> = (props) => {
                     onSave={handleSaveLink}
                     language={language}
                 />
+            )}
+            
+            {editingOrderStatus && (
+                <OrderStatusEditModal
+                    statusColumn={editingOrderStatus === 'new' ? null : editingOrderStatus}
+                    onClose={() => setEditingOrderStatus(null)}
+                    onSave={handleSaveStatus}
+                    language={language}
+                    existingIds={localInfo.orderStatusColumns.map(c => c.id)}
+                />
+            )}
+
+            {isDirty && (
+                <div className={`fixed bottom-0 z-20 bg-white/80 dark:bg-slate-900/80 backdrop-blur-lg border-t border-slate-200 dark:border-slate-700 w-full md:w-[calc(100%-16rem)] ${language === 'ar' ? 'md:right-0' : 'md:left-64'}`}>
+                    <div className="container mx-auto max-w-full px-4 sm:px-6 lg:px-8 py-3">
+                        <div className="flex justify-end items-center gap-4">
+                            <p className="text-sm font-semibold text-slate-700 dark:text-slate-200 me-auto">{language === 'ar' ? 'لديك تغييرات غير محفوظة.' : 'You have unsaved changes.'}</p>
+                            <button
+                                onClick={() => setLocalInfo(restaurantInfo)}
+                                className="px-5 py-2.5 rounded-lg bg-slate-200 dark:bg-slate-600 hover:bg-slate-300 dark:hover:bg-slate-500 font-semibold transition-colors"
+                            >
+                                {language === 'ar' ? 'تجاهل' : 'Discard'}
+                            </button>
+                            <button
+                                onClick={() => updateRestaurantInfo(localInfo)}
+                                className="px-5 py-2.5 rounded-lg bg-primary-500 text-white hover:bg-primary-600 font-semibold transition-colors shadow-sm hover:shadow-md transform hover:-translate-y-0.5"
+                            >
+                                {t.saveChanges}
+                            </button>
+                        </div>
+                    </div>
+                </div>
             )}
         </div>
     );

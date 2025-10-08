@@ -9,7 +9,7 @@ import { AdminPage } from './components/admin/AdminPage';
 import { SocialPage } from './components/SocialPage';
 import type { Product, CartItem, Language, Theme, User, Order, OrderStatus, UserRole, Promotion, Permission, Category, Tag, RestaurantInfo, OrderStatusColumn } from './types';
 import { USER_ROLES } from './types';
-import { products as initialProducts, restaurantInfo as initialRestaurantInfo, promotions as initialPromotions, initialCategories, initialTags } from './data/mockData';
+import { restaurantInfo as fallbackRestaurantInfo, promotions as initialPromotions, initialCategories, initialTags } from './data/mockData';
 import { ToastNotification } from './components/ToastNotification';
 import { useTranslations } from './i18n/translations';
 import { usePersistentState } from './hooks/usePersistentState';
@@ -19,6 +19,7 @@ import { TopProgressBar } from './components/TopProgressBar';
 import { ForgotPasswordPage } from './components/auth/ForgotPasswordPage';
 import { ChangePasswordModal } from './components/profile/ChangePasswordModal';
 import { API_BASE_URL } from './utils/config';
+import { LoadingOverlay } from './components/LoadingOverlay';
 
 
 // Subscribes to the browser's hashchange event.
@@ -40,18 +41,19 @@ const App: React.FC = () => {
   const [theme, setTheme] = usePersistentState<Theme>('restaurant_theme', 'light');
   const [toast, setToast] = useState<{ message: string; isVisible: boolean }>({ message: '', isVisible: false });
   const [isChangePasswordModalOpen, setIsChangePasswordModalOpen] = useState(false);
-
+  const [isLoading, setIsLoading] = useState(true);
+  const [isProcessing, setIsProcessing] = useState(false);
 
   // Data State
-  const [products, setProducts] = usePersistentState<Product[]>('restaurant_products', initialProducts);
-  const [categories, setCategories] = usePersistentState<Category[]>('restaurant_categories', initialCategories);
-  const [tags, setTags] = usePersistentState<Tag[]>('restaurant_tags', initialTags);
-  const [promotions, setPromotions] = usePersistentState<Promotion[]>('restaurant_promotions', initialPromotions);
+  const [products, setProducts] = useState<Product[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [tags, setTags] = useState<Tag[]>([]);
+  const [promotions, setPromotions] = useState<Promotion[]>([]);
   const [cartItems, setCartItems] = usePersistentState<CartItem[]>('restaurant_cart', []);
   const [users, setUsers] = usePersistentState<User[]>('restaurant_users', []);
   const [orders, setOrders] = usePersistentState<Order[]>('restaurant_orders', []);
   const [rolePermissions, setRolePermissions] = usePersistentState<Record<UserRole, Permission[]>>('restaurant_role_permissions', initialRolePermissions);
-  const [restaurantInfo, setRestaurantInfo] = usePersistentState<RestaurantInfo>('restaurant_info', initialRestaurantInfo);
+  const [restaurantInfo, setRestaurantInfo] = useState<RestaurantInfo | null>(null);
 
 
   // Auth State
@@ -70,6 +72,84 @@ const App: React.FC = () => {
   const [showProgress, setShowProgress] = useState(false);
 
   const isAdmin = useMemo(() => currentUser?.role !== 'customer', [currentUser]);
+  
+  const showToast = useCallback((message: string) => {
+    setToast({ message, isVisible: true });
+    setTimeout(() => {
+        setToast(prev => ({ ...prev, isVisible: false }));
+    }, 3000);
+  }, []);
+  
+  const hasPermission = useCallback((permission: Permission): boolean => {
+    if (!currentUser) return false;
+    // Super Admins always have all permissions, regardless of the roles object
+    if (currentUser.role === 'superAdmin') return true;
+
+    // Handle dynamic status permissions
+    if (permission.startsWith('view_status_')) {
+        const userPermissions = rolePermissions[currentUser.role];
+        return userPermissions?.includes(permission) ?? false;
+    }
+    
+    const userPermissions = rolePermissions[currentUser.role];
+    return userPermissions?.includes(permission) ?? false;
+  }, [currentUser, rolePermissions]);
+
+
+  // Fetch all initial data on load
+  useEffect(() => {
+    const fetchInitialData = async () => {
+        setIsLoading(true);
+        try {
+            const settingsPromise = fetch(`${API_BASE_URL}get_settings.php`);
+            const classificationsPromise = fetch(`${API_BASE_URL}get_classifications.php`);
+            const promotionsPromise = fetch(`${API_BASE_URL}get_promotions.php`);
+            const productsPromise = fetch(`${API_BASE_URL}get_products.php`);
+
+            const [settingsResponse, classificationsResponse, promotionsResponse, productsResponse] = await Promise.all([settingsPromise, classificationsPromise, promotionsPromise, productsPromise]);
+
+            // Process Settings
+            if (!settingsResponse.ok) throw new Error('Failed to fetch settings');
+            const settingsData = await settingsResponse.json();
+            if (settingsData.logo && !settingsData.logo.startsWith('http')) settingsData.logo = `${API_BASE_URL}${settingsData.logo}`;
+            if (settingsData.heroImage && !settingsData.heroImage.startsWith('http')) settingsData.heroImage = `${API_BASE_URL}${settingsData.heroImage}`;
+            setRestaurantInfo(settingsData);
+            
+            // Process Classifications
+            if (!classificationsResponse.ok) throw new Error('Failed to fetch classifications');
+            const classificationsData = await classificationsResponse.json();
+            setCategories(classificationsData.categories || []);
+            setTags(classificationsData.tags || []);
+
+            // Process Promotions
+            if (!promotionsResponse.ok) throw new Error('Failed to fetch promotions');
+            const promotionsData = await promotionsResponse.json();
+            setPromotions(promotionsData || []);
+            
+            // Process Products
+            if (!productsResponse.ok) throw new Error('Failed to fetch products');
+            const productsData = await productsResponse.json();
+            const resolvedProducts = (productsData || []).map((p: Product) => ({
+                ...p,
+                image: p.image && !p.image.startsWith('http') ? `${API_BASE_URL}${p.image}` : p.image,
+            }));
+            setProducts(resolvedProducts);
+
+
+        } catch (error) {
+            console.error("Error fetching initial data:", error);
+            // Fallback to mock data if any fetch fails
+            setRestaurantInfo(fallbackRestaurantInfo);
+            setCategories(initialCategories);
+            setTags(initialTags);
+            setPromotions([]); // No mock promotions on error
+            setProducts([]); // No mock products on error to avoid constraint violations
+        } finally {
+            setIsLoading(false);
+        }
+    };
+    fetchInitialData();
+  }, []);
 
 
   // Effect for route-based redirection for authentication
@@ -87,6 +167,62 @@ const App: React.FC = () => {
       window.location.hash = isAdmin ? '#/admin' : '#/profile';
     }
   }, [route, currentUser, isAdmin]);
+
+  // Fetch admin-specific data when an admin user logs in
+  useEffect(() => {
+    const fetchAdminData = async () => {
+      // We only fetch the full user list if an admin or superAdmin is logged in.
+      if (currentUser && hasPermission('manage_users')) {
+        try {
+          setIsProcessing(true); // Show loading overlay
+          const usersResponse = await fetch(`${API_BASE_URL}get_users.php`);
+          if (!usersResponse.ok) {
+            const errorData = await usersResponse.text();
+            throw new Error(`Failed to fetch users: ${errorData}`);
+          }
+          const usersData = await usersResponse.json();
+
+          if (!Array.isArray(usersData)) {
+            console.error("API did not return a user array:", usersData);
+            throw new Error("Invalid data format for users from API.");
+          }
+
+          const resolvedUsers: User[] = (usersData || []).map((dbUser: any) => {
+            const mappedRole: UserRole = USER_ROLES.includes(dbUser.role as UserRole)
+                ? dbUser.role as UserRole
+                : 'customer';
+
+            let profilePictureUrl = '';
+            if (dbUser.profile_picture && dbUser.profile_picture.trim() !== '') {
+                profilePictureUrl = `${API_BASE_URL}${dbUser.profile_picture}`;
+            } else {
+                const firstLetter = dbUser.name ? dbUser.name.charAt(0).toUpperCase() : 'U';
+                profilePictureUrl = `https://placehold.co/512x512/60a5fa/white?text=${firstLetter}`;
+            }
+            
+            return {
+              id: Number(dbUser.id),
+              name: dbUser.name,
+              mobile: dbUser.mobile,
+              password: '', // Never store password from a general fetch
+              role: mappedRole,
+              profilePicture: profilePictureUrl,
+            };
+          });
+          
+          setUsers(resolvedUsers);
+
+        } catch (error) {
+          console.error("Error fetching admin data (users):", error);
+          showToast('Failed to load user list.');
+        } finally {
+          setIsProcessing(false); // Hide loading overlay
+        }
+      }
+    };
+
+    fetchAdminData();
+  }, [currentUser, hasPermission, setUsers, showToast, setIsProcessing]);
   
   // Effects for handling page transitions
   useEffect(() => {
@@ -141,34 +277,96 @@ const App: React.FC = () => {
   const toggleTheme = useCallback(() => setTheme(prev => prev === 'light' ? 'dark' : 'light'), [setTheme]);
   const toggleLanguage = useCallback(() => setLanguage(prev => prev === 'en' ? 'ar' : 'en'), [setLanguage]);
   const clearCart = useCallback(() => setCartItems([]), [setCartItems]);
-  const showToast = useCallback((message: string) => {
-    setToast({ message, isVisible: true });
-    setTimeout(() => {
-        setToast(prev => ({ ...prev, isVisible: false }));
-    }, 3000);
-  }, []);
   
-  const hasPermission = useCallback((permission: Permission): boolean => {
-    if (!currentUser) return false;
-    // Super Admins always have all permissions, regardless of the roles object
-    if (currentUser.role === 'superAdmin') return true;
+    const updateRestaurantInfo = useCallback(async (updatedInfo: Partial<RestaurantInfo>) => {
+    if (!restaurantInfo) return;
+    setIsProcessing(true);
+    try {
+        let finalUpdates = { ...updatedInfo };
+        let showSuccessToast = true;
 
-    // Handle dynamic status permissions
-    if (permission.startsWith('view_status_')) {
-        const userPermissions = rolePermissions[currentUser.role];
-        return userPermissions?.includes(permission) ?? false;
+        // Handle logo upload
+        if (updatedInfo.logo && updatedInfo.logo.startsWith('data:image')) {
+        showSuccessToast = false; // The final save will show the toast
+        try {
+            const response = await fetch(updatedInfo.logo);
+            const blob = await response.blob();
+            const formData = new FormData();
+            formData.append('image', blob, 'logo.png');
+            formData.append('type', 'branding');
+            formData.append('imageField', 'logo');
+
+            const uploadResponse = await fetch(`${API_BASE_URL}upload_image.php`, { method: 'POST', body: formData });
+            if (!uploadResponse.ok) throw new Error(`Logo upload failed: ${await uploadResponse.text()}`);
+            const result = await uploadResponse.json();
+            if (result.success && result.url) {
+            finalUpdates.logo = `${API_BASE_URL}${result.url}`;
+            } else {
+            throw new Error(result.error || 'Failed to get logo URL');
+            }
+        } catch (error) {
+            console.error("Logo upload error:", error);
+            showToast('Failed to update logo.');
+            return;
+        }
+        }
+
+        // Handle hero image upload
+        if (updatedInfo.heroImage && updatedInfo.heroImage.startsWith('data:image')) {
+        showSuccessToast = false;
+        try {
+            const response = await fetch(updatedInfo.heroImage);
+            const blob = await response.blob();
+            const formData = new FormData();
+            formData.append('image', blob, 'hero.png');
+            formData.append('type', 'branding');
+            formData.append('imageField', 'heroImage');
+            
+            const uploadResponse = await fetch(`${API_BASE_URL}upload_image.php`, { method: 'POST', body: formData });
+            if (!uploadResponse.ok) throw new Error(`Hero image upload failed: ${await uploadResponse.text()}`);
+            const result = await uploadResponse.json();
+            if (result.success && result.url) {
+            finalUpdates.heroImage = `${API_BASE_URL}${result.url}`;
+            } else {
+            throw new Error(result.error || 'Failed to get hero image URL');
+            }
+        } catch (error) {
+            console.error("Hero image upload error:", error);
+            showToast('Failed to update hero image.');
+            return;
+        }
+        }
+
+        const dbPayload: Partial<RestaurantInfo> = { ...finalUpdates };
+        if (dbPayload.logo) dbPayload.logo = dbPayload.logo.replace(API_BASE_URL, '');
+        if (dbPayload.heroImage) dbPayload.heroImage = dbPayload.heroImage.replace(API_BASE_URL, '');
+        
+        const response = await fetch(`${API_BASE_URL}update_settings.php`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(dbPayload)
+        });
+
+        if (!response.ok) throw new Error(`Failed to update settings: ${await response.text()}`);
+        const result = await response.json();
+        if (result.success) {
+            setRestaurantInfo(prev => prev ? ({...prev, ...finalUpdates}) : null);
+            if (showSuccessToast) showToast(t.settingsUpdatedSuccess);
+        } else {
+            throw new Error(result.error || 'Update failed');
+        }
+
+    } catch (error) {
+        console.error("Error updating restaurant info:", error);
+        showToast(t.settingsUpdateFailed);
+    } finally {
+        setIsProcessing(false);
     }
-    
-    const userPermissions = rolePermissions[currentUser.role];
-    return userPermissions?.includes(permission) ?? false;
-  }, [currentUser, rolePermissions]);
-  
-  const updateRestaurantInfo = useCallback((updatedInfo: Partial<RestaurantInfo>) => {
-    setRestaurantInfo(prev => ({...prev, ...updatedInfo}));
-  }, [setRestaurantInfo]);
+  }, [restaurantInfo, showToast, t.settingsUpdatedSuccess, t.settingsUpdateFailed]);
 
   // Auth Callbacks
   const login = useCallback(async (mobile: string, password: string): Promise<string | null> => {
+    setIsProcessing(true);
     try {
         const response = await fetch(`${API_BASE_URL}login.php`, {
             method: 'POST',
@@ -224,6 +422,8 @@ const App: React.FC = () => {
     } catch (error) {
         console.error('Login error:', error);
         return t.invalidCredentials;
+    } finally {
+        setIsProcessing(false);
     }
   }, [setCurrentUser, setUsers, t.invalidCredentials]);
 
@@ -248,8 +448,9 @@ const App: React.FC = () => {
   }, [setCurrentUser, setUsers]);
   
   const updateUserProfile = useCallback(async (userId: number, updates: { name?: string; profilePicture?: string }) => {
-    if (updates.profilePicture && updates.profilePicture.startsWith('data:image')) {
-        try {
+    setIsProcessing(true);
+    try {
+        if (updates.profilePicture && updates.profilePicture.startsWith('data:image')) {
             const response = await fetch(updates.profilePicture);
             const blob = await response.blob();
             
@@ -288,25 +489,27 @@ const App: React.FC = () => {
             } else {
                 throw new Error(result.error || 'Failed to get URL from server');
             }
-        } catch (error) {
-            console.error(error);
-            showToast('Failed to update profile picture.');
-        }
-    } else if (updates.name) {
-        // Here you would add an API call to update the name
-        // For now, it just updates the local state
-        let updatedUser: User | null = null;
-        setUsers(prev => prev.map(u => {
-            if (u.id === userId) {
-                updatedUser = { ...u, name: updates.name };
-                return updatedUser;
+        } else if (updates.name) {
+            // Here you would add an API call to update the name
+            // For now, it just updates the local state
+            let updatedUser: User | null = null;
+            setUsers(prev => prev.map(u => {
+                if (u.id === userId) {
+                    updatedUser = { ...u, name: updates.name };
+                    return updatedUser;
+                }
+                return u;
+            }));
+            if (currentUser?.id === userId && updatedUser) {
+                setCurrentUser(updatedUser);
             }
-            return u;
-        }));
-        if (currentUser?.id === userId && updatedUser) {
-            setCurrentUser(updatedUser);
+            showToast(t.profileUpdatedSuccess);
         }
-        showToast(t.profileUpdatedSuccess);
+    } catch (error) {
+        console.error(error);
+        showToast('Failed to update profile picture.');
+    } finally {
+        setIsProcessing(false);
     }
   }, [setUsers, currentUser, setCurrentUser, showToast, t.profileUpdatedSuccess]);
 
@@ -327,20 +530,23 @@ const App: React.FC = () => {
 
   const changeCurrentUserPassword = useCallback(async (currentPassword: string, newPassword: string): Promise<boolean> => {
       if (!currentUser) return false;
+      setIsProcessing(true);
+      try {
+        await new Promise(resolve => setTimeout(resolve, 500)); // Simulate API delay
+        if (currentUser.password !== currentPassword) {
+            return false;
+        }
 
-      if (currentUser.password !== currentPassword) {
-          // Error is shown inside the modal now
-          return false;
+        const success = updateUserPassword(currentUser.mobile, newPassword);
+        if (success) {
+            setCurrentUser(prev => prev ? { ...prev, password: newPassword } : null);
+            showToast(t.passwordChangedSuccess);
+            return true;
+        }
+        return false;
+      } finally {
+          setIsProcessing(false);
       }
-
-      const success = updateUserPassword(currentUser.mobile, newPassword);
-      if (success) {
-          // Also update the currentUser state to keep it in sync without needing a re-login
-          setCurrentUser(prev => prev ? { ...prev, password: newPassword } : null);
-          showToast(t.passwordChangedSuccess);
-          return true;
-      }
-      return false;
   }, [currentUser, showToast, t.passwordChangedSuccess, updateUserPassword]);
 
   // Cart Callbacks
@@ -381,16 +587,16 @@ const App: React.FC = () => {
         ...order,
         id: `ORD-${Date.now().toString().slice(-6)}`,
         timestamp: new Date().toISOString(),
-        status: restaurantInfo.orderStatusColumns[0]?.id || 'pending', // Default to first status
+        status: restaurantInfo?.orderStatusColumns[0]?.id || 'pending', // Default to first status
         createdBy: currentUser?.id, // Tag order with creator's ID
     };
     setOrders(prev => [newOrder, ...prev]);
     return newOrder;
-  }, [currentUser, restaurantInfo.orderStatusColumns, setOrders]);
+  }, [currentUser, restaurantInfo, setOrders]);
 
   const updateOrder = useCallback((orderId: string, payload: Partial<Omit<Order, 'id' | 'timestamp' | 'customer'>>) => {
       const order = orders.find(o => o.id === orderId);
-      if (!order) return;
+      if (!order || !restaurantInfo) return;
   
       let canUpdate = false;
       let finalPayload: Partial<Order> = { ...payload };
@@ -422,74 +628,195 @@ const App: React.FC = () => {
       } else {
           showToast(t.permissionDenied);
       }
-  }, [orders, currentUser, hasPermission, showToast, t.permissionDenied, setOrders]);
+  }, [orders, currentUser, hasPermission, showToast, t.permissionDenied, setOrders, restaurantInfo]);
 
 
   // Admin Callbacks
-  const addProduct = useCallback((productData: Omit<Product, 'id'>) => {
-    if (!hasPermission('manage_menu')) {
-        showToast(t.permissionDenied);
-        return;
-    }
-    setProducts(prev => {
-        const newProduct: Product = {
-            ...productData,
-            id: prev.length > 0 ? Math.max(...prev.map(p => p.id)) + 1 : 1,
+ const addProduct = useCallback(async (productData: Omit<Product, 'id' | 'rating'>) => {
+    if (!hasPermission('manage_menu')) { showToast(t.permissionDenied); return; }
+    setIsProcessing(true);
+    try {
+        let finalProductData = { ...productData };
+
+        if (finalProductData.image && finalProductData.image.startsWith('data:image')) {
+            const response = await fetch(finalProductData.image);
+            const blob = await response.blob();
+            const formData = new FormData();
+            formData.append('image', blob, 'product.png');
+            formData.append('type', 'products');
+
+            const uploadResponse = await fetch(`${API_BASE_URL}upload_image.php`, { method: 'POST', body: formData });
+            const result = await uploadResponse.json();
+            if (uploadResponse.ok && result.success && result.url) {
+                finalProductData.image = result.url; 
+            } else {
+                throw new Error(result.error || 'Failed to get image URL');
+            }
+        }
+
+        const response = await fetch(`${API_BASE_URL}add_product.php`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(finalProductData)
+        });
+        const result = await response.json();
+        if (!response.ok || !result.success) throw new Error(result.error || t.productAddFailed);
+        
+        const newProduct = result.product as Product;
+        const resolvedProduct = {
+            ...newProduct,
+            image: newProduct.image && !newProduct.image.startsWith('http')
+                ? `${API_BASE_URL}${newProduct.image}`
+                : newProduct.image,
         };
-        return [newProduct, ...prev];
-    });
-  }, [hasPermission, showToast, t.permissionDenied, setProducts]);
-
-  const updateProduct = useCallback((updatedProduct: Product) => {
-    if (!hasPermission('manage_menu')) {
-        showToast(t.permissionDenied);
-        return;
+        setProducts(prev => [resolvedProduct, ...prev]);
+        showToast(t.productAddedSuccess);
+    } catch (error: any) {
+        console.error("Error adding product:", error);
+        showToast(error.message || t.productAddFailed);
+    } finally {
+        setIsProcessing(false);
     }
-    setProducts(prev => prev.map(p => p.id === updatedProduct.id ? updatedProduct : p));
-  }, [hasPermission, showToast, t.permissionDenied, setProducts]);
+  }, [hasPermission, showToast, t]);
 
-  const deleteProduct = useCallback((productId: number) => {
-    if (!hasPermission('manage_menu')) {
-        showToast(t.permissionDenied);
-        return;
+  const updateProduct = useCallback(async (updatedProduct: Product) => {
+    if (!hasPermission('manage_menu')) { showToast(t.permissionDenied); return; }
+    setIsProcessing(true);
+    try {
+        let finalProductData = { ...updatedProduct };
+
+        if (finalProductData.image && finalProductData.image.startsWith('data:image')) {
+            const response = await fetch(finalProductData.image);
+            const blob = await response.blob();
+            const formData = new FormData();
+            formData.append('image', blob, 'product.png');
+            formData.append('type', 'products');
+            formData.append('productId', finalProductData.id.toString());
+
+            const uploadResponse = await fetch(`${API_BASE_URL}upload_image.php`, { method: 'POST', body: formData });
+            const result = await uploadResponse.json();
+            if (uploadResponse.ok && result.success && result.url) {
+                finalProductData.image = result.url; // Relative URL
+            } else {
+                throw new Error(result.error || 'Failed to get image URL');
+            }
+        }
+        
+        const response = await fetch(`${API_BASE_URL}update_product.php`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(finalProductData)
+        });
+        const result = await response.json();
+        if (!response.ok || !result.success) throw new Error(t.productUpdateFailed);
+        
+        const fullyResolvedProduct = {
+             ...finalProductData,
+             image: finalProductData.image && !finalProductData.image.startsWith('http') ? `${API_BASE_URL}${finalProductData.image}` : finalProductData.image
+        };
+        setProducts(prev => prev.map(p => p.id === updatedProduct.id ? fullyResolvedProduct : p));
+        showToast(t.productUpdatedSuccess);
+    } catch (error: any) {
+        console.error("Error updating product:", error);
+        showToast(error.message || t.productUpdateFailed);
+    } finally {
+        setIsProcessing(false);
     }
-    const isProductInUse = promotions.some(p => p.productId === productId);
-    if (isProductInUse) {
+  }, [hasPermission, showToast, t]);
+
+  const deleteProduct = useCallback(async (productId: number) => {
+    if (!hasPermission('manage_menu')) { showToast(t.permissionDenied); return; }
+    if (promotions.some(p => p.productId === productId && p.isActive)) {
         showToast(t.deleteProductError);
         return;
     }
-    setProducts(prev => prev.filter(p => p.id !== productId));
-  }, [hasPermission, showToast, t.permissionDenied, promotions, t.deleteProductError, setProducts]);
-
-  const addPromotion = useCallback((promotionData: Omit<Promotion, 'id'>) => {
-    if (!hasPermission('manage_promotions')) {
-        showToast(t.permissionDenied);
-        return;
+    if (!window.confirm(t.confirmDelete)) return;
+    setIsProcessing(true);
+    try {
+        const response = await fetch(`${API_BASE_URL}delete_product.php`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ id: productId })
+        });
+        const result = await response.json();
+        if (!response.ok || !result.success) throw new Error(result.error || t.productDeleteFailed);
+        
+        setProducts(prev => prev.filter(p => p.id !== productId));
+        showToast(t.productDeletedSuccess);
+    } catch (error: any) {
+        console.error(error);
+        showToast(error.message || t.productDeleteFailed);
+    } finally {
+        setIsProcessing(false);
     }
-    setPromotions(prev => {
-        const newPromotion: Promotion = {
-            ...promotionData,
-            id: prev.length > 0 ? Math.max(...prev.map(p => p.id)) + 1 : 1,
-        };
-        return [newPromotion, ...prev];
-    });
-  }, [hasPermission, showToast, t.permissionDenied, setPromotions]);
+  }, [hasPermission, showToast, t, promotions]);
 
-  const updatePromotion = useCallback((updatedPromotion: Promotion) => {
-    if (!hasPermission('manage_promotions')) {
-        showToast(t.permissionDenied);
-        return;
+  const addPromotion = useCallback(async (promotionData: Omit<Promotion, 'id'>) => {
+    if (!hasPermission('manage_promotions')) { showToast(t.permissionDenied); return; }
+    setIsProcessing(true);
+    try {
+        const response = await fetch(`${API_BASE_URL}add_promotion.php`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(promotionData)
+        });
+        const result = await response.json();
+        if (!response.ok || !result.success) throw new Error(result.error || t.promotionAddFailed);
+        
+        setPromotions(prev => [result.promotion, ...prev]);
+        showToast(t.promotionAddedSuccess);
+    } catch (error: any) {
+        console.error(error);
+        showToast(error.message || t.promotionAddFailed);
+    } finally {
+        setIsProcessing(false);
     }
-    setPromotions(prev => prev.map(p => p.id === updatedPromotion.id ? updatedPromotion : p));
-  }, [hasPermission, showToast, t.permissionDenied, setPromotions]);
+  }, [hasPermission, showToast, t]);
 
-  const deletePromotion = useCallback((promotionId: number) => {
-    if (!hasPermission('manage_promotions')) {
-        showToast(t.permissionDenied);
-        return;
+  const updatePromotion = useCallback(async (updatedPromotion: Promotion) => {
+    if (!hasPermission('manage_promotions')) { showToast(t.permissionDenied); return; }
+    setIsProcessing(true);
+    try {
+        const response = await fetch(`${API_BASE_URL}update_promotion.php`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(updatedPromotion)
+        });
+        const result = await response.json();
+        if (!response.ok || !result.success) throw new Error(t.promotionUpdateFailed);
+        
+        setPromotions(prev => prev.map(p => Number(p.id) === Number(updatedPromotion.id) ? updatedPromotion : p));
+        showToast(t.promotionUpdatedSuccess);
+    } catch (error: any) {
+        console.error(error);
+        showToast(error.message || t.promotionUpdateFailed);
+    } finally {
+        setIsProcessing(false);
     }
-    setPromotions(prev => prev.filter(p => p.id !== promotionId));
-  }, [hasPermission, showToast, t.permissionDenied, setPromotions]);
+  }, [hasPermission, showToast, t]);
+
+  const deletePromotion = useCallback(async (promotionId: number) => {
+    if (!hasPermission('manage_promotions')) { showToast(t.permissionDenied); return; }
+    if (!window.confirm(t.confirmDeletePromotion)) return;
+    setIsProcessing(true);
+    try {
+        const response = await fetch(`${API_BASE_URL}delete_promotion.php`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ id: promotionId })
+        });
+        const result = await response.json();
+        if (!response.ok || !result.success) throw new Error(t.promotionDeleteFailed);
+        
+        setPromotions(prev => prev.filter(p => p.id !== promotionId));
+        showToast(t.promotionDeletedSuccess);
+    } catch (error: any) {
+        console.error(error);
+        showToast(error.message || t.promotionDeleteFailed);
+    } finally {
+        setIsProcessing(false);
+    }
+  }, [hasPermission, showToast, t]);
   
   const addUser = useCallback((userData: Omit<User, 'id'>) => {
     if (!hasPermission('manage_users')) {
@@ -523,8 +850,9 @@ const App: React.FC = () => {
         showToast(t.deleteUserError);
         return;
     }
+    if (!window.confirm(t.confirmDeleteUser)) return;
     setUsers(prev => prev.filter(u => u.id !== userId));
-  }, [hasPermission, showToast, t.permissionDenied, orders, t.deleteUserError, setUsers]);
+  }, [hasPermission, showToast, t, orders, setUsers]);
   
   const updateRolePermissions = useCallback((role: UserRole, permissions: Permission[]) => {
     if (!hasPermission('manage_roles')) {
@@ -534,101 +862,171 @@ const App: React.FC = () => {
     setRolePermissions(prev => ({...prev, [role]: permissions}));
   }, [hasPermission, showToast, t.permissionDenied, setRolePermissions]);
 
-  const addCategory = useCallback((categoryData: Omit<Category, 'id'>) => {
+  const addCategory = useCallback(async (categoryData: Omit<Category, 'id'>) => {
     if (!hasPermission('manage_classifications')) { showToast(t.permissionDenied); return; }
-    setCategories(prev => {
-        const newCategory: Category = { 
-            ...categoryData, 
-            id: prev.length > 0 ? Math.max(...prev.map(c => c.id)) + 1 : 1 
-        };
-        return [newCategory, ...prev];
-    });
-  }, [hasPermission, showToast, t.permissionDenied, setCategories]);
+    setIsProcessing(true);
+    try {
+        const response = await fetch(`${API_BASE_URL}add_category.php`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(categoryData)
+        });
+        const result = await response.json();
+        if (!response.ok || !result.success) throw new Error(result.error || t.categoryAddFailed);
+        
+        setCategories(prev => [result.category, ...prev].sort((a, b) => a.id - b.id));
+        showToast(t.categoryAddedSuccess);
+    } catch (error: any) {
+        console.error(error);
+        showToast(error.message || t.categoryAddFailed);
+    } finally {
+        setIsProcessing(false);
+    }
+  }, [hasPermission, showToast, t]);
 
-  const updateCategory = useCallback((updatedCategory: Category) => {
+  const updateCategory = useCallback(async (updatedCategory: Category) => {
     if (!hasPermission('manage_classifications')) { showToast(t.permissionDenied); return; }
-    setCategories(prev => prev.map(c => c.id === updatedCategory.id ? updatedCategory : c));
-  }, [hasPermission, showToast, t.permissionDenied, setCategories]);
+    setIsProcessing(true);
+    try {
+        const response = await fetch(`${API_BASE_URL}update_category.php`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(updatedCategory)
+        });
+        const result = await response.json();
+        if (!response.ok || !result.success) throw new Error(t.categoryUpdateFailed);
 
-  const deleteCategory = useCallback((categoryId: number) => {
-    if (!hasPermission('manage_classifications')) { showToast(t.permissionDenied); return; }
-    const isCategoryInUse = products.some(p => p.categoryId === categoryId);
-    if (isCategoryInUse) {
+        setCategories(prev => prev.map(c => c.id === updatedCategory.id ? updatedCategory : c));
+        showToast(t.categoryUpdatedSuccess);
+    } catch (error: any) {
+        console.error(error);
+        showToast(error.message || t.categoryUpdateFailed);
+    } finally {
+        setIsProcessing(false);
+    }
+  }, [hasPermission, showToast, t]);
+
+  const deleteCategory = useCallback(async (categoryId: number) => {
+    if (!hasPermission('manage_classifications')) {
+        showToast(t.permissionDenied);
+        return;
+    }
+    if (products.some(p => p.categoryId === categoryId)) {
         showToast(t.deleteCategoryError);
         return;
     }
-    setCategories(prev => prev.filter(c => c.id !== categoryId));
-  }, [hasPermission, showToast, t.permissionDenied, products, t.deleteCategoryError, setCategories]);
+    if (!window.confirm(t.confirmDeleteCategory)) return;
+    setIsProcessing(true);
+    try {
+        const response = await fetch(`${API_BASE_URL}delete_category.php`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ id: categoryId })
+        });
+        const result = await response.json();
+        if (!response.ok || !result.success) throw new Error(result.error || t.categoryDeleteFailed);
 
-  const addTag = useCallback((tagData: Tag) => {
+        setCategories(prev => prev.filter(c => c.id !== categoryId));
+        showToast(t.categoryDeletedSuccess);
+    } catch (error: any) {
+        console.error(error);
+        showToast(error.message || t.categoryDeleteFailed);
+    } finally {
+        setIsProcessing(false);
+    }
+  }, [hasPermission, showToast, t, products]);
+
+  const addTag = useCallback(async (tagData: Tag) => {
     if (!hasPermission('manage_classifications')) { showToast(t.permissionDenied); return; }
     if (tags.some(tag => tag.id === tagData.id)) {
         showToast(t.addTagError);
         return;
     }
-    setTags(prev => [tagData, ...prev]);
-  }, [hasPermission, showToast, t.permissionDenied, tags, t.addTagError, setTags]);
-
-  const updateTag = useCallback((updatedTag: Tag) => {
-    if (!hasPermission('manage_classifications')) { showToast(t.permissionDenied); return; }
-    setTags(prev => prev.map(t => t.id === updatedTag.id ? updatedTag : t));
-  }, [hasPermission, showToast, t.permissionDenied, setTags]);
-
-  const deleteTag = useCallback((tagId: string) => {
-    if (!hasPermission('manage_classifications')) { showToast(t.permissionDenied); return; }
-    setTags(prev => prev.filter(t => t.id !== tagId));
-  }, [hasPermission, showToast, t.permissionDenied, setTags]);
-
-  // Order Status Columns Callbacks
-    const addOrderStatusColumn = useCallback((column: OrderStatusColumn) => {
-        if (!hasPermission('manage_roles')) { showToast(t.permissionDenied); return; }
+    setIsProcessing(true);
+    try {
+        const response = await fetch(`${API_BASE_URL}add_tag.php`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(tagData)
+        });
+        const result = await response.json();
+        if (!response.ok || !result.success) throw new Error(result.error || t.tagAddFailed);
         
-        // Add column to restaurant info
-        updateRestaurantInfo({ orderStatusColumns: [...restaurantInfo.orderStatusColumns, column] });
+        setTags(prev => [result.tag, ...prev]);
+        showToast(t.tagAddedSuccess);
+    } catch (error: any) {
+        console.error(error);
+        showToast(error.message || t.tagAddFailed);
+    } finally {
+        setIsProcessing(false);
+    }
+  }, [hasPermission, showToast, t, tags]);
 
-        // Add new permission to superAdmin role
-        const newPermission: Permission = `view_status_${column.id}`;
-        setRolePermissions(prev => {
-            const newPerms = { ...prev };
-            newPerms.superAdmin = [...newPerms.superAdmin, newPermission];
-            return newPerms;
+  const updateTag = useCallback(async (updatedTag: Tag) => {
+    if (!hasPermission('manage_classifications')) { showToast(t.permissionDenied); return; }
+    setIsProcessing(true);
+    try {
+        const response = await fetch(`${API_BASE_URL}update_tag.php`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(updatedTag)
         });
-    }, [hasPermission, showToast, t.permissionDenied, updateRestaurantInfo, restaurantInfo.orderStatusColumns, setRolePermissions]);
+        const result = await response.json();
+        if (!response.ok || !result.success) throw new Error(t.tagUpdateFailed);
+        
+        setTags(prev => prev.map(t => t.id === updatedTag.id ? updatedTag : t));
+        showToast(t.tagUpdatedSuccess);
+    } catch (error: any) {
+        console.error(error);
+        showToast(error.message || t.tagUpdateFailed);
+    } finally {
+        setIsProcessing(false);
+    }
+  }, [hasPermission, showToast, t]);
 
-    const updateOrderStatusColumn = useCallback((updatedColumn: OrderStatusColumn) => {
-        if (!hasPermission('manage_roles')) { showToast(t.permissionDenied); return; }
-        const updatedColumns = restaurantInfo.orderStatusColumns.map(c => c.id === updatedColumn.id ? updatedColumn : c);
-        updateRestaurantInfo({ orderStatusColumns: updatedColumns });
-    }, [hasPermission, showToast, t.permissionDenied, updateRestaurantInfo, restaurantInfo.orderStatusColumns]);
-
-    const deleteOrderStatusColumn = useCallback((columnId: string) => {
-        if (!hasPermission('manage_roles')) { showToast(t.permissionDenied); return; }
-
-        if (orders.some(order => order.status === columnId)) {
-            showToast(t.deleteStatusError);
-            return;
-        }
-
-        // Remove column from restaurant info
-        const updatedColumns = restaurantInfo.orderStatusColumns.filter(c => c.id !== columnId);
-        updateRestaurantInfo({ orderStatusColumns: updatedColumns });
-
-        // Remove permission from all roles
-        const permissionToRemove: Permission = `view_status_${columnId}`;
-        setRolePermissions(prev => {
-            const newPerms = { ...prev };
-            for (const role in newPerms) {
-                newPerms[role as UserRole] = newPerms[role as UserRole].filter(p => p !== permissionToRemove);
-            }
-            return newPerms;
+  const deleteTag = useCallback(async (tagId: string) => {
+    if (!hasPermission('manage_classifications')) {
+        showToast(t.permissionDenied);
+        return;
+    }
+    if (products.some(p => p.tags.includes(tagId))) {
+        showToast(t.deleteTagError);
+        return;
+    }
+    if (!window.confirm(t.confirmDeleteTag)) return;
+    setIsProcessing(true);
+    try {
+        const response = await fetch(`${API_BASE_URL}delete_tag.php`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ id: tagId })
         });
-    }, [hasPermission, showToast, t.permissionDenied, t.deleteStatusError, orders, updateRestaurantInfo, restaurantInfo.orderStatusColumns, setRolePermissions]);
+        const result = await response.json();
+        if (!response.ok || !result.success) throw new Error(result.error || t.tagDeleteFailed);
+        
+        setTags(prev => prev.filter(t => t.id !== tagId));
+        showToast(t.tagDeletedSuccess);
+    } catch (error: any) {
+        console.error(error);
+        showToast(error.message || t.tagDeleteFailed);
+    } finally {
+        setIsProcessing(false);
+    }
+  }, [hasPermission, showToast, t, products]);
 
 
   // Router
   const renderContent = () => {
+    if (isLoading || !restaurantInfo) {
+      return (
+        <div className="min-h-screen flex items-center justify-center">
+          <div className="animate-spin rounded-full h-16 w-16 border-t-2 border-b-2 border-primary-500"></div>
+        </div>
+      );
+    }
+
     if (displayedRoute.startsWith('#/login')) {
-      return currentUser ? null : <LoginPage language={language} login={login} />;
+      return currentUser ? null : <LoginPage language={language} login={login} isProcessing={isProcessing} />;
     }
     if (displayedRoute.startsWith('#/register')) {
       return currentUser ? null : <RegisterPage language={language} register={register} />;
@@ -670,9 +1068,6 @@ const App: React.FC = () => {
             updateTag={updateTag}
             deleteTag={deleteTag}
             updateRestaurantInfo={updateRestaurantInfo}
-            addOrderStatusColumn={addOrderStatusColumn}
-            updateOrderStatusColumn={updateOrderStatusColumn}
-            deleteOrderStatusColumn={deleteOrderStatusColumn}
             setProgress={setProgress}
             setShowProgress={setShowProgress}
             onChangePasswordClick={() => setIsChangePasswordModalOpen(true)}
@@ -715,6 +1110,7 @@ const App: React.FC = () => {
         categories={categories}
         tags={tags}
         restaurantInfo={restaurantInfo}
+        setIsProcessing={setIsProcessing}
       />
     );
     
@@ -734,6 +1130,7 @@ const App: React.FC = () => {
   return (
     <div className={`min-h-screen overflow-x-hidden bg-slate-50 dark:bg-slate-950 text-gray-800 dark:text-gray-200 transition-colors duration-300 ${language === 'ar' ? 'font-cairo' : 'font-sans'}`}>
       <TopProgressBar progress={progress} show={showProgress} />
+      <LoadingOverlay isVisible={isProcessing} />
       <div 
         className={`transition-all duration-300 ease-in-out ${
             transitionStage === 'out' 
@@ -749,6 +1146,7 @@ const App: React.FC = () => {
               language={language}
               onClose={() => setIsChangePasswordModalOpen(false)}
               onSave={changeCurrentUserPassword}
+              isProcessing={isProcessing}
           />
       )}
     </div>

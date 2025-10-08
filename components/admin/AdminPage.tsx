@@ -1,5 +1,3 @@
-
-
 import React, { useState, useMemo, useEffect } from 'react';
 import type { Language, Product, RestaurantInfo, Order, OrderStatus, User, UserRole, Promotion, Permission, Category, Tag, CartItem, SocialLink, LocalizedString, OrderStatusColumn } from '../../types';
 import { useTranslations } from '../../i18n/translations';
@@ -18,7 +16,6 @@ import { RefusalReasonModal } from './RefusalReasonModal';
 import { OrderEditModal } from './OrderEditModal';
 import { ReportsPage } from './ReportsPage';
 import { CashierPage } from './CashierPage';
-import { OrderStatusEditModal } from './OrderStatusEditModal';
 import { SettingsPage } from './SettingsPage';
 import { formatDate, formatNumber } from '../../utils/helpers';
 
@@ -54,9 +51,6 @@ interface AdminPageProps {
     updateTag: (tag: Tag) => void;
     deleteTag: (tagId: string) => void;
     updateRestaurantInfo: (updatedInfo: Partial<RestaurantInfo>) => void;
-    addOrderStatusColumn: (column: OrderStatusColumn) => void;
-    updateOrderStatusColumn: (column: OrderStatusColumn) => void;
-    deleteOrderStatusColumn: (columnId: string) => void;
     setProgress: (progress: number | ((prev: number) => number)) => void;
     setShowProgress: (show: boolean) => void;
     onChangePasswordClick: () => void;
@@ -71,7 +65,7 @@ export const AdminPage: React.FC<AdminPageProps> = (props) => {
         addPromotion, updatePromotion, deletePromotion, addUser, updateUser, deleteUser,
         rolePermissions, updateRolePermissions,
         addCategory, updateCategory, deleteCategory, addTag, updateTag, deleteTag,
-        updateRestaurantInfo, addOrderStatusColumn, updateOrderStatusColumn, deleteOrderStatusColumn,
+        updateRestaurantInfo,
         setProgress, setShowProgress, onChangePasswordClick
     } = props;
 
@@ -90,7 +84,6 @@ export const AdminPage: React.FC<AdminPageProps> = (props) => {
     const [editingCategory, setEditingCategory] = useState<Category | 'new' | null>(null);
     const [editingTag, setEditingTag] = useState<Tag | 'new' | null>(null);
     const [refusingOrder, setRefusingOrder] = useState<Order | null>(null);
-    const [editingOrderStatus, setEditingOrderStatus] = useState<OrderStatusColumn | 'new' | null>(null);
 
     // Transition state for tabs
     const [transitionStage, setTransitionStage] = useState<'in' | 'out'>('in');
@@ -160,12 +153,6 @@ export const AdminPage: React.FC<AdminPageProps> = (props) => {
         setEditingProduct(null);
     };
 
-    const handleDeleteProduct = (productId: number) => {
-        if (window.confirm(t.confirmDelete)) {
-            deleteProduct(productId);
-        }
-    };
-
     const handleToggleProductFlag = (product: Product, flag: 'isPopular' | 'isNew' | 'isVisible') => {
         updateProduct({ ...product, [flag]: !product[flag] });
     };
@@ -179,12 +166,6 @@ export const AdminPage: React.FC<AdminPageProps> = (props) => {
         setEditingPromotion(null);
     };
     
-    const handleDeletePromotion = (promotionId: number) => {
-        if (window.confirm(t.confirmDeletePromotion)) {
-            deletePromotion(promotionId);
-        }
-    };
-
     const handleTogglePromotionStatus = (promotion: Promotion) => {
         updatePromotion({ ...promotion, isActive: !promotion.isActive });
     };
@@ -198,12 +179,6 @@ export const AdminPage: React.FC<AdminPageProps> = (props) => {
         setEditingUser(null);
     };
     
-    const handleDeleteUser = (userId: number) => {
-        if (window.confirm(t.confirmDeleteUser)) {
-            deleteUser(userId);
-        }
-    };
-
     const handleSavePermissions = (role: UserRole, permissions: Permission[]) => {
         updateRolePermissions(role, permissions);
         setEditingRole(null);
@@ -215,7 +190,7 @@ export const AdminPage: React.FC<AdminPageProps> = (props) => {
         }
         setEditingOrder(null);
     };
-    
+
     interface OrderCardProps {
         order: Order;
         style?: React.CSSProperties;
@@ -422,7 +397,7 @@ export const AdminPage: React.FC<AdminPageProps> = (props) => {
                                         </div>
                                          <div className="flex items-center gap-2">
                                             <button onClick={() => setEditingProduct(product)} className="p-2 text-indigo-600 hover:text-indigo-900 dark:text-indigo-400 dark:hover:text-indigo-200"><PencilIcon className="w-5 h-5" /></button>
-                                            <button onClick={() => handleDeleteProduct(product.id)} className="p-2 text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-200"><TrashIcon className="w-5 h-5" /></button>
+                                            <button onClick={() => deleteProduct(product.id)} className="p-2 text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-200"><TrashIcon className="w-5 h-5" /></button>
                                         </div>
                                     </div>
                                 </div>
@@ -449,7 +424,7 @@ export const AdminPage: React.FC<AdminPageProps> = (props) => {
                                             <td className="px-6 py-4 whitespace-nowrap text-center"><label className="relative inline-flex items-center cursor-pointer"><input type="checkbox" checked={product.isPopular} onChange={() => handleToggleProductFlag(product, 'isPopular')} className="sr-only peer" /><div className="w-11 h-6 bg-slate-200 rounded-full peer dark:bg-slate-700 peer-focus:ring-4 peer-focus:ring-primary-300 dark:peer-focus:ring-primary-800 peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full after:content-[''] after:absolute after:top-0.5 after:start-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary-600"></div></label></td>
                                             <td className="px-6 py-4 whitespace-nowrap text-center"><label className="relative inline-flex items-center cursor-pointer"><input type="checkbox" checked={product.isNew} onChange={() => handleToggleProductFlag(product, 'isNew')} className="sr-only peer" /><div className="w-11 h-6 bg-slate-200 rounded-full peer dark:bg-slate-700 peer-focus:ring-4 peer-focus:ring-green-300 dark:peer-focus:ring-green-800 peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full after:content-[''] after:absolute after:top-0.5 after:start-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-green-600"></div></label></td>
                                             <td className="px-6 py-4 whitespace-nowrap text-center"><label className="relative inline-flex items-center cursor-pointer"><input type="checkbox" checked={product.isVisible} onChange={() => handleToggleProductFlag(product, 'isVisible')} className="sr-only peer" /><div className="w-11 h-6 bg-slate-200 rounded-full peer dark:bg-slate-700 peer-focus:ring-4 peer-focus:ring-blue-300 dark:peer-focus:ring-blue-800 peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full after:content-[''] after:absolute after:top-0.5 after:start-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div></label></td>
-                                            <td className="px-6 py-4 whitespace-nowrap text-sm font-medium"><div className="flex items-center gap-4"><button onClick={() => setEditingProduct(product)} className="text-indigo-600 hover:text-indigo-900 dark:text-indigo-400 dark:hover:text-indigo-200 flex items-center gap-1"><PencilIcon className="w-4 h-4" /> {t.actions}</button><button onClick={() => handleDeleteProduct(product.id)} className="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-200 flex items-center gap-1"><TrashIcon className="w-4 h-4" /> Delete</button></div></td>
+                                            <td className="px-6 py-4 whitespace-nowrap text-sm font-medium"><div className="flex items-center gap-4"><button onClick={() => setEditingProduct(product)} className="text-indigo-600 hover:text-indigo-900 dark:text-indigo-400 dark:hover:text-indigo-200 flex items-center gap-1"><PencilIcon className="w-4 h-4" /> {t.actions}</button><button onClick={() => deleteProduct(product.id)} className="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-200 flex items-center gap-1"><TrashIcon className="w-4 h-4" /> Delete</button></div></td>
                                         </tr>
                                     ))}
                                 </tbody>
@@ -465,10 +440,10 @@ export const AdminPage: React.FC<AdminPageProps> = (props) => {
                         categories={allCategories}
                         tags={allTags}
                         onEditCategory={(category) => setEditingCategory(category)}
-                        onDeleteCategory={(categoryId) => { if(window.confirm(t.confirmDeleteCategory)) deleteCategory(categoryId) }}
+                        onDeleteCategory={deleteCategory}
                         onAddCategory={() => setEditingCategory('new')}
                         onEditTag={(tag) => setEditingTag(tag)}
-                        onDeleteTag={(tagId) => { if(window.confirm(t.confirmDeleteTag)) deleteTag(tagId) }}
+                        onDeleteTag={deleteTag}
                         onAddTag={() => setEditingTag('new')}
                    />
                 );
@@ -483,7 +458,7 @@ export const AdminPage: React.FC<AdminPageProps> = (props) => {
                         <div className="bg-white dark:bg-slate-800 rounded-lg shadow-md overflow-x-auto border border-slate-200 dark:border-slate-700">
                             <table className="min-w-full divide-y divide-slate-200 dark:divide-slate-700">
                                 <thead className="bg-slate-50 dark:bg-slate-700/50"><tr><th className="px-6 py-4 text-start text-xs font-medium text-slate-500 dark:text-slate-300 uppercase tracking-wider">{t.product}</th><th className="px-6 py-4 text-start text-xs font-medium text-slate-500 dark:text-slate-300 uppercase tracking-wider">{t.discountPercent}</th><th className="px-6 py-4 text-start text-xs font-medium text-slate-500 dark:text-slate-300 uppercase tracking-wider hidden sm:table-cell">{t.endDate}</th><th className="px-6 py-4 text-center text-xs font-medium text-slate-500 dark:text-slate-300 uppercase tracking-wider">{t.isActive}</th><th className="px-6 py-4 text-start text-xs font-medium text-slate-500 dark:text-slate-300 uppercase tracking-wider">{t.actions}</th></tr></thead>
-                                <tbody className="divide-y divide-slate-200 dark:divide-slate-700">{allPromotions.map((promo) => {const product = allProducts.find(p => p.id === promo.productId); return (<tr key={promo.id} className="odd:bg-white even:bg-slate-50 dark:odd:bg-slate-800 dark:even:bg-slate-800/50 hover:bg-slate-100 dark:hover:bg-slate-700/50 transition-colors"><td className="px-6 py-4 whitespace-nowrap"><div className="text-sm font-semibold text-slate-900 dark:text-slate-100">{promo.title[language]}</div><div className="text-xs text-slate-500 dark:text-slate-400">{product?.name[language] || 'N/A'}</div></td><td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-red-600 dark:text-red-400">{formatNumber(promo.discountPercent)}%</td><td className="px-6 py-4 whitespace-nowrap text-sm text-slate-600 dark:text-slate-300 hidden sm:table-cell">{formatDate(promo.endDate)}</td><td className="px-6 py-4 whitespace-nowrap text-center"><label className="relative inline-flex items-center cursor-pointer"><input type="checkbox" checked={promo.isActive} onChange={() => handleTogglePromotionStatus(promo)} className="sr-only peer" /><div className="w-11 h-6 bg-slate-200 rounded-full peer dark:bg-slate-700 peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-green-600"></div></label></td><td className="px-6 py-4 whitespace-nowrap text-sm font-medium"><div className="flex items-center gap-4"><button onClick={() => setEditingPromotion(promo)} className="text-indigo-600 hover:text-indigo-900 dark:text-indigo-400 dark:hover:text-indigo-200 flex items-center gap-1"><PencilIcon className="w-4 h-4" /> Edit</button><button onClick={() => handleDeletePromotion(promo.id)} className="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-200 flex items-center gap-1"><TrashIcon className="w-4 h-4" /> Delete</button></div></td></tr>)})}</tbody>
+                                <tbody className="divide-y divide-slate-200 dark:divide-slate-700">{allPromotions.map((promo) => {const product = allProducts.find(p => p.id === promo.productId); return (<tr key={promo.id} className="odd:bg-white even:bg-slate-50 dark:odd:bg-slate-800 dark:even:bg-slate-800/50 hover:bg-slate-100 dark:hover:bg-slate-700/50 transition-colors"><td className="px-6 py-4 whitespace-nowrap"><div className="text-sm font-semibold text-slate-900 dark:text-slate-100">{promo.title[language]}</div><div className="text-xs text-slate-500 dark:text-slate-400">{product?.name[language] || 'N/A'}</div></td><td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-red-600 dark:text-red-400">{formatNumber(promo.discountPercent)}%</td><td className="px-6 py-4 whitespace-nowrap text-sm text-slate-600 dark:text-slate-300 hidden sm:table-cell">{formatDate(promo.endDate)}</td><td className="px-6 py-4 whitespace-nowrap text-center"><label className="relative inline-flex items-center cursor-pointer"><input type="checkbox" checked={promo.isActive} onChange={() => handleTogglePromotionStatus(promo)} className="sr-only peer" /><div className="w-11 h-6 bg-slate-200 rounded-full peer dark:bg-slate-700 peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-green-600"></div></label></td><td className="px-6 py-4 whitespace-nowrap text-sm font-medium"><div className="flex items-center gap-4"><button onClick={() => setEditingPromotion(promo)} className="text-indigo-600 hover:text-indigo-900 dark:text-indigo-400 dark:hover:text-indigo-200 flex items-center gap-1"><PencilIcon className="w-4 h-4" /> Edit</button><button onClick={() => deletePromotion(promo.id)} className="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-200 flex items-center gap-1"><TrashIcon className="w-4 h-4" /> Delete</button></div></td></tr>)})}</tbody>
                             </table>
                         </div>
                     </div>
@@ -508,7 +483,7 @@ export const AdminPage: React.FC<AdminPageProps> = (props) => {
                                      <div className="flex justify-end items-center border-t dark:border-slate-700 pt-3">
                                          <div className="flex items-center gap-2">
                                             <button onClick={() => setEditingUser(user)} disabled={user.role === 'superAdmin'} className="p-2 text-indigo-600 hover:text-indigo-900 dark:text-indigo-400 dark:hover:text-indigo-200 disabled:opacity-50 disabled:cursor-not-allowed"><PencilIcon className="w-5 h-5" /></button>
-                                            <button onClick={() => handleDeleteUser(user.id)} disabled={user.role === 'superAdmin'} className="p-2 text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-200 disabled:opacity-50 disabled:cursor-not-allowed"><TrashIcon className="w-5 h-5" /></button>
+                                            <button onClick={() => deleteUser(user.id)} disabled={user.role === 'superAdmin'} className="p-2 text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-200 disabled:opacity-50 disabled:cursor-not-allowed"><TrashIcon className="w-5 h-5" /></button>
                                         </div>
                                     </div>
                                 </div>
@@ -518,7 +493,7 @@ export const AdminPage: React.FC<AdminPageProps> = (props) => {
                         <div className="hidden md:block bg-white dark:bg-slate-800 rounded-lg shadow-md overflow-x-auto border border-slate-200 dark:border-slate-700">
                            <table className="min-w-full divide-y divide-slate-200 dark:divide-slate-700">
                                <thead className="bg-slate-50 dark:bg-slate-700/50"><tr><th className="px-6 py-4 text-start text-xs font-medium text-slate-500 dark:text-slate-300 uppercase tracking-wider">{t.user}</th><th className="px-6 py-4 text-start text-xs font-medium text-slate-500 dark:text-slate-300 uppercase tracking-wider hidden sm:table-cell">{t.mobileNumber}</th><th className="px-6 py-4 text-start text-xs font-medium text-slate-500 dark:text-slate-300 uppercase tracking-wider">{t.role}</th><th className="px-6 py-4 text-start text-xs font-medium text-slate-500 dark:text-slate-300 uppercase tracking-wider">{t.actions}</th></tr></thead>
-                                <tbody className="divide-y divide-slate-200 dark:divide-slate-700">{usersToDisplay.map((user) => (<tr key={user.id} className="odd:bg-white even:bg-slate-50 dark:odd:bg-slate-800 dark:even:bg-slate-800/50 hover:bg-slate-100 dark:hover:bg-slate-700/50 transition-colors"><td className="px-6 py-4 whitespace-nowrap text-sm font-semibold text-slate-900 dark:text-slate-100">{user.name}</td><td className="px-6 py-4 whitespace-nowrap text-sm text-slate-600 dark:text-slate-300 hidden sm:table-cell">{user.mobile}</td><td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-slate-600 dark:text-slate-300">{t[user.role as keyof typeof t] || user.role}</td><td className="px-6 py-4 whitespace-nowrap text-sm font-medium"><div className="flex items-center gap-4"><button onClick={() => setEditingUser(user)} disabled={user.role === 'superAdmin'} className="text-indigo-600 hover:text-indigo-900 dark:text-indigo-400 dark:hover:text-indigo-200 flex items-center gap-1 disabled:opacity-50 disabled:cursor-not-allowed"><PencilIcon className="w-4 h-4" /> Edit</button><button onClick={() => handleDeleteUser(user.id)} disabled={user.role === 'superAdmin'} className="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-200 flex items-center gap-1 disabled:opacity-50 disabled:cursor-not-allowed"><TrashIcon className="w-4 h-4" /> Delete</button></div></td></tr>))}</tbody>
+                                <tbody className="divide-y divide-slate-200 dark:divide-slate-700">{usersToDisplay.map((user) => (<tr key={user.id} className="odd:bg-white even:bg-slate-50 dark:odd:bg-slate-800 dark:even:bg-slate-800/50 hover:bg-slate-100 dark:hover:bg-slate-700/50 transition-colors"><td className="px-6 py-4 whitespace-nowrap text-sm font-semibold text-slate-900 dark:text-slate-100">{user.name}</td><td className="px-6 py-4 whitespace-nowrap text-sm text-slate-600 dark:text-slate-300 hidden sm:table-cell">{user.mobile}</td><td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-slate-600 dark:text-slate-300">{t[user.role as keyof typeof t] || user.role}</td><td className="px-6 py-4 whitespace-nowrap text-sm font-medium"><div className="flex items-center gap-4"><button onClick={() => setEditingUser(user)} disabled={user.role === 'superAdmin'} className="text-indigo-600 hover:text-indigo-900 dark:text-indigo-400 dark:hover:text-indigo-200 flex items-center gap-1 disabled:opacity-50 disabled:cursor-not-allowed"><PencilIcon className="w-4 h-4" /> Edit</button><button onClick={() => deleteUser(user.id)} disabled={user.role === 'superAdmin'} className="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-200 flex items-center gap-1 disabled:opacity-50 disabled:cursor-not-allowed"><TrashIcon className="w-4 h-4" /> Delete</button></div></td></tr>))}</tbody>
                            </table>
                        </div>
                     </div>
@@ -557,9 +532,8 @@ export const AdminPage: React.FC<AdminPageProps> = (props) => {
                         language={language}
                         restaurantInfo={restaurantInfo}
                         updateRestaurantInfo={updateRestaurantInfo}
-                        onAddOrderStatus={() => setEditingOrderStatus('new')}
-                        onEditOrderStatus={(col) => setEditingOrderStatus(col)}
-                        onDeleteOrderStatus={deleteOrderStatusColumn}
+                        allOrders={allOrders}
+                        showToast={showToast}
                     />
                 );
             default: return null;
@@ -678,22 +652,6 @@ export const AdminPage: React.FC<AdminPageProps> = (props) => {
                         setRefusingOrder(null);
                     }}
                     language={language}
-                />
-            )}
-            {editingOrderStatus && hasPermission('manage_roles') && (
-                <OrderStatusEditModal
-                    statusColumn={editingOrderStatus === 'new' ? null : editingOrderStatus}
-                    onClose={() => setEditingOrderStatus(null)}
-                    onSave={(data) => {
-                        if (editingOrderStatus !== 'new' && 'id' in data) {
-                           updateOrderStatusColumn(data as OrderStatusColumn);
-                        } else {
-                           addOrderStatusColumn(data as OrderStatusColumn);
-                        }
-                        setEditingOrderStatus(null);
-                    }}
-                    language={language}
-                    existingIds={restaurantInfo.orderStatusColumns.map(c => c.id)}
                 />
             )}
         </div>

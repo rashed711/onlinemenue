@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import type { Language, Theme, RestaurantInfo, User } from '../types';
 import { useTranslations } from '../i18n/translations';
-import { SunIcon, MoonIcon, CartIcon, LanguageIcon, UserIcon, FullscreenIcon, ExitFullscreenIcon } from './icons/Icons';
+import { SunIcon, MoonIcon, CartIcon, LanguageIcon, UserIcon, FullscreenIcon, ExitFullscreenIcon, ShieldCheckIcon, LogoutIcon } from './icons/Icons';
 import { formatNumber } from '../utils/helpers';
 
 interface HeaderProps {
@@ -162,13 +162,21 @@ export const Header: React.FC<HeaderProps> = ({
                     <>
                       <div className="px-3 py-2 border-b border-slate-200 dark:border-slate-700">
                         <p className="font-semibold text-sm truncate">{currentUser.name}</p>
-                        <p className="text-xs text-slate-500 truncate">{currentUser.mobile}</p>
+                        <p className="text-xs text-slate-500 dark:text-slate-400 truncate">{t[currentUser.role as keyof typeof t] || currentUser.role}</p>
                       </div>
-                      <a href="#/profile" onClick={(e) => handleNav(e, '/profile')} className="block w-full text-start px-3 py-2 text-sm hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors">
-                        {t.myProfile}
+                       {currentUser.role !== 'customer' && (
+                        <a href="#/admin" onClick={(e) => handleNav(e, '/admin')} className="flex items-center gap-3 w-full text-start px-3 py-2 text-sm hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors">
+                          <ShieldCheckIcon className="w-5 h-5 text-slate-500 dark:text-slate-400" />
+                          <span>{t.adminPanel}</span>
+                        </a>
+                      )}
+                      <a href="#/profile" onClick={(e) => handleNav(e, '/profile')} className="flex items-center gap-3 w-full text-start px-3 py-2 text-sm hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors">
+                        <UserIcon className="w-5 h-5 text-slate-500 dark:text-slate-400" />
+                        <span>{t.myProfile}</span>
                       </a>
-                      <button onClick={() => { logout(); setIsUserMenuOpen(false); }} className="block w-full text-start px-3 py-2 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/50 transition-colors">
-                        {t.logout}
+                      <button onClick={() => { logout(); setIsUserMenuOpen(false); }} className="flex items-center gap-3 w-full text-start px-3 py-2 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/50 transition-colors">
+                        <LogoutIcon className="w-5 h-5" />
+                        <span>{t.logout}</span>
                       </button>
                     </>
                   ) : (

@@ -1,5 +1,3 @@
-
-
 import React, { useState, useMemo, useCallback } from 'react';
 import type { User, Order, Language, Theme, Product, CartItem, OrderStatus, Promotion, OrderType, Category, Tag, RestaurantInfo } from '../types';
 import { Header } from './Header';
@@ -32,6 +30,7 @@ interface MenuPageProps {
     categories: Category[];
     tags: Tag[];
     restaurantInfo: RestaurantInfo;
+    setIsProcessing: React.Dispatch<React.SetStateAction<boolean>>;
 }
 
 export const MenuPage: React.FC<MenuPageProps> = (props) => {
@@ -39,7 +38,7 @@ export const MenuPage: React.FC<MenuPageProps> = (props) => {
         language, theme, toggleLanguage, toggleTheme,
         cartItems, addToCart, updateCartQuantity, clearCart,
         currentUser, logout, placeOrder, products, promotions,
-        categories, tags, restaurantInfo
+        categories, tags, restaurantInfo, setIsProcessing
     } = props;
     
     const t = useTranslations(language);
@@ -350,9 +349,14 @@ export const MenuPage: React.FC<MenuPageProps> = (props) => {
 
         const newOrder = placeOrder(orderData);
         clearCart();
-        const imageUrl = await generateReceiptImage(newOrder);
-        setReceiptImageUrl(imageUrl);
-        setIsReceiptModalOpen(true);
+        setIsProcessing(true);
+        try {
+            const imageUrl = await generateReceiptImage(newOrder);
+            setReceiptImageUrl(imageUrl);
+            setIsReceiptModalOpen(true);
+        } finally {
+            setIsProcessing(false);
+        }
     }
 
     const handleDeliveryConfirm = async (details: { mobile: string; address: string }) => {
@@ -376,9 +380,14 @@ export const MenuPage: React.FC<MenuPageProps> = (props) => {
         const newOrder = placeOrder(orderData);
         clearCart();
         setIsDeliveryDetailsModalOpen(false);
-        const imageUrl = await generateReceiptImage(newOrder);
-        setReceiptImageUrl(imageUrl);
-        setIsReceiptModalOpen(true);
+        setIsProcessing(true);
+        try {
+            const imageUrl = await generateReceiptImage(newOrder);
+            setReceiptImageUrl(imageUrl);
+            setIsReceiptModalOpen(true);
+        } finally {
+            setIsProcessing(false);
+        }
     }
     
     return (

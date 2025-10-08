@@ -5,14 +5,14 @@ import { useTranslations } from '../../i18n/translations';
 interface LoginPageProps {
     language: Language;
     login: (mobile: string, password: string) => Promise<string | null>;
+    isProcessing: boolean;
 }
 
-export const LoginPage: React.FC<LoginPageProps> = ({ language, login }) => {
+export const LoginPage: React.FC<LoginPageProps> = ({ language, login, isProcessing }) => {
     const t = useTranslations(language);
     const [mobile, setMobile] = useState('admin');
     const [password, setPassword] = useState('password');
     const [error, setError] = useState('');
-    const [isLoading, setIsLoading] = useState(false);
 
     const handleNav = (e: React.MouseEvent<HTMLAnchorElement>, path: string) => {
         e.preventDefault();
@@ -22,7 +22,6 @@ export const LoginPage: React.FC<LoginPageProps> = ({ language, login }) => {
     const handleLogin = async (e: React.FormEvent) => {
         e.preventDefault();
         setError('');
-        setIsLoading(true);
         try {
             const errorMessage = await login(mobile, password);
             if (errorMessage) {
@@ -31,8 +30,6 @@ export const LoginPage: React.FC<LoginPageProps> = ({ language, login }) => {
             // Successful login will trigger a redirect via useEffect in App.tsx
         } catch (err) {
             setError('An unexpected error occurred. Please try again.');
-        } finally {
-            setIsLoading(false);
         }
     };
 
@@ -70,10 +67,10 @@ export const LoginPage: React.FC<LoginPageProps> = ({ language, login }) => {
                     {error && <p className="text-sm text-red-500 text-center">{error}</p>}
                     <button
                         type="submit"
-                        disabled={isLoading}
+                        disabled={isProcessing}
                         className="w-full px-5 py-3 text-base font-medium text-center text-white bg-primary-600 rounded-lg hover:bg-primary-700 focus:ring-4 focus:ring-primary-300 dark:focus:ring-primary-800 transition shadow-md hover:shadow-lg transform hover:scale-105 disabled:bg-primary-400 disabled:cursor-not-allowed"
                     >
-                        {isLoading ? 'Logging in...' : t.login}
+                        {isProcessing ? 'Logging in...' : t.login}
                     </button>
                 </form>
                  <div className="flex justify-between items-center text-sm">

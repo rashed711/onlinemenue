@@ -24,6 +24,7 @@ const emptyPromotion: Omit<Promotion, 'id'> = {
 export const PromotionEditModal: React.FC<PromotionEditModalProps> = ({ promotion, allProducts, onClose, onSave, language }) => {
     const t = useTranslations(language);
     const [formData, setFormData] = useState<Omit<Promotion, 'id'>>(emptyPromotion);
+    const [error, setError] = useState('');
     
     const portalRoot = document.getElementById('portal-root');
     if (!portalRoot) return null;
@@ -35,10 +36,12 @@ export const PromotionEditModal: React.FC<PromotionEditModalProps> = ({ promotio
         } else {
             setFormData({...emptyPromotion, productId: allProducts[0]?.id || 0 });
         }
+        setError('');
     }, [promotion, allProducts]);
     
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
         const { name, value, type } = e.target;
+        setError('');
         
         if (type === 'checkbox') {
              setFormData(prev => ({ ...prev, [name]: (e.target as HTMLInputElement).checked }));
@@ -63,6 +66,13 @@ export const PromotionEditModal: React.FC<PromotionEditModalProps> = ({ promotio
     
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
+        setError('');
+
+        if (new Date(formData.endDate) < new Date()) {
+            setError(t.invalidEndDate);
+            return;
+        }
+
         if (promotion) {
              onSave({ ...promotion, ...formData });
         } else {
@@ -123,6 +133,7 @@ export const PromotionEditModal: React.FC<PromotionEditModalProps> = ({ promotio
                         <div>
                              <label className="block text-sm font-medium mb-1">{t.endDate}</label>
                              <input type="datetime-local" name="endDate" value={formatDateForInput(formData.endDate)} onChange={handleChange} className="w-full p-2 border rounded-md dark:bg-gray-700 dark:border-gray-600" required />
+                             {error && <p className="text-xs text-red-500 mt-1">{error}</p>}
                         </div>
                     </div>
 

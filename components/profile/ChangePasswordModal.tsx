@@ -8,15 +8,15 @@ interface ChangePasswordModalProps {
     language: Language;
     onClose: () => void;
     onSave: (currentPassword: string, newPassword: string) => Promise<boolean>;
+    isProcessing: boolean;
 }
 
-export const ChangePasswordModal: React.FC<ChangePasswordModalProps> = ({ language, onClose, onSave }) => {
+export const ChangePasswordModal: React.FC<ChangePasswordModalProps> = ({ language, onClose, onSave, isProcessing }) => {
     const t = useTranslations(language);
     const [currentPassword, setCurrentPassword] = useState('');
     const [newPassword, setNewPassword] = useState('');
     const [confirmPassword, setConfirmPassword] = useState('');
     const [error, setError] = useState('');
-    const [isSaving, setIsSaving] = useState(false);
 
     const portalRoot = document.getElementById('portal-root');
     if (!portalRoot) return null;
@@ -33,9 +33,7 @@ export const ChangePasswordModal: React.FC<ChangePasswordModalProps> = ({ langua
              return;
         }
 
-        setIsSaving(true);
         const success = await onSave(currentPassword, newPassword);
-        setIsSaving(false);
         if (success) {
             onClose();
         } else {
@@ -86,8 +84,8 @@ export const ChangePasswordModal: React.FC<ChangePasswordModalProps> = ({ langua
                     {error && <p className="text-sm text-red-500">{error}</p>}
                     <div className="flex justify-end gap-4 pt-4">
                         <button type="button" onClick={onClose} className="px-4 py-2 rounded-lg bg-gray-200 dark:bg-gray-600 hover:bg-gray-300 dark:hover:bg-gray-500">{t.cancel}</button>
-                        <button type="submit" disabled={isSaving} className="px-4 py-2 rounded-lg bg-primary-500 text-white hover:bg-primary-600 disabled:bg-gray-400">
-                            {isSaving ? 'Saving...' : t.save}
+                        <button type="submit" disabled={isProcessing} className="px-4 py-2 rounded-lg bg-primary-500 text-white hover:bg-primary-600 disabled:bg-gray-400">
+                            {isProcessing ? 'Saving...' : t.save}
                         </button>
                     </div>
                 </form>
