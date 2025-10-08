@@ -316,7 +316,7 @@ export const AdminPage: React.FC<AdminPageProps> = (props) => {
                      <div>
                         <h2 className="text-2xl font-bold mb-6">{t.manageOrders}</h2>
                         <div className="w-full overflow-x-auto pb-4">
-                          <div className={`inline-grid grid-cols-${visibleColumns.length} gap-6 min-w-max`}>
+                          <div className="inline-grid gap-6 min-w-max" style={{ gridTemplateColumns: `repeat(${visibleColumns.length}, 20rem)` }}>
                               {visibleColumns.map(col => {
                                 const colOrders = allOrders.filter(o => o.status === col.id || (col.id === 'cancelled' && o.status === 'Refused'));
                                 return (

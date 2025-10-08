@@ -7,7 +7,7 @@ import { CloseIcon } from '../icons/Icons';
 interface ChangePasswordModalProps {
     language: Language;
     onClose: () => void;
-    onSave: (currentPassword: string, newPassword: string) => Promise<boolean>;
+    onSave: (currentPassword: string, newPassword: string) => Promise<string | null>;
     isProcessing: boolean;
 }
 
@@ -33,11 +33,11 @@ export const ChangePasswordModal: React.FC<ChangePasswordModalProps> = ({ langua
              return;
         }
 
-        const success = await onSave(currentPassword, newPassword);
-        if (success) {
-            onClose();
+        const errorMsg = await onSave(currentPassword, newPassword);
+        if (errorMsg) {
+            setError(errorMsg);
         } else {
-            setError(t.incorrectCurrentPassword); // Assume failure is due to incorrect current password
+            onClose();
         }
     };
 

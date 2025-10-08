@@ -10,7 +10,7 @@ interface LoginPageProps {
 
 export const LoginPage: React.FC<LoginPageProps> = ({ language, login, isProcessing }) => {
     const t = useTranslations(language);
-    const [mobile, setMobile] = useState('admin');
+    const [mobile, setMobile] = useState('superAdmin');
     const [password, setPassword] = useState('password');
     const [error, setError] = useState('');
 

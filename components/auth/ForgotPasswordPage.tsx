@@ -5,13 +5,14 @@ import { useTranslations } from '../../i18n/translations';
 interface ForgotPasswordPageProps {
     language: Language;
     users: User[];
-    onPasswordReset: (mobile: string, newPassword: string) => boolean;
+    onPasswordReset: (user: User, newPassword: string) => Promise<boolean>;
 }
 
 export const ForgotPasswordPage: React.FC<ForgotPasswordPageProps> = ({ language, users, onPasswordReset }) => {
     const t = useTranslations(language);
     const [step, setStep] = useState(1); // 1 for mobile input, 2 for password reset
     const [mobile, setMobile] = useState('');
+    const [userToReset, setUserToReset] = useState<User | null>(null);
     const [newPassword, setNewPassword] = useState('');
     const [confirmPassword, setConfirmPassword] = useState('');
     const [error, setError] = useState('');
@@ -25,18 +26,23 @@ export const ForgotPasswordPage: React.FC<ForgotPasswordPageProps> = ({ language
     const handleMobileSubmit = (e: React.FormEvent) => {
         e.preventDefault();
         setError('');
-        const userExists = users.some(u => u.mobile === mobile);
+        const userExists = users.find(u => u.mobile === mobile);
         if (userExists) {
+            setUserToReset(userExists);
             setStep(2);
         } else {
             setError(t.mobileNotFound);
         }
     };
 
-    const handlePasswordSubmit = (e: React.FormEvent) => {
+    const handlePasswordSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setError('');
         setSuccess('');
+        if (!userToReset) {
+            setError('An unexpected error occurred.');
+            return;
+        }
         if (newPassword !== confirmPassword) {
             setError(t.passwordsDoNotMatch);
             return;
@@ -46,12 +52,12 @@ export const ForgotPasswordPage: React.FC<ForgotPasswordPageProps> = ({ language
             return;
         }
         
-        const resetSuccess = onPasswordReset(mobile, newPassword);
+        const resetSuccess = await onPasswordReset(userToReset, newPassword);
         if (resetSuccess) {
             setSuccess(t.passwordResetSuccess);
             // Don't redirect immediately, show the success message
         } else {
-            setError(t.mobileNotFound); // Should not happen if step logic is correct
+            setError('Failed to reset password. Please try again.'); 
         }
     };
 

@@ -1,5 +1,3 @@
-
-
 import React, { useState, useEffect, useMemo, useCallback, useSyncExternalStore } from 'react';
 import { MenuPage } from './components/MenuPage';
 import { LoginPage } from './components/auth/LoginPage';
@@ -50,7 +48,7 @@ const App: React.FC = () => {
   const [tags, setTags] = useState<Tag[]>([]);
   const [promotions, setPromotions] = useState<Promotion[]>([]);
   const [cartItems, setCartItems] = usePersistentState<CartItem[]>('restaurant_cart', []);
-  const [users, setUsers] = usePersistentState<User[]>('restaurant_users', []);
+  const [users, setUsers] = useState<User[]>([]);
   const [orders, setOrders] = usePersistentState<Order[]>('restaurant_orders', []);
   const [rolePermissions, setRolePermissions] = usePersistentState<Record<UserRole, Permission[]>>('restaurant_role_permissions', initialRolePermissions);
   const [restaurantInfo, setRestaurantInfo] = useState<RestaurantInfo | null>(null);
@@ -106,6 +104,7 @@ const App: React.FC = () => {
             const promotionsPromise = fetch(`${API_BASE_URL}get_promotions.php`);
             const productsPromise = fetch(`${API_BASE_URL}get_products.php`);
 
+            // FIX: Corrected a typo where 'productsResponse' was used before declaration instead of 'productsPromise'.
             const [settingsResponse, classificationsResponse, promotionsResponse, productsResponse] = await Promise.all([settingsPromise, classificationsPromise, promotionsPromise, productsPromise]);
 
             // Process Settings
@@ -218,11 +217,13 @@ const App: React.FC = () => {
         } finally {
           setIsProcessing(false); // Hide loading overlay
         }
+      } else {
+        setUsers([]); // Clear user list if not an admin
       }
     };
 
     fetchAdminData();
-  }, [currentUser, hasPermission, setUsers, showToast, setIsProcessing]);
+  }, [currentUser, hasPermission, showToast, setIsProcessing]);
   
   // Effects for handling page transitions
   useEffect(() => {
@@ -382,17 +383,14 @@ const App: React.FC = () => {
 
         const dbUser = result;
         
-        // With the updated PHP, the role comes directly in the `role` field.
-        const mappedRole: UserRole = USER_ROLES.includes(dbUser.role as UserRole)
-            ? dbUser.role as UserRole
-            : 'customer'; // Default to customer for any unknown role
+        const roleFromApi = String(dbUser.role || 'customer');
+        const matchedRole = USER_ROLES.find(r => r.toLowerCase() === roleFromApi.toLowerCase());
+        const mappedRole: UserRole = matchedRole || 'customer';
         
         let profilePictureUrl = '';
         if (dbUser.profile_picture && dbUser.profile_picture.trim() !== '') {
-            // The image path from the DB is relative to the API base URL.
             profilePictureUrl = `${API_BASE_URL}${dbUser.profile_picture}`;
         } else {
-            // Fallback for users without a profile picture
             const firstLetter = dbUser.name ? dbUser.name.charAt(0).toUpperCase() : 'U';
             profilePictureUrl = `https://placehold.co/512x512/60a5fa/white?text=${firstLetter}`;
         }
@@ -407,17 +405,6 @@ const App: React.FC = () => {
         };
         
         setCurrentUser(frontendUser);
-
-        // Update the local users array if needed (optional)
-        setUsers(prevUsers => {
-            const userExists = prevUsers.some(u => u.id === frontendUser.id);
-            if (userExists) {
-                return prevUsers.map(u => u.id === frontendUser.id ? { ...u, ...frontendUser, password: u.password } : u);
-            } else {
-                return [...prevUsers, { ...frontendUser, password: 'password' }];
-            }
-        });
-
         return null; // Success
     } catch (error) {
         console.error('Login error:', error);
@@ -425,31 +412,67 @@ const App: React.FC = () => {
     } finally {
         setIsProcessing(false);
     }
-  }, [setCurrentUser, setUsers, t.invalidCredentials]);
+  }, [setCurrentUser, t.invalidCredentials]);
 
   const logout = useCallback(() => {
     setCurrentUser(null);
     window.location.hash = '#/'; // Redirect to home page on logout
   }, []);
 
-  const register = useCallback((newUser: Omit<User, 'id' | 'role' | 'profilePicture'>) => {
-    setUsers(prev => {
-      const newId = prev.length > 0 ? Math.max(...prev.map(u => u.id)) + 1 : 1;
-      const firstLetter = newUser.name.charAt(0).toUpperCase() || 'U';
-      const userWithId: User = { 
-          ...newUser, 
-          id: newId, 
-          role: 'customer',
-          profilePicture: `https://placehold.co/512x512/60a5fa/white?text=${firstLetter}`
-      };
-      setCurrentUser(userWithId); // Log in the new user
-      return [...prev, userWithId];
-    });
-  }, [setCurrentUser, setUsers]);
+  const register = useCallback(async (newUserData: Omit<User, 'id' | 'role' | 'profilePicture'>): Promise<string | null> => {
+    setIsProcessing(true);
+    try {
+        const payload = { ...newUserData, role: 'customer' };
+        const response = await fetch(`${API_BASE_URL}add_user.php`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+        const result = await response.json();
+        if (!response.ok || !result.success) {
+            throw new Error(result.error || 'Failed to register.');
+        }
+
+        const dbUser = result.user;
+        let profilePictureUrl = '';
+        if (dbUser.profile_picture && dbUser.profile_picture.trim() !== '') {
+            profilePictureUrl = `${API_BASE_URL}${dbUser.profile_picture}`;
+        } else {
+            const firstLetter = dbUser.name ? dbUser.name.charAt(0).toUpperCase() : 'U';
+            profilePictureUrl = `https://placehold.co/512x512/60a5fa/white?text=${firstLetter}`;
+        }
+
+        const frontendUser: User = {
+            id: Number(dbUser.id),
+            name: dbUser.name,
+            mobile: dbUser.mobile,
+            password: '', 
+            role: 'customer',
+            profilePicture: profilePictureUrl,
+        };
+        
+        setCurrentUser(frontendUser);
+        setUsers(prev => [frontendUser, ...prev]);
+
+        return null; // Success
+    } catch (error: any) {
+        console.error('Registration error:', error);
+        return error.message || 'Registration failed. Please try again.';
+    } finally {
+        setIsProcessing(false);
+    }
+  }, [setCurrentUser, setUsers, setIsProcessing]);
   
   const updateUserProfile = useCallback(async (userId: number, updates: { name?: string; profilePicture?: string }) => {
     setIsProcessing(true);
     try {
+        const userToUpdate = users.find(u => u.id === userId) || currentUser;
+        if (!userToUpdate) throw new Error("User not found.");
+
+        let relativeImagePath: string | undefined = undefined;
+        let newProfilePictureUrl: string | undefined = undefined;
+
+        // Step 1: Upload image if provided
         if (updates.profilePicture && updates.profilePicture.startsWith('data:image')) {
             const response = await fetch(updates.profilePicture);
             const blob = await response.blob();
@@ -471,83 +494,137 @@ const App: React.FC = () => {
 
             const result = await uploadResponse.json();
             if (result.success && result.url) {
-                const newProfilePictureUrl = `${API_BASE_URL}${result.url}`;
-                
-                let updatedUser: User | null = null;
-                setUsers(prev => prev.map(u => {
-                    if (u.id === userId) {
-                        updatedUser = { ...u, profilePicture: newProfilePictureUrl, ...(updates.name && { name: updates.name }) };
-                        return updatedUser;
-                    }
-                    return u;
-                }));
-                if (currentUser?.id === userId && updatedUser) {
-                    setCurrentUser(updatedUser);
-                }
-                showToast(t.profileUpdatedSuccess);
-
+                relativeImagePath = result.url; // The relative path, e.g., 'uploads/users/1.png'
+                newProfilePictureUrl = `${API_BASE_URL}${result.url}`; // The full URL for UI state update
             } else {
                 throw new Error(result.error || 'Failed to get URL from server');
             }
-        } else if (updates.name) {
-            // Here you would add an API call to update the name
-            // For now, it just updates the local state
-            let updatedUser: User | null = null;
-            setUsers(prev => prev.map(u => {
-                if (u.id === userId) {
-                    updatedUser = { ...u, name: updates.name };
-                    return updatedUser;
-                }
-                return u;
-            }));
-            if (currentUser?.id === userId && updatedUser) {
-                setCurrentUser(updatedUser);
-            }
-            showToast(t.profileUpdatedSuccess);
         }
+
+        // Step 2: Prepare payload if there are any changes
+        const hasNameUpdate = updates.name && updates.name !== userToUpdate.name;
+        if (hasNameUpdate || relativeImagePath) {
+            const dbPayload = {
+                id: userId,
+                name: hasNameUpdate ? updates.name : userToUpdate.name,
+                mobile: userToUpdate.mobile,
+                role: userToUpdate.role,
+                ...(relativeImagePath && { profile_picture: relativeImagePath })
+            };
+            
+            const updateResponse = await fetch(`${API_BASE_URL}update_user.php`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(dbPayload)
+            });
+
+            const result = await updateResponse.json();
+            if (!updateResponse.ok || !result.success) {
+                throw new Error(result.error || 'Failed to update user profile in database.');
+            }
+        }
+
+        // Step 3: Update local state if the API call was successful
+        let updatedUser: User | null = null;
+        const finalUsers = users.map(u => {
+            if (u.id === userId) {
+                updatedUser = { 
+                    ...u, 
+                    ...(hasNameUpdate && { name: updates.name! }),
+                    ...(newProfilePictureUrl && { profilePicture: newProfilePictureUrl })
+                };
+                return updatedUser;
+            }
+            return u;
+        });
+        setUsers(finalUsers);
+        
+        if (currentUser?.id === userId && updatedUser) {
+            setCurrentUser(updatedUser);
+        }
+        
+        showToast(t.profileUpdatedSuccess);
+
     } catch (error) {
-        console.error(error);
-        showToast('Failed to update profile picture.');
+        console.error("Error updating profile:", error);
+        showToast('Failed to update profile.');
     } finally {
         setIsProcessing(false);
     }
-  }, [setUsers, currentUser, setCurrentUser, showToast, t.profileUpdatedSuccess]);
+}, [users, setUsers, currentUser, setCurrentUser, showToast, t.profileUpdatedSuccess]);
 
-  const updateUserPassword = useCallback((mobile: string, newPassword: string): boolean => {
-      let userFound = false;
-      setUsers(prev => {
-          const newUsers = prev.map(u => {
-              if (u.mobile === mobile) {
-                  userFound = true;
-                  return { ...u, password: newPassword };
-              }
-              return u;
-          });
-          return newUsers;
-      });
-      return userFound;
-  }, [setUsers]);
+  const resetUserPassword = useCallback(async (user: User, newPassword: string): Promise<boolean> => {
+        setIsProcessing(true);
+        try {
+            const payload = {
+                id: user.id,
+                name: user.name,
+                mobile: user.mobile,
+                role: user.role,
+                password: newPassword,
+            };
 
-  const changeCurrentUserPassword = useCallback(async (currentPassword: string, newPassword: string): Promise<boolean> => {
-      if (!currentUser) return false;
+            const response = await fetch(`${API_BASE_URL}update_user.php`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+
+            const result = await response.json();
+            if (!response.ok || !result.success) {
+                throw new Error(result.error || 'Failed to reset password.');
+            }
+            return true;
+        } catch (error: any) {
+            console.error('Password reset error:', error);
+            showToast(error.message || 'Failed to reset password.');
+            return false;
+        } finally {
+            setIsProcessing(false);
+        }
+    }, [showToast, setIsProcessing]);
+
+  const changeCurrentUserPassword = useCallback(async (currentPassword: string, newPassword: string): Promise<string | null> => {
+      if (!currentUser) return 'No user logged in.';
       setIsProcessing(true);
       try {
-        await new Promise(resolve => setTimeout(resolve, 500)); // Simulate API delay
-        if (currentUser.password !== currentPassword) {
-            return false;
+        const verifyResponse = await fetch(`${API_BASE_URL}login.php`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ mobile: currentUser.mobile, password: currentPassword })
+        });
+
+        if (!verifyResponse.ok) {
+            return t.incorrectCurrentPassword;
         }
 
-        const success = updateUserPassword(currentUser.mobile, newPassword);
-        if (success) {
-            setCurrentUser(prev => prev ? { ...prev, password: newPassword } : null);
-            showToast(t.passwordChangedSuccess);
-            return true;
+        const updatePayload = {
+            id: currentUser.id,
+            name: currentUser.name,
+            mobile: currentUser.mobile,
+            role: currentUser.role,
+            password: newPassword,
+        };
+        const updateResponse = await fetch(`${API_BASE_URL}update_user.php`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(updatePayload)
+        });
+
+        const result = await updateResponse.json();
+        if (!updateResponse.ok || !result.success) {
+            throw new Error(result.error || 'Failed to change password.');
         }
-        return false;
+
+        showToast(t.passwordChangedSuccess);
+        return null; // Success
+      } catch (error: any) {
+          console.error('Change password error:', error);
+          return error.message || 'Failed to change password.';
       } finally {
           setIsProcessing(false);
       }
-  }, [currentUser, showToast, t.passwordChangedSuccess, updateUserPassword]);
+  }, [currentUser, showToast, t.incorrectCurrentPassword, t.passwordChangedSuccess]);
 
   // Cart Callbacks
   const addToCart = useCallback((product: Product, quantity: number, options?: { [key: string]: string }) => {
@@ -818,40 +895,105 @@ const App: React.FC = () => {
     }
   }, [hasPermission, showToast, t]);
   
-  const addUser = useCallback((userData: Omit<User, 'id'>) => {
-    if (!hasPermission('manage_users')) {
-        showToast(t.permissionDenied);
-        return;
-    }
-    setUsers(prev => {
-        const newUser: User = { 
-          ...userData, 
-          id: prev.length > 0 ? Math.max(...prev.map(u => u.id)) + 1 : 1,
+  const addUser = useCallback(async (userData: Omit<User, 'id' | 'profilePicture'>) => {
+    if (!hasPermission('manage_users')) { showToast(t.permissionDenied); return; }
+    setIsProcessing(true);
+    try {
+        const response = await fetch(`${API_BASE_URL}add_user.php`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(userData)
+        });
+        const result = await response.json();
+        if (!response.ok || !result.success) {
+            throw new Error(result.error || 'Failed to add user.');
+        }
+
+        const dbUser = result.user;
+        const mappedRole: UserRole = USER_ROLES.includes(dbUser.role as UserRole)
+            ? dbUser.role as UserRole
+            : 'customer';
+
+        let profilePictureUrl = '';
+        if (dbUser.profile_picture && dbUser.profile_picture.trim() !== '') {
+            profilePictureUrl = `${API_BASE_URL}${dbUser.profile_picture}`;
+        } else {
+            const firstLetter = dbUser.name ? dbUser.name.charAt(0).toUpperCase() : 'U';
+            profilePictureUrl = `https://placehold.co/512x512/60a5fa/white?text=${firstLetter}`;
+        }
+
+        const newUser: User = {
+            id: Number(dbUser.id),
+            name: dbUser.name,
+            mobile: dbUser.mobile,
+            password: '', // Never store password
+            role: mappedRole,
+            profilePicture: profilePictureUrl,
         };
-        return [newUser, ...prev];
-    });
+
+        setUsers(prev => [newUser, ...prev]);
+        showToast('User added successfully.');
+    } catch (error: any) {
+        console.error("Error adding user:", error);
+        showToast(error.message || 'Failed to add user.');
+    } finally {
+        setIsProcessing(false);
+    }
   }, [hasPermission, showToast, t.permissionDenied, setUsers]);
   
-  const updateUser = useCallback((updatedUser: User) => {
-    if (!hasPermission('manage_users')) {
-        showToast(t.permissionDenied);
-        return;
+  const updateUser = useCallback(async (updatedUser: User) => {
+    if (!hasPermission('manage_users')) { showToast(t.permissionDenied); return; }
+    setIsProcessing(true);
+    try {
+        const response = await fetch(`${API_BASE_URL}update_user.php`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(updatedUser)
+        });
+        const result = await response.json();
+        if (!response.ok || !result.success) {
+            throw new Error(result.error || 'Failed to update user.');
+        }
+
+        const finalUser = { ...updatedUser, password: '' }; // Ensure password is not stored in state
+        setUsers(prev => prev.map(u => u.id === updatedUser.id ? finalUser : u));
+        showToast('User updated successfully.');
+    } catch (error: any) {
+        console.error("Error updating user:", error);
+        showToast(error.message || 'Failed to update user.');
+    } finally {
+        setIsProcessing(false);
     }
-    setUsers(prev => prev.map(u => u.id === updatedUser.id ? updatedUser : u));
   }, [hasPermission, showToast, t.permissionDenied, setUsers]);
 
-  const deleteUser = useCallback((userId: number) => {
-    if (!hasPermission('manage_users')) {
-        showToast(t.permissionDenied);
-        return;
-    }
+  const deleteUser = useCallback(async (userId: number) => {
+    if (!hasPermission('manage_users')) { showToast(t.permissionDenied); return; }
     const isUserInUse = orders.some(o => o.customer.userId === userId || o.createdBy === userId);
     if (isUserInUse) {
         showToast(t.deleteUserError);
         return;
     }
     if (!window.confirm(t.confirmDeleteUser)) return;
-    setUsers(prev => prev.filter(u => u.id !== userId));
+    
+    setIsProcessing(true);
+    try {
+        const response = await fetch(`${API_BASE_URL}delete_user.php`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ id: userId })
+        });
+        const result = await response.json();
+        if (!response.ok || !result.success) {
+            throw new Error(result.error || 'Failed to delete user.');
+        }
+        setUsers(prev => prev.filter(u => u.id !== userId));
+        showToast('User deleted successfully.');
+    } catch (error: any) {
+        console.error("Error deleting user:", error);
+        showToast(error.message || 'Failed to delete user.');
+    } finally {
+        setIsProcessing(false);
+    }
   }, [hasPermission, showToast, t, orders, setUsers]);
   
   const updateRolePermissions = useCallback((role: UserRole, permissions: Permission[]) => {
@@ -874,32 +1016,32 @@ const App: React.FC = () => {
         const result = await response.json();
         if (!response.ok || !result.success) throw new Error(result.error || t.categoryAddFailed);
         
-        setCategories(prev => [result.category, ...prev].sort((a, b) => a.id - b.id));
+        setCategories(prev => [result.category, ...prev]);
         showToast(t.categoryAddedSuccess);
     } catch (error: any) {
-        console.error(error);
+        console.error("Error adding category:", error);
         showToast(error.message || t.categoryAddFailed);
     } finally {
         setIsProcessing(false);
     }
   }, [hasPermission, showToast, t]);
 
-  const updateCategory = useCallback(async (updatedCategory: Category) => {
+  const updateCategory = useCallback(async (categoryData: Category) => {
     if (!hasPermission('manage_classifications')) { showToast(t.permissionDenied); return; }
     setIsProcessing(true);
     try {
         const response = await fetch(`${API_BASE_URL}update_category.php`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(updatedCategory)
+            body: JSON.stringify(categoryData)
         });
         const result = await response.json();
-        if (!response.ok || !result.success) throw new Error(t.categoryUpdateFailed);
-
-        setCategories(prev => prev.map(c => c.id === updatedCategory.id ? updatedCategory : c));
+        if (!response.ok || !result.success) throw new Error(result.error || t.categoryUpdateFailed);
+        
+        setCategories(prev => prev.map(c => c.id === categoryData.id ? categoryData : c));
         showToast(t.categoryUpdatedSuccess);
     } catch (error: any) {
-        console.error(error);
+        console.error("Error updating category:", error);
         showToast(error.message || t.categoryUpdateFailed);
     } finally {
         setIsProcessing(false);
@@ -907,10 +1049,7 @@ const App: React.FC = () => {
   }, [hasPermission, showToast, t]);
 
   const deleteCategory = useCallback(async (categoryId: number) => {
-    if (!hasPermission('manage_classifications')) {
-        showToast(t.permissionDenied);
-        return;
-    }
+    if (!hasPermission('manage_classifications')) { showToast(t.permissionDenied); return; }
     if (products.some(p => p.categoryId === categoryId)) {
         showToast(t.deleteCategoryError);
         return;
@@ -925,20 +1064,20 @@ const App: React.FC = () => {
         });
         const result = await response.json();
         if (!response.ok || !result.success) throw new Error(result.error || t.categoryDeleteFailed);
-
+        
         setCategories(prev => prev.filter(c => c.id !== categoryId));
         showToast(t.categoryDeletedSuccess);
     } catch (error: any) {
-        console.error(error);
+        console.error("Error deleting category:", error);
         showToast(error.message || t.categoryDeleteFailed);
     } finally {
         setIsProcessing(false);
     }
   }, [hasPermission, showToast, t, products]);
 
-  const addTag = useCallback(async (tagData: Tag) => {
+  const addTag = useCallback(async (tagData: Omit<Tag, 'id'> & { id: string }) => {
     if (!hasPermission('manage_classifications')) { showToast(t.permissionDenied); return; }
-    if (tags.some(tag => tag.id === tagData.id)) {
+    if (tags.some(t => t.id === tagData.id)) {
         showToast(t.addTagError);
         return;
     }
@@ -955,29 +1094,29 @@ const App: React.FC = () => {
         setTags(prev => [result.tag, ...prev]);
         showToast(t.tagAddedSuccess);
     } catch (error: any) {
-        console.error(error);
+        console.error("Error adding tag:", error);
         showToast(error.message || t.tagAddFailed);
     } finally {
         setIsProcessing(false);
     }
   }, [hasPermission, showToast, t, tags]);
 
-  const updateTag = useCallback(async (updatedTag: Tag) => {
+  const updateTag = useCallback(async (tagData: Tag) => {
     if (!hasPermission('manage_classifications')) { showToast(t.permissionDenied); return; }
     setIsProcessing(true);
     try {
         const response = await fetch(`${API_BASE_URL}update_tag.php`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(updatedTag)
+            body: JSON.stringify(tagData)
         });
         const result = await response.json();
-        if (!response.ok || !result.success) throw new Error(t.tagUpdateFailed);
+        if (!response.ok || !result.success) throw new Error(result.error || t.tagUpdateFailed);
         
-        setTags(prev => prev.map(t => t.id === updatedTag.id ? updatedTag : t));
+        setTags(prev => prev.map(tag => tag.id === tagData.id ? tagData : tag));
         showToast(t.tagUpdatedSuccess);
     } catch (error: any) {
-        console.error(error);
+        console.error("Error updating tag:", error);
         showToast(error.message || t.tagUpdateFailed);
     } finally {
         setIsProcessing(false);
@@ -985,10 +1124,7 @@ const App: React.FC = () => {
   }, [hasPermission, showToast, t]);
 
   const deleteTag = useCallback(async (tagId: string) => {
-    if (!hasPermission('manage_classifications')) {
-        showToast(t.permissionDenied);
-        return;
-    }
+    if (!hasPermission('manage_classifications')) { showToast(t.permissionDenied); return; }
     if (products.some(p => p.tags.includes(tagId))) {
         showToast(t.deleteTagError);
         return;
@@ -1004,95 +1140,90 @@ const App: React.FC = () => {
         const result = await response.json();
         if (!response.ok || !result.success) throw new Error(result.error || t.tagDeleteFailed);
         
-        setTags(prev => prev.filter(t => t.id !== tagId));
+        setTags(prev => prev.filter(tag => tag.id !== tagId));
         showToast(t.tagDeletedSuccess);
     } catch (error: any) {
-        console.error(error);
+        console.error("Error deleting tag:", error);
         showToast(error.message || t.tagDeleteFailed);
     } finally {
         setIsProcessing(false);
     }
   }, [hasPermission, showToast, t, products]);
 
+  // Render Logic
+  const renderPage = () => {
+    // Handling route with potential query params (e.g. for password reset tokens)
+    const [baseRoute] = displayedRoute.split('?');
 
-  // Router
-  const renderContent = () => {
     if (isLoading || !restaurantInfo) {
+      return <LoadingOverlay isVisible={true} />;
+    }
+
+    if (baseRoute.startsWith('#/admin')) {
       return (
-        <div className="min-h-screen flex items-center justify-center">
-          <div className="animate-spin rounded-full h-16 w-16 border-t-2 border-b-2 border-primary-500"></div>
-        </div>
+        <AdminPage
+          language={language}
+          currentUser={currentUser}
+          allProducts={products}
+          allCategories={categories}
+          allTags={tags}
+          allUsers={users}
+          restaurantInfo={restaurantInfo}
+          allOrders={orders}
+          allPromotions={promotions}
+          placeOrder={placeOrder}
+          showToast={showToast}
+          updateOrder={updateOrder}
+          logout={logout}
+          addProduct={addProduct}
+          updateProduct={updateProduct}
+          deleteProduct={deleteProduct}
+          addPromotion={addPromotion}
+          updatePromotion={updatePromotion}
+          deletePromotion={deletePromotion}
+          addUser={addUser}
+          updateUser={updateUser}
+          deleteUser={deleteUser}
+          rolePermissions={rolePermissions}
+          updateRolePermissions={updateRolePermissions}
+          addCategory={addCategory}
+          updateCategory={updateCategory}
+          deleteCategory={deleteCategory}
+          addTag={addTag}
+          updateTag={updateTag}
+          deleteTag={deleteTag}
+          updateRestaurantInfo={updateRestaurantInfo}
+          setProgress={setProgress}
+          setShowProgress={setShowProgress}
+          onChangePasswordClick={() => setIsChangePasswordModalOpen(true)}
+        />
       );
     }
-
-    if (displayedRoute.startsWith('#/login')) {
-      return currentUser ? null : <LoginPage language={language} login={login} isProcessing={isProcessing} />;
-    }
-    if (displayedRoute.startsWith('#/register')) {
-      return currentUser ? null : <RegisterPage language={language} register={register} />;
-    }
-     if (displayedRoute.startsWith('#/forgot-password')) {
-      return currentUser ? null : <ForgotPasswordPage language={language} users={users} onPasswordReset={updateUserPassword} />;
-    }
-    if (displayedRoute.startsWith('#/admin')) {
-      return isAdmin ? (
-        <AdminPage 
-            language={language} 
-            currentUser={currentUser}
-            allProducts={products}
-            allCategories={categories}
-            allTags={tags}
-            allUsers={users}
-            restaurantInfo={restaurantInfo} 
-            allOrders={orders} 
-            allPromotions={promotions}
-            placeOrder={placeOrder}
-            showToast={showToast}
-            updateOrder={updateOrder}
-            logout={logout}
-            addProduct={addProduct}
-            updateProduct={updateProduct}
-            deleteProduct={deleteProduct}
-            addPromotion={addPromotion}
-            updatePromotion={updatePromotion}
-            deletePromotion={deletePromotion}
-            addUser={addUser}
-            updateUser={updateUser}
-            deleteUser={deleteUser}
-            rolePermissions={rolePermissions}
-            updateRolePermissions={updateRolePermissions}
-            addCategory={addCategory}
-            updateCategory={updateCategory}
-            deleteCategory={deleteCategory}
-            addTag={addTag}
-            updateTag={updateTag}
-            deleteTag={deleteTag}
-            updateRestaurantInfo={updateRestaurantInfo}
-            setProgress={setProgress}
-            setShowProgress={setShowProgress}
-            onChangePasswordClick={() => setIsChangePasswordModalOpen(true)}
+    if (baseRoute.startsWith('#/login')) return <LoginPage language={language} login={login} isProcessing={isProcessing} />;
+    if (baseRoute.startsWith('#/register')) return <RegisterPage language={language} register={register} />;
+    if (baseRoute.startsWith('#/forgot-password')) return <ForgotPasswordPage language={language} users={users} onPasswordReset={resetUserPassword} />;
+    if (baseRoute.startsWith('#/profile')) {
+      return currentUser ? (
+        <ProfilePage
+          language={language}
+          currentUser={currentUser}
+          orders={orders.filter(o => o.customer.userId === currentUser.id)}
+          restaurantInfo={restaurantInfo}
+          logout={logout}
+          onChangePasswordClick={() => setIsChangePasswordModalOpen(true)}
+          onUpdateProfile={updateUserProfile}
+          updateOrder={updateOrder}
         />
-      ) : null;
-    }
-    if (displayedRoute.startsWith('#/profile')) {
-       const userOrders = currentUser ? orders.filter(o => o.customer.userId === currentUser.id) : [];
-       return currentUser ? <ProfilePage 
-         language={language} 
-         currentUser={currentUser} 
-         orders={userOrders}
-         restaurantInfo={restaurantInfo}
-         logout={logout} 
-         onChangePasswordClick={() => setIsChangePasswordModalOpen(true)}
-         onUpdateProfile={updateUserProfile}
-         updateOrder={updateOrder}
-       /> : null;
+      ) : null; // Redirects handled by useEffect
     }
 
-    if (displayedRoute.startsWith('#/social')) {
-      return <SocialPage language={language} restaurantInfo={restaurantInfo} />;
+    // Default Routes
+    if (baseRoute.startsWith('#/social')) {
+       return <SocialPage language={language} restaurantInfo={restaurantInfo} />
     }
-
-    const menuPageComponent = (
+    
+    // Fallback to menu page, including '#/' or invalid hashes
+    return (
       <MenuPage
         language={language}
         theme={theme}
@@ -1113,35 +1244,17 @@ const App: React.FC = () => {
         setIsProcessing={setIsProcessing}
       />
     );
-    
-    if (displayedRoute.startsWith('#/menu')) {
-        return menuPageComponent;
-    }
-
-    if (displayedRoute === '#/' || displayedRoute === '') {
-        if (restaurantInfo.defaultPage === 'social') {
-            return <SocialPage language={language} restaurantInfo={restaurantInfo} />;
-        }
-    }
-
-    return menuPageComponent;
   };
-
+  
   return (
-    <div className={`min-h-screen overflow-x-hidden bg-slate-50 dark:bg-slate-950 text-gray-800 dark:text-gray-200 transition-colors duration-300 ${language === 'ar' ? 'font-cairo' : 'font-sans'}`}>
+    <>
       <TopProgressBar progress={progress} show={showProgress} />
-      <LoadingOverlay isVisible={isProcessing} />
-      <div 
-        className={`transition-all duration-300 ease-in-out ${
-            transitionStage === 'out' 
-                ? 'opacity-0 -translate-y-5' 
-                : 'opacity-100 translate-y-0'
-        }`}
-      >
-        {renderContent()}
+      <div className={`transition-opacity duration-300 ${transitionStage === 'in' ? 'opacity-100' : 'opacity-0'}`}>
+        {renderPage()}
       </div>
       <ToastNotification message={toast.message} isVisible={toast.isVisible} />
-       {isChangePasswordModalOpen && currentUser && (
+      <LoadingOverlay isVisible={isProcessing && !isLoading} />
+      {isChangePasswordModalOpen && currentUser && (
           <ChangePasswordModal
               language={language}
               onClose={() => setIsChangePasswordModalOpen(false)}
@@ -1149,7 +1262,7 @@ const App: React.FC = () => {
               isProcessing={isProcessing}
           />
       )}
-    </div>
+    </>
   );
 };
 

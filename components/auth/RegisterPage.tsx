@@ -4,7 +4,7 @@ import { useTranslations } from '../../i18n/translations';
 
 interface RegisterPageProps {
     language: Language;
-    register: (newUser: Omit<User, 'id' | 'role'>) => void;
+    register: (newUser: Omit<User, 'id' | 'role' | 'profilePicture'>) => Promise<string | null>;
 }
 
 export const RegisterPage: React.FC<RegisterPageProps> = ({ language, register }) => {
@@ -19,14 +19,18 @@ export const RegisterPage: React.FC<RegisterPageProps> = ({ language, register }
         window.location.hash = path;
     };
 
-    const handleRegister = (e: React.FormEvent) => {
+    const handleRegister = async (e: React.FormEvent) => {
         e.preventDefault();
+        setError('');
         if (!name || !mobile || !password) {
             setError('Please fill all fields');
             return;
         }
-        // Set the user state. The useEffect in App.tsx will handle the redirect.
-        register({ name, mobile, password });
+        const errorMessage = await register({ name, mobile, password });
+        if (errorMessage) {
+            setError(errorMessage);
+        }
+        // Successful registration will trigger a redirect via useEffect in App.tsx
     };
 
     return (
