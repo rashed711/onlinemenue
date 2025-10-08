@@ -8,7 +8,8 @@ import { ProfilePage } from './components/profile/ProfilePage';
 import { AdminPage } from './components/admin/AdminPage';
 import { SocialPage } from './components/SocialPage';
 import type { Product, CartItem, Language, Theme, User, Order, OrderStatus, UserRole, Promotion, Permission, Category, Tag, RestaurantInfo, OrderStatusColumn } from './types';
-import { products as initialProducts, restaurantInfo as initialRestaurantInfo, users as initialUsers, promotions as initialPromotions, initialCategories, initialTags } from './data/mockData';
+import { USER_ROLES } from './types';
+import { products as initialProducts, restaurantInfo as initialRestaurantInfo, promotions as initialPromotions, initialCategories, initialTags } from './data/mockData';
 import { ToastNotification } from './components/ToastNotification';
 import { useTranslations } from './i18n/translations';
 import { usePersistentState } from './hooks/usePersistentState';
@@ -17,6 +18,7 @@ import { calculateTotal } from './utils/helpers';
 import { TopProgressBar } from './components/TopProgressBar';
 import { ForgotPasswordPage } from './components/auth/ForgotPasswordPage';
 import { ChangePasswordModal } from './components/profile/ChangePasswordModal';
+import { API_BASE_URL } from './utils/config';
 
 
 // Subscribes to the browser's hashchange event.
@@ -46,17 +48,15 @@ const App: React.FC = () => {
   const [tags, setTags] = usePersistentState<Tag[]>('restaurant_tags', initialTags);
   const [promotions, setPromotions] = usePersistentState<Promotion[]>('restaurant_promotions', initialPromotions);
   const [cartItems, setCartItems] = usePersistentState<CartItem[]>('restaurant_cart', []);
-  const [users, setUsers] = usePersistentState<User[]>('restaurant_users', initialUsers);
+  const [users, setUsers] = usePersistentState<User[]>('restaurant_users', []);
   const [orders, setOrders] = usePersistentState<Order[]>('restaurant_orders', []);
   const [rolePermissions, setRolePermissions] = usePersistentState<Record<UserRole, Permission[]>>('restaurant_role_permissions', initialRolePermissions);
   const [restaurantInfo, setRestaurantInfo] = usePersistentState<RestaurantInfo>('restaurant_info', initialRestaurantInfo);
 
 
   // Auth State
-  const [currentUser, setCurrentUser] = useState<User | null>(() => {
-      const savedUser = sessionStorage.getItem('restaurant_currentUser');
-      return savedUser ? JSON.parse(savedUser) : null;
-  });
+  const [currentUser, setCurrentUser] = useState<User | null>(null);
+
 
   // Routing State
   const hash = useSyncExternalStore(subscribe, getSnapshot, () => '');
@@ -168,11 +168,70 @@ const App: React.FC = () => {
   }, [setRestaurantInfo]);
 
   // Auth Callbacks
-  const login = useCallback((user: User) => setCurrentUser(user), []);
+  const login = useCallback(async (mobile: string, password: string): Promise<string | null> => {
+    try {
+        const response = await fetch(`${API_BASE_URL}login.php`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ mobile, password })
+        });
+
+        const result = await response.json();
+
+        if (!response.ok) {
+            return result.error || t.invalidCredentials;
+        }
+
+        const dbUser = result;
+        
+        // With the updated PHP, the role comes directly in the `role` field.
+        const mappedRole: UserRole = USER_ROLES.includes(dbUser.role as UserRole)
+            ? dbUser.role as UserRole
+            : 'customer'; // Default to customer for any unknown role
+        
+        let profilePictureUrl = '';
+        if (dbUser.profile_picture && dbUser.profile_picture.trim() !== '') {
+            // The image path from the DB is relative to the API base URL.
+            profilePictureUrl = `${API_BASE_URL}${dbUser.profile_picture}`;
+        } else {
+            // Fallback for users without a profile picture
+            const firstLetter = dbUser.name ? dbUser.name.charAt(0).toUpperCase() : 'U';
+            profilePictureUrl = `https://placehold.co/512x512/60a5fa/white?text=${firstLetter}`;
+        }
+
+        const frontendUser: User = {
+            id: Number(dbUser.id),
+            name: dbUser.name,
+            mobile: dbUser.mobile,
+            password: '', // Never store raw password in state
+            role: mappedRole,
+            profilePicture: profilePictureUrl,
+        };
+        
+        setCurrentUser(frontendUser);
+
+        // Update the local users array if needed (optional)
+        setUsers(prevUsers => {
+            const userExists = prevUsers.some(u => u.id === frontendUser.id);
+            if (userExists) {
+                return prevUsers.map(u => u.id === frontendUser.id ? { ...u, ...frontendUser, password: u.password } : u);
+            } else {
+                return [...prevUsers, { ...frontendUser, password: 'password' }];
+            }
+        });
+
+        return null; // Success
+    } catch (error) {
+        console.error('Login error:', error);
+        return t.invalidCredentials;
+    }
+  }, [setCurrentUser, setUsers, t.invalidCredentials]);
+
   const logout = useCallback(() => {
     setCurrentUser(null);
     window.location.hash = '#/'; // Redirect to home page on logout
   }, []);
+
   const register = useCallback((newUser: Omit<User, 'id' | 'role' | 'profilePicture'>) => {
     setUsers(prev => {
       const newId = prev.length > 0 ? Math.max(...prev.map(u => u.id)) + 1 : 1;
@@ -183,24 +242,72 @@ const App: React.FC = () => {
           role: 'customer',
           profilePicture: `https://placehold.co/512x512/60a5fa/white?text=${firstLetter}`
       };
-      login(userWithId);
+      setCurrentUser(userWithId); // Log in the new user
       return [...prev, userWithId];
     });
-  }, [login, setUsers]);
+  }, [setCurrentUser, setUsers]);
   
-  const updateUserProfile = useCallback((userId: number, updates: { name?: string; profilePicture?: string }) => {
-    let updatedUser: User | null = null;
-    setUsers(prev => prev.map(u => {
-        if (u.id === userId) {
-            updatedUser = { ...u, ...updates };
-            return updatedUser;
+  const updateUserProfile = useCallback(async (userId: number, updates: { name?: string; profilePicture?: string }) => {
+    if (updates.profilePicture && updates.profilePicture.startsWith('data:image')) {
+        try {
+            const response = await fetch(updates.profilePicture);
+            const blob = await response.blob();
+            
+            const formData = new FormData();
+            formData.append('image', blob, 'profile.png');
+            formData.append('type', 'users');
+            formData.append('userId', userId.toString());
+
+            const uploadResponse = await fetch(`${API_BASE_URL}upload_image.php`, {
+                method: 'POST',
+                body: formData,
+            });
+
+            if (!uploadResponse.ok) {
+                const errorText = await uploadResponse.text();
+                throw new Error(`Image upload failed: ${errorText}`);
+            }
+
+            const result = await uploadResponse.json();
+            if (result.success && result.url) {
+                const newProfilePictureUrl = `${API_BASE_URL}${result.url}`;
+                
+                let updatedUser: User | null = null;
+                setUsers(prev => prev.map(u => {
+                    if (u.id === userId) {
+                        updatedUser = { ...u, profilePicture: newProfilePictureUrl, ...(updates.name && { name: updates.name }) };
+                        return updatedUser;
+                    }
+                    return u;
+                }));
+                if (currentUser?.id === userId && updatedUser) {
+                    setCurrentUser(updatedUser);
+                }
+                showToast(t.profileUpdatedSuccess);
+
+            } else {
+                throw new Error(result.error || 'Failed to get URL from server');
+            }
+        } catch (error) {
+            console.error(error);
+            showToast('Failed to update profile picture.');
         }
-        return u;
-    }));
-    if (currentUser?.id === userId && updatedUser) {
-        setCurrentUser(updatedUser);
+    } else if (updates.name) {
+        // Here you would add an API call to update the name
+        // For now, it just updates the local state
+        let updatedUser: User | null = null;
+        setUsers(prev => prev.map(u => {
+            if (u.id === userId) {
+                updatedUser = { ...u, name: updates.name };
+                return updatedUser;
+            }
+            return u;
+        }));
+        if (currentUser?.id === userId && updatedUser) {
+            setCurrentUser(updatedUser);
+        }
+        showToast(t.profileUpdatedSuccess);
     }
-    showToast(t.profileUpdatedSuccess);
   }, [setUsers, currentUser, setCurrentUser, showToast, t.profileUpdatedSuccess]);
 
   const updateUserPassword = useCallback((mobile: string, newPassword: string): boolean => {
@@ -521,7 +628,7 @@ const App: React.FC = () => {
   // Router
   const renderContent = () => {
     if (displayedRoute.startsWith('#/login')) {
-      return currentUser ? null : <LoginPage language={language} users={users} login={login} />;
+      return currentUser ? null : <LoginPage language={language} login={login} />;
     }
     if (displayedRoute.startsWith('#/register')) {
       return currentUser ? null : <RegisterPage language={language} register={register} />;

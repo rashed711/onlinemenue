@@ -41,12 +41,6 @@ export const initialTags: Tag[] = [
   { id: 'spicy', name: { en: 'Spicy', ar: 'حار' } },
 ];
 
-export const users: User[] = [
-    { id: 1, name: 'Admin', mobile: 'admin', password: 'password', role: 'superAdmin', profilePicture: 'https://placehold.co/512x512/f59e0b/white?text=A' },
-    { id: 2, name: 'Ali Ahmed', mobile: '0501234567', password: 'password123', role: 'customer', profilePicture: 'https://placehold.co/512x512/34d399/white?text=A' },
-    { id: 3, name: 'Fatima Zahra', mobile: '0557654321', password: 'password123', role: 'customer', profilePicture: 'https://placehold.co/512x512/6366f1/white?text=F' },
-];
-
 export const products: Product[] = [
   {
     id: 1,

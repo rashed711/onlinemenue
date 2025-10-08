@@ -87,6 +87,7 @@ export interface RestaurantInfo {
 
 // New Types for Users and Orders
 export type UserRole = 'superAdmin' | 'admin' | 'employee' | 'waiter' | 'waiterSupervisor' | 'restaurantStaff' | 'delivery' | 'driver' | 'customer';
+export const USER_ROLES: UserRole[] = ['superAdmin', 'admin', 'employee', 'waiter', 'waiterSupervisor', 'restaurantStaff', 'delivery', 'driver', 'customer'];
 
 export interface User {
   id: number;

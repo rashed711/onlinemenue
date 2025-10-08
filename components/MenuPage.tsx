@@ -1,3 +1,5 @@
+
+
 import React, { useState, useMemo, useCallback } from 'react';
 import type { User, Order, Language, Theme, Product, CartItem, OrderStatus, Promotion, OrderType, Category, Tag, RestaurantInfo } from '../types';
 import { Header } from './Header';
@@ -55,27 +57,53 @@ export const MenuPage: React.FC<MenuPageProps> = (props) => {
     const [selectedTags, setSelectedTags] = useState<string[]>([]);
 
     const generateReceiptImage = useCallback((order: Order): Promise<string> => {
-      return new Promise((resolve) => {
+      return new Promise(async (resolve) => {
         const canvas = document.createElement('canvas');
         const ctx = canvas.getContext('2d');
         if (!ctx) return resolve('');
-
+        
         const dpi = window.devicePixelRatio || 1;
-        const padding = 25 * dpi;
-        const lineHeight = 28 * dpi;
-        const itemLineHeight = 24 * dpi;
         const fontName = language === 'ar' ? 'Cairo' : 'sans-serif';
+
+        // Load fonts before drawing to ensure RTL characters are rendered correctly
+        if (language === 'ar') {
+            try {
+                const fontPromises = [
+                    document.fonts.load(`bold ${16 * dpi}px ${fontName}`),
+                    document.fonts.load(`${16 * dpi}px ${fontName}`),
+                    document.fonts.load(`bold ${22 * dpi}px ${fontName}`),
+                    document.fonts.load(`bold ${24 * dpi}px ${fontName}`),
+                    document.fonts.load(`${14 * dpi}px ${fontName}`),
+                ];
+                await Promise.all(fontPromises);
+            } catch (e) {
+                console.error("Failed to load Cairo font for receipt:", e);
+            }
+        }
+
+        if (language === 'ar') {
+            ctx.direction = 'rtl';
+        }
+
+        const padding = 25 * dpi;
+        const headerLineHeight = 32 * dpi;
+        const bodyLineHeight = 30 * dpi;
+        const itemLineHeight = 26 * dpi;
+
         const font = `${16 * dpi}px ${fontName}`;
         const fontBold = `bold ${16 * dpi}px ${fontName}`;
-        const fontLarge = `bold ${20 * dpi}px ${fontName}`;
-        const fontSmall = `${13 * dpi}px ${fontName}`;
-        const logoSize = 60 * dpi;
+        const fontLargeBold = `bold ${22 * dpi}px ${fontName}`;
+        const fontHeader = `bold ${24 * dpi}px ${fontName}`;
+        const fontSmall = `${14 * dpi}px ${fontName}`;
+
+        const logoSize = 70 * dpi;
         const canvasWidth = 420 * dpi;
-        
+
         const getWrappedLines = (context: CanvasRenderingContext2D, text: string, maxWidth: number): string[] => {
             const words = text.split(' ');
+            if (words.length === 0) return [];
             const lines = [];
-            let currentLine = words[0] || '';
+            let currentLine = words[0];
 
             for (let i = 1; i < words.length; i++) {
                 const word = words[i];
@@ -91,33 +119,58 @@ export const MenuPage: React.FC<MenuPageProps> = (props) => {
             return lines;
         }
 
-        // Pre-calculate canvas height
-        let canvasHeight = padding * 2 + logoSize + lineHeight * 6;
-        ctx.font = font; // Set font for measurement
-        if (order.customer.address) {
-            const addressText = `${t.address}: ${order.customer.address}`;
-            const addressLines = getWrappedLines(ctx, addressText, canvasWidth - padding * 2);
-            canvasHeight += addressLines.length * (itemLineHeight * 1.2);
+        const detailsText = (label: string, value: string | undefined) => {
+            if (!value) return '';
+            return `${label}: ${value}`;
         }
+        
+        let preliminaryHeight = padding * 2;
+        preliminaryHeight += logoSize + headerLineHeight + (bodyLineHeight * 1.5);
+        
+        ctx.font = font;
+        let orderDetailsHeight = bodyLineHeight * 3;
+        
+        if (order.orderType === 'Delivery') {
+            orderDetailsHeight += bodyLineHeight * 2;
+             if (order.customer.address) {
+                const addressText = detailsText(t.address, order.customer.address);
+                const addressLines = getWrappedLines(ctx, addressText, canvasWidth - padding * 2);
+                orderDetailsHeight += addressLines.length * bodyLineHeight;
+            }
+        } else if (order.tableNumber) {
+            orderDetailsHeight += bodyLineHeight;
+        }
+        preliminaryHeight += orderDetailsHeight;
+        preliminaryHeight += bodyLineHeight * 2;
 
-        const textMaxWidth = canvasWidth - padding * 2 - (80 * dpi);
+        const itemTextMaxWidth = canvasWidth - padding * 2 - (100 * dpi);
         order.items.forEach(item => {
             const itemText = `${item.quantity} x ${item.product.name[language]}`;
-            const lines = getWrappedLines(ctx, itemText, textMaxWidth);
-            canvasHeight += lines.length * itemLineHeight;
+            const lines = getWrappedLines(ctx, itemText, itemTextMaxWidth);
+            preliminaryHeight += lines.length * itemLineHeight;
             if (item.options) {
-                canvasHeight += Object.keys(item.options).length * (itemLineHeight * 0.9);
+                 ctx.font = fontSmall;
+                 Object.entries(item.options).forEach(([optEn, valEn]) => {
+                     const option = item.product.options?.find(o => o.name.en === optEn);
+                     const value = option?.values.find(v => v.name.en === valEn);
+                     if(option && value) {
+                         preliminaryHeight += itemLineHeight;
+                     }
+                 });
+                 ctx.font = font;
             }
+            preliminaryHeight += itemLineHeight * 0.2;
         });
-        canvasHeight += lineHeight * 5; // Footer and buffer
+        preliminaryHeight += bodyLineHeight * 1.5;
+        preliminaryHeight += headerLineHeight * 1.5;
 
         canvas.width = canvasWidth;
-        canvas.height = canvasHeight;
-
+        canvas.height = preliminaryHeight;
+        
         ctx.fillStyle = 'white';
         ctx.fillRect(0, 0, canvas.width, canvas.height);
         ctx.fillStyle = '#1f2937';
-        
+
         const isRtl = language === 'ar';
         const mainX = isRtl ? canvas.width - padding : padding;
         const secondaryX = isRtl ? padding : canvas.width - padding;
@@ -135,61 +188,75 @@ export const MenuPage: React.FC<MenuPageProps> = (props) => {
             if (logo.complete && logo.naturalHeight !== 0) {
               ctx.drawImage(logo, centerX - logoSize / 2, y, logoSize, logoSize);
             }
-            y += logoSize + lineHeight;
-            ctx.font = fontLarge;
+            y += logoSize + (headerLineHeight * 0.5);
+            ctx.font = fontHeader;
             ctx.textAlign = 'center';
             ctx.fillText(restaurantInfo.name[language], centerX, y);
-            y += lineHeight * 1.5;
+            y += headerLineHeight * 1.5;
 
             ctx.textAlign = mainAlign;
             ctx.font = font;
+            
             ctx.fillText(`${t.orderId}: ${order.id}`, mainX, y);
-            y += lineHeight;
+            y += bodyLineHeight;
             ctx.fillText(`${t.date}: ${formatDateTime(order.timestamp)}`, mainX, y);
-            y += lineHeight;
+            y += bodyLineHeight;
             ctx.fillText(`${t.orderType}: ${t[order.orderType === 'Dine-in' ? 'dineIn' : 'delivery']}`, mainX, y);
-            if(order.tableNumber){
-                 y += lineHeight;
-                 ctx.fillText(`${t.tableNumber}: ${order.tableNumber}`, mainX, y);
+            y += bodyLineHeight;
+
+            if (order.orderType === 'Delivery') {
+                const customerNameText = `${t.name}: ${order.customer.name || 'Guest'} (${order.customer.mobile})`;
+                ctx.fillText(customerNameText, mainX, y);
+                y += bodyLineHeight;
+
+                const mobileText = `${t.mobileNumber}: ${order.customer.mobile}`;
+                ctx.fillText(mobileText, mainX, y);
+                y += bodyLineHeight;
+
+                if (order.customer.address) {
+                    const addressText = `${t.address}: ${order.customer.address}`;
+                    const addressLines = getWrappedLines(ctx, addressText, canvasWidth - padding * 2);
+                    addressLines.forEach(line => {
+                        ctx.fillText(line, mainX, y);
+                        y += bodyLineHeight;
+                    });
+                }
+            } else if (order.tableNumber) {
+                ctx.fillText(`${t.tableNumber}: ${order.tableNumber}`, mainX, y);
+                y += bodyLineHeight;
             }
-            if (order.customer.address) {
-                const addressText = `${t.address}: ${order.customer.address}`;
-                const addressLines = getWrappedLines(ctx, addressText, canvasWidth - padding * 2);
-                addressLines.forEach(line => {
-                    y += itemLineHeight * 1.2;
-                    ctx.fillText(line, mainX, y);
-                });
-            }
-            y += lineHeight * 1.5;
+
+            y += bodyLineHeight * 0.5;
             
             ctx.strokeStyle = '#e5e7eb';
-            ctx.lineWidth = 1 * dpi;
+            ctx.lineWidth = 2 * dpi;
             ctx.beginPath();
             ctx.moveTo(padding, y);
             ctx.lineTo(canvas.width - padding, y);
             ctx.stroke();
-            y += lineHeight;
+            y += bodyLineHeight;
 
             ctx.font = fontBold;
+            ctx.textAlign = mainAlign;
             ctx.fillText(t.item, mainX, y);
             ctx.textAlign = secondaryAlign;
             ctx.fillText(t.price, secondaryX, y);
-            y += itemLineHeight * 1.5;
+            y += bodyLineHeight * 1.2;
             
             ctx.font = font;
             order.items.forEach(item => {
                 const itemTotal = calculateTotal([item]);
                 const itemText = `${item.quantity} x ${item.product.name[language]}`;
-                const lines = getWrappedLines(ctx, itemText, textMaxWidth);
+                const lines = getWrappedLines(ctx, itemText, itemTextMaxWidth);
                 
                 ctx.textAlign = secondaryAlign;
                 ctx.fillText(itemTotal.toFixed(2), secondaryX, y);
-
+                
                 ctx.textAlign = mainAlign;
-                lines.forEach((line, index) => {
-                    ctx.fillText(line, mainX, y + (index * itemLineHeight));
+                lines.forEach((line) => {
+                    ctx.fillText(line, mainX, y);
+                    y += itemLineHeight;
                 });
-                y += lines.length * itemLineHeight;
 
                 if (item.options && item.product.options) {
                     ctx.fillStyle = '#6b7280';
@@ -198,32 +265,44 @@ export const MenuPage: React.FC<MenuPageProps> = (props) => {
                        const option = item.product.options?.find(o => o.name.en === optEn);
                        const value = option?.values.find(v => v.name.en === valEn);
                        if(option && value) {
+                           const optionText = `- ${value.name[language]}`;
                            ctx.textAlign = mainAlign;
-                           ctx.fillText(`  - ${value.name[language]}`, mainX, y);
-                           y += itemLineHeight * 0.9;
+                           ctx.fillText(optionText, mainX + (isRtl ? -15 * dpi : 15 * dpi), y);
+                           y += itemLineHeight;
                        }
                     });
                     ctx.font = font;
                     ctx.fillStyle = '#1f2937';
                 }
-                 y += itemLineHeight * 0.3; // Padding after each item
+                 y += itemLineHeight * 0.2;
             });
+            
+            y += bodyLineHeight * 0.5;
             
             ctx.beginPath();
             ctx.moveTo(padding, y);
             ctx.lineTo(canvas.width - padding, y);
             ctx.stroke();
-            y += lineHeight;
+            y += headerLineHeight * 1.2;
 
-            ctx.font = fontLarge;
+            ctx.font = fontLargeBold;
             ctx.textAlign = mainAlign;
             ctx.fillText(`${t.total}:`, mainX, y);
             ctx.textAlign = secondaryAlign;
-            ctx.fillText(`${order.total.toFixed(2)} ${t.currency}`, secondaryX, y);
+            const totalText = isRtl ? `${t.currency} ${order.total.toFixed(2)}` : `${order.total.toFixed(2)} ${t.currency}`;
+            ctx.fillText(totalText, secondaryX, y);
             resolve(canvas.toDataURL('image/png'));
         };
-        logo.onload = drawContent;
-        logo.onerror = drawContent; 
+        
+        if (logo.complete) {
+            drawContent();
+        } else {
+            logo.onload = drawContent;
+            logo.onerror = () => {
+                console.error("Failed to load logo image for receipt.");
+                drawContent();
+            };
+        }
       });
     }, [language, t, restaurantInfo]);
 

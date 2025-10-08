@@ -1,33 +1,38 @@
 import React, { useState } from 'react';
-import type { Language, User } from '../../types';
+import type { Language } from '../../types';
 import { useTranslations } from '../../i18n/translations';
 
 interface LoginPageProps {
     language: Language;
-    users: User[];
-    login: (user: User) => void;
+    login: (mobile: string, password: string) => Promise<string | null>;
 }
 
-export const LoginPage: React.FC<LoginPageProps> = ({ language, users, login }) => {
+export const LoginPage: React.FC<LoginPageProps> = ({ language, login }) => {
     const t = useTranslations(language);
     const [mobile, setMobile] = useState('admin');
     const [password, setPassword] = useState('password');
     const [error, setError] = useState('');
+    const [isLoading, setIsLoading] = useState(false);
 
     const handleNav = (e: React.MouseEvent<HTMLAnchorElement>, path: string) => {
         e.preventDefault();
         window.location.hash = path;
     };
 
-    const handleLogin = (e: React.FormEvent) => {
+    const handleLogin = async (e: React.FormEvent) => {
         e.preventDefault();
-        const user = users.find(u => u.mobile === mobile && u.password === password);
-        
-        if (user) {
-            login(user); // Set the current user state. The useEffect in App.tsx will handle the redirect.
-            setError('');
-        } else {
-            setError(t.invalidCredentials);
+        setError('');
+        setIsLoading(true);
+        try {
+            const errorMessage = await login(mobile, password);
+            if (errorMessage) {
+                setError(errorMessage);
+            }
+            // Successful login will trigger a redirect via useEffect in App.tsx
+        } catch (err) {
+            setError('An unexpected error occurred. Please try again.');
+        } finally {
+            setIsLoading(false);
         }
     };
 
@@ -65,9 +70,10 @@ export const LoginPage: React.FC<LoginPageProps> = ({ language, users, login }) 
                     {error && <p className="text-sm text-red-500 text-center">{error}</p>}
                     <button
                         type="submit"
-                        className="w-full px-5 py-3 text-base font-medium text-center text-white bg-primary-600 rounded-lg hover:bg-primary-700 focus:ring-4 focus:ring-primary-300 dark:focus:ring-primary-800 transition shadow-md hover:shadow-lg transform hover:scale-105"
+                        disabled={isLoading}
+                        className="w-full px-5 py-3 text-base font-medium text-center text-white bg-primary-600 rounded-lg hover:bg-primary-700 focus:ring-4 focus:ring-primary-300 dark:focus:ring-primary-800 transition shadow-md hover:shadow-lg transform hover:scale-105 disabled:bg-primary-400 disabled:cursor-not-allowed"
                     >
-                        {t.login}
+                        {isLoading ? 'Logging in...' : t.login}
                     </button>
                 </form>
                  <div className="flex justify-between items-center text-sm">
