@@ -37,8 +37,8 @@ function getSnapshot() {
 
 /**
  * Resolves a relative image path from the API into a full, usable URL.
- * This handles both old paths (e.g., 'uploads/...') and new paths (e.g., 'api/uploads/...')
- * to ensure backward compatibility with existing data in the database.
+ * The path from the database (e.g., 'uploads/products/image.png') is relative
+ * to the domain root.
  */
 const resolveImageUrl = (path: string | undefined): string => {
   if (!path || path.startsWith('http') || path.startsWith('data:')) {
@@ -47,13 +47,11 @@ const resolveImageUrl = (path: string | undefined): string => {
   
   const domain = new URL(API_BASE_URL).origin; // e.g., 'https://fresco.enjaz.app'
   
-  if (path.startsWith('api/')) {
-    // New path format: construct URL from the domain root.
-    return `${domain}/${path}`;
-  }
+  // The path from the DB is always relative to the domain root now.
+  // e.g., 'uploads/products/xyz.png'
+  const cleanPath = path.startsWith('/') ? path.substring(1) : path;
   
-  // Old path format: construct URL from the API base URL.
-  return `${API_BASE_URL}${path}`;
+  return `${domain}/${cleanPath}`;
 };
 
 
@@ -410,12 +408,11 @@ const App: React.FC = () => {
 
         // Prepare payload for the database (with relative paths)
         const dbPayload: any = { ...finalUpdates };
-        const urlToStrip1 = new URL(API_BASE_URL).origin + '/';
-        const urlToStrip2 = API_BASE_URL;
+        const urlToStrip = new URL(API_BASE_URL).origin + '/';
 
         const stripUrl = (url: string) => {
           if(!url) return url;
-          return url.replace(urlToStrip1, '').replace(urlToStrip2, '');
+          return url.replace(urlToStrip, '');
         }
         
         if (dbPayload.logo) dbPayload.logo = stripUrl(dbPayload.logo);
@@ -859,6 +856,11 @@ const App: React.FC = () => {
             } else {
                 throw new Error(result.error || 'Failed to get image URL');
             }
+        } else if (imageForDb) {
+            // If image is an existing URL, strip the domain to get the relative path for the DB.
+            const domain = new URL(API_BASE_URL).origin + '/';
+            // Strip the base URL to get the relative path (e.g., 'uploads/...')
+            imageForDb = imageForDb.replace(domain, '');
         }
         
         const response = await fetch(`${API_BASE_URL}update_product.php`, {
