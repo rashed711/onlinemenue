@@ -33,6 +33,28 @@ function getSnapshot() {
   return window.location.hash;
 }
 
+/**
+ * Resolves a relative image path from the API into a full, usable URL.
+ * This handles both old paths (e.g., 'uploads/...') and new paths (e.g., 'api/uploads/...')
+ * to ensure backward compatibility with existing data in the database.
+ */
+const resolveImageUrl = (path: string | undefined): string => {
+  if (!path || path.startsWith('http') || path.startsWith('data:')) {
+    return path || '';
+  }
+  
+  const domain = new URL(API_BASE_URL).origin; // e.g., 'https://fresco.enjaz.app'
+  
+  if (path.startsWith('api/')) {
+    // New path format: construct URL from the domain root.
+    return `${domain}/${path}`;
+  }
+  
+  // Old path format: construct URL from the API base URL.
+  return `${API_BASE_URL}${path}`;
+};
+
+
 const App: React.FC = () => {
   // UI State
   const [language, setLanguage] = usePersistentState<Language>('restaurant_language', 'ar');
@@ -110,8 +132,8 @@ const App: React.FC = () => {
             // Process Settings
             if (!settingsResponse.ok) throw new Error('Failed to fetch settings');
             const settingsData = await settingsResponse.json();
-            if (settingsData.logo && !settingsData.logo.startsWith('http')) settingsData.logo = `${API_BASE_URL}${settingsData.logo}`;
-            if (settingsData.heroImage && !settingsData.heroImage.startsWith('http')) settingsData.heroImage = `${API_BASE_URL}${settingsData.heroImage}`;
+            settingsData.logo = resolveImageUrl(settingsData.logo);
+            settingsData.heroImage = resolveImageUrl(settingsData.heroImage);
             setRestaurantInfo(settingsData);
             
             // Process Classifications
@@ -130,7 +152,7 @@ const App: React.FC = () => {
             const productsData = await productsResponse.json();
             const resolvedProducts = (productsData || []).map((p: Product) => ({
                 ...p,
-                image: p.image && !p.image.startsWith('http') ? `${API_BASE_URL}${p.image}` : p.image,
+                image: resolveImageUrl(p.image),
             }));
             setProducts(resolvedProducts);
 
@@ -191,10 +213,8 @@ const App: React.FC = () => {
                 ? dbUser.role as UserRole
                 : 'customer';
 
-            let profilePictureUrl = '';
-            if (dbUser.profile_picture && dbUser.profile_picture.trim() !== '') {
-                profilePictureUrl = `${API_BASE_URL}${dbUser.profile_picture}`;
-            } else {
+            let profilePictureUrl = resolveImageUrl(dbUser.profile_picture);
+            if (!profilePictureUrl) {
                 const firstLetter = dbUser.name ? dbUser.name.charAt(0).toUpperCase() : 'U';
                 profilePictureUrl = `https://placehold.co/512x512/60a5fa/white?text=${firstLetter}`;
             }
@@ -301,7 +321,7 @@ const App: React.FC = () => {
             if (!uploadResponse.ok) throw new Error(`Logo upload failed: ${await uploadResponse.text()}`);
             const result = await uploadResponse.json();
             if (result.success && result.url) {
-            finalUpdates.logo = `${API_BASE_URL}${result.url}`;
+            finalUpdates.logo = resolveImageUrl(result.url);
             } else {
             throw new Error(result.error || 'Failed to get logo URL');
             }
@@ -327,7 +347,7 @@ const App: React.FC = () => {
             if (!uploadResponse.ok) throw new Error(`Hero image upload failed: ${await uploadResponse.text()}`);
             const result = await uploadResponse.json();
             if (result.success && result.url) {
-            finalUpdates.heroImage = `${API_BASE_URL}${result.url}`;
+            finalUpdates.heroImage = resolveImageUrl(result.url);
             } else {
             throw new Error(result.error || 'Failed to get hero image URL');
             }
@@ -339,9 +359,9 @@ const App: React.FC = () => {
         }
 
         const dbPayload: Partial<RestaurantInfo> = { ...finalUpdates };
-        if (dbPayload.logo) dbPayload.logo = dbPayload.logo.replace(API_BASE_URL, '');
-        if (dbPayload.heroImage) dbPayload.heroImage = dbPayload.heroImage.replace(API_BASE_URL, '');
-        
+        if (dbPayload.logo) dbPayload.logo = dbPayload.logo.replace(API_BASE_URL, '').replace(new URL(API_BASE_URL).origin + '/', '');
+        if (dbPayload.heroImage) dbPayload.heroImage = dbPayload.heroImage.replace(API_BASE_URL, '').replace(new URL(API_BASE_URL).origin + '/', '');
+
         const response = await fetch(`${API_BASE_URL}update_settings.php`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -387,10 +407,8 @@ const App: React.FC = () => {
         const matchedRole = USER_ROLES.find(r => r.toLowerCase() === roleFromApi.toLowerCase());
         const mappedRole: UserRole = matchedRole || 'customer';
         
-        let profilePictureUrl = '';
-        if (dbUser.profile_picture && dbUser.profile_picture.trim() !== '') {
-            profilePictureUrl = `${API_BASE_URL}${dbUser.profile_picture}`;
-        } else {
+        let profilePictureUrl = resolveImageUrl(dbUser.profile_picture);
+        if (!profilePictureUrl) {
             const firstLetter = dbUser.name ? dbUser.name.charAt(0).toUpperCase() : 'U';
             profilePictureUrl = `https://placehold.co/512x512/60a5fa/white?text=${firstLetter}`;
         }
@@ -434,10 +452,8 @@ const App: React.FC = () => {
         }
 
         const dbUser = result.user;
-        let profilePictureUrl = '';
-        if (dbUser.profile_picture && dbUser.profile_picture.trim() !== '') {
-            profilePictureUrl = `${API_BASE_URL}${dbUser.profile_picture}`;
-        } else {
+        let profilePictureUrl = resolveImageUrl(dbUser.profile_picture);
+        if (!profilePictureUrl) {
             const firstLetter = dbUser.name ? dbUser.name.charAt(0).toUpperCase() : 'U';
             profilePictureUrl = `https://placehold.co/512x512/60a5fa/white?text=${firstLetter}`;
         }
@@ -495,7 +511,7 @@ const App: React.FC = () => {
             const result = await uploadResponse.json();
             if (result.success && result.url) {
                 relativeImagePath = result.url; // The relative path, e.g., 'uploads/users/1.png'
-                newProfilePictureUrl = `${API_BASE_URL}${result.url}`; // The full URL for UI state update
+                newProfilePictureUrl = resolveImageUrl(result.url); // The full URL for UI state update
             } else {
                 throw new Error(result.error || 'Failed to get URL from server');
             }
@@ -742,9 +758,7 @@ const App: React.FC = () => {
         const newProduct = result.product as Product;
         const resolvedProduct = {
             ...newProduct,
-            image: newProduct.image && !newProduct.image.startsWith('http')
-                ? `${API_BASE_URL}${newProduct.image}`
-                : newProduct.image,
+            image: resolveImageUrl(newProduct.image),
         };
         setProducts(prev => [resolvedProduct, ...prev]);
         showToast(t.productAddedSuccess);
@@ -761,6 +775,7 @@ const App: React.FC = () => {
     setIsProcessing(true);
     try {
         let finalProductData = { ...updatedProduct };
+        let imageForDb = updatedProduct.image;
 
         if (finalProductData.image && finalProductData.image.startsWith('data:image')) {
             const response = await fetch(finalProductData.image);
@@ -773,7 +788,7 @@ const App: React.FC = () => {
             const uploadResponse = await fetch(`${API_BASE_URL}upload_image.php`, { method: 'POST', body: formData });
             const result = await uploadResponse.json();
             if (uploadResponse.ok && result.success && result.url) {
-                finalProductData.image = result.url; // Relative URL
+                imageForDb = result.url; // Relative URL for DB
             } else {
                 throw new Error(result.error || 'Failed to get image URL');
             }
@@ -782,14 +797,14 @@ const App: React.FC = () => {
         const response = await fetch(`${API_BASE_URL}update_product.php`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(finalProductData)
+            body: JSON.stringify({ ...finalProductData, image: imageForDb })
         });
         const result = await response.json();
         if (!response.ok || !result.success) throw new Error(t.productUpdateFailed);
         
         const fullyResolvedProduct = {
-             ...finalProductData,
-             image: finalProductData.image && !finalProductData.image.startsWith('http') ? `${API_BASE_URL}${finalProductData.image}` : finalProductData.image
+             ...updatedProduct, // Use original updatedProduct from form
+             image: resolveImageUrl(imageForDb) // Resolve the potentially new image path
         };
         setProducts(prev => prev.map(p => p.id === updatedProduct.id ? fullyResolvedProduct : p));
         showToast(t.productUpdatedSuccess);
@@ -914,10 +929,8 @@ const App: React.FC = () => {
             ? dbUser.role as UserRole
             : 'customer';
 
-        let profilePictureUrl = '';
-        if (dbUser.profile_picture && dbUser.profile_picture.trim() !== '') {
-            profilePictureUrl = `${API_BASE_URL}${dbUser.profile_picture}`;
-        } else {
+        let profilePictureUrl = resolveImageUrl(dbUser.profile_picture);
+        if (!profilePictureUrl) {
             const firstLetter = dbUser.name ? dbUser.name.charAt(0).toUpperCase() : 'U';
             profilePictureUrl = `https://placehold.co/512x512/60a5fa/white?text=${firstLetter}`;
         }
