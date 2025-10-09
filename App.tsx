@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useMemo, useCallback, useSyncExternalStore } from 'react';
 import { MenuPage } from './components/MenuPage';
 import { LoginPage } from './components/auth/LoginPage';
@@ -302,15 +301,14 @@ const App: React.FC = () => {
   const toggleLanguage = useCallback(() => setLanguage(prev => prev === 'en' ? 'ar' : 'en'), [setLanguage]);
   const clearCart = useCallback(() => setCartItems([]), [setCartItems]);
   
-    const updateRestaurantInfo = useCallback(async (updatedInfo: Partial<RestaurantInfo>) => {
+  const updateRestaurantInfo = useCallback(async (updatedInfo: Partial<RestaurantInfo>) => {
     if (!restaurantInfo) return;
     setIsProcessing(true);
     try {
         let finalUpdates = { ...updatedInfo };
-        let showSuccessToast = true;
 
         // Helper to upload a single image
-        const uploadImage = async (base64Image: string, type: 'branding' | 'icons', imageField: string): Promise<string | null> => {
+        const uploadImage = async (base64Image: string, type: string, imageField: string): Promise<string | null> => {
             if (!base64Image || !base64Image.startsWith('data:image')) {
                 return null;
             }
@@ -346,12 +344,12 @@ const App: React.FC = () => {
             if (newUrl) finalUpdates.heroImage = newUrl === 'error' ? restaurantInfo.heroImage : newUrl;
         }
 
-        // Handle arrays with icons
-        const processArrayWithIcons = async <T extends { icon: string }>(items: T[] | undefined): Promise<T[] | undefined> => {
+        // Generic helper for arrays with images/icons
+        const processArrayWithImages = async <T extends { icon: string }>(items: T[] | undefined, type: string): Promise<T[] | undefined> => {
             if (!items) return undefined;
             return Promise.all(
                 items.map(async (item, index) => {
-                    const newIconUrl = await uploadImage(item.icon, 'icons', `item_${index}_icon`);
+                    const newIconUrl = await uploadImage(item.icon, type, `item_${index}_icon`);
                     if (newIconUrl && newIconUrl !== 'error') {
                         return { ...item, icon: newIconUrl };
                     }
@@ -360,8 +358,8 @@ const App: React.FC = () => {
             );
         };
         
-        finalUpdates.socialLinks = (await processArrayWithIcons(updatedInfo.socialLinks)) || finalUpdates.socialLinks;
-        finalUpdates.onlinePaymentMethods = (await processArrayWithIcons(updatedInfo.onlinePaymentMethods)) || finalUpdates.onlinePaymentMethods;
+        finalUpdates.socialLinks = (await processArrayWithImages(updatedInfo.socialLinks, 'icons')) || finalUpdates.socialLinks;
+        finalUpdates.onlinePaymentMethods = (await processArrayWithImages(updatedInfo.onlinePaymentMethods, 'payment')) || finalUpdates.onlinePaymentMethods;
 
 
         // Prepare payload for the database (with relative paths)
@@ -369,7 +367,10 @@ const App: React.FC = () => {
         const urlToStrip1 = new URL(API_BASE_URL).origin + '/';
         const urlToStrip2 = API_BASE_URL;
 
-        const stripUrl = (url: string) => url.replace(urlToStrip1, '').replace(urlToStrip2, '');
+        const stripUrl = (url: string) => {
+          if(!url) return url;
+          return url.replace(urlToStrip1, '').replace(urlToStrip2, '');
+        }
         
         if (dbPayload.logo) dbPayload.logo = stripUrl(dbPayload.logo);
         if (dbPayload.heroImage) dbPayload.heroImage = stripUrl(dbPayload.heroImage);

@@ -9,7 +9,7 @@ import { OnlinePaymentMethodEditModal } from './OnlinePaymentMethodEditModal';
 interface SettingsPageProps {
     language: Language;
     restaurantInfo: RestaurantInfo;
-    updateRestaurantInfo: (updatedInfo: Partial<RestaurantInfo>) => void;
+    updateRestaurantInfo: (updatedInfo: Partial<RestaurantInfo>) => Promise<void>;
     allOrders: Order[];
     showToast: (message: string) => void;
     hasPermission: (permission: Permission) => boolean;
@@ -117,25 +117,23 @@ export const SettingsPage: React.FC<SettingsPageProps> = (props) => {
         setLocalInfo(prev => ({ ...prev, defaultPage: e.target.value as 'menu' | 'social' }));
     };
 
-    const handleToggleVisibility = (id: number, type: 'social' | 'payment') => {
+    const handleToggleVisibility = async (id: number, type: 'social' | 'payment') => {
         const key = type === 'social' ? 'socialLinks' : 'onlinePaymentMethods';
-        setLocalInfo(prev => ({
-            ...prev,
-            [key]: prev[key].map(item =>
-                item.id === id ? { ...item, isVisible: !item.isVisible } : item
-            )
-        }));
+        const updatedItems = restaurantInfo[key].map(item =>
+            item.id === id ? { ...item, isVisible: !item.isVisible } : item
+        );
+        await updateRestaurantInfo({ [key]: updatedItems });
     };
     
     // Social Links Handlers
-    const handleDeleteLink = (linkId: number) => {
+    const handleDeleteLink = async (linkId: number) => {
         if (window.confirm(t.confirmDeleteLink)) {
              const updatedLinks = restaurantInfo.socialLinks.filter(link => link.id !== linkId);
-             updateRestaurantInfo({ socialLinks: updatedLinks });
+             await updateRestaurantInfo({ socialLinks: updatedLinks });
         }
     };
 
-    const handleSaveLink = (linkData: SocialLink | Omit<SocialLink, 'id'>) => {
+    const handleSaveLink = async (linkData: SocialLink | Omit<SocialLink, 'id'>) => {
         let updatedLinks: SocialLink[];
         if ('id' in linkData) {
             updatedLinks = restaurantInfo.socialLinks.map(link => link.id === linkData.id ? linkData : link);
@@ -146,23 +144,23 @@ export const SettingsPage: React.FC<SettingsPageProps> = (props) => {
             };
             updatedLinks = [...restaurantInfo.socialLinks, newLink];
         }
-        updateRestaurantInfo({ socialLinks: updatedLinks });
+        await updateRestaurantInfo({ socialLinks: updatedLinks });
         setEditingLink(null);
     };
     
     // Order Status Handlers
-    const handleDeleteStatus = (columnId: string) => {
+    const handleDeleteStatus = async (columnId: string) => {
         if (allOrders.some(order => order.status === columnId)) {
             showToast(t.deleteStatusError);
             return;
         }
         if (window.confirm(t.confirmDeleteStatus)) {
             const updatedColumns = restaurantInfo.orderStatusColumns.filter(c => c.id !== columnId);
-            updateRestaurantInfo({ orderStatusColumns: updatedColumns });
+            await updateRestaurantInfo({ orderStatusColumns: updatedColumns });
         }
     };
 
-    const handleSaveStatus = (data: OrderStatusColumn) => {
+    const handleSaveStatus = async (data: OrderStatusColumn) => {
         let updatedColumns: OrderStatusColumn[];
         const isEditing = restaurantInfo.orderStatusColumns.some(c => c.id === data.id);
         if (isEditing) {
@@ -170,31 +168,31 @@ export const SettingsPage: React.FC<SettingsPageProps> = (props) => {
         } else {
             updatedColumns = [...restaurantInfo.orderStatusColumns, data];
         }
-        updateRestaurantInfo({ orderStatusColumns: updatedColumns });
+        await updateRestaurantInfo({ orderStatusColumns: updatedColumns });
         setEditingOrderStatus(null);
     };
     
     // Online Payment Method Handlers
-    const handleSavePaymentMethod = (methodData: OnlinePaymentMethod | Omit<OnlinePaymentMethod, 'id'>) => {
+    const handleSavePaymentMethod = async (methodData: OnlinePaymentMethod | Omit<OnlinePaymentMethod, 'id'>) => {
         let updatedMethods: OnlinePaymentMethod[];
         if ('id' in methodData) {
-            updatedMethods = restaurantInfo.onlinePaymentMethods.map(method => method.id === methodData.id ? methodData : method);
+            updatedMethods = (restaurantInfo.onlinePaymentMethods || []).map(method => method.id === methodData.id ? methodData : method);
         } else {
             const newMethod: OnlinePaymentMethod = {
                 ...methodData,
-                id: restaurantInfo.onlinePaymentMethods.length > 0 ? Math.max(...restaurantInfo.onlinePaymentMethods.map(m => m.id)) + 1 : 1,
+                id: (restaurantInfo.onlinePaymentMethods || []).length > 0 ? Math.max(...restaurantInfo.onlinePaymentMethods.map(m => m.id)) + 1 : 1,
             };
             updatedMethods = [...(restaurantInfo.onlinePaymentMethods || []), newMethod];
         }
-        updateRestaurantInfo({ onlinePaymentMethods: updatedMethods });
+        await updateRestaurantInfo({ onlinePaymentMethods: updatedMethods });
         setEditingPaymentMethod(null);
     };
 
 
-    const handleDeletePaymentMethod = (methodId: number) => {
+    const handleDeletePaymentMethod = async (methodId: number) => {
         if (window.confirm(t.confirmDeletePaymentMethod)) {
             const updatedMethods = restaurantInfo.onlinePaymentMethods.filter(method => method.id !== methodId);
-            updateRestaurantInfo({ onlinePaymentMethods: updatedMethods });
+            await updateRestaurantInfo({ onlinePaymentMethods: updatedMethods });
         }
     };
 
@@ -320,7 +318,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = (props) => {
                             }
                         >
                              <ul className="divide-y divide-gray-200 dark:divide-gray-700 -m-4 sm:-m-6">
-                                {(restaurantInfo.onlinePaymentMethods || []).length > 0 ? restaurantInfo.onlinePaymentMethods.map(method => (
+                                {(restaurantInfo.onlinePaymentMethods || []).length > 0 ? (restaurantInfo.onlinePaymentMethods || []).map(method => (
                                     <li key={method.id} className="p-3 flex justify-between items-center gap-4 hover:bg-slate-50 dark:hover:bg-gray-700/50">
                                         <div className="flex items-center gap-4 flex-grow">
                                             <img src={method.icon} alt={`${method.name[language]} icon`} className="w-8 h-8 object-contain flex-shrink-0" />
@@ -358,7 +356,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = (props) => {
                         }
                     >
                          <ul className="divide-y divide-gray-200 dark:divide-gray-700 -m-4 sm:-m-6">
-                            {restaurantInfo.socialLinks.length > 0 ? restaurantInfo.socialLinks.map(link => (
+                            {(restaurantInfo.socialLinks || []).length > 0 ? (restaurantInfo.socialLinks || []).map(link => (
                                 <li key={link.id} className="p-3 flex flex-col sm:flex-row justify-between sm:items-center gap-4 hover:bg-slate-50 dark:hover:bg-gray-700/50">
                                     <div className="flex items-center gap-4 flex-grow">
                                         <img src={link.icon} alt={`${link.name} icon`} className="w-8 h-8 object-contain flex-shrink-0" />
@@ -395,7 +393,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = (props) => {
                         }
                      >
                         <ul className="divide-y divide-gray-200 dark:divide-gray-700 -m-4 sm:-m-6">
-                            {restaurantInfo.orderStatusColumns.map(status => (
+                            {(restaurantInfo.orderStatusColumns || []).map(status => (
                                 <li key={status.id} className="p-3 flex justify-between items-center gap-4 hover:bg-slate-50 dark:hover:bg-gray-700/50">
                                     <div className="flex items-center gap-3">
                                         <div className={`w-4 h-4 rounded-full bg-${status.color}-500 flex-shrink-0`}></div>
@@ -439,7 +437,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = (props) => {
                     onClose={() => setEditingOrderStatus(null)}
                     onSave={handleSaveStatus}
                     language={language}
-                    existingIds={restaurantInfo.orderStatusColumns.map(c => c.id)}
+                    existingIds={(restaurantInfo.orderStatusColumns || []).map(c => c.id)}
                 />
             )}
 
