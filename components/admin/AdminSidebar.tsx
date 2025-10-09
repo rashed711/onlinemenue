@@ -26,19 +26,19 @@ export const AdminSidebar: React.FC<AdminSidebarProps> = (props) => {
 
     const navItems = {
         operations: [
-            { id: 'orders', label: t.manageOrders, icon: ClipboardListIcon, permission: 'view_orders' as Permission },
-            { id: 'cashier', label: t.cashier, icon: CashRegisterIcon, permission: 'use_cashier_pos' as Permission },
-            { id: 'reports', label: t.reports, icon: ChartBarIcon, permission: 'view_reports' as Permission },
+            { id: 'orders', label: t.manageOrders, icon: ClipboardListIcon, permission: 'view_orders_page' as Permission },
+            { id: 'cashier', label: t.cashier, icon: CashRegisterIcon, permission: 'use_cashier_page' as Permission },
+            { id: 'reports', label: t.reports, icon: ChartBarIcon, permission: 'view_reports_page' as Permission },
         ],
         management: [
-            { id: 'productList', label: t.productList, icon: CollectionIcon, permission: 'manage_menu' as Permission },
-            { id: 'classifications', label: t.classifications, icon: BookmarkAltIcon, permission: 'manage_classifications' as Permission },
-            { id: 'promotions', label: t.managePromotions, icon: TagIcon, permission: 'manage_promotions' as Permission },
+            { id: 'productList', label: t.productList, icon: CollectionIcon, permission: 'view_products_page' as Permission },
+            { id: 'classifications', label: t.classifications, icon: BookmarkAltIcon, permission: 'view_classifications_page' as Permission },
+            { id: 'promotions', label: t.managePromotions, icon: TagIcon, permission: 'view_promotions_page' as Permission },
         ],
         administration: [
-            { id: 'users', label: t.manageUsers, icon: UsersIcon, permission: 'manage_users' as Permission },
+            { id: 'users', label: t.manageUsers, icon: UsersIcon, permission: 'view_users_page' as Permission },
             { id: 'roles', label: t.manageRoles, icon: ShieldCheckIcon, permission: 'manage_roles' as Permission },
-            { id: 'settings', label: t.settings, icon: CogIcon, permission: 'manage_roles' as Permission },
+            { id: 'settings', label: t.settings, icon: CogIcon, permission: 'view_settings_page' as Permission },
         ]
     };
 

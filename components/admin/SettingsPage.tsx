@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import type { Language, Order, OrderStatusColumn, RestaurantInfo, SocialLink } from '../../types';
+import type { Language, Order, OrderStatusColumn, Permission, RestaurantInfo, SocialLink } from '../../types';
 import { useTranslations } from '../../i18n/translations';
 import { PlusIcon, PencilIcon, TrashIcon } from '../icons/Icons';
 import { SocialLinkEditModal } from './SocialLinkEditModal';
@@ -11,6 +11,7 @@ interface SettingsPageProps {
     updateRestaurantInfo: (updatedInfo: Partial<RestaurantInfo>) => void;
     allOrders: Order[];
     showToast: (message: string) => void;
+    hasPermission: (permission: Permission) => boolean;
 }
 
 type SettingsTab = 'general' | 'operations' | 'social' | 'statuses';
@@ -41,14 +42,24 @@ const FormGroup: React.FC<{ label: string, children: React.ReactNode, helperText
 );
 
 export const SettingsPage: React.FC<SettingsPageProps> = (props) => {
-    const { language, restaurantInfo, updateRestaurantInfo, allOrders, showToast } = props;
+    const { language, restaurantInfo, updateRestaurantInfo, allOrders, showToast, hasPermission } = props;
     const t = useTranslations(language);
 
     const [localInfo, setLocalInfo] = useState<RestaurantInfo>(restaurantInfo);
     const [isDirty, setIsDirty] = useState(false);
     const [editingLink, setEditingLink] = useState<SocialLink | 'new' | null>(null);
     const [editingOrderStatus, setEditingOrderStatus] = useState<OrderStatusColumn | 'new' | null>(null);
-    const [activeTab, setActiveTab] = useState<SettingsTab>('general');
+    
+    // Determine the default active tab based on permissions
+    const getDefaultTab = (): SettingsTab => {
+        if (hasPermission('manage_settings_general')) return 'general';
+        if (hasPermission('manage_settings_operations')) return 'operations';
+        if (hasPermission('manage_settings_social')) return 'social';
+        if (hasPermission('manage_settings_statuses')) return 'statuses';
+        return 'general'; // Fallback
+    }
+    const [activeTab, setActiveTab] = useState<SettingsTab>(getDefaultTab());
+
 
     // Reset local state when the source prop changes (e.g., after a successful save)
     useEffect(() => {
@@ -154,10 +165,10 @@ export const SettingsPage: React.FC<SettingsPageProps> = (props) => {
     };
 
     const tabs = [
-        { id: 'general', label: t.settingsTabGeneralBranding },
-        { id: 'operations', label: t.settingsTabOperations },
-        { id: 'social', label: t.settingsTabSocial },
-        { id: 'statuses', label: t.settingsTabStatuses },
+        { id: 'general', label: t.settingsTabGeneralBranding, permission: 'manage_settings_general' },
+        { id: 'operations', label: t.settingsTabOperations, permission: 'manage_settings_operations' },
+        { id: 'social', label: t.settingsTabSocial, permission: 'manage_settings_social' },
+        { id: 'statuses', label: t.settingsTabStatuses, permission: 'manage_settings_statuses' },
     ];
     
     const formInputClasses = "w-full p-2.5 border border-slate-300 rounded-lg bg-slate-50 dark:bg-slate-700/50 dark:border-slate-600 focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-colors duration-200 placeholder:text-slate-400 dark:placeholder:text-slate-500 text-slate-900 dark:text-slate-100 shadow-sm";
@@ -173,22 +184,24 @@ export const SettingsPage: React.FC<SettingsPageProps> = (props) => {
             <div className="border-b border-slate-200 dark:border-slate-700">
                 <nav className="-mb-px flex space-x-6 rtl:space-x-reverse overflow-x-auto" aria-label="Tabs">
                     {tabs.map(tab => (
-                        <button
-                            key={tab.id}
-                            onClick={() => setActiveTab(tab.id as SettingsTab)}
-                            className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition-colors ${activeTab === tab.id
-                                    ? 'border-primary-500 text-primary-600 dark:text-primary-400'
-                                    : 'border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300 dark:text-slate-400 dark:hover:text-slate-200 dark:hover:border-slate-600'
-                                }`}
-                        >
-                            {tab.label}
-                        </button>
+                        hasPermission(tab.permission) && (
+                            <button
+                                key={tab.id}
+                                onClick={() => setActiveTab(tab.id as SettingsTab)}
+                                className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition-colors ${activeTab === tab.id
+                                        ? 'border-primary-500 text-primary-600 dark:text-primary-400'
+                                        : 'border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300 dark:text-slate-400 dark:hover:text-slate-200 dark:hover:border-slate-600'
+                                    }`}
+                            >
+                                {tab.label}
+                            </button>
+                        )
                     ))}
                 </nav>
             </div>
 
             <div className="mt-8">
-                {activeTab === 'general' && (
+                {activeTab === 'general' && hasPermission('manage_settings_general') && (
                     <div className="grid grid-cols-1 xl:grid-cols-2 gap-8">
                         <SettingsCard title={t.restaurantInformation} subtitle={t.settingsInfoDescription}>
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -250,7 +263,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = (props) => {
                     </div>
                 )}
 
-                {activeTab === 'operations' && (
+                {activeTab === 'operations' && hasPermission('manage_settings_operations') && (
                      <div className="grid grid-cols-1 xl:grid-cols-2 gap-8">
                         <SettingsCard title={t.settingsOrdering} subtitle="Manage your order and operational settings.">
                             <FormGroup label={t.whatsappNumberLabel} helperText={t.settingsWhatsappDescription}>
@@ -264,7 +277,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = (props) => {
                     </div>
                 )}
                 
-                {activeTab === 'social' && (
+                {activeTab === 'social' && hasPermission('manage_settings_social') && (
                      <SettingsCard 
                         title={t.socialLinksManagement} 
                         subtitle="Manage your social media and contact links."
@@ -301,7 +314,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = (props) => {
                     </SettingsCard>
                 )}
 
-                 {activeTab === 'statuses' && (
+                 {activeTab === 'statuses' && hasPermission('manage_settings_statuses') && (
                      <SettingsCard 
                         title={t.orderStatusManagement} 
                         subtitle="Define the stages for your order workflow."

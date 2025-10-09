@@ -171,7 +171,7 @@ const App: React.FC = () => {
   useEffect(() => {
     const fetchAdminData = async () => {
       // We only fetch the full user list if an admin or superAdmin is logged in.
-      if (currentUser && hasPermission('manage_users')) {
+      if (currentUser && hasPermission('view_users_page')) {
         try {
           setIsProcessing(true); // Show loading overlay
           const usersResponse = await fetch(`${API_BASE_URL}get_users.php`);
@@ -682,7 +682,7 @@ const App: React.FC = () => {
       const isFeedback = !!payload.customerFeedback;
 
       if (isContentEdit) {
-          if (hasPermission('edit_orders')) {
+          if (hasPermission('edit_order_content')) {
               canUpdate = true;
               if (payload.items) {
                   finalPayload.total = calculateTotal(payload.items);
@@ -693,7 +693,7 @@ const App: React.FC = () => {
               canUpdate = true;
           }
       } else { // It must be a status change or refusal reason
-          if(hasPermission('manage_orders')) {
+          if(hasPermission('manage_order_status')) {
             canUpdate = true;
           } else if (currentUser?.role === 'driver' && order.status === 'out_for_delivery' && (payload.status === 'completed' || payload.status === 'refused')) {
             canUpdate = true;
@@ -710,7 +710,7 @@ const App: React.FC = () => {
 
   // Admin Callbacks
  const addProduct = useCallback(async (productData: Omit<Product, 'id' | 'rating'>) => {
-    if (!hasPermission('manage_menu')) { showToast(t.permissionDenied); return; }
+    if (!hasPermission('add_product')) { showToast(t.permissionDenied); return; }
     setIsProcessing(true);
     try {
         let finalProductData = { ...productData };
@@ -757,7 +757,7 @@ const App: React.FC = () => {
   }, [hasPermission, showToast, t]);
 
   const updateProduct = useCallback(async (updatedProduct: Product) => {
-    if (!hasPermission('manage_menu')) { showToast(t.permissionDenied); return; }
+    if (!hasPermission('edit_product')) { showToast(t.permissionDenied); return; }
     setIsProcessing(true);
     try {
         let finalProductData = { ...updatedProduct };
@@ -802,7 +802,7 @@ const App: React.FC = () => {
   }, [hasPermission, showToast, t]);
 
   const deleteProduct = useCallback(async (productId: number) => {
-    if (!hasPermission('manage_menu')) { showToast(t.permissionDenied); return; }
+    if (!hasPermission('delete_product')) { showToast(t.permissionDenied); return; }
     if (promotions.some(p => p.productId === productId && p.isActive)) {
         showToast(t.deleteProductError);
         return;
@@ -829,7 +829,7 @@ const App: React.FC = () => {
   }, [hasPermission, showToast, t, promotions]);
 
   const addPromotion = useCallback(async (promotionData: Omit<Promotion, 'id'>) => {
-    if (!hasPermission('manage_promotions')) { showToast(t.permissionDenied); return; }
+    if (!hasPermission('add_promotion')) { showToast(t.permissionDenied); return; }
     setIsProcessing(true);
     try {
         const response = await fetch(`${API_BASE_URL}add_promotion.php`, {
@@ -851,7 +851,7 @@ const App: React.FC = () => {
   }, [hasPermission, showToast, t]);
 
   const updatePromotion = useCallback(async (updatedPromotion: Promotion) => {
-    if (!hasPermission('manage_promotions')) { showToast(t.permissionDenied); return; }
+    if (!hasPermission('edit_promotion')) { showToast(t.permissionDenied); return; }
     setIsProcessing(true);
     try {
         const response = await fetch(`${API_BASE_URL}update_promotion.php`, {
@@ -873,7 +873,7 @@ const App: React.FC = () => {
   }, [hasPermission, showToast, t]);
 
   const deletePromotion = useCallback(async (promotionId: number) => {
-    if (!hasPermission('manage_promotions')) { showToast(t.permissionDenied); return; }
+    if (!hasPermission('delete_promotion')) { showToast(t.permissionDenied); return; }
     if (!window.confirm(t.confirmDeletePromotion)) return;
     setIsProcessing(true);
     try {
@@ -896,7 +896,7 @@ const App: React.FC = () => {
   }, [hasPermission, showToast, t]);
   
   const addUser = useCallback(async (userData: Omit<User, 'id' | 'profilePicture'>) => {
-    if (!hasPermission('manage_users')) { showToast(t.permissionDenied); return; }
+    if (!hasPermission('add_user')) { showToast(t.permissionDenied); return; }
     setIsProcessing(true);
     try {
         const response = await fetch(`${API_BASE_URL}add_user.php`, {
@@ -942,7 +942,7 @@ const App: React.FC = () => {
   }, [hasPermission, showToast, t.permissionDenied, setUsers]);
   
   const updateUser = useCallback(async (updatedUser: User) => {
-    if (!hasPermission('manage_users')) { showToast(t.permissionDenied); return; }
+    if (!hasPermission('edit_user')) { showToast(t.permissionDenied); return; }
     setIsProcessing(true);
     try {
         const response = await fetch(`${API_BASE_URL}update_user.php`, {
@@ -967,7 +967,7 @@ const App: React.FC = () => {
   }, [hasPermission, showToast, t.permissionDenied, setUsers]);
 
   const deleteUser = useCallback(async (userId: number) => {
-    if (!hasPermission('manage_users')) { showToast(t.permissionDenied); return; }
+    if (!hasPermission('delete_user')) { showToast(t.permissionDenied); return; }
     const isUserInUse = orders.some(o => o.customer.userId === userId || o.createdBy === userId);
     if (isUserInUse) {
         showToast(t.deleteUserError);
@@ -1005,7 +1005,7 @@ const App: React.FC = () => {
   }, [hasPermission, showToast, t.permissionDenied, setRolePermissions]);
 
   const addCategory = useCallback(async (categoryData: Omit<Category, 'id'>) => {
-    if (!hasPermission('manage_classifications')) { showToast(t.permissionDenied); return; }
+    if (!hasPermission('add_category')) { showToast(t.permissionDenied); return; }
     setIsProcessing(true);
     try {
         const response = await fetch(`${API_BASE_URL}add_category.php`, {
@@ -1027,7 +1027,7 @@ const App: React.FC = () => {
   }, [hasPermission, showToast, t]);
 
   const updateCategory = useCallback(async (categoryData: Category) => {
-    if (!hasPermission('manage_classifications')) { showToast(t.permissionDenied); return; }
+    if (!hasPermission('edit_category')) { showToast(t.permissionDenied); return; }
     setIsProcessing(true);
     try {
         const response = await fetch(`${API_BASE_URL}update_category.php`, {
@@ -1049,7 +1049,7 @@ const App: React.FC = () => {
   }, [hasPermission, showToast, t]);
 
   const deleteCategory = useCallback(async (categoryId: number) => {
-    if (!hasPermission('manage_classifications')) { showToast(t.permissionDenied); return; }
+    if (!hasPermission('delete_category')) { showToast(t.permissionDenied); return; }
     if (products.some(p => p.categoryId === categoryId)) {
         showToast(t.deleteCategoryError);
         return;
@@ -1076,7 +1076,7 @@ const App: React.FC = () => {
   }, [hasPermission, showToast, t, products]);
 
   const addTag = useCallback(async (tagData: Omit<Tag, 'id'> & { id: string }) => {
-    if (!hasPermission('manage_classifications')) { showToast(t.permissionDenied); return; }
+    if (!hasPermission('add_tag')) { showToast(t.permissionDenied); return; }
     if (tags.some(t => t.id === tagData.id)) {
         showToast(t.addTagError);
         return;
@@ -1102,7 +1102,7 @@ const App: React.FC = () => {
   }, [hasPermission, showToast, t, tags]);
 
   const updateTag = useCallback(async (tagData: Tag) => {
-    if (!hasPermission('manage_classifications')) { showToast(t.permissionDenied); return; }
+    if (!hasPermission('edit_tag')) { showToast(t.permissionDenied); return; }
     setIsProcessing(true);
     try {
         const response = await fetch(`${API_BASE_URL}update_tag.php`, {
@@ -1124,7 +1124,7 @@ const App: React.FC = () => {
   }, [hasPermission, showToast, t]);
 
   const deleteTag = useCallback(async (tagId: string) => {
-    if (!hasPermission('manage_classifications')) { showToast(t.permissionDenied); return; }
+    if (!hasPermission('delete_tag')) { showToast(t.permissionDenied); return; }
     if (products.some(p => p.tags.includes(tagId))) {
         showToast(t.deleteTagError);
         return;

@@ -10,8 +10,6 @@ interface ReportsPageProps {
     allCategories: Category[];
 }
 
-const thirtyDaysAgo = new Date();
-thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
 const today = new Date();
 
 const calculateItemRevenue = (item: CartItem): number => {
@@ -30,7 +28,7 @@ const calculateItemRevenue = (item: CartItem): number => {
 
 export const ReportsPage: React.FC<ReportsPageProps> = ({ language, allOrders, allProducts, allCategories }) => {
     const t = useTranslations(language);
-    const [startDate, setStartDate] = useState(thirtyDaysAgo.toISOString().split('T')[0]);
+    const [startDate, setStartDate] = useState(today.toISOString().split('T')[0]);
     const [endDate, setEndDate] = useState(today.toISOString().split('T')[0]);
 
     const filteredOrders = useMemo(() => {
@@ -46,7 +44,7 @@ export const ReportsPage: React.FC<ReportsPageProps> = ({ language, allOrders, a
         });
     }, [allOrders, startDate, endDate]);
 
-    const completedOrders = useMemo(() => filteredOrders.filter(o => o.status === 'Completed'), [filteredOrders]);
+    const completedOrders = useMemo(() => filteredOrders.filter(o => o.status === 'completed'), [filteredOrders]);
 
     const salesSummary = useMemo(() => {
         const totalRevenue = completedOrders.reduce((sum, order) => sum + order.total, 0);
