@@ -134,8 +134,25 @@ const App: React.FC = () => {
             // Process Settings
             if (!settingsResponse.ok) throw new Error('Failed to fetch settings');
             const settingsData = await settingsResponse.json();
+            
+            // Resolve all image URLs before setting state
             settingsData.logo = resolveImageUrl(settingsData.logo);
             settingsData.heroImage = resolveImageUrl(settingsData.heroImage);
+
+            if (settingsData.socialLinks && Array.isArray(settingsData.socialLinks)) {
+                settingsData.socialLinks = settingsData.socialLinks.map((link: SocialLink) => ({
+                    ...link,
+                    icon: resolveImageUrl(link.icon),
+                }));
+            }
+
+            if (settingsData.onlinePaymentMethods && Array.isArray(settingsData.onlinePaymentMethods)) {
+                settingsData.onlinePaymentMethods = settingsData.onlinePaymentMethods.map((method: OnlinePaymentMethod) => ({
+                    ...method,
+                    icon: resolveImageUrl(method.icon),
+                }));
+            }
+            
             setRestaurantInfo(settingsData);
             
             // Process Classifications

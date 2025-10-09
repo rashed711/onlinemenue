@@ -273,6 +273,8 @@ export const AdminPage: React.FC<AdminPageProps> = (props) => {
         const canManage = hasPermission('manage_order_status');
 
         const currentStatusDetails = restaurantInfo.orderStatusColumns.find(s => s.id === order.status);
+        const creator = order.createdBy ? allUsers.find(u => u.id === order.createdBy) : null;
+        const totalItems = order.items.reduce((sum, item) => sum + item.quantity, 0);
 
         const renderActions = () => {
             if (isDriver && order.status === 'out_for_delivery') {
@@ -310,8 +312,8 @@ export const AdminPage: React.FC<AdminPageProps> = (props) => {
         };
 
         return (
-            <div onClick={() => setViewingOrder(order)} style={style} className={`bg-white dark:bg-slate-800 rounded-lg shadow-md p-4 space-y-3 cursor-pointer transition-all hover:shadow-lg hover:-translate-y-1 border border-slate-200 dark:border-slate-700 ${className || ''}`}>
-                <div className="flex justify-between items-center">
+            <div onClick={() => setViewingOrder(order)} style={style} className={`bg-white dark:bg-slate-800 rounded-lg shadow-md p-4 flex flex-col cursor-pointer transition-all hover:shadow-lg hover:-translate-y-1 border border-slate-200 dark:border-slate-700 ${className || ''}`}>
+                <div className="flex justify-between items-center mb-3">
                     <p className="font-extrabold text-lg text-amber-800 bg-amber-300 dark:bg-amber-400 dark:text-amber-900 px-3 py-0.5 rounded-md">
                         {order.total.toFixed(2)}
                     </p>
@@ -320,7 +322,7 @@ export const AdminPage: React.FC<AdminPageProps> = (props) => {
                     </p>
                 </div>
 
-                <div className="space-y-2">
+                <div className="space-y-3 flex-grow">
                     {currentStatusDetails && (
                         <div className={`flex items-center gap-2 font-bold text-base ${getStatusColorClass(currentStatusDetails.color)}`}>
                             <span>{currentStatusDetails.name[language]}</span>
@@ -333,21 +335,17 @@ export const AdminPage: React.FC<AdminPageProps> = (props) => {
                             order.customer.name || 'Guest'
                         )}
                     </div>
-                </div>
-
-                <div className="bg-slate-50 dark:bg-slate-900/50 p-2.5 my-1 rounded-md border border-slate-200 dark:border-slate-700/50">
-                    <div className="space-y-1.5 text-xs text-slate-600 dark:text-slate-300">
-                        {order.items.slice(0, 2).map((item, index) => (
-                            <div key={index} className="flex justify-between items-center">
-                                <span className="truncate flex-1 pr-2">{item.product.name[language]}</span>
-                                <span className="font-mono font-semibold bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-200 text-[10px] px-1.5 py-0.5 rounded">x{formatNumber(item.quantity)}</span>
-                            </div>
-                        ))}
-                        {order.items.length > 2 && <p className="text-center font-semibold text-slate-400 text-[11px] pt-1">... and {formatNumber(order.items.length - 2)} more</p>}
+                     <div className="text-xs text-slate-500 dark:text-slate-400 pt-2 border-t border-slate-200/50 dark:border-slate-700/50 flex justify-between items-center">
+                        <span>
+                            {creator ? `${t.creator}: ${creator.name}` : ''}
+                        </span>
+                        <span className="font-semibold bg-slate-200 dark:bg-slate-700 px-2 py-0.5 rounded-full">
+                            {totalItems} {t.items}
+                        </span>
                     </div>
                 </div>
 
-                <div className="flex justify-between items-center pt-2">
+                <div className="flex justify-between items-center pt-3 mt-3 border-t dark:border-slate-700">
                     <div>
                         {renderActions()}
                     </div>

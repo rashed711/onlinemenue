@@ -388,6 +388,7 @@ export const translations = {
     copy: 'Copy',
     copied: 'Copied!',
     payNow: 'Pay Now',
+    viewReceipt: 'View Receipt',
   },
   ar: {
     restaurantName: 'مطعم زفران',
@@ -776,6 +777,7 @@ export const translations = {
     copy: 'نسخ',
     copied: 'تم النسخ!',
     payNow: 'ادفع الآن',
+    viewReceipt: 'عرض الإيصال',
   }
 };
 
