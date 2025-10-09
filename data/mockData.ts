@@ -24,6 +24,24 @@ export const restaurantInfo: RestaurantInfo = {
         { id: 'out_for_delivery', name: { en: 'Out for Delivery', ar: 'قيد التوصيل' }, color: 'blue' },
         { id: 'completed', name: { en: 'Completed', ar: 'مكتمل' }, color: 'green' },
         { id: 'cancelled', name: { en: 'Cancelled & Refused', ar: 'ملغي ومرفوض' }, color: 'slate' },
+    ],
+    onlinePaymentMethods: [
+        { 
+            id: 1, 
+            name: { en: 'Vodafone Cash', ar: 'فودافون كاش' },
+            type: 'number',
+            details: '01012345678',
+            icon: 'https://img.icons8.com/color/48/vodafone.png',
+            isVisible: true 
+        },
+        { 
+            id: 2, 
+            name: { en: 'InstaPay', ar: 'انستا باي' },
+            type: 'link',
+            details: 'https://instapay.eg/your-payment-link',
+            icon: 'https://img.icons8.com/?size=48&id=t22b6i0gJgqJ&format=png',
+            isVisible: true 
+        },
     ]
 };
 

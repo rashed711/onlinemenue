@@ -8,7 +8,6 @@ import { ProductModal } from './ProductModal';
 import { PromotionSection } from './PromotionSection';
 import { Footer } from './Footer';
 import { ReceiptModal } from './ReceiptModal';
-import { DeliveryDetailsModal } from './GuestCheckoutModal';
 import { HeroSection } from './HeroSection';
 import { useTranslations } from '../i18n/translations';
 import { calculateTotal, formatDateTime } from '../utils/helpers';
@@ -44,7 +43,6 @@ export const MenuPage: React.FC<MenuPageProps> = (props) => {
     const t = useTranslations(language);
     const [isCartOpen, setIsCartOpen] = useState(false);
     const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
-    const [isDeliveryDetailsModalOpen, setIsDeliveryDetailsModalOpen] = useState(false);
     const [orderType, setOrderType] = useState<OrderType>('Dine-in');
     const [tableNumber, setTableNumber] = useState('');
     
@@ -328,12 +326,7 @@ export const MenuPage: React.FC<MenuPageProps> = (props) => {
     }, [addToCart]);
       
     const handlePlaceOrder = async () => {
-        if (orderType === 'Delivery') {
-            setIsDeliveryDetailsModalOpen(true);
-            return;
-        }
-
-        // From here, it's a Dine-in order.
+        // This is for Dine-in orders from the main cart sidebar
         const customerDetails = currentUser
             ? { userId: currentUser.id, name: currentUser.name, mobile: currentUser.mobile }
             : { name: `${t.table} ${tableNumber}`, mobile: `table-${tableNumber}` }; // Guest user for Dine-in
@@ -349,37 +342,6 @@ export const MenuPage: React.FC<MenuPageProps> = (props) => {
 
         const newOrder = placeOrder(orderData);
         clearCart();
-        setIsProcessing(true);
-        try {
-            const imageUrl = await generateReceiptImage(newOrder);
-            setReceiptImageUrl(imageUrl);
-            setIsReceiptModalOpen(true);
-        } finally {
-            setIsProcessing(false);
-        }
-    }
-
-    const handleDeliveryConfirm = async (details: { mobile: string; address: string }) => {
-        const customerDetails = {
-            ...(currentUser && { userId: currentUser.id, name: currentUser.name }),
-            mobile: details.mobile,
-            address: details.address,
-        };
-
-        if (!currentUser) {
-            customerDetails.name = `Guest (${details.mobile})`;
-        }
-
-        const orderData = {
-            items: cartItems,
-            total: calculateTotal(cartItems),
-            status: 'Pending' as OrderStatus,
-            orderType: 'Delivery' as OrderType,
-            customer: customerDetails
-        };
-        const newOrder = placeOrder(orderData);
-        clearCart();
-        setIsDeliveryDetailsModalOpen(false);
         setIsProcessing(true);
         try {
             const imageUrl = await generateReceiptImage(newOrder);
@@ -476,14 +438,6 @@ export const MenuPage: React.FC<MenuPageProps> = (props) => {
                 language={language}
                 />
             )}
-            
-            <DeliveryDetailsModal 
-                isOpen={isDeliveryDetailsModalOpen}
-                onClose={() => setIsDeliveryDetailsModalOpen(false)}
-                onConfirm={handleDeliveryConfirm}
-                language={language}
-                currentUser={currentUser}
-            />
 
             <ReceiptModal
               isOpen={isReceiptModalOpen}

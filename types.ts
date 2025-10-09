@@ -72,6 +72,15 @@ export interface OrderStatusColumn {
   color: string; // e.g., 'yellow', 'blue'
 }
 
+export interface OnlinePaymentMethod {
+  id: number;
+  name: LocalizedString;
+  type: 'number' | 'link';
+  details: string;
+  icon: string; // Image URL or data URL
+  isVisible: boolean;
+}
+
 export interface RestaurantInfo {
     name: LocalizedString;
     logo: string;
@@ -83,6 +92,7 @@ export interface RestaurantInfo {
     socialLinks: SocialLink[];
     defaultPage: 'menu' | 'social';
     orderStatusColumns: OrderStatusColumn[];
+    onlinePaymentMethods: OnlinePaymentMethod[];
 }
 
 // New Types for Users and Orders
@@ -98,8 +108,15 @@ export interface User {
   profilePicture?: string;
 }
 
-export type OrderStatus = string; // Was a union type, now a string to support dynamic statuses
+export type OrderStatus = string;
 export type OrderType = 'Dine-in' | 'Delivery';
+export type PaymentMethod = 'cod' | 'online';
+
+export interface CheckoutDetails {
+    name: string;
+    mobile: string;
+    address: string;
+}
 
 export interface Order {
   id: string;
@@ -122,7 +139,9 @@ export interface Order {
     rating: number;
     comment: string;
   };
+  paymentMethod?: PaymentMethod;
+  paymentReceiptUrl?: string; // URL or Data URL of the uploaded receipt
 }
 
 // Permissions Type
-export type Permission = string; // Was a union type, now a string to support dynamic permissions
+export type Permission = string;

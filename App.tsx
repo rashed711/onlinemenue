@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useMemo, useCallback, useSyncExternalStore } from 'react';
 import { MenuPage } from './components/MenuPage';
 import { LoginPage } from './components/auth/LoginPage';
@@ -5,7 +6,9 @@ import { RegisterPage } from './components/auth/RegisterPage';
 import { ProfilePage } from './components/profile/ProfilePage';
 import { AdminPage } from './components/admin/AdminPage';
 import { SocialPage } from './components/SocialPage';
-import type { Product, CartItem, Language, Theme, User, Order, OrderStatus, UserRole, Promotion, Permission, Category, Tag, RestaurantInfo, OrderStatusColumn } from './types';
+import { CheckoutPage } from './components/checkout/CheckoutPage';
+// FIX: Imported 'Product' type to resolve multiple 'Cannot find name 'Product'' errors.
+import type { Order, CartItem, Language, Theme, User, OrderStatus, UserRole, Promotion, Permission, Category, Tag, RestaurantInfo, OrderStatusColumn, PaymentMethod, CheckoutDetails, Product, SocialLink, OnlinePaymentMethod } from './types';
 import { USER_ROLES } from './types';
 import { restaurantInfo as fallbackRestaurantInfo, promotions as initialPromotions, initialCategories, initialTags } from './data/mockData';
 import { ToastNotification } from './components/ToastNotification';
@@ -306,61 +309,76 @@ const App: React.FC = () => {
         let finalUpdates = { ...updatedInfo };
         let showSuccessToast = true;
 
-        // Handle logo upload
-        if (updatedInfo.logo && updatedInfo.logo.startsWith('data:image')) {
-        showSuccessToast = false; // The final save will show the toast
-        try {
-            const response = await fetch(updatedInfo.logo);
-            const blob = await response.blob();
-            const formData = new FormData();
-            formData.append('image', blob, 'logo.png');
-            formData.append('type', 'branding');
-            formData.append('imageField', 'logo');
-
-            const uploadResponse = await fetch(`${API_BASE_URL}upload_image.php`, { method: 'POST', body: formData });
-            if (!uploadResponse.ok) throw new Error(`Logo upload failed: ${await uploadResponse.text()}`);
-            const result = await uploadResponse.json();
-            if (result.success && result.url) {
-            finalUpdates.logo = resolveImageUrl(result.url);
-            } else {
-            throw new Error(result.error || 'Failed to get logo URL');
+        // Helper to upload a single image
+        const uploadImage = async (base64Image: string, type: 'branding' | 'icons', imageField: string): Promise<string | null> => {
+            if (!base64Image || !base64Image.startsWith('data:image')) {
+                return null;
             }
-        } catch (error) {
-            console.error("Logo upload error:", error);
-            showToast('Failed to update logo.');
-            return;
-        }
-        }
-
-        // Handle hero image upload
-        if (updatedInfo.heroImage && updatedInfo.heroImage.startsWith('data:image')) {
-        showSuccessToast = false;
-        try {
-            const response = await fetch(updatedInfo.heroImage);
-            const blob = await response.blob();
-            const formData = new FormData();
-            formData.append('image', blob, 'hero.png');
-            formData.append('type', 'branding');
-            formData.append('imageField', 'heroImage');
-            
-            const uploadResponse = await fetch(`${API_BASE_URL}upload_image.php`, { method: 'POST', body: formData });
-            if (!uploadResponse.ok) throw new Error(`Hero image upload failed: ${await uploadResponse.text()}`);
-            const result = await uploadResponse.json();
-            if (result.success && result.url) {
-            finalUpdates.heroImage = resolveImageUrl(result.url);
-            } else {
-            throw new Error(result.error || 'Failed to get hero image URL');
+            try {
+                const response = await fetch(base64Image);
+                const blob = await response.blob();
+                const formData = new FormData();
+                formData.append('image', blob, `${imageField}.png`);
+                formData.append('type', type);
+                
+                const uploadResponse = await fetch(`${API_BASE_URL}upload_image.php`, { method: 'POST', body: formData });
+                if (!uploadResponse.ok) throw new Error(`Image upload failed: ${await uploadResponse.text()}`);
+                
+                const result = await uploadResponse.json();
+                if (result.success && result.url) {
+                    return resolveImageUrl(result.url); // Return the full URL for state
+                }
+                throw new Error(result.error || `Failed to get URL for ${imageField}`);
+            } catch (error) {
+                console.error(`${imageField} upload error:`, error);
+                showToast(`Failed to update ${imageField}.`);
+                return 'error'; // Special value to indicate failure
             }
-        } catch (error) {
-            console.error("Hero image upload error:", error);
-            showToast('Failed to update hero image.');
-            return;
+        };
+
+        // Handle single image fields
+        if (updatedInfo.logo) {
+            const newUrl = await uploadImage(updatedInfo.logo, 'branding', 'logo');
+            if (newUrl) finalUpdates.logo = newUrl === 'error' ? restaurantInfo.logo : newUrl;
         }
+        if (updatedInfo.heroImage) {
+            const newUrl = await uploadImage(updatedInfo.heroImage, 'branding', 'heroImage');
+            if (newUrl) finalUpdates.heroImage = newUrl === 'error' ? restaurantInfo.heroImage : newUrl;
         }
 
-        const dbPayload: Partial<RestaurantInfo> = { ...finalUpdates };
-        if (dbPayload.logo) dbPayload.logo = dbPayload.logo.replace(API_BASE_URL, '').replace(new URL(API_BASE_URL).origin + '/', '');
-        if (dbPayload.heroImage) dbPayload.heroImage = dbPayload.heroImage.replace(API_BASE_URL, '').replace(new URL(API_BASE_URL).origin + '/', '');
+        // Handle arrays with icons
+        const processArrayWithIcons = async <T extends { icon: string }>(items: T[] | undefined): Promise<T[] | undefined> => {
+            if (!items) return undefined;
+            return Promise.all(
+                items.map(async (item, index) => {
+                    const newIconUrl = await uploadImage(item.icon, 'icons', `item_${index}_icon`);
+                    if (newIconUrl && newIconUrl !== 'error') {
+                        return { ...item, icon: newIconUrl };
+                    }
+                    return item; // Return original item on failure or if no upload needed
+                })
+            );
+        };
+        
+        finalUpdates.socialLinks = (await processArrayWithIcons(updatedInfo.socialLinks)) || finalUpdates.socialLinks;
+        finalUpdates.onlinePaymentMethods = (await processArrayWithIcons(updatedInfo.onlinePaymentMethods)) || finalUpdates.onlinePaymentMethods;
+
+
+        // Prepare payload for the database (with relative paths)
+        const dbPayload: any = { ...finalUpdates };
+        const urlToStrip1 = new URL(API_BASE_URL).origin + '/';
+        const urlToStrip2 = API_BASE_URL;
+
+        const stripUrl = (url: string) => url.replace(urlToStrip1, '').replace(urlToStrip2, '');
+        
+        if (dbPayload.logo) dbPayload.logo = stripUrl(dbPayload.logo);
+        if (dbPayload.heroImage) dbPayload.heroImage = stripUrl(dbPayload.heroImage);
+        if (dbPayload.socialLinks) {
+            dbPayload.socialLinks = dbPayload.socialLinks.map((link: SocialLink) => ({...link, icon: stripUrl(link.icon)}));
+        }
+        if (dbPayload.onlinePaymentMethods) {
+            dbPayload.onlinePaymentMethods = dbPayload.onlinePaymentMethods.map((method: OnlinePaymentMethod) => ({...method, icon: stripUrl(method.icon)}));
+        }
 
         const response = await fetch(`${API_BASE_URL}update_settings.php`, {
             method: 'POST',
@@ -370,9 +388,11 @@ const App: React.FC = () => {
 
         if (!response.ok) throw new Error(`Failed to update settings: ${await response.text()}`);
         const result = await response.json();
+
         if (result.success) {
+            // Update state with the version that has full image URLs
             setRestaurantInfo(prev => prev ? ({...prev, ...finalUpdates}) : null);
-            if (showSuccessToast) showToast(t.settingsUpdatedSuccess);
+            showToast(t.settingsUpdatedSuccess);
         } else {
             throw new Error(result.error || 'Update failed');
         }
@@ -1228,6 +1248,19 @@ const App: React.FC = () => {
           updateOrder={updateOrder}
         />
       ) : null; // Redirects handled by useEffect
+    }
+     if (baseRoute.startsWith('#/checkout')) {
+      return (
+        <CheckoutPage
+          language={language}
+          cartItems={cartItems}
+          clearCart={clearCart}
+          currentUser={currentUser}
+          restaurantInfo={restaurantInfo}
+          placeOrder={placeOrder}
+          showToast={showToast}
+        />
+      );
     }
 
     // Default Routes

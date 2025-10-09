@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import type { Language, Order, OrderStatusColumn, Permission, RestaurantInfo, SocialLink } from '../../types';
+import type { Language, Order, OrderStatusColumn, Permission, RestaurantInfo, SocialLink, OnlinePaymentMethod } from '../../types';
 import { useTranslations } from '../../i18n/translations';
 import { PlusIcon, PencilIcon, TrashIcon } from '../icons/Icons';
 import { SocialLinkEditModal } from './SocialLinkEditModal';
 import { OrderStatusEditModal } from './OrderStatusEditModal';
+import { OnlinePaymentMethodEditModal } from './OnlinePaymentMethodEditModal';
 
 interface SettingsPageProps {
     language: Language;
@@ -49,6 +50,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = (props) => {
     const [isDirty, setIsDirty] = useState(false);
     const [editingLink, setEditingLink] = useState<SocialLink | 'new' | null>(null);
     const [editingOrderStatus, setEditingOrderStatus] = useState<OrderStatusColumn | 'new' | null>(null);
+    const [editingPaymentMethod, setEditingPaymentMethod] = useState<OnlinePaymentMethod | 'new' | null>(null);
     
     // Determine the default active tab based on permissions
     const getDefaultTab = (): SettingsTab => {
@@ -68,8 +70,22 @@ export const SettingsPage: React.FC<SettingsPageProps> = (props) => {
 
     // Check for changes between local state and original props to show/hide save bar
     useEffect(() => {
-        setIsDirty(JSON.stringify(localInfo) !== JSON.stringify(restaurantInfo));
+        // We only consider the main form fields for the "dirty" state. 
+        // Modals now save directly, so their changes won't trigger the save bar.
+        const original = { ...restaurantInfo };
+        const current = { ...localInfo };
+        
+        // Nullify array properties that are managed by modals
+        original.socialLinks = [];
+        current.socialLinks = [];
+        original.orderStatusColumns = [];
+        current.orderStatusColumns = [];
+        original.onlinePaymentMethods = [];
+        current.onlinePaymentMethods = [];
+
+        setIsDirty(JSON.stringify(current) !== JSON.stringify(original));
     }, [localInfo, restaurantInfo]);
+
 
     const handleInfoChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
         const { name, value } = e.target;
@@ -101,68 +117,87 @@ export const SettingsPage: React.FC<SettingsPageProps> = (props) => {
         setLocalInfo(prev => ({ ...prev, defaultPage: e.target.value as 'menu' | 'social' }));
     };
 
-    const handleToggleVisibility = (linkId: number) => {
+    const handleToggleVisibility = (id: number, type: 'social' | 'payment') => {
+        const key = type === 'social' ? 'socialLinks' : 'onlinePaymentMethods';
         setLocalInfo(prev => ({
             ...prev,
-            socialLinks: prev.socialLinks.map(link =>
-                link.id === linkId ? { ...link, isVisible: !link.isVisible } : link
+            [key]: prev[key].map(item =>
+                item.id === id ? { ...item, isVisible: !item.isVisible } : item
             )
         }));
     };
-
+    
+    // Social Links Handlers
     const handleDeleteLink = (linkId: number) => {
         if (window.confirm(t.confirmDeleteLink)) {
-            setLocalInfo(prev => ({
-                ...prev,
-                socialLinks: prev.socialLinks.filter(link => link.id !== linkId)
-            }));
+             const updatedLinks = restaurantInfo.socialLinks.filter(link => link.id !== linkId);
+             updateRestaurantInfo({ socialLinks: updatedLinks });
         }
     };
 
     const handleSaveLink = (linkData: SocialLink | Omit<SocialLink, 'id'>) => {
+        let updatedLinks: SocialLink[];
         if ('id' in linkData) {
-            setLocalInfo(prev => ({
-                ...prev,
-                socialLinks: prev.socialLinks.map(link => link.id === linkData.id ? linkData : link)
-            }));
+            updatedLinks = restaurantInfo.socialLinks.map(link => link.id === linkData.id ? linkData : link);
         } else {
             const newLink: SocialLink = {
                 ...linkData,
-                id: localInfo.socialLinks.length > 0 ? Math.max(...localInfo.socialLinks.map(l => l.id)) + 1 : 1,
+                id: restaurantInfo.socialLinks.length > 0 ? Math.max(...restaurantInfo.socialLinks.map(l => l.id)) + 1 : 1,
             };
-            setLocalInfo(prev => ({ ...prev, socialLinks: [...prev.socialLinks, newLink] }));
+            updatedLinks = [...restaurantInfo.socialLinks, newLink];
         }
+        updateRestaurantInfo({ socialLinks: updatedLinks });
         setEditingLink(null);
     };
     
+    // Order Status Handlers
     const handleDeleteStatus = (columnId: string) => {
         if (allOrders.some(order => order.status === columnId)) {
             showToast(t.deleteStatusError);
             return;
         }
         if (window.confirm(t.confirmDeleteStatus)) {
-            setLocalInfo(prev => ({
-                ...prev,
-                orderStatusColumns: prev.orderStatusColumns.filter(c => c.id !== columnId)
-            }));
+            const updatedColumns = restaurantInfo.orderStatusColumns.filter(c => c.id !== columnId);
+            updateRestaurantInfo({ orderStatusColumns: updatedColumns });
         }
     };
 
     const handleSaveStatus = (data: OrderStatusColumn) => {
-        const isEditing = localInfo.orderStatusColumns.some(c => c.id === data.id);
+        let updatedColumns: OrderStatusColumn[];
+        const isEditing = restaurantInfo.orderStatusColumns.some(c => c.id === data.id);
         if (isEditing) {
-            setLocalInfo(prev => ({
-                ...prev,
-                orderStatusColumns: prev.orderStatusColumns.map(c => c.id === data.id ? data : c)
-            }));
+            updatedColumns = restaurantInfo.orderStatusColumns.map(c => c.id === data.id ? data : c);
         } else {
-            setLocalInfo(prev => ({
-                ...prev,
-                orderStatusColumns: [...prev.orderStatusColumns, data]
-            }));
+            updatedColumns = [...restaurantInfo.orderStatusColumns, data];
         }
+        updateRestaurantInfo({ orderStatusColumns: updatedColumns });
         setEditingOrderStatus(null);
     };
+    
+    // Online Payment Method Handlers
+    const handleSavePaymentMethod = (methodData: OnlinePaymentMethod | Omit<OnlinePaymentMethod, 'id'>) => {
+        let updatedMethods: OnlinePaymentMethod[];
+        if ('id' in methodData) {
+            updatedMethods = restaurantInfo.onlinePaymentMethods.map(method => method.id === methodData.id ? methodData : method);
+        } else {
+            const newMethod: OnlinePaymentMethod = {
+                ...methodData,
+                id: restaurantInfo.onlinePaymentMethods.length > 0 ? Math.max(...restaurantInfo.onlinePaymentMethods.map(m => m.id)) + 1 : 1,
+            };
+            updatedMethods = [...(restaurantInfo.onlinePaymentMethods || []), newMethod];
+        }
+        updateRestaurantInfo({ onlinePaymentMethods: updatedMethods });
+        setEditingPaymentMethod(null);
+    };
+
+
+    const handleDeletePaymentMethod = (methodId: number) => {
+        if (window.confirm(t.confirmDeletePaymentMethod)) {
+            const updatedMethods = restaurantInfo.onlinePaymentMethods.filter(method => method.id !== methodId);
+            updateRestaurantInfo({ onlinePaymentMethods: updatedMethods });
+        }
+    };
+
 
     const tabs = [
         { id: 'general', label: t.settingsTabGeneralBranding, permission: 'manage_settings_general' },
@@ -274,6 +309,40 @@ export const SettingsPage: React.FC<SettingsPageProps> = (props) => {
                                 <input type="number" name="tableCount" value={localInfo.tableCount || 0} onChange={handleNonLocalizedChange} className={formInputClasses} min="0" />
                             </FormGroup>
                         </SettingsCard>
+                        <SettingsCard 
+                            title={t.onlinePaymentMethods} 
+                            subtitle="Manage your online payment options for delivery."
+                            actions={
+                                <button onClick={() => setEditingPaymentMethod('new')} className={btnPrimarySmClasses}>
+                                    <PlusIcon className="w-5 h-5" />
+                                    {t.addNewPaymentMethod}
+                                </button>
+                            }
+                        >
+                             <ul className="divide-y divide-gray-200 dark:divide-gray-700 -m-4 sm:-m-6">
+                                {(restaurantInfo.onlinePaymentMethods || []).length > 0 ? restaurantInfo.onlinePaymentMethods.map(method => (
+                                    <li key={method.id} className="p-3 flex justify-between items-center gap-4 hover:bg-slate-50 dark:hover:bg-gray-700/50">
+                                        <div className="flex items-center gap-4 flex-grow">
+                                            <img src={method.icon} alt={`${method.name[language]} icon`} className="w-8 h-8 object-contain flex-shrink-0" />
+                                            <div className="flex-grow">
+                                                <div className="font-medium">{method.name[language]}</div>
+                                                <div className="text-sm text-slate-500 dark:text-slate-400 truncate max-w-[200px] sm:max-w-xs block">{method.details}</div>
+                                            </div>
+                                        </div>
+                                        <div className="flex items-center gap-2">
+                                            <label className="relative inline-flex items-center cursor-pointer" title={t.visibleOnPage}>
+                                                <input type="checkbox" checked={method.isVisible} onChange={() => handleToggleVisibility(method.id, 'payment')} className="sr-only peer" />
+                                                <div className="w-11 h-6 bg-slate-200 rounded-full peer dark:bg-slate-700 peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full after:content-[''] after:absolute after:top-0.5 after:start-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-green-600"></div>
+                                            </label>
+                                            <button onClick={() => setEditingPaymentMethod(method)} className={btnIconSecondaryClasses} title={t.editPaymentMethod}><PencilIcon className="w-5 h-5" /></button>
+                                            <button onClick={() => handleDeletePaymentMethod(method.id)} className={btnIconDangerClasses} title={t.cancel}><TrashIcon className="w-5 h-5" /></button>
+                                        </div>
+                                    </li>
+                                )) : (
+                                    <p className="p-6 text-center text-slate-500">No online payment methods added yet.</p>
+                                )}
+                            </ul>
+                        </SettingsCard>
                     </div>
                 )}
                 
@@ -289,7 +358,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = (props) => {
                         }
                     >
                          <ul className="divide-y divide-gray-200 dark:divide-gray-700 -m-4 sm:-m-6">
-                            {localInfo.socialLinks.length > 0 ? localInfo.socialLinks.map(link => (
+                            {restaurantInfo.socialLinks.length > 0 ? restaurantInfo.socialLinks.map(link => (
                                 <li key={link.id} className="p-3 flex flex-col sm:flex-row justify-between sm:items-center gap-4 hover:bg-slate-50 dark:hover:bg-gray-700/50">
                                     <div className="flex items-center gap-4 flex-grow">
                                         <img src={link.icon} alt={`${link.name} icon`} className="w-8 h-8 object-contain flex-shrink-0" />
@@ -300,7 +369,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = (props) => {
                                     </div>
                                     <div className="flex items-center gap-2 self-end sm:self-center">
                                         <label className="relative inline-flex items-center cursor-pointer" title={t.visibleOnPage}>
-                                            <input type="checkbox" checked={link.isVisible} onChange={() => handleToggleVisibility(link.id)} className="sr-only peer" />
+                                            <input type="checkbox" checked={link.isVisible} onChange={() => handleToggleVisibility(link.id, 'social')} className="sr-only peer" />
                                             <div className="w-11 h-6 bg-slate-200 rounded-full peer dark:bg-slate-700 peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full after:content-[''] after:absolute after:top-0.5 after:start-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-green-600"></div>
                                         </label>
                                         <button onClick={() => setEditingLink(link)} className={btnIconSecondaryClasses} title={t.editLink}><PencilIcon className="w-5 h-5" /></button>
@@ -326,7 +395,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = (props) => {
                         }
                      >
                         <ul className="divide-y divide-gray-200 dark:divide-gray-700 -m-4 sm:-m-6">
-                            {localInfo.orderStatusColumns.map(status => (
+                            {restaurantInfo.orderStatusColumns.map(status => (
                                 <li key={status.id} className="p-3 flex justify-between items-center gap-4 hover:bg-slate-50 dark:hover:bg-gray-700/50">
                                     <div className="flex items-center gap-3">
                                         <div className={`w-4 h-4 rounded-full bg-${status.color}-500 flex-shrink-0`}></div>
@@ -345,6 +414,15 @@ export const SettingsPage: React.FC<SettingsPageProps> = (props) => {
                     </SettingsCard>
                 )}
             </div>
+            
+            {editingPaymentMethod && (
+                <OnlinePaymentMethodEditModal
+                    method={editingPaymentMethod === 'new' ? null : editingPaymentMethod}
+                    onClose={() => setEditingPaymentMethod(null)}
+                    onSave={handleSavePaymentMethod}
+                    language={language}
+                />
+            )}
 
             {editingLink && (
                 <SocialLinkEditModal
@@ -361,7 +439,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = (props) => {
                     onClose={() => setEditingOrderStatus(null)}
                     onSave={handleSaveStatus}
                     language={language}
-                    existingIds={localInfo.orderStatusColumns.map(c => c.id)}
+                    existingIds={restaurantInfo.orderStatusColumns.map(c => c.id)}
                 />
             )}
 

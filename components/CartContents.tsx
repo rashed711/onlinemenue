@@ -10,7 +10,7 @@ interface CartContentsProps {
   updateCartQuantity: (productId: number, options: { [key: string]: string } | undefined, newQuantity: number) => void;
   clearCart: () => void;
   language: Language;
-  onPlaceOrder: () => void;
+  onPlaceOrder: () => void; // For Dine-in from sidebar
   orderType: OrderType;
   setOrderType: (type: OrderType) => void;
   tableNumber?: string;
@@ -38,10 +38,20 @@ export const CartContents: React.FC<CartContentsProps> = ({
 
   const subtotal = useMemo(() => calculateTotal(cartItems), [cartItems]);
 
+  const handleCheckout = () => {
+      if (onClose) onClose();
+      window.location.hash = '#/checkout';
+  }
+
   const handlePlaceOrderClick = () => {
-      onPlaceOrder();
-      if (isSidebar && onClose) {
-          onClose();
+      if (orderType === 'Delivery') {
+          handleCheckout();
+      } else {
+          // It's a Dine-in order, place it directly
+          onPlaceOrder();
+          if (isSidebar && onClose) {
+              onClose();
+          }
       }
   }
 
@@ -53,7 +63,8 @@ export const CartContents: React.FC<CartContentsProps> = ({
   const activeOrderTypeClasses = "bg-primary-600 text-white shadow";
   const inactiveOrderTypeClasses = "text-slate-700 dark:text-slate-200";
   
-  const isPlaceOrderDisabled = orderType === 'Dine-in' && !tableNumber?.trim();
+  const isPlaceOrderDisabled = cartItems.length === 0 || (orderType === 'Dine-in' && !tableNumber?.trim());
+  const placeOrderButtonText = orderType === 'Delivery' ? t.checkout : t.placeOrder;
 
   return (
     <>
@@ -142,7 +153,7 @@ export const CartContents: React.FC<CartContentsProps> = ({
             disabled={isPlaceOrderDisabled}
             className="w-full bg-green-500 text-white font-bold py-3 px-4 rounded-lg hover:bg-green-600 transition-all flex justify-center items-center shadow-lg hover:shadow-xl transform hover:scale-105 disabled:bg-gray-400 disabled:cursor-not-allowed disabled:scale-100 disabled:shadow-none"
           >
-            {t.placeOrder}
+            {placeOrderButtonText}
           </button>
            <button
             onClick={clearCart}
