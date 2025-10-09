@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useMemo, useCallback, useSyncExternalStore } from 'react';
 import { MenuPage } from './components/MenuPage';
 import { LoginPage } from './components/auth/LoginPage';
@@ -13,7 +14,6 @@ import { restaurantInfo as fallbackRestaurantInfo, promotions as initialPromotio
 import { ToastNotification } from './components/ToastNotification';
 import { useTranslations } from './i18n/translations';
 import { usePersistentState } from './hooks/usePersistentState';
-import { initialRolePermissions } from './data/permissions';
 import { calculateTotal } from './utils/helpers';
 import { TopProgressBar } from './components/TopProgressBar';
 import { ForgotPasswordPage } from './components/auth/ForgotPasswordPage';
@@ -57,6 +57,20 @@ const resolveImageUrl = (path: string | undefined): string => {
 };
 
 
+// FIX: Defined a valid initial state for rolePermissions to match the Record<UserRole, Permission[]> type, resolving type errors on initialization and in fallback logic.
+const initialRolePermissions: Record<UserRole, Permission[]> = {
+    superAdmin: [],
+    admin: [],
+    employee: [],
+    waiter: [],
+    waiterSupervisor: [],
+    restaurantStaff: [],
+    delivery: [],
+    driver: [],
+    customer: [],
+};
+
+
 const App: React.FC = () => {
   // UI State
   const [language, setLanguage] = usePersistentState<Language>('restaurant_language', 'ar');
@@ -74,6 +88,7 @@ const App: React.FC = () => {
   const [cartItems, setCartItems] = usePersistentState<CartItem[]>('restaurant_cart', []);
   const [users, setUsers] = useState<User[]>([]);
   const [orders, setOrders] = usePersistentState<Order[]>('restaurant_orders', []);
+  // FIX: Replaced empty object `{}` with a valid initial state to satisfy the Record<UserRole, Permission[]> type.
   const [rolePermissions, setRolePermissions] = usePersistentState<Record<UserRole, Permission[]>>('restaurant_role_permissions', initialRolePermissions);
   const [restaurantInfo, setRestaurantInfo] = useState<RestaurantInfo | null>(null);
 
@@ -127,9 +142,10 @@ const App: React.FC = () => {
             const classificationsPromise = fetch(`${API_BASE_URL}get_classifications.php`);
             const promotionsPromise = fetch(`${API_BASE_URL}get_promotions.php`);
             const productsPromise = fetch(`${API_BASE_URL}get_products.php`);
+            const permissionsPromise = fetch(`${API_BASE_URL}get_permissions.php`);
 
             // FIX: Corrected a typo where 'productsResponse' was used before declaration instead of 'productsPromise'.
-            const [settingsResponse, classificationsResponse, promotionsResponse, productsResponse] = await Promise.all([settingsPromise, classificationsPromise, promotionsPromise, productsPromise]);
+            const [settingsResponse, classificationsResponse, promotionsResponse, productsResponse, permissionsResponse] = await Promise.all([settingsPromise, classificationsPromise, promotionsPromise, productsPromise, permissionsPromise]);
 
             // Process Settings
             if (!settingsResponse.ok) throw new Error('Failed to fetch settings');
@@ -175,6 +191,17 @@ const App: React.FC = () => {
             }));
             setProducts(resolvedProducts);
 
+            // Process Permissions
+            if (!permissionsResponse.ok) throw new Error('Failed to fetch permissions');
+            const permissionsData = await permissionsResponse.json();
+            if (permissionsData && typeof permissionsData === 'object' && !Array.isArray(permissionsData)) {
+                setRolePermissions(permissionsData);
+            } else {
+                console.error("Permissions data is not in the expected format:", permissionsData);
+                // FIX: Used the valid initial state for role permissions as a fallback.
+                setRolePermissions(initialRolePermissions); // Fallback to empty permissions
+            }
+
 
         } catch (error) {
             console.error("Error fetching initial data:", error);
@@ -184,6 +211,8 @@ const App: React.FC = () => {
             setTags(initialTags);
             setPromotions([]); // No mock promotions on error
             setProducts([]); // No mock products on error to avoid constraint violations
+            // FIX: Used the valid initial state for role permissions as a fallback.
+            setRolePermissions(initialRolePermissions); // Fallback on error
         } finally {
             setIsLoading(false);
         }
@@ -1047,13 +1076,34 @@ const App: React.FC = () => {
     }
   }, [hasPermission, showToast, t, orders, setUsers]);
   
-  const updateRolePermissions = useCallback((role: UserRole, permissions: Permission[]) => {
+  const updateRolePermissions = useCallback(async (role: UserRole, permissions: Permission[]) => {
     if (!hasPermission('manage_roles')) {
         showToast(t.permissionDenied);
         return;
     }
-    setRolePermissions(prev => ({...prev, [role]: permissions}));
-  }, [hasPermission, showToast, t.permissionDenied, setRolePermissions]);
+    setIsProcessing(true);
+    try {
+        const response = await fetch(`${API_BASE_URL}update_permissions.php`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ roleName: role, permissions: permissions })
+        });
+
+        const result = await response.json();
+        if (!response.ok || !result.success) {
+            throw new Error(result.error || 'Failed to update permissions.');
+        }
+
+        // Update local state on success
+        setRolePermissions(prev => ({...prev, [role]: permissions}));
+        showToast('Permissions updated successfully.');
+    } catch (error: any) {
+        console.error("Error updating permissions:", error);
+        showToast(error.message || 'Failed to update permissions.');
+    } finally {
+        setIsProcessing(false);
+    }
+  }, [hasPermission, showToast, t.permissionDenied, setRolePermissions, setIsProcessing]);
 
   const addCategory = useCallback(async (categoryData: Omit<Category, 'id'>) => {
     if (!hasPermission('add_category')) { showToast(t.permissionDenied); return; }

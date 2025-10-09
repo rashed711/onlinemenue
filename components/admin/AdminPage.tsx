@@ -165,7 +165,7 @@ export const AdminPage: React.FC<AdminPageProps> = (props) => {
 
         const lowercasedTerm = orderSearchTerm.toLowerCase();
 
-        return ordersToDisplay.filter(order => {
+        const filtered = ordersToDisplay.filter(order => {
             // Date filter
             const orderDate = new Date(order.timestamp);
             if (orderDate < start || orderDate > end) return false;
@@ -188,6 +188,9 @@ export const AdminPage: React.FC<AdminPageProps> = (props) => {
 
             return true;
         });
+
+        // Sort orders: oldest first
+        return filtered.sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
     }, [ordersToDisplay, orderFilterDate, orderFilterType, orderFilterCreator, orderSearchTerm]);
 
     const usersToDisplay = useMemo(() => {

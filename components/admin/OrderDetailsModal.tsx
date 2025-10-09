@@ -2,9 +2,9 @@ import React, { useState } from 'react';
 import ReactDOM from 'react-dom';
 import type { Order, Language, OrderStatus, RestaurantInfo } from '../../types';
 import { useTranslations } from '../../i18n/translations';
-import { CloseIcon, DocumentTextIcon, PencilIcon } from '../icons/Icons';
+import { CloseIcon, DocumentTextIcon, PencilIcon, ShareIcon, PrintIcon } from '../icons/Icons';
 import { StarRating } from '../StarRating';
-import { formatDateTime, formatNumber } from '../../utils/helpers';
+import { formatDateTime, formatNumber, generateReceiptImage } from '../../utils/helpers';
 
 interface OrderDetailsModalProps {
     order: Order;
@@ -35,9 +35,78 @@ export const OrderDetailsModal: React.FC<OrderDetailsModalProps> = ({ order, onC
     const t = useTranslations(language);
     const statusDetails = restaurantInfo.orderStatusColumns.find(s => s.id === order.status);
     const [isReceiptViewerOpen, setIsReceiptViewerOpen] = useState(false);
+    const [isProcessing, setIsProcessing] = useState(false);
 
     const portalRoot = document.getElementById('portal-root');
     if (!portalRoot) return null;
+
+    const handleShare = async () => {
+        setIsProcessing(true);
+        try {
+            const imageUrl = await generateReceiptImage(order, restaurantInfo, t, language);
+            const response = await fetch(imageUrl);
+            const blob = await response.blob();
+            const file = new File([blob], `order-${order.id}.png`, { type: 'image/png' });
+
+            if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
+                await navigator.share({
+                    files: [file],
+                    title: `${t.orderDetails} - ${order.id}`,
+                    text: `Order details for ${order.id}`,
+                });
+            } else {
+                alert('Web Share API is not supported in your browser.');
+            }
+        } catch (error) {
+            console.error('Error sharing order:', error);
+            if ((error as DOMException)?.name !== 'AbortError') {
+                 alert('Could not share order.');
+            }
+        } finally {
+            setIsProcessing(false);
+        }
+    };
+
+    const handlePrint = async () => {
+        setIsProcessing(true);
+        try {
+            const imageUrl = await generateReceiptImage(order, restaurantInfo, t, language);
+            const printWindow = window.open('', '_blank');
+            if (printWindow) {
+                printWindow.document.write(`
+                    <html>
+                        <head>
+                            <title>Print Order ${order.id}</title>
+                            <style>
+                                @media print {
+                                    @page { size: 80mm auto; margin: 0; }
+                                    body { margin: 0; padding: 10px; }
+                                }
+                                body { margin: 0; display: flex; justify-content: center; }
+                                img { max-width: 100%; }
+                            </style>
+                        </head>
+                        <body>
+                            <img src="${imageUrl}" />
+                            <script>
+                                window.onload = function() {
+                                    window.print();
+                                    window.close();
+                                }
+                            </script>
+                        </body>
+                    </html>
+                `);
+                printWindow.document.close();
+            }
+        } catch (error) {
+            console.error('Error printing order:', error);
+            alert('Could not prepare order for printing.');
+        } finally {
+            setIsProcessing(false);
+        }
+    };
+
 
     return ReactDOM.createPortal(
         <>
@@ -48,7 +117,9 @@ export const OrderDetailsModal: React.FC<OrderDetailsModalProps> = ({ order, onC
                             <h2 className="text-lg font-bold text-slate-800 dark:text-slate-100">{t.orderDetails}</h2>
                             <p className="font-mono text-sm text-slate-500 dark:text-slate-400">{order.id}</p>
                         </div>
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-1 sm:gap-2">
+                             <button onClick={handleShare} disabled={isProcessing} className="p-2 rounded-full text-green-600 dark:text-green-400 hover:bg-green-100 dark:hover:bg-green-900/50 transition-colors disabled:opacity-50" title={t.shareOrder} aria-label={t.shareOrder}><ShareIcon className="w-5 h-5" /></button>
+                             <button onClick={handlePrint} disabled={isProcessing} className="p-2 rounded-full text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors disabled:opacity-50" title={t.printOrder} aria-label={t.printOrder}><PrintIcon className="w-5 h-5" /></button>
                              {canEdit && (
                                 <button
                                     onClick={() => onEdit(order)}

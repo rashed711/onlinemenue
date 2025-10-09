@@ -389,6 +389,10 @@ export const translations = {
     copied: 'Copied!',
     payNow: 'Pay Now',
     viewReceipt: 'View Receipt',
+    share: 'Share',
+    print: 'Print',
+    shareOrder: 'Share Order',
+    printOrder: 'Print Order',
   },
   ar: {
     restaurantName: 'مطعم زفران',
@@ -778,6 +782,10 @@ export const translations = {
     copied: 'تم النسخ!',
     payNow: 'ادفع الآن',
     viewReceipt: 'عرض الإيصال',
+    share: 'مشاركة',
+    print: 'طباعة',
+    shareOrder: 'مشاركة الطلب',
+    printOrder: 'طباعة الطلب',
   }
 };
 
