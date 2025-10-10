@@ -1,16 +1,12 @@
 import React, { useState } from 'react';
-import type { Language } from '../../types';
-import { useTranslations } from '../../i18n/translations';
+import { useUI } from '../../contexts/UIContext';
+import { useAuth } from '../../contexts/AuthContext';
 
-interface LoginPageProps {
-    language: Language;
-    login: (mobile: string, password: string) => Promise<string | null>;
-    isProcessing: boolean;
-}
+export const LoginPage: React.FC = () => {
+    const { language, t, isProcessing } = useUI();
+    const { login } = useAuth();
 
-export const LoginPage: React.FC<LoginPageProps> = ({ language, login, isProcessing }) => {
-    const t = useTranslations(language);
-    const [mobile, setMobile] = useState('superAdmin');
+    const [mobile, setMobile] = useState('superadmin');
     const [password, setPassword] = useState('password');
     const [error, setError] = useState('');
 
@@ -22,14 +18,12 @@ export const LoginPage: React.FC<LoginPageProps> = ({ language, login, isProcess
     const handleLogin = async (e: React.FormEvent) => {
         e.preventDefault();
         setError('');
-        try {
-            const errorMessage = await login(mobile, password);
-            if (errorMessage) {
-                setError(errorMessage);
-            }
-            // Successful login will trigger a redirect via useEffect in App.tsx
-        } catch (err) {
-            setError('An unexpected error occurred. Please try again.');
+        const errorMessage = await login(mobile, password);
+        if (errorMessage) {
+            setError(errorMessage);
+        } else {
+            // On successful login, redirect to admin or profile
+            window.location.hash = '#/admin';
         }
     };
 

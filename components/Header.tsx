@@ -1,33 +1,22 @@
-import React, { useState, useEffect, useMemo, useRef } from 'react';
-import type { Language, Theme, RestaurantInfo, User } from '../types';
-import { useTranslations } from '../i18n/translations';
+import React, { useState, useEffect, useRef } from 'react';
 import { SunIcon, MoonIcon, CartIcon, LanguageIcon, UserIcon, FullscreenIcon, ExitFullscreenIcon, ShieldCheckIcon, LogoutIcon } from './icons/Icons';
 import { formatNumber } from '../utils/helpers';
+import { useUI } from '../contexts/UIContext';
+import { useAuth } from '../contexts/AuthContext';
+import { useData } from '../contexts/DataContext';
+import { useCart } from '../contexts/CartContext';
 
 interface HeaderProps {
-  language: Language;
-  theme: Theme;
-  toggleLanguage: () => void;
-  toggleTheme: () => void;
-  cartItemCount: number;
   onCartClick: () => void;
-  restaurantInfo: RestaurantInfo;
-  currentUser: User | null;
-  logout: () => void;
 }
 
-export const Header: React.FC<HeaderProps> = ({
-  language,
-  theme,
-  toggleLanguage,
-  toggleTheme,
-  cartItemCount,
-  onCartClick,
-  restaurantInfo,
-  currentUser,
-  logout
-}) => {
-  const t = useTranslations(language);
+export const Header: React.FC<HeaderProps> = ({ onCartClick }) => {
+  const { language, theme, toggleLanguage, toggleTheme, t } = useUI();
+  const { currentUser, logout, isAdmin } = useAuth();
+  const { restaurantInfo } = useData();
+  const { cartItems } = useCart();
+  const cartItemCount = cartItems.reduce((acc, item) => acc + item.quantity, 0);
+
   const [isScrolled, setIsScrolled] = useState(false);
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(() => {
@@ -46,8 +35,6 @@ export const Header: React.FC<HeaderProps> = ({
     const docEl = document.documentElement as any;
     const doc = document as any;
 
-    // Use the component's state `isFullscreen` to decide the action.
-    // The state is kept in sync with the browser's fullscreen status by a useEffect.
     if (!isFullscreen) {
         if (docEl.requestFullscreen) {
             docEl.requestFullscreen().catch((err: Error) => console.error(err));
@@ -96,17 +83,15 @@ export const Header: React.FC<HeaderProps> = ({
     };
   }, []);
 
-  // Close dropdown on scroll
   useEffect(() => {
     const handleScroll = () => {
       setIsScrolled(window.scrollY > 10);
-      setIsUserMenuOpen(false); // Close on scroll
+      setIsUserMenuOpen(false);
     };
     window.addEventListener('scroll', handleScroll);
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
-  // Close dropdown on click outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (userMenuRef.current && !userMenuRef.current.contains(event.target as Node)) {
@@ -119,7 +104,7 @@ export const Header: React.FC<HeaderProps> = ({
     };
   }, []);
   
-  const isAdmin = currentUser?.role === 'admin' || currentUser?.role === 'superAdmin';
+  if (!restaurantInfo) return null;
 
   return (
     <header className={`sticky top-0 z-40 transition-all duration-300 ${isScrolled ? 'bg-white/80 dark:bg-slate-950/80 backdrop-blur-xl shadow-md border-b border-slate-200 dark:border-slate-800' : 'bg-transparent'}`}>
@@ -144,7 +129,6 @@ export const Header: React.FC<HeaderProps> = ({
 
             <div className="h-6 w-px mx-2 bg-slate-200 dark:bg-slate-700"></div>
 
-            {/* User Menu Dropdown */}
             <div className="relative" ref={userMenuRef}>
               <button 
                 onClick={() => setIsUserMenuOpen(prev => !prev)} 
@@ -164,7 +148,7 @@ export const Header: React.FC<HeaderProps> = ({
                         <p className="font-semibold text-sm truncate">{currentUser.name}</p>
                         <p className="text-xs text-slate-500 dark:text-slate-400 truncate">{t[currentUser.role as keyof typeof t] || currentUser.role}</p>
                       </div>
-                       {currentUser.role !== 'customer' && (
+                       {isAdmin && (
                         <a href="#/admin" onClick={(e) => handleNav(e, '/admin')} className="flex items-center gap-3 w-full text-start px-3 py-2 text-sm hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors">
                           <ShieldCheckIcon className="w-5 h-5 text-slate-500 dark:text-slate-400" />
                           <span>{t.adminPanel}</span>

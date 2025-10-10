@@ -42,7 +42,9 @@ export const restaurantInfo: RestaurantInfo = {
             icon: 'https://img.icons8.com/?size=48&id=t22b6i0gJgqJ&format=png',
             isVisible: true 
         },
-    ]
+    ],
+    codNotes: { en: 'Please prepare the exact amount. The driver does not carry much change.', ar: 'يرجى تجهيز المبلغ المطلوب. السائق لا يحمل الكثير من الفكة.' },
+    onlinePaymentNotes: { en: 'After payment, please upload a screenshot of the receipt to confirm your order.', ar: 'بعد الدفع، يرجى رفع صورة من الإيصال لتأكيد طلبك.' },
 };
 
 export const initialCategories: Category[] = [

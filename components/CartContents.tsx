@@ -1,15 +1,13 @@
 import React, { useMemo } from 'react';
 import type { CartItem, Language, OrderType, RestaurantInfo } from '../types';
-import { useTranslations } from '../i18n/translations';
 import { PlusIcon, MinusIcon, CloseIcon } from './icons/Icons';
 import { calculateTotal, formatNumber } from '../utils/helpers';
 import { TableSelector } from './TableSelector';
+import { useCart } from '../contexts/CartContext';
+import { useUI } from '../contexts/UIContext';
+import { useData } from '../contexts/DataContext';
 
 interface CartContentsProps {
-  cartItems: CartItem[];
-  updateCartQuantity: (productId: number, options: { [key: string]: string } | undefined, newQuantity: number) => void;
-  clearCart: () => void;
-  language: Language;
   onPlaceOrder: () => void; // For Dine-in from sidebar
   orderType: OrderType;
   setOrderType: (type: OrderType) => void;
@@ -17,14 +15,9 @@ interface CartContentsProps {
   setTableNumber?: (table: string) => void;
   isSidebar?: boolean;
   onClose?: () => void;
-  restaurantInfo: RestaurantInfo;
 }
 
 export const CartContents: React.FC<CartContentsProps> = ({
-  cartItems,
-  updateCartQuantity,
-  clearCart,
-  language,
   onPlaceOrder,
   orderType,
   setOrderType,
@@ -32,9 +25,10 @@ export const CartContents: React.FC<CartContentsProps> = ({
   setTableNumber,
   isSidebar = false,
   onClose,
-  restaurantInfo,
 }) => {
-  const t = useTranslations(language);
+  const { cartItems, updateCartQuantity, clearCart } = useCart();
+  const { language, t } = useUI();
+  const { restaurantInfo } = useData();
 
   const subtotal = useMemo(() => calculateTotal(cartItems), [cartItems]);
 
@@ -44,10 +38,9 @@ export const CartContents: React.FC<CartContentsProps> = ({
   }
 
   const handlePlaceOrderClick = () => {
-      if (orderType === 'Delivery') {
+      if (orderType === 'Delivery' || orderType === 'Takeaway') {
           handleCheckout();
       } else {
-          // It's a Dine-in order, place it directly
           onPlaceOrder();
           if (isSidebar && onClose) {
               onClose();
@@ -64,7 +57,9 @@ export const CartContents: React.FC<CartContentsProps> = ({
   const inactiveOrderTypeClasses = "text-slate-700 dark:text-slate-200";
   
   const isPlaceOrderDisabled = cartItems.length === 0 || (orderType === 'Dine-in' && !tableNumber?.trim());
-  const placeOrderButtonText = orderType === 'Delivery' ? t.checkout : t.placeOrder;
+  const placeOrderButtonText = (orderType === 'Delivery' || orderType === 'Takeaway') ? t.checkout : t.placeOrder;
+
+  if (!restaurantInfo) return null;
 
   return (
     <>
@@ -99,9 +94,7 @@ export const CartContents: React.FC<CartContentsProps> = ({
                         {Object.entries(item.options).map(([optionKey, valueKey]) => {
                             const option = item.product.options?.find(o => o.name.en === optionKey);
                             const value = option?.values.find(v => v.name.en === valueKey);
-                            if (option && value) {
-                                return <div key={optionKey}>{option.name[language]}: {value.name[language]}</div>
-                            }
+                            if (option && value) return <div key={optionKey}>{option.name[language]}: {value.name[language]}</div>
                             return null;
                         })}
                     </div>
@@ -123,24 +116,15 @@ export const CartContents: React.FC<CartContentsProps> = ({
       {cartItems.length > 0 && (
         <div className="p-4 border-t border-slate-200 dark:border-slate-800 space-y-4 shrink-0 bg-slate-50 dark:bg-slate-900/50">
            <div className="flex items-center p-1 rounded-lg bg-slate-200 dark:bg-slate-800">
-            <button
-                onClick={() => setOrderType('Dine-in')}
-                className={`${orderTypeClasses} ${orderType === 'Dine-in' ? activeOrderTypeClasses : inactiveOrderTypeClasses}`}
-            >{t.dineIn}</button>
-            <button
-                onClick={() => setOrderType('Delivery')}
-                className={`${orderTypeClasses} ${orderType === 'Delivery' ? activeOrderTypeClasses : inactiveOrderTypeClasses}`}
-            >{t.delivery}</button>
+            <button onClick={() => setOrderType('Dine-in')} className={`${orderTypeClasses} ${orderType === 'Dine-in' ? activeOrderTypeClasses : inactiveOrderTypeClasses}`}>{t.dineIn}</button>
+            <button onClick={() => setOrderType('Takeaway')} className={`${orderTypeClasses} ${orderType === 'Takeaway' ? activeOrderTypeClasses : inactiveOrderTypeClasses}`}>{t.takeaway}</button>
+            <button onClick={() => setOrderType('Delivery')} className={`${orderTypeClasses} ${orderType === 'Delivery' ? activeOrderTypeClasses : inactiveOrderTypeClasses}`}>{t.delivery}</button>
           </div>
 
            {orderType === 'Dine-in' && setTableNumber && (
             <div>
                 <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">{t.tableNumber}</label>
-                 <TableSelector
-                    tableCount={restaurantInfo.tableCount || 0}
-                    selectedTable={tableNumber || ''}
-                    onSelectTable={setTableNumber}
-                />
+                 <TableSelector tableCount={restaurantInfo.tableCount || 0} selectedTable={tableNumber || ''} onSelectTable={setTableNumber} />
             </div>
            )}
 
@@ -148,19 +132,10 @@ export const CartContents: React.FC<CartContentsProps> = ({
             <span>{t.total}</span>
             <span>{subtotal.toFixed(2)} {t.currency}</span>
           </div>
-          <button
-            onClick={handlePlaceOrderClick}
-            disabled={isPlaceOrderDisabled}
-            className="w-full bg-green-500 text-white font-bold py-3 px-4 rounded-lg hover:bg-green-600 transition-all flex justify-center items-center shadow-lg hover:shadow-xl transform hover:scale-105 disabled:bg-gray-400 disabled:cursor-not-allowed disabled:scale-100 disabled:shadow-none"
-          >
+          <button onClick={handlePlaceOrderClick} disabled={isPlaceOrderDisabled} className="w-full bg-green-500 text-white font-bold py-3 px-4 rounded-lg hover:bg-green-600 transition-all flex justify-center items-center shadow-lg hover:shadow-xl transform hover:scale-105 disabled:bg-gray-400 disabled:cursor-not-allowed disabled:scale-100 disabled:shadow-none">
             {placeOrderButtonText}
           </button>
-           <button
-            onClick={clearCart}
-            className="w-full text-center text-red-500 hover:text-red-700 dark:hover:text-red-400 text-sm font-semibold"
-          >
-            Clear Cart
-          </button>
+           <button onClick={clearCart} className="w-full text-center text-red-500 hover:text-red-700 dark:hover:text-red-400 text-sm font-semibold">Clear Cart</button>
         </div>
       )}
     </>

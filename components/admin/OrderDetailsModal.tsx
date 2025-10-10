@@ -1,49 +1,40 @@
 import React, { useState } from 'react';
-import ReactDOM from 'react-dom';
-import type { Order, Language, OrderStatus, RestaurantInfo } from '../../types';
+import type { Order } from '../../types';
 import { useTranslations } from '../../i18n/translations';
-import { CloseIcon, DocumentTextIcon, PencilIcon, ShareIcon, PrintIcon } from '../icons/Icons';
+import { DocumentTextIcon, PencilIcon, ShareIcon, PrintIcon, TrashIcon, CloseIcon } from '../icons/Icons';
 import { StarRating } from '../StarRating';
 import { formatDateTime, formatNumber, generateReceiptImage } from '../../utils/helpers';
+import { Modal } from '../Modal';
+import { useUI } from '../../contexts/UIContext';
+import { useData } from '../../contexts/DataContext';
 
 interface OrderDetailsModalProps {
     order: Order;
     onClose: () => void;
-    language: Language;
     canEdit: boolean;
     onEdit: (order: Order) => void;
-    restaurantInfo: RestaurantInfo;
+    canDelete: boolean;
+    onDelete: (orderId: string) => void;
     creatorName?: string;
 }
 
-const getStatusChipColor = (status: OrderStatus, restaurantInfo: RestaurantInfo) => {
-    const color = restaurantInfo.orderStatusColumns.find(s => s.id === status)?.color || 'slate';
-    // This is a TailwindCSS trick to make sure the dynamic classes are pre-compiled.
-    // bg-yellow-100 text-yellow-800 dark:bg-yellow-900/50 dark:text-yellow-300 border-yellow-200 dark:border-yellow-500/30
-    // bg-orange-100 text-orange-800 dark:bg-orange-900/50 dark:text-orange-300 border-orange-200 dark:border-orange-500/30
-    // bg-cyan-100 text-cyan-800 dark:bg-cyan-900/50 dark:text-cyan-300 border-cyan-200 dark:border-cyan-500/30
-    // bg-blue-100 text-blue-800 dark:bg-blue-900/50 dark:text-blue-300 border-blue-200 dark:border-blue-500/30
-    // bg-green-100 text-green-800 dark:bg-green-900/50 dark:text-green-300 border-green-200 dark:border-green-500/30
-    // bg-red-100 text-red-800 dark:bg-red-900/50 dark:text-red-300 border-red-200 dark:border-red-500/30
-    // bg-indigo-100 text-indigo-800 dark:bg-indigo-900/50 dark:text-indigo-300 border-indigo-200 dark:border-indigo-500/30
-    // bg-purple-100 text-purple-800 dark:bg-purple-900/50 dark:text-purple-300 border-purple-200 dark:border-purple-500/30
-    // bg-pink-100 text-pink-800 dark:bg-pink-900/50 dark:text-pink-300 border-pink-200 dark:border-pink-500/30
-    // bg-slate-100 text-slate-800 dark:bg-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-500/30
+const getStatusChipColor = (status: string, restaurantInfo: any) => {
+    const color = restaurantInfo.orderStatusColumns.find((s: any) => s.id === status)?.color || 'slate';
     return `bg-${color}-100 text-${color}-800 dark:bg-${color}-900/50 dark:text-${color}-300 border-${color}-200 dark:border-${color}-500/30`;
 };
 
-export const OrderDetailsModal: React.FC<OrderDetailsModalProps> = ({ order, onClose, language, canEdit, onEdit, restaurantInfo, creatorName }) => {
+export const OrderDetailsModal: React.FC<OrderDetailsModalProps> = ({ order, onClose, canEdit, onEdit, canDelete, onDelete, creatorName }) => {
+    const { language } = useUI();
+    const { restaurantInfo } = useData();
     const t = useTranslations(language);
-    const statusDetails = restaurantInfo.orderStatusColumns.find(s => s.id === order.status);
+    
     const [isReceiptViewerOpen, setIsReceiptViewerOpen] = useState(false);
-    const [isProcessing, setIsProcessing] = useState(false);
-
-    const portalRoot = document.getElementById('portal-root');
-    if (!portalRoot) return null;
+    const { isProcessing, setIsProcessing } = useUI();
 
     const handleShare = async () => {
         setIsProcessing(true);
         try {
+            if (!restaurantInfo) throw new Error("Restaurant info not available");
             const imageUrl = await generateReceiptImage(order, restaurantInfo, t, language, creatorName);
             const response = await fetch(imageUrl);
             const blob = await response.blob();
@@ -71,6 +62,7 @@ export const OrderDetailsModal: React.FC<OrderDetailsModalProps> = ({ order, onC
     const handlePrint = async () => {
         setIsProcessing(true);
         try {
+            if (!restaurantInfo) throw new Error("Restaurant info not available");
             const imageUrl = await generateReceiptImage(order, restaurantInfo, t, language, creatorName);
             const printWindow = window.open('', '_blank');
             if (printWindow) {
@@ -108,35 +100,13 @@ export const OrderDetailsModal: React.FC<OrderDetailsModalProps> = ({ order, onC
         }
     };
 
+    if (!restaurantInfo) return null;
+    const statusDetails = restaurantInfo.orderStatusColumns.find(s => s.id === order.status);
 
-    return ReactDOM.createPortal(
+    return (
         <>
-            <div className="fixed inset-0 bg-black bg-opacity-60 z-50 flex justify-center items-center p-4 animate-fade-in" onClick={onClose}>
-                <div className="bg-white dark:bg-slate-800 rounded-2xl w-full max-w-xl max-h-[90vh] flex flex-col" onClick={e => e.stopPropagation()}>
-                    <div className="p-4 flex justify-between items-center border-b border-slate-200 dark:border-slate-700 shrink-0">
-                        <div>
-                            <h2 className="text-lg font-bold text-slate-800 dark:text-slate-100">{t.orderDetails}</h2>
-                            <p className="font-mono text-sm text-slate-500 dark:text-slate-400">{order.id}</p>
-                        </div>
-                        <div className="flex items-center gap-1 sm:gap-2">
-                             <button onClick={handleShare} disabled={isProcessing} className="p-2 rounded-full text-green-600 dark:text-green-400 hover:bg-green-100 dark:hover:bg-green-900/50 transition-colors disabled:opacity-50" title={t.shareOrder} aria-label={t.shareOrder}><ShareIcon className="w-5 h-5" /></button>
-                             <button onClick={handlePrint} disabled={isProcessing} className="p-2 rounded-full text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors disabled:opacity-50" title={t.printOrder} aria-label={t.printOrder}><PrintIcon className="w-5 h-5" /></button>
-                             {canEdit && (
-                                <button
-                                    onClick={() => onEdit(order)}
-                                    className="p-2 rounded-full text-blue-600 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-900/50 transition-colors"
-                                    title={t.editOrder}
-                                    aria-label={t.editOrder}
-                                >
-                                    <PencilIcon className="w-5 h-5" />
-                                </button>
-                            )}
-                            <button onClick={onClose} className="p-2 rounded-full hover:bg-slate-100 dark:hover:bg-slate-700" aria-label={t.close}>
-                                <CloseIcon className="w-6 h-6"/>
-                            </button>
-                        </div>
-                    </div>
-                    
+            <Modal title={`${t.orderDetails} - ${order.id}`} onClose={onClose} size="xl">
+                <div className="flex flex-col overflow-hidden h-full">
                     <div className="p-5 space-y-4 overflow-y-auto flex-grow">
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
                              <div className="sm:col-span-2">
@@ -238,14 +208,21 @@ export const OrderDetailsModal: React.FC<OrderDetailsModalProps> = ({ order, onC
                         </div>
                     </div>
                     <div className="p-4 border-t dark:border-slate-700 shrink-0 bg-slate-50 dark:bg-slate-800/50 rounded-b-2xl">
-                        <div className="text-end">
-                            <p className="font-semibold text-slate-500 dark:text-slate-400 text-sm">{t.total}</p>
-                            <p className="font-extrabold text-xl text-primary-600 dark:text-primary-400">{order.total.toFixed(2)} {t.currency}</p>
+                        <div className="sm:flex justify-between items-center">
+                            <div className="flex items-center gap-2">
+                                {canEdit && <button onClick={() => onEdit(order)} className="p-2 rounded-lg text-blue-600 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-900/50 transition-colors font-semibold flex items-center gap-2"><PencilIcon className="w-5 h-5" />{t.editOrder}</button>}
+                                {canDelete && <button onClick={() => onDelete(order.id)} className="p-2 rounded-lg text-red-600 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/50 transition-colors font-semibold flex items-center gap-2"><TrashIcon className="w-5 h-5" />{t.deleteOrder}</button>}
+                                <button onClick={handleShare} disabled={isProcessing} className="p-2 rounded-lg text-green-600 dark:text-green-400 hover:bg-green-100 dark:hover:bg-green-900/50 transition-colors font-semibold flex items-center gap-2 disabled:opacity-50"><ShareIcon className="w-5 h-5" />{t.share}</button>
+                                <button onClick={handlePrint} disabled={isProcessing} className="p-2 rounded-lg text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors font-semibold flex items-center gap-2 disabled:opacity-50"><PrintIcon className="w-5 h-5" />{t.print}</button>
+                            </div>
+                            <div className="text-end mt-4 sm:mt-0">
+                                <p className="font-semibold text-slate-500 dark:text-slate-400 text-sm">{t.total}</p>
+                                <p className="font-extrabold text-xl text-primary-600 dark:text-primary-400">{order.total.toFixed(2)} {t.currency}</p>
+                            </div>
                         </div>
                     </div>
                 </div>
-            </div>
-
+            </Modal>
             {isReceiptViewerOpen && order.paymentReceiptUrl && (
                 <div 
                     className="fixed inset-0 bg-black bg-opacity-80 z-[60] flex items-center justify-center p-4 animate-fade-in"
@@ -262,11 +239,10 @@ export const OrderDetailsModal: React.FC<OrderDetailsModalProps> = ({ order, onC
                         src={order.paymentReceiptUrl} 
                         alt="Payment Receipt" 
                         className="max-w-full max-h-full object-contain rounded-lg"
-                        onClick={e => e.stopPropagation()} // Prevent closing when clicking image
+                        onClick={e => e.stopPropagation()}
                     />
                 </div>
             )}
-        </>,
-        portalRoot
+        </>
     );
 };

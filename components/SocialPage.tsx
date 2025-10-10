@@ -1,16 +1,20 @@
 import React from 'react';
-import { useTranslations } from '../i18n/translations';
-import type { Language, RestaurantInfo } from '../types';
 import { ChevronRightIcon } from './icons/Icons';
+import { useUI } from '../contexts/UIContext';
+import { useData } from '../contexts/DataContext';
 
-export const SocialPage: React.FC<{ language: Language, restaurantInfo: RestaurantInfo }> = ({ language, restaurantInfo }) => {
-    const t = useTranslations(language);
-    const visibleLinks = restaurantInfo.socialLinks.filter(link => link.isVisible);
+export const SocialPage: React.FC = () => {
+    const { t, language } = useUI();
+    const { restaurantInfo } = useData();
 
     const handleNav = (e: React.MouseEvent<HTMLAnchorElement>, path: string) => {
         e.preventDefault();
         window.location.hash = path;
     };
+
+    if (!restaurantInfo) return null;
+
+    const visibleLinks = restaurantInfo.socialLinks.filter(link => link.isVisible);
 
     return (
         <div className="flex flex-col items-center justify-center min-h-screen bg-slate-100 dark:bg-slate-950 p-4 bg-gradient-to-br from-slate-50 to-slate-200 dark:from-slate-900 dark:to-slate-950">

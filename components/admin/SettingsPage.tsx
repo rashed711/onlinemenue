@@ -1,19 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import type { Language, Order, OrderStatusColumn, Permission, RestaurantInfo, SocialLink, OnlinePaymentMethod } from '../../types';
-import { useTranslations } from '../../i18n/translations';
 import { PlusIcon, PencilIcon, TrashIcon } from '../icons/Icons';
 import { SocialLinkEditModal } from './SocialLinkEditModal';
 import { OrderStatusEditModal } from './OrderStatusEditModal';
 import { OnlinePaymentMethodEditModal } from './OnlinePaymentMethodEditModal';
-
-interface SettingsPageProps {
-    language: Language;
-    restaurantInfo: RestaurantInfo;
-    updateRestaurantInfo: (updatedInfo: Partial<RestaurantInfo>) => Promise<void>;
-    allOrders: Order[];
-    showToast: (message: string) => void;
-    hasPermission: (permission: Permission) => boolean;
-}
+import { useUI } from '../../contexts/UIContext';
+import { useData } from '../../contexts/DataContext';
+import { useAdmin } from '../../contexts/AdminContext';
+import { useAuth } from '../../contexts/AuthContext';
 
 type SettingsTab = 'general' | 'operations' | 'social' | 'statuses';
 
@@ -42,40 +36,37 @@ const FormGroup: React.FC<{ label: string, children: React.ReactNode, helperText
     </div>
 );
 
-export const SettingsPage: React.FC<SettingsPageProps> = (props) => {
-    const { language, restaurantInfo, updateRestaurantInfo, allOrders, showToast, hasPermission } = props;
-    const t = useTranslations(language);
-
-    const [localInfo, setLocalInfo] = useState<RestaurantInfo>(restaurantInfo);
+export const SettingsPage: React.FC = () => {
+    const { language, t, showToast } = useUI();
+    const { restaurantInfo, updateRestaurantInfo } = useData();
+    const { orders: allOrders } = useAdmin();
+    const { hasPermission } = useAuth();
+    
+    const [localInfo, setLocalInfo] = useState<RestaurantInfo | null>(restaurantInfo);
     const [isDirty, setIsDirty] = useState(false);
     const [editingLink, setEditingLink] = useState<SocialLink | 'new' | null>(null);
     const [editingOrderStatus, setEditingOrderStatus] = useState<OrderStatusColumn | 'new' | null>(null);
     const [editingPaymentMethod, setEditingPaymentMethod] = useState<OnlinePaymentMethod | 'new' | null>(null);
     
-    // Determine the default active tab based on permissions
     const getDefaultTab = (): SettingsTab => {
         if (hasPermission('manage_settings_general')) return 'general';
         if (hasPermission('manage_settings_operations')) return 'operations';
         if (hasPermission('manage_settings_social')) return 'social';
         if (hasPermission('manage_settings_statuses')) return 'statuses';
-        return 'general'; // Fallback
+        return 'general';
     }
     const [activeTab, setActiveTab] = useState<SettingsTab>(getDefaultTab());
 
 
-    // Reset local state when the source prop changes (e.g., after a successful save)
     useEffect(() => {
         setLocalInfo(restaurantInfo);
     }, [restaurantInfo]);
 
-    // Check for changes between local state and original props to show/hide save bar
     useEffect(() => {
-        // We only consider the main form fields for the "dirty" state. 
-        // Modals now save directly, so their changes won't trigger the save bar.
+        if (!localInfo || !restaurantInfo) return;
         const original = { ...restaurantInfo };
         const current = { ...localInfo };
         
-        // Nullify array properties that are managed by modals
         original.socialLinks = [];
         current.socialLinks = [];
         original.orderStatusColumns = [];
@@ -88,18 +79,20 @@ export const SettingsPage: React.FC<SettingsPageProps> = (props) => {
 
 
     const handleInfoChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+        if (!localInfo) return;
         const { name, value } = e.target;
         const [field, lang] = name.split('.');
-        setLocalInfo(prev => ({
+        setLocalInfo(prev => prev ? ({
             ...prev,
-            [field]: { ...prev[field as 'name' | 'description' | 'heroTitle'], [lang]: value }
-        }));
+            [field]: { ...prev[field as 'name' | 'description' | 'heroTitle' | 'codNotes' | 'onlinePaymentNotes'], [lang]: value }
+        }) : null);
     };
 
     const handleNonLocalizedChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        if (!localInfo) return;
         const { name, value, type } = e.target;
         const finalValue = type === 'number' ? (parseInt(value, 10) || 0) : value;
-        setLocalInfo(prev => ({ ...prev, [name]: finalValue }));
+        setLocalInfo(prev => prev ? ({ ...prev, [name]: finalValue }) : null);
     };
 
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>, field: 'logo' | 'heroImage') => {
@@ -107,17 +100,18 @@ export const SettingsPage: React.FC<SettingsPageProps> = (props) => {
         if (file) {
             const reader = new FileReader();
             reader.onloadend = () => {
-                setLocalInfo(prev => ({ ...prev, [field]: reader.result as string }));
+                setLocalInfo(prev => prev ? ({ ...prev, [field]: reader.result as string }) : null);
             };
             reader.readAsDataURL(file);
         }
     };
 
     const handleHomepageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        setLocalInfo(prev => ({ ...prev, defaultPage: e.target.value as 'menu' | 'social' }));
+        setLocalInfo(prev => prev ? ({ ...prev, defaultPage: e.target.value as 'menu' | 'social' }) : null);
     };
 
     const handleToggleVisibility = async (id: number, type: 'social' | 'payment') => {
+        if (!restaurantInfo) return;
         const key = type === 'social' ? 'socialLinks' : 'onlinePaymentMethods';
         const updatedItems = restaurantInfo[key].map(item =>
             item.id === id ? { ...item, isVisible: !item.isVisible } : item
@@ -125,15 +119,15 @@ export const SettingsPage: React.FC<SettingsPageProps> = (props) => {
         await updateRestaurantInfo({ [key]: updatedItems });
     };
     
-    // Social Links Handlers
     const handleDeleteLink = async (linkId: number) => {
-        if (window.confirm(t.confirmDeleteLink)) {
+        if (window.confirm(t.confirmDeleteLink) && restaurantInfo) {
              const updatedLinks = restaurantInfo.socialLinks.filter(link => link.id !== linkId);
              await updateRestaurantInfo({ socialLinks: updatedLinks });
         }
     };
 
     const handleSaveLink = async (linkData: SocialLink | Omit<SocialLink, 'id'>) => {
+        if (!restaurantInfo) return;
         let updatedLinks: SocialLink[];
         if ('id' in linkData) {
             updatedLinks = restaurantInfo.socialLinks.map(link => link.id === linkData.id ? linkData : link);
@@ -148,19 +142,19 @@ export const SettingsPage: React.FC<SettingsPageProps> = (props) => {
         setEditingLink(null);
     };
     
-    // Order Status Handlers
     const handleDeleteStatus = async (columnId: string) => {
         if (allOrders.some(order => order.status === columnId)) {
             showToast(t.deleteStatusError);
             return;
         }
-        if (window.confirm(t.confirmDeleteStatus)) {
+        if (window.confirm(t.confirmDeleteStatus) && restaurantInfo) {
             const updatedColumns = restaurantInfo.orderStatusColumns.filter(c => c.id !== columnId);
             await updateRestaurantInfo({ orderStatusColumns: updatedColumns });
         }
     };
 
     const handleSaveStatus = async (data: OrderStatusColumn) => {
+        if (!restaurantInfo) return;
         let updatedColumns: OrderStatusColumn[];
         const isEditing = restaurantInfo.orderStatusColumns.some(c => c.id === data.id);
         if (isEditing) {
@@ -172,8 +166,8 @@ export const SettingsPage: React.FC<SettingsPageProps> = (props) => {
         setEditingOrderStatus(null);
     };
     
-    // Online Payment Method Handlers
     const handleSavePaymentMethod = async (methodData: OnlinePaymentMethod | Omit<OnlinePaymentMethod, 'id'>) => {
+        if (!restaurantInfo) return;
         let updatedMethods: OnlinePaymentMethod[];
         if ('id' in methodData) {
             updatedMethods = (restaurantInfo.onlinePaymentMethods || []).map(method => method.id === methodData.id ? methodData : method);
@@ -190,12 +184,15 @@ export const SettingsPage: React.FC<SettingsPageProps> = (props) => {
 
 
     const handleDeletePaymentMethod = async (methodId: number) => {
-        if (window.confirm(t.confirmDeletePaymentMethod)) {
+        if (window.confirm(t.confirmDeletePaymentMethod) && restaurantInfo) {
             const updatedMethods = restaurantInfo.onlinePaymentMethods.filter(method => method.id !== methodId);
             await updateRestaurantInfo({ onlinePaymentMethods: updatedMethods });
         }
     };
 
+    if (!localInfo || !restaurantInfo) {
+        return <div className="p-8 text-center">Loading settings...</div>;
+    }
 
     const tabs = [
         { id: 'general', label: t.settingsTabGeneralBranding, permission: 'manage_settings_general' },
@@ -217,7 +214,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = (props) => {
             <div className="border-b border-slate-200 dark:border-slate-700">
                 <nav className="-mb-px flex space-x-6 rtl:space-x-reverse overflow-x-auto" aria-label="Tabs">
                     {tabs.map(tab => (
-                        hasPermission(tab.permission) && (
+                        hasPermission(tab.permission as Permission) && (
                             <button
                                 key={tab.id}
                                 onClick={() => setActiveTab(tab.id as SettingsTab)}
@@ -305,6 +302,17 @@ export const SettingsPage: React.FC<SettingsPageProps> = (props) => {
                             <hr className="border-slate-200 dark:border-slate-700"/>
                             <FormGroup label={t.totalTables} helperText={t.settingsTablesDescription}>
                                 <input type="number" name="tableCount" value={localInfo.tableCount || 0} onChange={handleNonLocalizedChange} className={formInputClasses} min="0" />
+                            </FormGroup>
+                        </SettingsCard>
+                        <SettingsCard title={t.paymentInstructionsSettings} subtitle="Provide specific instructions for different payment methods.">
+                            <FormGroup label={t.codNotes} helperText={t.codNotesHelper}>
+                                <textarea name="codNotes.en" value={localInfo.codNotes?.en || ''} onChange={handleInfoChange} placeholder="English Notes" rows={3} className={formInputClasses + ' mb-2'}></textarea>
+                                <textarea name="codNotes.ar" value={localInfo.codNotes?.ar || ''} onChange={handleInfoChange} placeholder="Arabic Notes" rows={3} className={formInputClasses}></textarea>
+                            </FormGroup>
+                            <hr className="border-slate-200 dark:border-slate-700"/>
+                            <FormGroup label={t.onlinePaymentNotes} helperText={t.onlineNotesHelper}>
+                                <textarea name="onlinePaymentNotes.en" value={localInfo.onlinePaymentNotes?.en || ''} onChange={handleInfoChange} placeholder="English Notes" rows={3} className={formInputClasses + ' mb-2'}></textarea>
+                                <textarea name="onlinePaymentNotes.ar" value={localInfo.onlinePaymentNotes?.ar || ''} onChange={handleInfoChange} placeholder="Arabic Notes" rows={3} className={formInputClasses}></textarea>
                             </FormGroup>
                         </SettingsCard>
                         <SettingsCard 
@@ -418,7 +426,6 @@ export const SettingsPage: React.FC<SettingsPageProps> = (props) => {
                     method={editingPaymentMethod === 'new' ? null : editingPaymentMethod}
                     onClose={() => setEditingPaymentMethod(null)}
                     onSave={handleSavePaymentMethod}
-                    language={language}
                 />
             )}
 
@@ -427,7 +434,6 @@ export const SettingsPage: React.FC<SettingsPageProps> = (props) => {
                     link={editingLink === 'new' ? null : editingLink}
                     onClose={() => setEditingLink(null)}
                     onSave={handleSaveLink}
-                    language={language}
                 />
             )}
             
@@ -436,7 +442,6 @@ export const SettingsPage: React.FC<SettingsPageProps> = (props) => {
                     statusColumn={editingOrderStatus === 'new' ? null : editingOrderStatus}
                     onClose={() => setEditingOrderStatus(null)}
                     onSave={handleSaveStatus}
-                    language={language}
                     existingIds={(restaurantInfo.orderStatusColumns || []).map(c => c.id)}
                 />
             )}
@@ -453,7 +458,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = (props) => {
                                 {language === 'ar' ? 'تجاهل' : 'Discard'}
                             </button>
                             <button
-                                onClick={() => updateRestaurantInfo(localInfo)}
+                                onClick={() => localInfo && updateRestaurantInfo(localInfo)}
                                 className="px-5 py-2.5 rounded-lg bg-primary-500 text-white hover:bg-primary-600 font-semibold transition-colors shadow-sm hover:shadow-md transform hover:-translate-y-0.5"
                             >
                                 {t.saveChanges}

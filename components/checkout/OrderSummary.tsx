@@ -1,16 +1,13 @@
 import React, { useState } from 'react';
-import type { CartItem, Language } from '../../types';
 import { useTranslations } from '../../i18n/translations';
 import { calculateTotal } from '../../utils/helpers';
 import { ChevronRightIcon } from '../icons/Icons';
+import { useUI } from '../../contexts/UIContext';
+import { useCart } from '../../contexts/CartContext';
 
-interface OrderSummaryProps {
-    cartItems: CartItem[];
-    language: Language;
-}
-
-export const OrderSummary: React.FC<OrderSummaryProps> = ({ cartItems, language }) => {
-    const t = useTranslations(language);
+export const OrderSummary: React.FC = () => {
+    const { language, t } = useUI();
+    const { cartItems } = useCart();
     const [isExpanded, setIsExpanded] = useState(false);
     const subtotal = calculateTotal(cartItems);
 
@@ -43,7 +40,6 @@ export const OrderSummary: React.FC<OrderSummaryProps> = ({ cartItems, language 
 
     return (
         <>
-            {/* Mobile Accordion View */}
             <div className="lg:hidden bg-slate-100 dark:bg-slate-800 rounded-xl border dark:border-slate-700 overflow-hidden">
                 <button onClick={() => setIsExpanded(!isExpanded)} className="w-full p-4 flex justify-between items-center">
                     <div className="flex items-center gap-4">
@@ -56,13 +52,10 @@ export const OrderSummary: React.FC<OrderSummaryProps> = ({ cartItems, language 
                     </div>
                 </button>
                 <div className={`transition-all duration-300 ease-in-out ${isExpanded ? 'max-h-screen' : 'max-h-0'}`}>
-                    <div className="p-4 border-t dark:border-slate-700">
-                        {summaryContent}
-                    </div>
+                    <div className="p-4 border-t dark:border-slate-700">{summaryContent}</div>
                 </div>
             </div>
 
-            {/* Desktop Sticky View */}
             <div className="hidden lg:block sticky top-28">
                 <div className="bg-white dark:bg-slate-800 p-6 rounded-xl shadow-lg border dark:border-slate-700">
                     <h2 className="text-2xl font-bold mb-6">{t.yourOrder}</h2>

@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useCallback } from 'react';
-import type { User, Order, Language, Theme, Product, CartItem, OrderStatus, Promotion, OrderType, Category, Tag, RestaurantInfo } from '../types';
+import type { Product, CartItem, Order, OrderStatus, OrderType } from '../types';
 import { Header } from './Header';
 import { SearchAndFilter } from './SearchAndFilter';
 import { ProductList } from './ProductList';
@@ -9,38 +9,20 @@ import { PromotionSection } from './PromotionSection';
 import { Footer } from './Footer';
 import { ReceiptModal } from './ReceiptModal';
 import { HeroSection } from './HeroSection';
-import { useTranslations } from '../i18n/translations';
 import { calculateTotal, generateReceiptImage } from '../utils/helpers';
+import { useUI } from '../contexts/UIContext';
+import { useAuth } from '../contexts/AuthContext';
+import { useData } from '../contexts/DataContext';
+import { useCart } from '../contexts/CartContext';
+import { useAdmin } from '../contexts/AdminContext';
 
-interface MenuPageProps {
-    language: Language;
-    theme: Theme;
-    toggleLanguage: () => void;
-    toggleTheme: () => void;
-    cartItems: CartItem[];
-    addToCart: (product: Product, quantity: number, options?: { [key: string]: string; }) => void;
-    updateCartQuantity: (productId: number, options: { [key: string]: string; } | undefined, newQuantity: number) => void;
-    clearCart: () => void;
-    currentUser: User | null;
-    logout: () => void;
-    placeOrder: (order: Omit<Order, 'id' | 'timestamp'>) => Order;
-    products: Product[];
-    promotions: Promotion[];
-    categories: Category[];
-    tags: Tag[];
-    restaurantInfo: RestaurantInfo;
-    setIsProcessing: React.Dispatch<React.SetStateAction<boolean>>;
-}
-
-export const MenuPage: React.FC<MenuPageProps> = (props) => {
-    const {
-        language, theme, toggleLanguage, toggleTheme,
-        cartItems, addToCart, updateCartQuantity, clearCart,
-        currentUser, logout, placeOrder, products, promotions,
-        categories, tags, restaurantInfo, setIsProcessing
-    } = props;
+export const MenuPage: React.FC = () => {
+    const { language, setIsProcessing, t } = useUI();
+    const { currentUser } = useAuth();
+    const { products, promotions, categories, tags, restaurantInfo } = useData();
+    const { cartItems, addToCart, updateCartQuantity, clearCart } = useCart();
+    const { placeOrder } = useAdmin();
     
-    const t = useTranslations(language);
     const [isCartOpen, setIsCartOpen] = useState(false);
     const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
     const [orderType, setOrderType] = useState<OrderType>('Dine-in');
@@ -76,52 +58,47 @@ export const MenuPage: React.FC<MenuPageProps> = (props) => {
     }, [addToCart]);
       
     const handlePlaceOrder = async () => {
-        // This is for Dine-in orders from the main cart sidebar
+        if (!restaurantInfo) return;
         const customerDetails = currentUser
             ? { userId: currentUser.id, name: currentUser.name, mobile: currentUser.mobile }
-            : { name: `${t.table} ${tableNumber}`, mobile: `table-${tableNumber}` }; // Guest user for Dine-in
+            : { name: `${t.table} ${tableNumber}`, mobile: `table-${tableNumber}` };
 
-        const orderData = {
+        const orderData: Omit<Order, 'id' | 'timestamp'> = {
             items: cartItems,
             total: calculateTotal(cartItems),
-            status: 'Pending' as OrderStatus,
+            status: 'pending' as OrderStatus,
             orderType: 'Dine-in' as OrderType,
             tableNumber: tableNumber,
             customer: customerDetails,
             createdBy: currentUser?.id,
         };
-
-        const newOrder = placeOrder(orderData);
-        clearCart();
+        
         setIsProcessing(true);
         try {
+            const newOrder = await placeOrder(orderData);
+            clearCart();
             const imageUrl = await generateReceiptImage(newOrder, restaurantInfo, t, language, currentUser?.name);
             setReceiptImageUrl(imageUrl);
             setIsReceiptModalOpen(true);
-        } finally {
+        } catch (error) {
+            console.error("Failed to place order and generate receipt:", error);
+        }
+        finally {
             setIsProcessing(false);
         }
     }
     
+    if (!restaurantInfo) return null;
+
     return (
         <>
-            <Header
-                language={language}
-                theme={theme}
-                toggleLanguage={toggleLanguage}
-                toggleTheme={toggleTheme}
-                cartItemCount={cartItems.reduce((acc, item) => acc + item.quantity, 0)}
-                onCartClick={() => setIsCartOpen(true)}
-                restaurantInfo={restaurantInfo}
-                currentUser={currentUser}
-                logout={logout}
-            />
+            <Header onCartClick={() => setIsCartOpen(true)} />
             
             <HeroSection language={language} restaurantInfo={restaurantInfo} />
 
             <div className="container mx-auto max-w-7xl px-4 py-8">
                 <main>
-                    <PromotionSection promotions={promotions} products={visibleProducts} language={language} onProductClick={setSelectedProduct} />
+                    <PromotionSection promotions={promotions} products={visibleProducts} onProductClick={setSelectedProduct} />
 
                     <ProductList 
                         titleKey="mostPopular" 
@@ -163,22 +140,16 @@ export const MenuPage: React.FC<MenuPageProps> = (props) => {
                 </main>
             </div>
 
-
-            <Footer language={language} restaurantInfo={restaurantInfo} />
+            <Footer />
 
             <CartSidebar
                 isOpen={isCartOpen}
                 onClose={() => setIsCartOpen(false)}
-                cartItems={cartItems}
-                updateCartQuantity={updateCartQuantity}
-                clearCart={clearCart}
-                language={language}
                 onPlaceOrder={handlePlaceOrder}
                 orderType={orderType}
                 setOrderType={setOrderType}
                 tableNumber={tableNumber}
                 setTableNumber={setTableNumber}
-                restaurantInfo={restaurantInfo}
             />
 
             {selectedProduct && (
@@ -186,7 +157,6 @@ export const MenuPage: React.FC<MenuPageProps> = (props) => {
                 product={selectedProduct}
                 onClose={() => setSelectedProduct(null)}
                 addToCart={handleAddToCartWithoutOpeningCart}
-                language={language}
                 />
             )}
 
@@ -197,9 +167,6 @@ export const MenuPage: React.FC<MenuPageProps> = (props) => {
                   setTableNumber('');
               }}
               receiptImageUrl={receiptImageUrl}
-              language={language}
-              whatsappNumber={restaurantInfo.whatsappNumber}
-              clearCart={clearCart}
             />
         </>
     )

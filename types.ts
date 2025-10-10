@@ -6,6 +6,12 @@ export interface LocalizedString {
   ar: string;
 }
 
+export interface Role {
+  key: string;
+  name: LocalizedString;
+  isSystem: boolean;
+}
+
 export interface Category {
   id: number;
   name: LocalizedString;
@@ -93,11 +99,12 @@ export interface RestaurantInfo {
     defaultPage: 'menu' | 'social';
     orderStatusColumns: OrderStatusColumn[];
     onlinePaymentMethods: OnlinePaymentMethod[];
+    codNotes?: LocalizedString;
+    onlinePaymentNotes?: LocalizedString;
 }
 
 // New Types for Users and Orders
-export type UserRole = 'superAdmin' | 'admin' | 'employee' | 'waiter' | 'waiterSupervisor' | 'restaurantStaff' | 'delivery' | 'driver' | 'customer';
-export const USER_ROLES: UserRole[] = ['superAdmin', 'admin', 'employee', 'waiter', 'waiterSupervisor', 'restaurantStaff', 'delivery', 'driver', 'customer'];
+export type UserRole = string;
 
 export interface User {
   id: number;

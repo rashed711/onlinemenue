@@ -2,20 +2,18 @@ import React from 'react';
 import ReactDOM from 'react-dom';
 import type { CartItem, Language, OrderType, RestaurantInfo } from '../types';
 import { CartContents } from './CartContents';
+import { useCart } from '../contexts/CartContext';
+import { useUI } from '../contexts/UIContext';
+import { useData } from '../contexts/DataContext';
 
 interface CartSidebarProps {
   isOpen: boolean;
   onClose: () => void;
-  cartItems: CartItem[];
-  updateCartQuantity: (productId: number, options: { [key: string]: string } | undefined, newQuantity: number) => void;
-  clearCart: () => void;
-  language: Language;
   onPlaceOrder: () => void;
   orderType: OrderType;
   setOrderType: (type: OrderType) => void;
   tableNumber: string;
   setTableNumber: (table: string) => void;
-  restaurantInfo: RestaurantInfo;
 }
 
 export const CartSidebar: React.FC<CartSidebarProps> = (props) => {
@@ -24,8 +22,6 @@ export const CartSidebar: React.FC<CartSidebarProps> = (props) => {
   const portalRoot = document.getElementById('portal-root');
   if (!portalRoot) return null;
 
-  // Mobile: slides up from the bottom.
-  // Desktop (md+): slides in from the right.
   const openClasses = 'translate-y-0 md:translate-x-0';
   const closedClasses = 'translate-y-full md:translate-y-0 md:translate-x-full';
 

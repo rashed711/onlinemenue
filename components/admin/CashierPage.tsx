@@ -1,20 +1,14 @@
-import React, { useState, useMemo, useCallback } from 'react';
-import type { Language, User, Product, Category, CartItem, Order, OrderStatus, RestaurantInfo, OrderType } from '../../types';
-import { useTranslations } from '../../i18n/translations';
+import React, { useState, useMemo, useCallback, useEffect } from 'react';
+import type { User, Product, Category, CartItem, Order, RestaurantInfo, OrderType } from '../../types';
 import { calculateTotal, formatNumber } from '../../utils/helpers';
 import { ProductModal } from '../ProductModal';
 import { MinusIcon, PlusIcon, TrashIcon, CloseIcon, CartIcon } from '../icons/Icons';
 import { TableSelector } from '../TableSelector';
+import { useUI } from '../../contexts/UIContext';
+import { useAuth } from '../../contexts/AuthContext';
+import { useData } from '../../contexts/DataContext';
+import { useAdmin } from '../../contexts/AdminContext';
 
-interface CashierPageProps {
-    language: Language;
-    currentUser: User | null;
-    allProducts: Product[];
-    allCategories: Category[];
-    placeOrder: (order: Omit<Order, 'id' | 'timestamp'>) => Order;
-    showToast: (message: string) => void;
-    restaurantInfo: RestaurantInfo;
-}
 
 const calculateItemTotal = (item: CartItem): number => {
     let itemPrice = item.product.price;
@@ -30,12 +24,15 @@ const calculateItemTotal = (item: CartItem): number => {
     return itemPrice * item.quantity;
 }
 
-export const CashierPage: React.FC<CashierPageProps> = ({ language, currentUser, allProducts, allCategories, placeOrder, showToast, restaurantInfo }) => {
-    const t = useTranslations(language);
+export const CashierPage: React.FC = () => {
+    const { language, t, showToast } = useUI();
+    const { currentUser } = useAuth();
+    const { products: allProducts, categories: allCategories, restaurantInfo } = useData();
+    const { placeOrder } = useAdmin();
 
     const [cartItems, setCartItems] = useState<CartItem[]>([]);
     const [notes, setNotes] = useState('');
-    const [selectedCategory, setSelectedCategory] = useState<number | null>(allCategories[0]?.id || null);
+    const [selectedCategory, setSelectedCategory] = useState<number | null>(null);
     const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
     const [isCartOpen, setIsCartOpen] = useState(false);
 
@@ -45,6 +42,12 @@ export const CashierPage: React.FC<CashierPageProps> = ({ language, currentUser,
     const [customerName, setCustomerName] = useState('');
     const [customerMobile, setCustomerMobile] = useState('');
     const [customerAddress, setCustomerAddress] = useState('');
+
+    useEffect(() => {
+        if (allCategories.length > 0 && selectedCategory === null) {
+            setSelectedCategory(allCategories[0].id);
+        }
+    }, [allCategories, selectedCategory]);
 
 
     const visibleProducts = useMemo(() => allProducts.filter(p => p.isVisible), [allProducts]);
@@ -111,7 +114,7 @@ export const CashierPage: React.FC<CashierPageProps> = ({ language, currentUser,
         return false;
     }, [cartItems, orderType, tableNumber, customerName, customerMobile, customerAddress]);
 
-    const handlePlaceOrder = () => {
+    const handlePlaceOrder = async () => {
         if (isPlaceOrderDisabled) return;
 
         let customerData: Order['customer'];
@@ -148,10 +151,15 @@ export const CashierPage: React.FC<CashierPageProps> = ({ language, currentUser,
             ...specificData,
         };
         
-        placeOrder(orderData);
-        showToast(t.orderSentToKitchen);
-        clearCart();
-        setIsCartOpen(false);
+        try {
+            await placeOrder(orderData);
+            showToast(t.orderSentToKitchen);
+            clearCart();
+            setIsCartOpen(false);
+        } catch (error) {
+            // Error is handled and shown by the placeOrder function in App.tsx
+            console.error("Failed to place order from cashier:", error);
+        }
     };
 
     const handleProductClick = (product: Product) => {
@@ -162,6 +170,10 @@ export const CashierPage: React.FC<CashierPageProps> = ({ language, currentUser,
         }
     };
     
+    if (!restaurantInfo) {
+        return null; // or a loading spinner
+    }
+
     const orderTypeClasses = "w-full py-2.5 text-sm font-bold transition-colors duration-200 rounded-md";
     const activeOrderTypeClasses = "bg-primary-600 text-white shadow";
     const inactiveOrderTypeClasses = "text-slate-700 dark:text-slate-200";
@@ -332,10 +344,9 @@ export const CashierPage: React.FC<CashierPageProps> = ({ language, currentUser,
 
              {selectedProduct && (
                 <ProductModal
-                product={selectedProduct}
-                onClose={() => setSelectedProduct(null)}
-                addToCart={addToCart}
-                language={language}
+                    product={selectedProduct}
+                    onClose={() => setSelectedProduct(null)}
+                    addToCart={addToCart}
                 />
             )}
         </>

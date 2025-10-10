@@ -1,21 +1,19 @@
 import React, { useRef, useCallback, useEffect, useMemo } from 'react';
-import type { Promotion, Language, Product } from '../types';
-import { useTranslations } from '../i18n/translations';
+import type { Promotion, Product } from '../types';
 import { useCountdown } from '../hooks/useCountdown';
 import { ChevronLeftIcon, ChevronRightIcon } from './icons/Icons';
+import { useUI } from '../contexts/UIContext';
 
 interface PromotionCardProps {
   promotion: Promotion;
   product: Product;
-  language: Language;
   onProductClick: (product: Product) => void;
 }
 
-const PromotionCard: React.FC<PromotionCardProps> = ({ promotion, product, language, onProductClick }) => {
-    const t = useTranslations(language);
+const PromotionCard: React.FC<PromotionCardProps> = ({ promotion, product, onProductClick }) => {
+    const { t, language } = useUI();
     const { days, hours, minutes, seconds } = useCountdown(promotion.endDate);
 
-    // This check is a safeguard; primary filtering is now done in the parent.
     if (!product) {
         return null;
     }
@@ -53,12 +51,11 @@ const PromotionCard: React.FC<PromotionCardProps> = ({ promotion, product, langu
 interface PromotionSectionProps {
   promotions: Promotion[];
   products: Product[];
-  language: Language;
   onProductClick: (product: Product) => void;
 }
 
-export const PromotionSection: React.FC<PromotionSectionProps> = ({ promotions, products, language, onProductClick }) => {
-  const t = useTranslations(language);
+export const PromotionSection: React.FC<PromotionSectionProps> = ({ promotions, products, onProductClick }) => {
+  const { t, language } = useUI();
   const sliderRef = useRef<HTMLDivElement>(null);
   const intervalRef = useRef<number | null>(null);
   const isRtl = language === 'ar';
@@ -68,7 +65,6 @@ export const PromotionSection: React.FC<PromotionSectionProps> = ({ promotions, 
     return promotions
       .map(promo => {
         const product = products.find(p => p.id === promo.productId);
-        // An offer is displayable only if it's active, not expired, and linked to a valid, VISIBLE product.
         if (!promo.isActive || new Date(promo.endDate) <= now || !product || !product.isVisible) {
           return null;
         }
@@ -134,7 +130,7 @@ export const PromotionSection: React.FC<PromotionSectionProps> = ({ promotions, 
                 {displayablePromotions.map(({ promo, product }) => {
                     return (
                         <div key={promo.id} className="w-5/6 md:w-1/2 lg:w-5/12 xl:w-1/2 flex-shrink-0 snap-center p-2">
-                             <PromotionCard promotion={promo} product={product} language={language} onProductClick={onProductClick} />
+                             <PromotionCard promotion={promo} product={product} onProductClick={onProductClick} />
                         </div>
                     );
                 })}

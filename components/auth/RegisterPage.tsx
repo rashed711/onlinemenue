@@ -1,14 +1,11 @@
 import React, { useState } from 'react';
-import type { Language, User } from '../../types';
-import { useTranslations } from '../../i18n/translations';
+import type { User } from '../../types';
+import { useUI } from '../../contexts/UIContext';
+import { useAuth } from '../../contexts/AuthContext';
 
-interface RegisterPageProps {
-    language: Language;
-    register: (newUser: Omit<User, 'id' | 'role' | 'profilePicture'>) => Promise<string | null>;
-}
-
-export const RegisterPage: React.FC<RegisterPageProps> = ({ language, register }) => {
-    const t = useTranslations(language);
+export const RegisterPage: React.FC = () => {
+    const { t } = useUI();
+    const { register } = useAuth();
     const [name, setName] = useState('');
     const [mobile, setMobile] = useState('');
     const [password, setPassword] = useState('');
@@ -29,8 +26,9 @@ export const RegisterPage: React.FC<RegisterPageProps> = ({ language, register }
         const errorMessage = await register({ name, mobile, password });
         if (errorMessage) {
             setError(errorMessage);
+        } else {
+            window.location.hash = '#/profile';
         }
-        // Successful registration will trigger a redirect via useEffect in App.tsx
     };
 
     return (

@@ -1,35 +1,44 @@
 import React from 'react';
-import type { Language, Category, Tag } from '../../types';
-import { useTranslations } from '../../i18n/translations';
+import type { Category, Tag } from '../../types';
 import { PlusIcon, PencilIcon, TrashIcon } from '../icons/Icons';
+import { useUI } from '../../contexts/UIContext';
+import { useData } from '../../contexts/DataContext';
+import { useAdmin } from '../../contexts/AdminContext';
+import { useAuth } from '../../contexts/AuthContext';
 
 interface ClassificationsPageProps {
-    language: Language;
-    categories: Category[];
-    tags: Tag[];
     onAddCategory: () => void;
     onEditCategory: (category: Category) => void;
-    onDeleteCategory: (categoryId: number) => void;
     onAddTag: () => void;
     onEditTag: (tag: Tag) => void;
-    onDeleteTag: (tagId: string) => void;
-    canAddCategory: boolean;
-    canEditCategory: boolean;
-    canDeleteCategory: boolean;
-    canAddTag: boolean;
-    canEditTag: boolean;
-    canDeleteTag: boolean;
 }
 
 export const ClassificationsPage: React.FC<ClassificationsPageProps> = (props) => {
-    const { 
-        language, categories, tags, 
-        onAddCategory, onEditCategory, onDeleteCategory, 
-        onAddTag, onEditTag, onDeleteTag,
-        canAddCategory, canEditCategory, canDeleteCategory,
-        canAddTag, canEditTag, canDeleteTag,
-    } = props;
-    const t = useTranslations(language);
+    const { onAddCategory, onEditCategory, onAddTag, onEditTag } = props;
+    
+    const { language, t } = useUI();
+    const { categories, tags } = useData();
+    const { deleteCategory, deleteTag } = useAdmin();
+    const { hasPermission } = useAuth();
+    
+    const canAddCategory = hasPermission('add_category');
+    const canEditCategory = hasPermission('edit_category');
+    const canDeleteCategory = hasPermission('delete_category');
+    const canAddTag = hasPermission('add_tag');
+    const canEditTag = hasPermission('edit_tag');
+    const canDeleteTag = hasPermission('delete_tag');
+    
+    const handleDeleteCategory = (categoryId: number) => {
+        if (window.confirm(t.confirmDeleteCategory)) {
+            deleteCategory(categoryId);
+        }
+    };
+    
+    const handleDeleteTag = (tagId: string) => {
+        if (window.confirm(t.confirmDeleteTag)) {
+            deleteTag(tagId);
+        }
+    };
 
     return (
         <div>
@@ -53,7 +62,7 @@ export const ClassificationsPage: React.FC<ClassificationsPageProps> = (props) =
                                     <span className="font-medium">{category.name[language]}</span>
                                     <div className="flex items-center gap-2">
                                         {canEditCategory && <button onClick={() => onEditCategory(category)} className="p-2 text-indigo-600 hover:bg-indigo-100 dark:hover:bg-indigo-900/50 rounded-full"><PencilIcon className="w-5 h-5" /></button>}
-                                        {canDeleteCategory && <button onClick={() => onDeleteCategory(category.id)} className="p-2 text-red-600 hover:bg-red-100 dark:hover:bg-red-900/50 rounded-full"><TrashIcon className="w-5 h-5" /></button>}
+                                        {canDeleteCategory && <button onClick={() => handleDeleteCategory(category.id)} className="p-2 text-red-600 hover:bg-red-100 dark:hover:bg-red-900/50 rounded-full"><TrashIcon className="w-5 h-5" /></button>}
                                     </div>
                                 </li>
                             ))}
@@ -79,7 +88,7 @@ export const ClassificationsPage: React.FC<ClassificationsPageProps> = (props) =
                                     <span className="font-medium">{tag.name[language]}</span>
                                     <div className="flex items-center gap-2">
                                         {canEditTag && <button onClick={() => onEditTag(tag)} className="p-2 text-indigo-600 hover:bg-indigo-100 dark:hover:bg-indigo-900/50 rounded-full"><PencilIcon className="w-5 h-5" /></button>}
-                                        {canDeleteTag && <button onClick={() => onDeleteTag(tag.id)} className="p-2 text-red-600 hover:bg-red-100 dark:hover:bg-red-900/50 rounded-full"><TrashIcon className="w-5 h-5" /></button>}
+                                        {canDeleteTag && <button onClick={() => handleDeleteTag(tag.id)} className="p-2 text-red-600 hover:bg-red-100 dark:hover:bg-red-900/50 rounded-full"><TrashIcon className="w-5 h-5" /></button>}
                                     </div>
                                 </li>
                             ))}
