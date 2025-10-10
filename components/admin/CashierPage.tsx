@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useCallback } from 'react';
-import type { Language, User, Product, Category, CartItem, Order, OrderStatus, RestaurantInfo } from '../../types';
+import type { Language, User, Product, Category, CartItem, Order, OrderStatus, RestaurantInfo, OrderType } from '../../types';
 import { useTranslations } from '../../i18n/translations';
 import { calculateTotal, formatNumber } from '../../utils/helpers';
 import { ProductModal } from '../ProductModal';
@@ -34,11 +34,18 @@ export const CashierPage: React.FC<CashierPageProps> = ({ language, currentUser,
     const t = useTranslations(language);
 
     const [cartItems, setCartItems] = useState<CartItem[]>([]);
-    const [tableNumber, setTableNumber] = useState('');
     const [notes, setNotes] = useState('');
     const [selectedCategory, setSelectedCategory] = useState<number | null>(allCategories[0]?.id || null);
     const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
     const [isCartOpen, setIsCartOpen] = useState(false);
+
+    // Order Type and Customer Info State
+    const [orderType, setOrderType] = useState<OrderType>('Dine-in');
+    const [tableNumber, setTableNumber] = useState('');
+    const [customerName, setCustomerName] = useState('');
+    const [customerMobile, setCustomerMobile] = useState('');
+    const [customerAddress, setCustomerAddress] = useState('');
+
 
     const visibleProducts = useMemo(() => allProducts.filter(p => p.isVisible), [allProducts]);
     
@@ -79,30 +86,66 @@ export const CashierPage: React.FC<CashierPageProps> = ({ language, currentUser,
         setCartItems([]);
         setTableNumber('');
         setNotes('');
+        setOrderType('Dine-in');
+        setCustomerName('');
+        setCustomerMobile('');
+        setCustomerAddress('');
     }, []);
 
-    const handlePlaceOrder = () => {
-        if (!tableNumber.trim()) {
-            alert(t.enterTableNumber);
-            return;
+    const handleOrderTypeChange = (type: OrderType) => {
+        const oldOrderType = orderType;
+        setOrderType(type);
+
+        if (type === 'Takeaway') {
+            setCustomerName(t.takeawayCustomer);
+        } else if (oldOrderType === 'Takeaway') {
+            setCustomerName('');
         }
-        if (cartItems.length === 0) {
-            alert('Cart is empty.');
-            return;
+    };
+
+    const isPlaceOrderDisabled = useMemo(() => {
+        if (cartItems.length === 0) return true;
+        if (orderType === 'Dine-in' && !tableNumber.trim()) return true;
+        if (orderType === 'Takeaway' && !customerName.trim()) return true;
+        if (orderType === 'Delivery' && (!customerName.trim() || !customerMobile.trim() || !customerAddress.trim())) return true;
+        return false;
+    }, [cartItems, orderType, tableNumber, customerName, customerMobile, customerAddress]);
+
+    const handlePlaceOrder = () => {
+        if (isPlaceOrderDisabled) return;
+
+        let customerData: Order['customer'];
+        let specificData: Partial<Order> = {};
+
+        if (orderType === 'Dine-in') {
+            customerData = {
+                name: `${t.table} ${tableNumber}`,
+                mobile: tableNumber,
+            };
+            specificData = { tableNumber };
+        } else if (orderType === 'Takeaway') {
+            customerData = {
+                name: customerName,
+                mobile: customerMobile,
+            };
+        } else { // Delivery
+            customerData = {
+                name: customerName,
+                mobile: customerMobile,
+                address: customerAddress,
+            };
         }
 
         const orderData: Omit<Order, 'id' | 'timestamp'> = {
             items: cartItems,
             total: total,
             status: 'pending', 
-            orderType: 'Dine-in',
-            tableNumber: tableNumber,
+            orderType: orderType,
             notes: notes,
-            customer: {
-                name: `${t.table} ${tableNumber}`,
-                mobile: tableNumber, 
-            },
+            customer: customerData,
             createdBy: currentUser?.id,
+            paymentMethod: orderType === 'Delivery' ? 'cod' : undefined,
+            ...specificData,
         };
         
         placeOrder(orderData);
@@ -118,9 +161,11 @@ export const CashierPage: React.FC<CashierPageProps> = ({ language, currentUser,
             addToCart(product, 1);
         }
     };
-
-    const isPlaceOrderDisabled = cartItems.length === 0 || tableNumber.trim() === '';
     
+    const orderTypeClasses = "w-full py-2.5 text-sm font-bold transition-colors duration-200 rounded-md";
+    const activeOrderTypeClasses = "bg-primary-600 text-white shadow";
+    const inactiveOrderTypeClasses = "text-slate-700 dark:text-slate-200";
+
     return (
         <>
             <div className="flex flex-col md:flex-row h-[calc(100vh-5rem)] overflow-hidden">
@@ -179,13 +224,39 @@ export const CashierPage: React.FC<CashierPageProps> = ({ language, currentUser,
                     </div>
 
                     <div className="flex-1 overflow-y-auto">
-                        <div className="p-4 border-b dark:border-slate-700">
-                            <label htmlFor="table-number-cashier" className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">{t.tableNumber}</label>
-                            <TableSelector
-                                tableCount={restaurantInfo.tableCount || 0}
-                                selectedTable={tableNumber}
-                                onSelectTable={setTableNumber}
-                            />
+                        <div className="p-4 border-b dark:border-slate-700 space-y-4">
+                             <div className="flex items-center p-1 rounded-lg bg-slate-200 dark:bg-slate-900">
+                                <button onClick={() => handleOrderTypeChange('Dine-in')} className={`${orderTypeClasses} ${orderType === 'Dine-in' ? activeOrderTypeClasses : inactiveOrderTypeClasses}`}>{t.dineIn}</button>
+                                <button onClick={() => handleOrderTypeChange('Takeaway')} className={`${orderTypeClasses} ${orderType === 'Takeaway' ? activeOrderTypeClasses : inactiveOrderTypeClasses}`}>{t.takeaway}</button>
+                                <button onClick={() => handleOrderTypeChange('Delivery')} className={`${orderTypeClasses} ${orderType === 'Delivery' ? activeOrderTypeClasses : inactiveOrderTypeClasses}`}>{t.delivery}</button>
+                            </div>
+
+                            {orderType === 'Dine-in' && (
+                                <div>
+                                    <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">{t.tableNumber}</label>
+                                    <TableSelector
+                                        tableCount={restaurantInfo.tableCount || 0}
+                                        selectedTable={tableNumber}
+                                        onSelectTable={setTableNumber}
+                                    />
+                                </div>
+                            )}
+
+                            {orderType === 'Takeaway' && (
+                                <div className="space-y-3">
+                                    <input type="text" value={customerName} onChange={e => setCustomerName(e.target.value)} placeholder={t.customer + ' ' + t.name} className="w-full p-2 border rounded-md dark:bg-gray-700 dark:border-gray-600" required />
+                                    <input type="tel" value={customerMobile} onChange={e => setCustomerMobile(e.target.value)} placeholder={t.mobileNumber + ` (${t.yourComment})`} className="w-full p-2 border rounded-md dark:bg-gray-700 dark:border-gray-600" />
+                                </div>
+                            )}
+                            
+                            {orderType === 'Delivery' && (
+                                <div className="space-y-3">
+                                     <input type="text" value={customerName} onChange={e => setCustomerName(e.target.value)} placeholder={t.customer + ' ' + t.name} className="w-full p-2 border rounded-md dark:bg-gray-700 dark:border-gray-600" required />
+                                     <input type="tel" value={customerMobile} onChange={e => setCustomerMobile(e.target.value)} placeholder={t.mobileNumber} className="w-full p-2 border rounded-md dark:bg-gray-700 dark:border-gray-600" required />
+                                     <textarea value={customerAddress} onChange={e => setCustomerAddress(e.target.value)} placeholder={t.address} rows={2} className="w-full p-2 border rounded-md dark:bg-gray-700 dark:border-gray-600" required />
+                                </div>
+                            )}
+
                         </div>
 
                         <div className="p-4 space-y-3">

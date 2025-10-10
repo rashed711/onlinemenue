@@ -88,13 +88,14 @@ export const MenuPage: React.FC<MenuPageProps> = (props) => {
             orderType: 'Dine-in' as OrderType,
             tableNumber: tableNumber,
             customer: customerDetails,
+            createdBy: currentUser?.id,
         };
 
         const newOrder = placeOrder(orderData);
         clearCart();
         setIsProcessing(true);
         try {
-            const imageUrl = await generateReceiptImage(newOrder, restaurantInfo, t, language);
+            const imageUrl = await generateReceiptImage(newOrder, restaurantInfo, t, language, currentUser?.name);
             setReceiptImageUrl(imageUrl);
             setIsReceiptModalOpen(true);
         } finally {

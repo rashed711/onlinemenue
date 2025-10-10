@@ -109,7 +109,7 @@ export interface User {
 }
 
 export type OrderStatus = string;
-export type OrderType = 'Dine-in' | 'Delivery';
+export type OrderType = 'Dine-in' | 'Delivery' | 'Takeaway';
 export type PaymentMethod = 'cod' | 'online';
 
 export interface CheckoutDetails {

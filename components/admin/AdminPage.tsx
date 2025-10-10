@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import type { Language, Product, RestaurantInfo, Order, OrderStatus, User, UserRole, Promotion, Permission, Category, Tag, CartItem, SocialLink, LocalizedString, OrderStatusColumn } from '../../types';
+import type { Language, Product, RestaurantInfo, Order, OrderStatus, User, UserRole, Promotion, Permission, Category, Tag, CartItem, SocialLink, LocalizedString, OrderStatusColumn, OrderType } from '../../types';
 import { useTranslations } from '../../i18n/translations';
 import { MenuAlt2Icon, PlusIcon, PencilIcon, TrashIcon, ShieldCheckIcon, SearchIcon } from '../icons/Icons';
 import { OrderDetailsModal } from './OrderDetailsModal';
@@ -18,6 +18,7 @@ import { ReportsPage } from './ReportsPage';
 import { CashierPage } from './CashierPage';
 import { SettingsPage } from './SettingsPage';
 import { formatDate, formatNumber } from '../../utils/helpers';
+import { OrderCard } from './OrderCard';
 
 interface AdminPageProps {
     language: Language;
@@ -50,13 +51,26 @@ interface AdminPageProps {
     addTag: (tagData: Omit<Tag, 'id'> & {id: string}) => void;
     updateTag: (tag: Tag) => void;
     deleteTag: (tagId: string) => void;
-    updateRestaurantInfo: (updatedInfo: Partial<RestaurantInfo>) => void;
+    // FIX: Corrected the type definition for 'updateRestaurantInfo' to expect a Promise, resolving a type mismatch.
+    updateRestaurantInfo: (updatedInfo: Partial<RestaurantInfo>) => Promise<void>;
     setProgress: (progress: number | ((prev: number) => number)) => void;
     setShowProgress: (show: boolean) => void;
     onChangePasswordClick: () => void;
 }
 
 type AdminTab = 'orders' | 'cashier' | 'reports' | 'productList' | 'classifications' | 'promotions' | 'users' | 'roles' | 'settings';
+
+const NAV_ITEMS_WITH_PERMS = [
+    { id: 'orders', permission: 'view_orders_page' },
+    { id: 'cashier', permission: 'use_cashier_page' },
+    { id: 'reports', permission: 'view_reports_page' },
+    { id: 'productList', permission: 'view_products_page' },
+    { id: 'classifications', permission: 'view_classifications_page' },
+    { id: 'promotions', permission: 'view_promotions_page' },
+    { id: 'users', permission: 'view_users_page' },
+    { id: 'roles', permission: 'manage_roles' },
+    { id: 'settings', permission: 'view_settings_page' },
+];
 
 export const AdminPage: React.FC<AdminPageProps> = (props) => {
     const { 
@@ -98,6 +112,21 @@ export const AdminPage: React.FC<AdminPageProps> = (props) => {
     const [transitionStage, setTransitionStage] = useState<'in' | 'out'>('in');
     const [displayedTab, setDisplayedTab] = useState(activeTab);
 
+    // Effect for real-time permission checking
+    useEffect(() => {
+        const currentTabInfo = NAV_ITEMS_WITH_PERMS.find(item => item.id === activeTab);
+        if (currentTabInfo && !hasPermission(currentTabInfo.permission as Permission)) {
+            const firstAvailableTab = NAV_ITEMS_WITH_PERMS.find(item => hasPermission(item.permission as Permission));
+            if (firstAvailableTab) {
+                setActiveTab(firstAvailableTab.id as AdminTab);
+                showToast(t.permissionsUpdatedRedirect);
+            } else {
+                // If user has admin role but no permissions for any admin page, send to profile.
+                window.location.hash = '#/profile';
+            }
+        }
+    }, [activeTab, hasPermission, setActiveTab, showToast, t.permissionsUpdatedRedirect]);
+
     const PermissionDeniedComponent = () => (
         <div className="flex flex-col items-center justify-center text-center p-8 bg-yellow-50 dark:bg-yellow-900/20 border-2 border-dashed border-yellow-300 dark:border-yellow-700 rounded-lg max-w-2xl mx-auto mt-10">
             <ShieldCheckIcon className="w-16 h-16 text-yellow-500 mb-4" />
@@ -135,20 +164,37 @@ export const AdminPage: React.FC<AdminPageProps> = (props) => {
         if (!currentUser || !hasPermission('view_orders_page')) {
             return [];
         }
-        
+    
+        let baseOrders: Order[];
         const { role, id: userId } = currentUser;
     
         if (role === 'waiter') {
-            return allOrders.filter(order => order.createdBy === userId);
-        }
-        
-        if (role === 'waiterSupervisor') {
+            baseOrders = allOrders.filter(order => order.createdBy === userId);
+        } else if (role === 'waiterSupervisor') {
             const waiterIds = allUsers.filter(user => user.role === 'waiter').map(user => user.id);
-            return allOrders.filter(order => order.createdBy && waiterIds.includes(order.createdBy));
+            baseOrders = allOrders.filter(order => order.createdBy && waiterIds.includes(order.createdBy));
+        } else {
+            baseOrders = allOrders;
         }
     
-        // All other roles with 'view_orders' permission see all orders.
-        return allOrders;
+        // New granular filtering logic based on order type
+        const canViewDineIn = hasPermission('view_dine_in_orders');
+        const canViewTakeaway = hasPermission('view_takeaway_orders');
+        const canViewDelivery = hasPermission('view_delivery_orders');
+        
+        const hasSpecificOrderTypePermission = canViewDineIn || canViewTakeaway || canViewDelivery;
+    
+        // If the user has a specific view permission, filter by it. Otherwise (for backward compatibility), show all base orders.
+        if (!hasSpecificOrderTypePermission) {
+            return baseOrders;
+        }
+    
+        const allowedTypes: OrderType[] = [];
+        if (canViewDineIn) allowedTypes.push('Dine-in');
+        if (canViewTakeaway) allowedTypes.push('Takeaway');
+        if (canViewDelivery) allowedTypes.push('Delivery');
+    
+        return baseOrders.filter(order => allowedTypes.includes(order.orderType));
     
     }, [allOrders, currentUser, allUsers, hasPermission]);
     
@@ -201,6 +247,12 @@ export const AdminPage: React.FC<AdminPageProps> = (props) => {
         return allUsers.filter(user => user.role !== 'superAdmin');
     }, [allUsers, currentUser]);
 
+    const viewingOrderCreatorName = useMemo(() => {
+        if (!viewingOrder || !viewingOrder.createdBy) return undefined;
+        const creator = allUsers.find(u => u.id === viewingOrder.createdBy);
+        return creator?.name;
+    }, [viewingOrder, allUsers]);
+
 
     const handleSaveProduct = (productData: Product | Omit<Product, 'id' | 'rating'>) => {
         if ('id' in productData) {
@@ -249,12 +301,6 @@ export const AdminPage: React.FC<AdminPageProps> = (props) => {
         setEditingOrder(null);
     };
 
-    interface OrderCardProps {
-        order: Order;
-        style?: React.CSSProperties;
-        className?: string;
-    }
-
     const getStatusColorClass = (color: string) => {
         const colorMap: Record<string, string> = {
             yellow: 'text-yellow-500',
@@ -269,95 +315,6 @@ export const AdminPage: React.FC<AdminPageProps> = (props) => {
             pink: 'text-pink-500',
         };
         return colorMap[color] || 'text-gray-500';
-    };
-
-    const OrderCard: React.FC<OrderCardProps> = ({ order, style, className }) => {
-        const isDriver = currentUser?.role === 'driver';
-        const canManage = hasPermission('manage_order_status');
-
-        const currentStatusDetails = restaurantInfo.orderStatusColumns.find(s => s.id === order.status);
-        const creator = order.createdBy ? allUsers.find(u => u.id === order.createdBy) : null;
-        const totalItems = order.items.reduce((sum, item) => sum + item.quantity, 0);
-
-        const renderActions = () => {
-            if (isDriver && order.status === 'out_for_delivery') {
-                return (
-                    <div className="flex gap-2">
-                        <button onClick={(e) => { e.stopPropagation(); updateOrder(order.id, { status: 'completed' }); }} className="text-xs font-bold bg-green-500 text-white px-2 py-1 rounded hover:bg-green-600">{t.markAsDelivered}</button>
-                        <button onClick={(e) => { e.stopPropagation(); setRefusingOrder(order); }} className="text-xs font-bold bg-red-500 text-white px-2 py-1 rounded hover:bg-red-600">{t.markAsRefused}</button>
-                    </div>
-                );
-            }
-            if (canManage) {
-                return (
-                    <select
-                        value={order.status}
-                        onChange={(e) => {
-                            e.stopPropagation();
-                            const newStatus = e.target.value as OrderStatus;
-                            // When marking refused from dropdown, also show modal
-                            if (newStatus === 'refused' && order.status !== 'refused') {
-                                setRefusingOrder(order);
-                            } else {
-                                updateOrder(order.id, { status: newStatus });
-                            }
-                        }}
-                        onClick={(e) => e.stopPropagation()} // Prevent card click
-                        className="text-sm rounded-full border-slate-300 dark:bg-slate-700 dark:border-slate-600 focus:ring-primary-500 focus:border-primary-500 px-3 py-1 font-semibold bg-slate-100 hover:bg-slate-200"
-                    >
-                       {restaurantInfo.orderStatusColumns.map(status => (
-                            <option key={status.id} value={status.id}>{status.name[language]}</option>
-                       ))}
-                    </select>
-                );
-            }
-            return null;
-        };
-
-        return (
-            <div onClick={() => setViewingOrder(order)} style={style} className={`bg-white dark:bg-slate-800 rounded-lg shadow-md p-4 flex flex-col cursor-pointer transition-all hover:shadow-lg hover:-translate-y-1 border border-slate-200 dark:border-slate-700 ${className || ''}`}>
-                <div className="flex justify-between items-center mb-3">
-                    <p className="font-extrabold text-lg text-amber-800 bg-amber-300 dark:bg-amber-400 dark:text-amber-900 px-3 py-0.5 rounded-md">
-                        {order.total.toFixed(2)}
-                    </p>
-                    <p className="font-bold font-mono text-slate-500 dark:text-slate-400 text-sm">
-                        {order.id}
-                    </p>
-                </div>
-
-                <div className="space-y-3 flex-grow">
-                    {currentStatusDetails && (
-                        <div className={`flex items-center gap-2 font-bold text-base ${getStatusColorClass(currentStatusDetails.color)}`}>
-                            <span>{currentStatusDetails.name[language]}</span>
-                        </div>
-                    )}
-                    <div className="text-sm font-semibold text-slate-600 dark:text-slate-300">
-                        {order.orderType === 'Dine-in' && order.tableNumber ? (
-                            `${t.table}: ${formatNumber(parseInt(order.tableNumber, 10))}`
-                        ) : (
-                            order.customer.name || 'Guest'
-                        )}
-                    </div>
-                     <div className="text-xs text-slate-500 dark:text-slate-400 pt-2 border-t border-slate-200/50 dark:border-slate-700/50 flex justify-between items-center">
-                        <span>
-                            {creator ? `${t.creator}: ${creator.name}` : ''}
-                        </span>
-                        <span className="font-semibold bg-slate-200 dark:bg-slate-700 px-2 py-0.5 rounded-full">
-                            {totalItems} {t.items}
-                        </span>
-                    </div>
-                </div>
-
-                <div className="flex justify-between items-center pt-3 mt-3 border-t dark:border-slate-700">
-                    <div>
-                        {renderActions()}
-                    </div>
-                    <button onClick={(e) => { e.stopPropagation(); setViewingOrder(order); }} className="text-sm font-bold text-primary-600 hover:underline dark:text-primary-400">
-                        {t.viewOrderDetails}
-                    </button>
-                </div>
-            </div>
-        );
     };
 
     const renderContent = () => {
@@ -430,7 +387,22 @@ export const AdminPage: React.FC<AdminPageProps> = (props) => {
                                      {col.name[language]} ({formatNumber(colOrders.length)})
                                   </h3>
                                   <div className="bg-slate-200/50 dark:bg-slate-900/50 p-2 sm:p-4 rounded-b-lg space-y-4 min-h-[calc(100vh-250px)] flex-grow">
-                                      {colOrders.map((order, index) => <OrderCard order={order} key={order.id} style={{ animationDelay: `${index * 50}ms` }} className="animate-fade-in-up" />)}
+                                      {colOrders.map((order, index) => (
+                                        <OrderCard 
+                                            order={order} 
+                                            key={order.id} 
+                                            style={{ animationDelay: `${index * 50}ms` }} 
+                                            className="animate-fade-in-up"
+                                            currentUser={currentUser}
+                                            hasPermission={hasPermission}
+                                            updateOrder={updateOrder}
+                                            setRefusingOrder={setRefusingOrder}
+                                            setViewingOrder={setViewingOrder}
+                                            restaurantInfo={restaurantInfo}
+                                            allUsers={allUsers}
+                                            language={language}
+                                        />
+                                      ))}
                                       {colOrders.length === 0 && <div className="h-full flex items-center justify-center"><p className="text-center text-slate-500 p-8">No orders.</p></div>}
                                   </div>
                                 </div>
@@ -535,7 +507,7 @@ export const AdminPage: React.FC<AdminPageProps> = (props) => {
                                             <td className="px-6 py-4 whitespace-nowrap text-center"><label className="relative inline-flex items-center cursor-pointer"><input type="checkbox" checked={product.isPopular} onChange={() => hasPermission('edit_product') && handleToggleProductFlag(product, 'isPopular')} disabled={!hasPermission('edit_product')} className="sr-only peer" /><div className="w-11 h-6 bg-slate-200 rounded-full peer dark:bg-slate-700 peer-focus:ring-4 peer-focus:ring-primary-300 dark:peer-focus:ring-primary-800 peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full after:content-[''] after:absolute after:top-0.5 after:start-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary-600"></div></label></td>
                                             <td className="px-6 py-4 whitespace-nowrap text-center"><label className="relative inline-flex items-center cursor-pointer"><input type="checkbox" checked={product.isNew} onChange={() => hasPermission('edit_product') && handleToggleProductFlag(product, 'isNew')} disabled={!hasPermission('edit_product')} className="sr-only peer" /><div className="w-11 h-6 bg-slate-200 rounded-full peer dark:bg-slate-700 peer-focus:ring-4 peer-focus:ring-green-300 dark:peer-focus:ring-green-800 peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full after:content-[''] after:absolute after:top-0.5 after:start-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-green-600"></div></label></td>
                                             <td className="px-6 py-4 whitespace-nowrap text-center"><label className="relative inline-flex items-center cursor-pointer"><input type="checkbox" checked={product.isVisible} onChange={() => hasPermission('edit_product') && handleToggleProductFlag(product, 'isVisible')} disabled={!hasPermission('edit_product')} className="sr-only peer" /><div className="w-11 h-6 bg-slate-200 rounded-full peer dark:bg-slate-700 peer-focus:ring-4 peer-focus:ring-blue-300 dark:peer-focus:ring-blue-800 peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full after:content-[''] after:absolute after:top-0.5 after:start-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div></label></td>
-                                            {(hasPermission('edit_product') || hasPermission('delete_product')) && <td className="px-6 py-4 whitespace-nowrap text-sm font-medium"><div className="flex items-center gap-4">{hasPermission('edit_product') && <button onClick={() => setEditingProduct(product)} className="text-indigo-600 hover:text-indigo-900 dark:text-indigo-400 dark:hover:text-indigo-200 flex items-center gap-1"><PencilIcon className="w-4 h-4" /> {t.actions}</button>}{hasPermission('delete_product') && <button onClick={() => deleteProduct(product.id)} className="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-200 flex items-center gap-1"><TrashIcon className="w-4 h-4" /> Delete</button>}</div></td>}
+                                            {(hasPermission('edit_product') || hasPermission('delete_product')) && <td className="px-6 py-4 whitespace-nowrap text-sm font-medium"><div className="flex items-center gap-4">{hasPermission('edit_product') && <button onClick={() => setEditingProduct(product)} className="text-indigo-600 hover:text-indigo-900 dark:text-indigo-400 dark:hover:text-indigo-200 flex items-center gap-1"><PencilIcon className="w-4 h-4" /> {t.edit}</button>}{hasPermission('delete_product') && <button onClick={() => deleteProduct(product.id)} className="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-200 flex items-center gap-1"><TrashIcon className="w-4 h-4" /> {t.delete}</button>}</div></td>}
                                         </tr>
                                     ))}
                                 </tbody>
@@ -577,7 +549,7 @@ export const AdminPage: React.FC<AdminPageProps> = (props) => {
                         <div className="bg-white dark:bg-slate-800 rounded-lg shadow-md overflow-x-auto border border-slate-200 dark:border-slate-700">
                             <table className="min-w-full divide-y divide-slate-200 dark:divide-slate-700">
                                 <thead className="bg-slate-50 dark:bg-slate-700/50"><tr><th className="px-6 py-4 text-start text-xs font-medium text-slate-500 dark:text-slate-300 uppercase tracking-wider">{t.product}</th><th className="px-6 py-4 text-start text-xs font-medium text-slate-500 dark:text-slate-300 uppercase tracking-wider">{t.discountPercent}</th><th className="px-6 py-4 text-start text-xs font-medium text-slate-500 dark:text-slate-300 uppercase tracking-wider hidden sm:table-cell">{t.endDate}</th><th className="px-6 py-4 text-center text-xs font-medium text-slate-500 dark:text-slate-300 uppercase tracking-wider">{t.isActive}</th>{(hasPermission('edit_promotion') || hasPermission('delete_promotion')) && <th className="px-6 py-4 text-start text-xs font-medium text-slate-500 dark:text-slate-300 uppercase tracking-wider">{t.actions}</th>}</tr></thead>
-                                <tbody className="divide-y divide-slate-200 dark:divide-slate-700">{allPromotions.map((promo) => {const product = allProducts.find(p => p.id === promo.productId); return (<tr key={promo.id} className="odd:bg-white even:bg-slate-50 dark:odd:bg-slate-800 dark:even:bg-slate-800/50 hover:bg-slate-100 dark:hover:bg-slate-700/50 transition-colors"><td className="px-6 py-4 whitespace-nowrap"><div className="text-sm font-semibold text-slate-900 dark:text-slate-100">{promo.title[language]}</div><div className="text-xs text-slate-500 dark:text-slate-400">{product?.name[language] || 'N/A'}</div></td><td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-red-600 dark:text-red-400">{formatNumber(promo.discountPercent)}%</td><td className="px-6 py-4 whitespace-nowrap text-sm text-slate-600 dark:text-slate-300 hidden sm:table-cell">{formatDate(promo.endDate)}</td><td className="px-6 py-4 whitespace-nowrap text-center"><label className="relative inline-flex items-center cursor-pointer"><input type="checkbox" checked={promo.isActive} onChange={() => hasPermission('edit_promotion') && handleTogglePromotionStatus(promo)} disabled={!hasPermission('edit_promotion')} className="sr-only peer" /><div className="w-11 h-6 bg-slate-200 rounded-full peer dark:bg-slate-700 peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-green-600"></div></label></td>{(hasPermission('edit_promotion') || hasPermission('delete_promotion')) && <td className="px-6 py-4 whitespace-nowrap text-sm font-medium"><div className="flex items-center gap-4">{hasPermission('edit_promotion') && <button onClick={() => setEditingPromotion(promo)} className="text-indigo-600 hover:text-indigo-900 dark:text-indigo-400 dark:hover:text-indigo-200 flex items-center gap-1"><PencilIcon className="w-4 h-4" /> Edit</button>}{hasPermission('delete_promotion') && <button onClick={() => deletePromotion(promo.id)} className="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-200 flex items-center gap-1"><TrashIcon className="w-4 h-4" /> Delete</button>}</div></td>}</tr>)})}</tbody>
+                                <tbody className="divide-y divide-slate-200 dark:divide-slate-700">{allPromotions.map((promo) => {const product = allProducts.find(p => p.id === promo.productId); return (<tr key={promo.id} className="odd:bg-white even:bg-slate-50 dark:odd:bg-slate-800 dark:even:bg-slate-800/50 hover:bg-slate-100 dark:hover:bg-slate-700/50 transition-colors"><td className="px-6 py-4 whitespace-nowrap"><div className="text-sm font-semibold text-slate-900 dark:text-slate-100">{promo.title[language]}</div><div className="text-xs text-slate-500 dark:text-slate-400">{product?.name[language] || 'N/A'}</div></td><td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-red-600 dark:text-red-400">{formatNumber(promo.discountPercent)}%</td><td className="px-6 py-4 whitespace-nowrap text-sm text-slate-600 dark:text-slate-300 hidden sm:table-cell">{formatDate(promo.endDate)}</td><td className="px-6 py-4 whitespace-nowrap text-center"><label className="relative inline-flex items-center cursor-pointer"><input type="checkbox" checked={promo.isActive} onChange={() => hasPermission('edit_promotion') && handleTogglePromotionStatus(promo)} disabled={!hasPermission('edit_promotion')} className="sr-only peer" /><div className="w-11 h-6 bg-slate-200 rounded-full peer dark:bg-slate-700 peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-green-600"></div></label></td>{(hasPermission('edit_promotion') || hasPermission('delete_promotion')) && <td className="px-6 py-4 whitespace-nowrap text-sm font-medium"><div className="flex items-center gap-4">{hasPermission('edit_promotion') && <button onClick={() => setEditingPromotion(promo)} className="text-indigo-600 hover:text-indigo-900 dark:text-indigo-400 dark:hover:text-indigo-200 flex items-center gap-1"><PencilIcon className="w-4 h-4" /> {t.edit}</button>}{hasPermission('delete_promotion') && <button onClick={() => deletePromotion(promo.id)} className="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-200 flex items-center gap-1"><TrashIcon className="w-4 h-4" /> {t.delete}</button>}</div></td>}</tr>)})}</tbody>
                             </table>
                         </div>
                     </div>
@@ -612,7 +584,7 @@ export const AdminPage: React.FC<AdminPageProps> = (props) => {
                         <div className="hidden md:block bg-white dark:bg-slate-800 rounded-lg shadow-md overflow-x-auto border border-slate-200 dark:border-slate-700">
                            <table className="min-w-full divide-y divide-slate-200 dark:divide-slate-700">
                                <thead className="bg-slate-50 dark:bg-slate-700/50"><tr><th className="px-6 py-4 text-start text-xs font-medium text-slate-500 dark:text-slate-300 uppercase tracking-wider">{t.user}</th><th className="px-6 py-4 text-start text-xs font-medium text-slate-500 dark:text-slate-300 uppercase tracking-wider hidden sm:table-cell">{t.mobileNumber}</th><th className="px-6 py-4 text-start text-xs font-medium text-slate-500 dark:text-slate-300 uppercase tracking-wider">{t.role}</th>{(hasPermission('edit_user') || hasPermission('delete_user')) && <th className="px-6 py-4 text-start text-xs font-medium text-slate-500 dark:text-slate-300 uppercase tracking-wider">{t.actions}</th>}</tr></thead>
-                                <tbody className="divide-y divide-slate-200 dark:divide-slate-700">{usersToDisplay.map((user) => (<tr key={user.id} className="odd:bg-white even:bg-slate-50 dark:odd:bg-slate-800 dark:even:bg-slate-800/50 hover:bg-slate-100 dark:hover:bg-slate-700/50 transition-colors"><td className="px-6 py-4 whitespace-nowrap text-sm font-semibold text-slate-900 dark:text-slate-100">{user.name}</td><td className="px-6 py-4 whitespace-nowrap text-sm text-slate-600 dark:text-slate-300 hidden sm:table-cell">{user.mobile}</td><td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-slate-600 dark:text-slate-300">{t[user.role as keyof typeof t] || user.role}</td>{(hasPermission('edit_user') || hasPermission('delete_user')) && <td className="px-6 py-4 whitespace-nowrap text-sm font-medium"><div className="flex items-center gap-4">{hasPermission('edit_user') && <button onClick={() => setEditingUser(user)} disabled={user.role === 'superAdmin'} className="text-indigo-600 hover:text-indigo-900 dark:text-indigo-400 dark:hover:text-indigo-200 flex items-center gap-1 disabled:opacity-50 disabled:cursor-not-allowed"><PencilIcon className="w-4 h-4" /> Edit</button>}{hasPermission('delete_user') && <button onClick={() => deleteUser(user.id)} disabled={user.role === 'superAdmin'} className="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-200 flex items-center gap-1 disabled:opacity-50 disabled:cursor-not-allowed"><TrashIcon className="w-4 h-4" /> Delete</button>}</div></td>}</tr>))}</tbody>
+                                <tbody className="divide-y divide-slate-200 dark:divide-slate-700">{usersToDisplay.map((user) => (<tr key={user.id} className="odd:bg-white even:bg-slate-50 dark:odd:bg-slate-800 dark:even:bg-slate-800/50 hover:bg-slate-100 dark:hover:bg-slate-700/50 transition-colors"><td className="px-6 py-4 whitespace-nowrap text-sm font-semibold text-slate-900 dark:text-slate-100">{user.name}</td><td className="px-6 py-4 whitespace-nowrap text-sm text-slate-600 dark:text-slate-300 hidden sm:table-cell">{user.mobile}</td><td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-slate-600 dark:text-slate-300">{t[user.role as keyof typeof t] || user.role}</td>{(hasPermission('edit_user') || hasPermission('delete_user')) && <td className="px-6 py-4 whitespace-nowrap text-sm font-medium"><div className="flex items-center gap-4">{hasPermission('edit_user') && <button onClick={() => setEditingUser(user)} disabled={user.role === 'superAdmin'} className="text-indigo-600 hover:text-indigo-900 dark:text-indigo-400 dark:hover:text-indigo-200 flex items-center gap-1 disabled:opacity-50 disabled:cursor-not-allowed"><PencilIcon className="w-4 h-4" /> {t.edit}</button>}{hasPermission('delete_user') && <button onClick={() => deleteUser(user.id)} disabled={user.role === 'superAdmin'} className="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-200 flex items-center gap-1 disabled:opacity-50 disabled:cursor-not-allowed"><TrashIcon className="w-4 h-4" /> {t.delete}</button>}</div></td>}</tr>))}</tbody>
                            </table>
                        </div>
                     </div>
@@ -705,6 +677,7 @@ export const AdminPage: React.FC<AdminPageProps> = (props) => {
                         setEditingOrder(order);
                     }}
                     restaurantInfo={restaurantInfo}
+                    creatorName={viewingOrderCreatorName}
                 />
             )}
             {editingOrder && hasPermission('edit_order_content') && (

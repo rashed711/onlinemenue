@@ -13,6 +13,7 @@ interface OrderDetailsModalProps {
     canEdit: boolean;
     onEdit: (order: Order) => void;
     restaurantInfo: RestaurantInfo;
+    creatorName?: string;
 }
 
 const getStatusChipColor = (status: OrderStatus, restaurantInfo: RestaurantInfo) => {
@@ -31,7 +32,7 @@ const getStatusChipColor = (status: OrderStatus, restaurantInfo: RestaurantInfo)
     return `bg-${color}-100 text-${color}-800 dark:bg-${color}-900/50 dark:text-${color}-300 border-${color}-200 dark:border-${color}-500/30`;
 };
 
-export const OrderDetailsModal: React.FC<OrderDetailsModalProps> = ({ order, onClose, language, canEdit, onEdit, restaurantInfo }) => {
+export const OrderDetailsModal: React.FC<OrderDetailsModalProps> = ({ order, onClose, language, canEdit, onEdit, restaurantInfo, creatorName }) => {
     const t = useTranslations(language);
     const statusDetails = restaurantInfo.orderStatusColumns.find(s => s.id === order.status);
     const [isReceiptViewerOpen, setIsReceiptViewerOpen] = useState(false);
@@ -43,7 +44,7 @@ export const OrderDetailsModal: React.FC<OrderDetailsModalProps> = ({ order, onC
     const handleShare = async () => {
         setIsProcessing(true);
         try {
-            const imageUrl = await generateReceiptImage(order, restaurantInfo, t, language);
+            const imageUrl = await generateReceiptImage(order, restaurantInfo, t, language, creatorName);
             const response = await fetch(imageUrl);
             const blob = await response.blob();
             const file = new File([blob], `order-${order.id}.png`, { type: 'image/png' });
@@ -70,7 +71,7 @@ export const OrderDetailsModal: React.FC<OrderDetailsModalProps> = ({ order, onC
     const handlePrint = async () => {
         setIsProcessing(true);
         try {
-            const imageUrl = await generateReceiptImage(order, restaurantInfo, t, language);
+            const imageUrl = await generateReceiptImage(order, restaurantInfo, t, language, creatorName);
             const printWindow = window.open('', '_blank');
             if (printWindow) {
                 printWindow.document.write(`

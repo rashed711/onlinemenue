@@ -28,7 +28,7 @@ export const restaurantInfo: RestaurantInfo = {
     onlinePaymentMethods: [
         { 
             id: 1, 
-            name: { en: 'Vodafone Cash', ar: 'فودافون كاش' },
+            name: { en: 'Vodafone Cash', ar: ' فودافون كاش' },
             type: 'number',
             details: '01012345678',
             icon: 'https://img.icons8.com/color/48/vodafone.png',

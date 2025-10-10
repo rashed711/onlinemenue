@@ -115,6 +115,7 @@ export const translations = {
     orderType: 'Order Type',
     dineIn: 'Dine-in',
     delivery: 'Delivery',
+    takeaway: 'Takeaway',
     superAdmin: 'Super Admin',
     admin: 'Admin',
     employee: 'Employee',
@@ -135,6 +136,7 @@ export const translations = {
     forDriver: 'For Driver',
     manageRoles: 'Manage Roles',
     permissionDenied: 'Permission Denied.',
+    permissionsUpdatedRedirect: "Your permissions have been updated. You've been redirected.",
     
     // Permission Groups
     permission_group_orders: 'Orders & Cashier',
@@ -148,6 +150,9 @@ export const translations = {
     permission_manage_order_status: 'Manage Order Status',
     permission_edit_order_content: 'Edit Order Content',
     permission_use_cashier_page: 'Use Cashier Page',
+    permission_view_dine_in_orders: 'View Dine-in Orders',
+    permission_view_takeaway_orders: 'View Takeaway Orders',
+    permission_view_delivery_orders: 'View Delivery Orders',
     permission_view_reports_page: 'View Reports Page',
     permission_view_products_page: 'View Products Page',
     permission_add_product: 'Add Products',
@@ -231,6 +236,7 @@ export const translations = {
     deleteProductError: 'Cannot delete: This product is part of an active promotion.',
     deleteUserError: 'Cannot delete: This user has existing orders.',
     addTagError: 'Cannot add tag: A tag with this English name (and therefore same ID) already exists.',
+    delete: 'Delete',
     categoryAddedSuccess: 'Category added successfully.',
     categoryUpdatedSuccess: 'Category updated successfully.',
     categoryDeletedSuccess: 'Category deleted successfully.',
@@ -345,6 +351,10 @@ export const translations = {
     filter: 'Filter',
     all: 'All',
     creator: 'Creator',
+    paymentStatus: 'Payment Status',
+    paymentStatusUnpaid: 'Unpaid',
+    paymentStatusCod: 'Pay on Delivery',
+    paymentStatusPaidOnline: 'Paid Online',
 
     // Checkout Page
     deliveryInformation: 'Delivery Information',
@@ -393,6 +403,7 @@ export const translations = {
     print: 'Print',
     shareOrder: 'Share Order',
     printOrder: 'Print Order',
+    takeawayCustomer: 'Takeaway Customer',
   },
   ar: {
     restaurantName: 'مطعم زفران',
@@ -508,11 +519,12 @@ export const translations = {
     orderType: 'نوع الطلب',
     dineIn: 'محلي',
     delivery: 'توصيل',
+    takeaway: 'تيك اواي',
     superAdmin: 'مدير عام',
     admin: 'مدير',
     employee: 'موظف',
-    waiter: 'نادل',
-    waiterSupervisor: 'مشرف نادلين',
+    waiter: 'ويتر',
+    waiterSupervisor: 'مشرف ويتر',
     restaurantStaff: 'طاقم المطعم',
     driver: 'سائق',
     addNewUser: 'إضافة مستخدم جديد',
@@ -524,10 +536,11 @@ export const translations = {
     newOrder: 'طلب جديد',
     inTheKitchen: 'في المطبخ',
     cancelledOrders: 'طلبات ملغاة',
-    forWaiter: 'للنادل',
+    forWaiter: 'ويترز',
     forDriver: 'للسائق',
     manageRoles: 'إدارة الصلاحيات',
     permissionDenied: 'ليس لديك صلاحية.',
+    permissionsUpdatedRedirect: 'تم تحديث صلاحياتك. لقد تم إعادة توجيهك.',
 
     // Permission Groups
     permission_group_orders: 'الطلبات والكاشير',
@@ -541,6 +554,9 @@ export const translations = {
     permission_manage_order_status: 'إدارة حالة الطلب',
     permission_edit_order_content: 'تعديل محتوى الطلب',
     permission_use_cashier_page: 'استخدام صفحة الكاشير',
+    permission_view_dine_in_orders: 'عرض طلبات المحلي',
+    permission_view_takeaway_orders: 'عرض طلبات التيك اواي',
+    permission_view_delivery_orders: 'عرض طلبات التوصيل',
     permission_view_reports_page: 'عرض صفحة التقارير',
     permission_view_products_page: 'عرض صفحة المنتجات',
     permission_add_product: 'إضافة منتجات',
@@ -624,6 +640,7 @@ export const translations = {
     deleteProductError: 'لا يمكن الحذف: هذا المنتج جزء من عرض نشط.',
     deleteUserError: 'لا يمكن الحذف: هذا المستخدم لديه طلبات حالية.',
     addTagError: 'لا يمكن إضافة الوسم: يوجد وسم بنفس الاسم الإنجليزي (وبالتالي نفس المعرف) بالفعل.',
+    delete: 'حذف',
     categoryAddedSuccess: 'تمت إضافة الفئة بنجاح.',
     categoryUpdatedSuccess: 'تم تحديث الفئة بنجاح.',
     categoryDeletedSuccess: 'تم حذف الفئة بنجاح.',
@@ -737,7 +754,11 @@ export const translations = {
     search: 'بحث',
     filter: 'فلترة',
     all: 'الكل',
-    creator: 'المنشئ',
+    creator: 'بواسطة',
+    paymentStatus: 'حالة الدفع',
+    paymentStatusUnpaid: 'غير مدفوع',
+    paymentStatusCod: 'الدفع عند الاستلام',
+    paymentStatusPaidOnline: 'مدفوع أونلاين',
 
     // Checkout Page
     deliveryInformation: 'معلومات التوصيل',
@@ -786,6 +807,7 @@ export const translations = {
     print: 'طباعة',
     shareOrder: 'مشاركة الطلب',
     printOrder: 'طباعة الطلب',
+    takeawayCustomer: 'عميل تيك اواي',
   }
 };
 

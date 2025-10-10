@@ -66,38 +66,39 @@ export const debounce = <F extends (...args: any[]) => any>(func: F, waitFor: nu
 };
 
 
-export const generateReceiptImage = (order: Order, restaurantInfo: RestaurantInfo, t: any, language: Language): Promise<string> => {
+export const generateReceiptImage = (order: Order, restaurantInfo: RestaurantInfo, t: any, language: Language, creatorName?: string): Promise<string> => {
       return new Promise(async (resolve) => {
         const canvas = document.createElement('canvas');
         const ctx = canvas.getContext('2d');
         if (!ctx) return resolve('');
         
-        const dpi = 2; // Increase resolution for better quality
+        const dpi = 2;
         const fontName = language === 'ar' ? 'Cairo' : 'sans-serif';
+        const monoFontName = 'monospace';
 
         // Pre-load fonts
-        const fontStyles = ['normal', 'bold'];
-        const fontSizes = [12, 14, 16, 20, 24];
-        const fontPromises: Promise<any>[] = [];
-        fontStyles.forEach(style => {
-            fontSizes.forEach(size => {
-                fontPromises.push(document.fonts.load(`${style} ${size * dpi}px ${fontName}`));
-            });
-        });
-        await Promise.all(fontPromises);
+        try {
+            await document.fonts.load(`bold ${12 * dpi}px ${fontName}`);
+            await document.fonts.load(`normal ${12 * dpi}px ${fontName}`);
+            await document.fonts.load(`normal ${12 * dpi}px ${monoFontName}`);
+        } catch (e) {
+            console.warn("Could not pre-load fonts for canvas receipt.", e);
+        }
        
         const isRtl = language === 'ar';
-        if (isRtl) ctx.direction = 'rtl';
+        if (isRtl) {
+            ctx.direction = 'rtl';
+        }
 
-        const padding = 20 * dpi;
+        const padding = 25 * dpi;
         const canvasWidth = 400 * dpi;
 
         const fontSizesDPI = {
-            xs: 12 * dpi, sm: 14 * dpi, base: 16 * dpi, lg: 20 * dpi, xl: 24 * dpi
+            xs: 13 * dpi, sm: 14 * dpi, base: 16 * dpi, lg: 18 * dpi, xl: 24 * dpi
         }
 
-        const setFont = (size: keyof typeof fontSizesDPI, weight: 'normal' | 'bold' = 'normal') => {
-            ctx.font = `${weight} ${fontSizesDPI[size]}px ${fontName}`;
+        const setFont = (size: keyof typeof fontSizesDPI, weight: 'normal' | 'bold' = 'normal', family: string = fontName) => {
+            ctx.font = `${weight} ${fontSizesDPI[size]}px ${family}`;
         }
         
         const getWrappedLines = (text: string, maxWidth: number): string[] => {
@@ -118,38 +119,50 @@ export const generateReceiptImage = (order: Order, restaurantInfo: RestaurantInf
             return lines;
         }
 
-        let y = padding;
-        const logoSize = 60 * dpi;
-        y += logoSize + (20 * dpi);
-        setFont('xl', 'bold');
-        y += fontSizesDPI.xl + (15 * dpi);
+        const drawDashedLine = (yPos: number) => {
+            ctx.strokeStyle = '#CBD5E1';
+            ctx.lineWidth = 1 * dpi;
+            ctx.setLineDash([2 * dpi, 3 * dpi]);
+            ctx.beginPath();
+            ctx.moveTo(padding, yPos);
+            ctx.lineTo(canvasWidth - padding, yPos);
+            ctx.stroke();
+            ctx.setLineDash([]); // Reset for other lines
+        }
 
+        // --- SIZING PASS ---
+        let y = padding;
+        const logoSize = 50 * dpi;
+        y += logoSize + (15 * dpi);
+        setFont('lg', 'bold');
+        y += fontSizesDPI.lg + (15 * dpi);
+
+        const orderTypeKey = order.orderType === 'Dine-in' ? 'dineIn' : order.orderType === 'Takeaway' ? 'takeaway' : 'delivery';
         const details = [
             { label: t.orderId, value: order.id },
             { label: t.date, value: formatDateTime(order.timestamp) },
-            { label: t.orderType, value: t[order.orderType === 'Dine-in' ? 'dineIn' : 'delivery'] + (order.tableNumber ? ` (${t.table} ${order.tableNumber})` : '') },
-            { label: t.name, value: order.customer.name },
+            { label: t.orderType, value: t[orderTypeKey] + (order.tableNumber ? ` (${t.table} ${order.tableNumber})` : '') },
+            { label: t.customer, value: order.customer.name },
             { label: t.mobileNumber, value: order.customer.mobile },
-            { label: t.address, value: order.customer.address }
+            { label: t.address, value: order.customer.address },
+            { label: t.creator, value: creatorName },
         ].filter(d => d.value);
         
         setFont('sm');
         details.forEach(detail => {
             const lines = getWrappedLines(`${detail.label}: ${detail.value}`, canvasWidth - padding * 2);
-            y += lines.length * (fontSizesDPI.sm * 1.5);
+            y += lines.length * (fontSizesDPI.sm * 1.6);
         });
-        y += 20 * dpi;
+        y += 15 * dpi;
+        y += 15 * dpi; // for separator
 
-        y += 20 * dpi; // for separator
-
-        setFont('base', 'bold');
-        y += fontSizesDPI.base * 1.5; // for header
+        setFont('sm', 'bold');
+        y += fontSizesDPI.sm * 1.5; // for header
         
         order.items.forEach(item => {
             setFont('base');
             const itemText = `${item.quantity} x ${item.product.name[language]}`;
-            const lines = getWrappedLines(itemText, canvasWidth - padding * 2 - (80*dpi));
-            y += lines.length * (fontSizesDPI.base * 1.5);
+            y += fontSizesDPI.base * 1.5;
 
             if (item.options && Object.keys(item.options).length > 0) {
                  setFont('xs');
@@ -159,13 +172,17 @@ export const generateReceiptImage = (order: Order, restaurantInfo: RestaurantInf
                      if(option && value) y += fontSizesDPI.xs * 1.6;
                  });
             }
-            y += 10 * dpi;
+            y += 5 * dpi;
         });
 
-        y += 20 * dpi; // for separator
-        setFont('xl', 'bold');
-        y += fontSizesDPI.xl * 1.5; // for total
-        y += 30 * dpi;
+        y += 15 * dpi; // for separator
+        setFont('lg', 'bold');
+        y += fontSizesDPI.lg * 1.7; // for total
+        y += 15 * dpi;
+        y += 15 * dpi; // for separator
+        setFont('base', 'bold');
+        y += fontSizesDPI.base * 1.7; // payment status
+        y += 15 * dpi;
         setFont('sm');
         y += fontSizesDPI.sm; // for footer
         y += padding;
@@ -173,14 +190,13 @@ export const generateReceiptImage = (order: Order, restaurantInfo: RestaurantInf
         canvas.width = canvasWidth;
         canvas.height = y;
 
-        // --- Drawing Pass ---
-        ctx.fillStyle = 'white';
+        // --- DRAWING PASS ---
+        ctx.fillStyle = '#FFFFFF';
         ctx.fillRect(0, 0, canvas.width, canvas.height);
         
-        const mainX = isRtl ? canvas.width - padding : padding;
-        const secondaryX = isRtl ? padding : canvas.width - padding;
-        const centerX = canvas.width / 2;
-
+        const mainX = isRtl ? canvasWidth - padding : padding;
+        const secondaryX = isRtl ? padding : canvasWidth - padding;
+        const centerX = canvasWidth / 2;
         const mainAlign = isRtl ? 'right' : 'left';
         const secondaryAlign = isRtl ? 'left' : 'right';
         
@@ -193,99 +209,121 @@ export const generateReceiptImage = (order: Order, restaurantInfo: RestaurantInf
             if (logo.complete && logo.naturalHeight !== 0) {
               ctx.drawImage(logo, centerX - logoSize / 2, y, logoSize, logoSize);
             }
-            y += logoSize + (20 * dpi);
+            y += logoSize + (15 * dpi);
             
-            setFont('xl', 'bold');
-            ctx.fillStyle = '#111827';
+            setFont('lg', 'bold');
+            ctx.fillStyle = '#1E293B';
             ctx.textAlign = 'center';
             ctx.fillText(restaurantInfo.name[language], centerX, y);
-            y += fontSizesDPI.xl + (10 * dpi);
+            y += fontSizesDPI.lg + (15 * dpi);
             
             // --- Details ---
             setFont('sm');
-            ctx.fillStyle = '#4B5563';
+            ctx.fillStyle = '#475569';
             details.forEach(detail => {
                 const lines = getWrappedLines(`${detail.label}: ${detail.value}`, canvasWidth - padding * 2);
                 lines.forEach(line => {
                     ctx.textAlign = mainAlign;
                     ctx.fillText(line, mainX, y);
-                    y += fontSizesDPI.sm * 1.5;
+                    y += fontSizesDPI.sm * 1.6;
                 });
             });
 
-            // --- Separator ---
-            y += 10 * dpi;
-            ctx.strokeStyle = '#E5E7EB';
-            ctx.lineWidth = 1 * dpi;
-            ctx.beginPath();
-            ctx.moveTo(padding, y);
-            ctx.lineTo(canvas.width - padding, y);
-            ctx.stroke();
-            y += 20 * dpi;
+            y += 15 * dpi;
+            drawDashedLine(y);
+            y += 15 * dpi;
 
             // --- Items Header ---
-            setFont('base', 'bold');
-            ctx.fillStyle = '#374151';
+            setFont('sm', 'bold');
+            ctx.fillStyle = '#334155';
             ctx.textAlign = mainAlign;
             ctx.fillText(t.item, mainX, y);
             ctx.textAlign = secondaryAlign;
             ctx.fillText(t.price, secondaryX, y);
-            y += fontSizesDPI.base * 1.5;
+            y += fontSizesDPI.sm * 1.5;
 
             // --- Items List ---
             order.items.forEach(item => {
                 const itemTotal = calculateTotal([item]);
-                const itemText = `${item.quantity} x ${item.product.name[language]}`;
-                const lines = getWrappedLines(itemText, canvasWidth - padding * 2 - (80*dpi));
+                const nameText = `${item.quantity} x ${item.product.name[language]}`;
                 
                 setFont('base');
-                ctx.fillStyle = '#111827';
+                ctx.fillStyle = '#1E293B';
+                
+                // Draw Price (mono)
+                setFont('base', 'normal', monoFontName);
                 ctx.textAlign = secondaryAlign;
                 ctx.fillText(itemTotal.toFixed(2), secondaryX, y);
                 
+                // Draw Name
+                setFont('base');
                 ctx.textAlign = mainAlign;
-                lines.forEach((line) => {
-                    ctx.fillText(line, mainX, y);
-                    y += fontSizesDPI.base * 1.5;
-                });
+                ctx.fillText(nameText, mainX, y);
+                y += fontSizesDPI.base * 1.5;
 
                 if (item.options && item.product.options && Object.keys(item.options).length > 0) {
                     setFont('xs');
-                    ctx.fillStyle = '#6B7280';
+                    ctx.fillStyle = '#64748B';
                     Object.entries(item.options).forEach(([optEn, valEn]) => {
                        const option = item.product.options?.find(o => o.name.en === optEn);
                        const value = option?.values.find(v => v.name.en === valEn);
                        if(option && value) {
-                           const optionText = `- ${value.name[language]}`;
-                           ctx.fillText(optionText, mainX + (isRtl ? -15 * dpi : 15 * dpi), y);
+                           const optionText = `+ ${value.name[language]}`;
+                           ctx.textAlign = mainAlign;
+                           ctx.fillText(optionText, mainX + (isRtl ? 0 : 15 * dpi), y);
                            y += fontSizesDPI.xs * 1.6;
                        }
                     });
                 }
                 y += 5 * dpi;
             });
-            y += 10 * dpi;
+            y += 5 * dpi;
 
-            // --- Total Separator ---
-            ctx.beginPath();
-            ctx.moveTo(padding, y);
-            ctx.lineTo(canvas.width - padding, y);
-            ctx.stroke();
-            y += 20 * dpi;
+            drawDashedLine(y);
+            y += 15 * dpi;
 
             // --- Grand Total ---
-            setFont('xl', 'bold');
-            ctx.fillStyle = '#111827';
+            setFont('lg', 'bold');
+            ctx.fillStyle = '#1E293B';
             ctx.textAlign = mainAlign;
             ctx.fillText(`${t.total}:`, mainX, y);
             ctx.textAlign = secondaryAlign;
+            setFont('lg', 'bold', monoFontName);
             ctx.fillText(`${order.total.toFixed(2)} ${t.currency}`, secondaryX, y);
-            y += fontSizesDPI.xl * 1.5;
+            y += fontSizesDPI.lg * 1.7;
+
+            drawDashedLine(y);
+            y += 15 * dpi;
+
+            // --- Payment Status ---
+            let paymentStatusText = '';
+            let paymentStatusColor = '#475569'; // slate
+            if (order.orderType === 'Dine-in' || order.orderType === 'Takeaway') {
+                paymentStatusText = t.paymentStatusUnpaid;
+                paymentStatusColor = '#D97706'; // amber-600
+            } else { // Delivery
+                if (order.paymentMethod === 'cod') {
+                    paymentStatusText = t.paymentStatusCod;
+                    paymentStatusColor = '#059669'; // green-600
+                } else { // Online
+                    paymentStatusText = t.paymentStatusPaidOnline;
+                    paymentStatusColor = '#059669'; // green-600
+                }
+            }
+            setFont('base', 'bold');
+            ctx.fillStyle = '#334155';
+            ctx.textAlign = mainAlign;
+            ctx.fillText(`${t.paymentStatus}:`, mainX, y);
             
+            ctx.fillStyle = paymentStatusColor;
+            ctx.textAlign = secondaryAlign;
+            ctx.fillText(paymentStatusText, secondaryX, y);
+            y += fontSizesDPI.base * 1.7;
+
             // --- Footer ---
-            y += 20 * dpi;
+            y += 5 * dpi;
             setFont('sm');
-            ctx.fillStyle = '#6B7280';
+            ctx.fillStyle = '#64748B';
             ctx.textAlign = 'center';
             ctx.fillText(language === 'ar' ? 'شكراً لطلبك!' : 'Thank you for your order!', centerX, y);
 

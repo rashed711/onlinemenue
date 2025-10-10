@@ -1,4 +1,6 @@
 
+
+
 import React, { useState, useEffect, useMemo, useCallback, useSyncExternalStore } from 'react';
 import { MenuPage } from './components/MenuPage';
 import { LoginPage } from './components/auth/LoginPage';
@@ -117,8 +119,8 @@ const App: React.FC = () => {
   
   const hasPermission = useCallback((permission: Permission): boolean => {
     if (!currentUser) return false;
-    // Super Admins always have all permissions, regardless of the roles object
-    if (currentUser.role === 'superAdmin') return true;
+    // Super Admins and Admins have all permissions by default.
+    if (currentUser.role === 'superAdmin' || currentUser.role === 'admin') return true;
 
     // Handle dynamic status permissions
     if (permission.startsWith('view_status_')) {
@@ -217,6 +219,40 @@ const App: React.FC = () => {
     };
     fetchInitialData();
   }, []);
+
+  // Effect for real-time permission updates
+  const fetchPermissions = useCallback(async () => {
+    try {
+      const permissionsResponse = await fetch(`${API_BASE_URL}get_permissions.php`);
+      if (!permissionsResponse.ok) return; // Fail silently on background fetch
+      const permissionsData = await permissionsResponse.json();
+      if (permissionsData && typeof permissionsData === 'object' && !Array.isArray(permissionsData)) {
+        setRolePermissions(currentPermissions => {
+          // Only update state if the permissions have actually changed
+          if (JSON.stringify(permissionsData) !== JSON.stringify(currentPermissions)) {
+            return permissionsData;
+          }
+          return currentPermissions;
+        });
+      }
+    } catch (error) {
+      console.error("Error fetching permissions on focus:", error);
+    }
+  }, [setRolePermissions]);
+
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        fetchPermissions();
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, [fetchPermissions]);
 
 
   // Effect for route-based redirection for authentication
@@ -349,12 +385,16 @@ const App: React.FC = () => {
     if (!restaurantInfo) return;
     setIsProcessing(true);
     try {
-        let finalUpdates = { ...updatedInfo };
+        // ** FIX START **
+        // Merge partial updates with the current full state to create a complete object for processing.
+        const fullDataForUpdate = { ...restaurantInfo, ...updatedInfo };
+        let uiStatePayload = { ...fullDataForUpdate }; // This version will have full URLs for the UI state.
+        // ** FIX END **
 
-        // Helper to upload a single image
+        // Helper to upload a single image if it's a new base64 string
         const uploadImage = async (base64Image: string, type: string, imageField: string): Promise<string | null> => {
             if (!base64Image || !base64Image.startsWith('data:image')) {
-                return null;
+                return null; // Don't re-upload existing URLs
             }
             try {
                 const response = await fetch(base64Image);
@@ -362,33 +402,33 @@ const App: React.FC = () => {
                 const formData = new FormData();
                 formData.append('image', blob, `${imageField}.png`);
                 formData.append('type', type);
-                
+
                 const uploadResponse = await fetch(`${API_BASE_URL}upload_image.php`, { method: 'POST', body: formData });
                 if (!uploadResponse.ok) throw new Error(`Image upload failed: ${await uploadResponse.text()}`);
                 
                 const result = await uploadResponse.json();
                 if (result.success && result.url) {
-                    return resolveImageUrl(result.url); // Return the full URL for state
+                    return resolveImageUrl(result.url);
                 }
                 throw new Error(result.error || `Failed to get URL for ${imageField}`);
             } catch (error) {
                 console.error(`${imageField} upload error:`, error);
                 showToast(`Failed to update ${imageField}.`);
-                return 'error'; // Special value to indicate failure
+                return 'error';
             }
         };
 
-        // Handle single image fields
+        // Handle single image fields if they were part of the update
         if (updatedInfo.logo) {
             const newUrl = await uploadImage(updatedInfo.logo, 'branding', 'logo');
-            if (newUrl) finalUpdates.logo = newUrl === 'error' ? restaurantInfo.logo : newUrl;
+            if (newUrl) uiStatePayload.logo = newUrl === 'error' ? restaurantInfo.logo : newUrl;
         }
         if (updatedInfo.heroImage) {
             const newUrl = await uploadImage(updatedInfo.heroImage, 'branding', 'heroImage');
-            if (newUrl) finalUpdates.heroImage = newUrl === 'error' ? restaurantInfo.heroImage : newUrl;
+            if (newUrl) uiStatePayload.heroImage = newUrl === 'error' ? restaurantInfo.heroImage : newUrl;
         }
 
-        // Generic helper for arrays with images/icons
+        // Helper for arrays with images. It processes an array and returns a new one with uploaded image URLs.
         const processArrayWithImages = async <T extends { icon: string }>(items: T[] | undefined, type: string): Promise<T[] | undefined> => {
             if (!items) return undefined;
             return Promise.all(
@@ -397,33 +437,30 @@ const App: React.FC = () => {
                     if (newIconUrl && newIconUrl !== 'error') {
                         return { ...item, icon: newIconUrl };
                     }
-                    return item; // Return original item on failure or if no upload needed
+                    return item;
                 })
             );
         };
         
-        finalUpdates.socialLinks = (await processArrayWithImages(updatedInfo.socialLinks, 'icons')) || finalUpdates.socialLinks;
-        finalUpdates.onlinePaymentMethods = (await processArrayWithImages(updatedInfo.onlinePaymentMethods, 'payment')) || finalUpdates.onlinePaymentMethods;
+        // Process arrays from the fully merged data.
+        uiStatePayload.socialLinks = (await processArrayWithImages(fullDataForUpdate.socialLinks, 'icons')) || uiStatePayload.socialLinks;
+        uiStatePayload.onlinePaymentMethods = (await processArrayWithImages(fullDataForUpdate.onlinePaymentMethods, 'payment')) || uiStatePayload.onlinePaymentMethods;
 
-
-        // Prepare payload for the database (with relative paths)
-        const dbPayload: any = { ...finalUpdates };
+        // Prepare a separate payload for the database with relative paths
+        const dbPayload = { ...uiStatePayload };
         const urlToStrip = new URL(API_BASE_URL).origin + '/';
-
-        const stripUrl = (url: string) => {
-          if(!url) return url;
-          return url.replace(urlToStrip, '');
-        }
+        const stripUrl = (url: string) => url ? url.replace(urlToStrip, '') : url;
         
-        if (dbPayload.logo) dbPayload.logo = stripUrl(dbPayload.logo);
-        if (dbPayload.heroImage) dbPayload.heroImage = stripUrl(dbPayload.heroImage);
+        dbPayload.logo = stripUrl(dbPayload.logo);
+        dbPayload.heroImage = stripUrl(dbPayload.heroImage);
         if (dbPayload.socialLinks) {
-            dbPayload.socialLinks = dbPayload.socialLinks.map((link: SocialLink) => ({...link, icon: stripUrl(link.icon)}));
+            dbPayload.socialLinks = dbPayload.socialLinks.map((link: SocialLink) => ({ ...link, icon: stripUrl(link.icon) }));
         }
         if (dbPayload.onlinePaymentMethods) {
-            dbPayload.onlinePaymentMethods = dbPayload.onlinePaymentMethods.map((method: OnlinePaymentMethod) => ({...method, icon: stripUrl(method.icon)}));
+            dbPayload.onlinePaymentMethods = dbPayload.onlinePaymentMethods.map((method: OnlinePaymentMethod) => ({ ...method, icon: stripUrl(method.icon) }));
         }
 
+        // Send the complete object to the backend
         const response = await fetch(`${API_BASE_URL}update_settings.php`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -434,8 +471,8 @@ const App: React.FC = () => {
         const result = await response.json();
 
         if (result.success) {
-            // Update state with the version that has full image URLs
-            setRestaurantInfo(prev => prev ? ({...prev, ...finalUpdates}) : null);
+            // On success, update the local state with the payload containing full URLs
+            setRestaurantInfo(uiStatePayload);
             showToast(t.settingsUpdatedSuccess);
         } else {
             throw new Error(result.error || 'Update failed');
