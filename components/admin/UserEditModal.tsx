@@ -29,8 +29,11 @@ export const UserEditModal: React.FC<UserEditModalProps> = ({ user, onClose, onS
     const [error, setError] = useState('');
 
     const availableRoles = useMemo(() => {
-        const currentUserRole = roles.find(r => r.key === currentUser?.role);
-        if (currentUserRole?.name.en.toLowerCase() === 'superadmin') {
+        if (!currentUser) return [];
+        const superAdminRole = roles.find(r => r.name.en.toLowerCase() === 'superadmin');
+        const currentUserIsSuperAdmin = currentUser.role === superAdminRole?.key;
+
+        if (currentUserIsSuperAdmin) {
             return roles;
         }
         return roles.filter(r => r.name.en.toLowerCase() !== 'superadmin');
@@ -80,40 +83,55 @@ export const UserEditModal: React.FC<UserEditModalProps> = ({ user, onClose, onS
         return roleDetails?.name.en === 'superAdmin';
     }, [user, roles]);
 
+    const isEditingSelfAsAdmin = useMemo(() => {
+        if (!user || !currentUser) return false;
+        const currentUserRoleDetails = roles.find(r => r.key === currentUser.role);
+        return currentUserRoleDetails?.name.en.toLowerCase() === 'admin' && user.id === currentUser.id;
+    }, [user, currentUser, roles]);
+
+    const isFormDisabled = isEditingSuperAdmin || isEditingSelfAsAdmin;
+
     return (
         <Modal title={user ? t.editUser : t.addNewUser} onClose={onClose} size="sm">
             <form onSubmit={handleSubmit} className="p-5 space-y-4 overflow-y-auto">
-                <div>
-                    <label className="block text-sm font-medium mb-1">{t.name}</label>
-                    <input type="text" name="name" value={formData.name} onChange={handleChange} className="w-full p-2 border rounded-md dark:bg-gray-700 dark:border-gray-600" required />
-                </div>
-                 <div>
-                    <label className="block text-sm font-medium mb-1">{t.mobileNumber}</label>
-                    <input type="text" name="mobile" value={formData.mobile} onChange={handleChange} className="w-full p-2 border rounded-md dark:bg-gray-700 dark:border-gray-600" required />
-                </div>
-                <div>
-                    <label className="block text-sm font-medium mb-1">{t.password}</label>
-                    <input type="password" name="password" value={formData.password} onChange={handleChange} className="w-full p-2 border rounded-md dark:bg-gray-700 dark:border-gray-600" placeholder={user ? t.passwordOptional : ''} required={!user} />
-                    {error && <p className="text-xs text-red-500 mt-1">{error}</p>}
-                </div>
-                 <div>
-                    <label className="block text-sm font-medium mb-1">{t.role}</label>
-                    <select 
-                        name="role" 
-                        value={formData.role} 
-                        onChange={handleChange} 
-                        className="w-full p-2 border rounded-md dark:bg-gray-700 dark:border-gray-600 disabled:opacity-50 disabled:cursor-not-allowed" 
-                        required
-                        disabled={isEditingSuperAdmin}
-                    >
-                        {availableRoles.map(role => (
-                            <option key={role.key} value={role.key}>{role.name[language]}</option>
-                        ))}
-                    </select>
-                </div>
+                {isEditingSelfAsAdmin && (
+                    <div className="p-3 text-sm bg-yellow-100 dark:bg-yellow-900/50 text-yellow-800 dark:text-yellow-200 rounded-lg">
+                        {t.adminCannotEditSelf}
+                    </div>
+                )}
+                <fieldset disabled={isFormDisabled}>
+                    <div>
+                        <label className="block text-sm font-medium mb-1">{t.name}</label>
+                        <input type="text" name="name" value={formData.name} onChange={handleChange} className="w-full p-2 border rounded-md dark:bg-gray-700 dark:border-gray-600 disabled:opacity-50" required />
+                    </div>
+                     <div>
+                        <label className="block text-sm font-medium mb-1">{t.mobileNumber}</label>
+                        <input type="text" name="mobile" value={formData.mobile} onChange={handleChange} className="w-full p-2 border rounded-md dark:bg-gray-700 dark:border-gray-600 disabled:opacity-50" required />
+                    </div>
+                    <div>
+                        <label className="block text-sm font-medium mb-1">{t.password}</label>
+                        <input type="password" name="password" value={formData.password} onChange={handleChange} className="w-full p-2 border rounded-md dark:bg-gray-700 dark:border-gray-600 disabled:opacity-50" placeholder={user ? t.passwordOptional : ''} required={!user} />
+                        {error && <p className="text-xs text-red-500 mt-1">{error}</p>}
+                    </div>
+                     <div>
+                        <label className="block text-sm font-medium mb-1">{t.role}</label>
+                        <select 
+                            name="role" 
+                            value={formData.role} 
+                            onChange={handleChange} 
+                            className="w-full p-2 border rounded-md dark:bg-gray-700 dark:border-gray-600 disabled:opacity-50" 
+                            required
+                            disabled={isFormDisabled || isEditingSuperAdmin} // Redundant but safe
+                        >
+                            {availableRoles.map(role => (
+                                <option key={role.key} value={role.key}>{role.name[language]}</option>
+                            ))}
+                        </select>
+                    </div>
+                </fieldset>
                 <div className="flex justify-end gap-4 pt-4">
                     <button type="button" onClick={onClose} className="px-4 py-2 rounded-lg bg-gray-200 dark:bg-gray-600 hover:bg-gray-300 dark:hover:bg-gray-500">{t.cancel}</button>
-                    <button type="submit" className="px-4 py-2 rounded-lg bg-primary-500 text-white hover:bg-primary-600">{t.save}</button>
+                    <button type="submit" className="px-4 py-2 rounded-lg bg-primary-500 text-white hover:bg-primary-600 disabled:bg-slate-400 disabled:cursor-not-allowed" disabled={isFormDisabled}>{t.save}</button>
                 </div>
             </form>
         </Modal>

@@ -77,7 +77,7 @@ export const OrderCard: React.FC<OrderCardProps> = ({ order, style, className })
     const statusColor = currentStatusDetails?.color || 'slate';
     const borderColorClass = `border-${statusColor}-500`;
     
-    // New: Dynamically set background color based on order type
+    // Dynamically set background color based on order type
     const getOrderTypeColorClasses = (orderType: OrderType): string => {
         switch (orderType) {
             case 'Dine-in':

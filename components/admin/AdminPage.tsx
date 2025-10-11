@@ -220,9 +220,17 @@ export const AdminPage: React.FC<AdminPageProps> = ({ activeSubRoute, reportSubR
     }, [ordersToDisplay, startDate, endDate, orderFilterType, orderFilterCreator, orderSearchTerm]);
 
     const usersToDisplay = useMemo(() => {
-        if (hasPermission('manage_roles')) return allUsers;
-        return allUsers.filter(user => user.role !== 'superAdmin');
-    }, [allUsers, hasPermission]);
+        if (!currentUser) return [];
+        const superAdminRole = roles.find(r => r.name.en.toLowerCase() === 'superadmin');
+        const currentUserIsSuperAdmin = currentUser.role === superAdminRole?.key;
+
+        if (currentUserIsSuperAdmin) {
+            return allUsers;
+        }
+        
+        // Filter out superAdmins for all other users
+        return allUsers.filter(user => user.role !== superAdminRole?.key);
+    }, [allUsers, currentUser, roles]);
 
     const viewingOrderCreatorName = useMemo(() => {
         if (!viewingOrder || !viewingOrder.createdBy) return undefined;
@@ -470,13 +478,12 @@ export const AdminPage: React.FC<AdminPageProps> = ({ activeSubRoute, reportSubR
                                <thead className="bg-slate-50 dark:bg-slate-700/50"><tr><th className="px-6 py-4 text-start text-xs font-medium text-slate-500 dark:text-slate-300 uppercase tracking-wider">{t.user}</th><th className="px-6 py-4 text-start text-xs font-medium text-slate-500 dark:text-slate-300 uppercase tracking-wider hidden sm:table-cell">{t.mobileNumber}</th><th className="px-6 py-4 text-start text-xs font-medium text-slate-500 dark:text-slate-300 uppercase tracking-wider">{t.role}</th>{(hasPermission('edit_user') || hasPermission('delete_user')) && <th className="px-6 py-4 text-start text-xs font-medium text-slate-500 dark:text-slate-300 uppercase tracking-wider">{t.actions}</th>}</tr></thead>
                                 <tbody className="divide-y divide-slate-200 dark:divide-slate-700">{usersToDisplay.map((user) => {
                                     const userRole = roles.find(r => r.key === user.role);
-                                    const isSuperAdmin = userRole?.name.en === 'superAdmin';
                                     return (
                                     <tr key={user.id} className="odd:bg-white even:bg-slate-50 dark:odd:bg-slate-800 dark:even:bg-slate-800/50 hover:bg-slate-100 dark:hover:bg-slate-700/50 transition-colors">
                                         <td className="px-6 py-4 whitespace-nowrap text-sm font-semibold text-slate-900 dark:text-slate-100">{user.name}</td>
                                         <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-600 dark:text-slate-300 hidden sm:table-cell">{user.mobile}</td>
                                         <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-slate-600 dark:text-slate-300">{userRole?.name[language] || user.role}</td>
-                                        {(hasPermission('edit_user') || hasPermission('delete_user')) && <td className="px-6 py-4 whitespace-nowrap text-sm font-medium"><div className="flex items-center gap-4">{hasPermission('edit_user') && <button onClick={() => setEditingUser(user)} disabled={isSuperAdmin} className="text-indigo-600 hover:text-indigo-900 dark:text-indigo-400 dark:hover:text-indigo-200 flex items-center gap-1 disabled:opacity-50 disabled:cursor-not-allowed"><PencilIcon className="w-4 h-4" /> {t.edit}</button>}{hasPermission('delete_user') && <button onClick={() => deleteUser(user.id)} disabled={isSuperAdmin} className="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-200 flex items-center gap-1 disabled:opacity-50 disabled:cursor-not-allowed"><TrashIcon className="w-4 h-4" /> {t.delete}</button>}</div></td>}</tr>
+                                        {(hasPermission('edit_user') || hasPermission('delete_user')) && <td className="px-6 py-4 whitespace-nowrap text-sm font-medium"><div className="flex items-center gap-4">{hasPermission('edit_user') && <button onClick={() => setEditingUser(user)} className="text-indigo-600 hover:text-indigo-900 dark:text-indigo-400 dark:hover:text-indigo-200 flex items-center gap-1"><PencilIcon className="w-4 h-4" /> {t.edit}</button>}{hasPermission('delete_user') && <button onClick={() => deleteUser(user.id)} className="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-200 flex items-center gap-1"><TrashIcon className="w-4 h-4" /> {t.delete}</button>}</div></td>}</tr>
                                 )})}</tbody>
                            </table>
                        </div>
@@ -484,7 +491,6 @@ export const AdminPage: React.FC<AdminPageProps> = ({ activeSubRoute, reportSubR
                         <div className="md:hidden space-y-4">
                             {usersToDisplay.map(user => {
                                 const userRole = roles.find(r => r.key === user.role);
-                                const isSuperAdmin = userRole?.name.en === 'superAdmin';
                                 return (
                                 <div key={user.id} className="bg-white dark:bg-slate-800 rounded-lg shadow p-4 space-y-3">
                                     <div className="flex justify-between items-start">
@@ -496,8 +502,8 @@ export const AdminPage: React.FC<AdminPageProps> = ({ activeSubRoute, reportSubR
                                     </div>
                                     {(hasPermission('edit_user') || hasPermission('delete_user')) && (
                                     <div className="border-t border-slate-100 dark:border-slate-700 pt-3 flex items-center justify-end gap-4">
-                                        {hasPermission('edit_user') && <button onClick={() => setEditingUser(user)} disabled={isSuperAdmin} className="text-indigo-600 dark:text-indigo-400 font-semibold flex items-center gap-1 disabled:opacity-50 disabled:cursor-not-allowed"><PencilIcon className="w-4 h-4" /> {t.edit}</button>}
-                                        {hasPermission('delete_user') && <button onClick={() => deleteUser(user.id)} disabled={isSuperAdmin} className="text-red-600 dark:text-red-400 font-semibold flex items-center gap-1 disabled:opacity-50 disabled:cursor-not-allowed"><TrashIcon className="w-4 h-4" /> {t.delete}</button>}
+                                        {hasPermission('edit_user') && <button onClick={() => setEditingUser(user)} className="text-indigo-600 dark:text-indigo-400 font-semibold flex items-center gap-1"><PencilIcon className="w-4 h-4" /> {t.edit}</button>}
+                                        {hasPermission('delete_user') && <button onClick={() => deleteUser(user.id)} className="text-red-600 dark:text-red-400 font-semibold flex items-center gap-1"><TrashIcon className="w-4 h-4" /> {t.delete}</button>}
                                     </div>
                                     )}
                                 </div>
@@ -507,6 +513,10 @@ export const AdminPage: React.FC<AdminPageProps> = ({ activeSubRoute, reportSubR
                 );
             case 'roles':
                 if (!hasPermission('view_roles_page')) return <PermissionDeniedComponent />;
+                const superAdminRole = roles.find(r => r.name.en.toLowerCase() === 'superadmin');
+                const currentUserIsSuperAdmin = currentUser?.role === superAdminRole?.key;
+                const rolesToDisplay = currentUserIsSuperAdmin ? roles : roles.filter(r => r.name.en.toLowerCase() !== 'superadmin');
+                
                 return (
                     <div>
                         <div className="flex justify-between items-center mb-6"><h2 className="text-2xl font-bold">{t.manageRoles}</h2>{hasPermission('add_role') && <button onClick={() => setEditingRole('new')} className="bg-green-500 text-white font-bold py-2 px-4 rounded-lg hover:bg-green-600 transition-colors flex items-center gap-2"><PlusIcon className="w-5 h-5" />Add New Role</button>}</div>
@@ -520,7 +530,7 @@ export const AdminPage: React.FC<AdminPageProps> = ({ activeSubRoute, reportSubR
                                    </tr>
                                </thead>
                                 <tbody className="divide-y divide-slate-200 dark:divide-slate-700">
-                                   {roles.map((role) => (
+                                   {rolesToDisplay.map((role) => (
                                        <tr key={role.key} className="odd:bg-white even:bg-slate-50 dark:odd:bg-slate-800 dark:even:bg-slate-800/50 hover:bg-slate-100 dark:hover:bg-slate-700/50 transition-colors">
                                            <td className="px-6 py-4 whitespace-nowrap text-sm font-semibold text-slate-900 dark:text-slate-100">{role.name[language]}</td><td className="px-6 py-4 whitespace-nowrap text-sm font-mono text-slate-500 dark:text-slate-400">{role.key}</td>
                                             {(hasPermission('manage_permissions') || hasPermission('edit_role') || hasPermission('delete_role')) && (<td className="px-6 py-4 whitespace-nowrap text-sm font-medium"><div className="flex items-center gap-4">{hasPermission('manage_permissions') && <button onClick={() => setEditingPermissionsForRole(role.key)} className="text-green-600 hover:text-green-900 dark:text-green-400 dark:hover:text-green-200 flex items-center gap-1"><ShieldCheckIcon className="w-4 h-4" /> {t.editPermissions}</button>}{hasPermission('edit_role') && <button onClick={() => setEditingRole(role)} disabled={role.isSystem} className="text-indigo-600 hover:text-indigo-900 dark:text-indigo-400 dark:hover:text-indigo-200 flex items-center gap-1 disabled:opacity-50 disabled:cursor-not-allowed"><PencilIcon className="w-4 h-4" /> {t.edit}</button>}{hasPermission('delete_role') && <button onClick={() => deleteRole(role.key)} disabled={role.isSystem} className="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-200 flex items-center gap-1 disabled:opacity-50 disabled:cursor-not-allowed"><TrashIcon className="w-4 h-4" /> {t.delete}</button>}</div></td>)}
@@ -531,7 +541,7 @@ export const AdminPage: React.FC<AdminPageProps> = ({ activeSubRoute, reportSubR
                        </div>
                        {/* Mobile Cards */}
                        <div className="md:hidden space-y-4">
-                           {roles.map(role => (
+                           {rolesToDisplay.map(role => (
                                <div key={role.key} className="bg-white dark:bg-slate-800 rounded-lg shadow p-4 space-y-3">
                                    <div>
                                        <p className="font-bold text-slate-900 dark:text-slate-100">{role.name[language]}</p>

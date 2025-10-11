@@ -2,10 +2,61 @@ import React, { useState, useMemo, useEffect } from 'react';
 import ReactDOM from 'react-dom';
 import type { Permission, Language, UserRole, RestaurantInfo, Role } from '../../types';
 import { CloseIcon, ClipboardListIcon } from '../icons/Icons';
-import { PERMISSION_GROUPS } from '../../data/permissions';
+import { PERMISSION_GROUPS, PermissionGroup } from '../../data/permissions';
 import { useUI } from '../../contexts/UIContext';
 import { useAdmin } from '../../contexts/AdminContext';
 import { useData } from '../../contexts/DataContext';
+import { useAuth } from '../../contexts/AuthContext';
+import { translations } from '../../i18n/translations';
+
+interface PermissionCardProps {
+    group: PermissionGroup;
+    selectedPermissions: Permission[];
+    handleCheckboxChange: (permissionId: Permission, isChecked: boolean) => void;
+    handleGroupToggle: (groupPermissions: { id: string }[], isChecked: boolean) => void;
+    isDisabled: boolean;
+    t: typeof translations['en'];
+}
+
+const PermissionCard: React.FC<PermissionCardProps> = ({ group, selectedPermissions, handleCheckboxChange, handleGroupToggle, isDisabled, t }) => {
+    const allGroupPermissions = group.permissions.map(p => p.id);
+    const isAllSelected = allGroupPermissions.every(p => selectedPermissions.includes(p));
+    const GroupIcon = group.icon;
+    const groupName = t[group.nameKey];
+
+    return (
+        <div className="border border-slate-200 dark:border-slate-700 rounded-lg overflow-hidden">
+            <div className="p-3 bg-slate-50 dark:bg-slate-700/50 border-b border-slate-200 dark:border-slate-700">
+                <label className="flex items-center gap-3 cursor-pointer">
+                    <input
+                        type="checkbox"
+                        className="w-5 h-5 rounded text-primary-600 focus:ring-primary-500"
+                        checked={isAllSelected}
+                        onChange={(e) => handleGroupToggle(group.permissions, e.target.checked)}
+                        disabled={isDisabled}
+                    />
+                    <GroupIcon className="w-5 h-5 text-slate-500 dark:text-slate-400" />
+                    <span className="font-bold text-slate-700 dark:text-slate-200">{groupName}</span>
+                </label>
+            </div>
+            <div className="p-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-4 gap-y-3">
+                {group.permissions.map((permission) => (
+                    <label key={permission.id} className={`flex items-center gap-3 p-2 rounded-md transition-colors ${isDisabled ? 'cursor-not-allowed opacity-70' : 'cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-700/50'}`}>
+                        <input
+                            type="checkbox"
+                            className="w-5 h-5 rounded text-primary-600 focus:ring-primary-500 disabled:opacity-50"
+                            checked={selectedPermissions.includes(permission.id)}
+                            onChange={e => handleCheckboxChange(permission.id, e.target.checked)}
+                            disabled={isDisabled}
+                        />
+                        <span className="font-medium text-sm">{t[permission.nameKey]}</span>
+                    </label>
+                ))}
+            </div>
+        </div>
+    );
+}
+
 
 interface PermissionsEditModalProps {
   roleId: UserRole;
@@ -17,6 +68,7 @@ export const PermissionsEditModal: React.FC<PermissionsEditModalProps> = ({ role
   const { language, t } = useUI();
   const { restaurantInfo } = useData();
   const { roles, rolePermissions } = useAdmin();
+  const { currentUser } = useAuth();
   const currentPermissions = rolePermissions[roleId] || [];
 
   const [selectedPermissions, setSelectedPermissions] = useState<Permission[]>(currentPermissions);
@@ -33,20 +85,9 @@ export const PermissionsEditModal: React.FC<PermissionsEditModalProps> = ({ role
   if (!portalRoot || !restaurantInfo) return null;
 
   const role = useMemo(() => roles.find(r => r.key === roleId), [roles, roleId]);
-
-  const dynamicStatusGroup = useMemo(() => ({
-      name: t.orderStatusManagement,
-      icon: ClipboardListIcon,
-      permissions: restaurantInfo.orderStatusColumns.map(status => ({
-          id: `view_status_${status.id}`,
-          name: `${language === 'ar' ? 'عرض' : 'View'} "${status.name[language]}"`
-      }))
-    }), [restaurantInfo.orderStatusColumns, language, t]);
-
+  
   const allPermissionGroups = useMemo(() => {
-    return [
-        ...Object.values(PERMISSION_GROUPS), 
-    ];
+    return Object.values(PERMISSION_GROUPS);
   }, []);
 
   const handleCheckboxChange = (permissionId: Permission, isChecked: boolean) => {
@@ -57,7 +98,7 @@ export const PermissionsEditModal: React.FC<PermissionsEditModalProps> = ({ role
     }
   };
   
-  const handleGroupToggle = (groupPermissions: {id: string, name: string}[], isChecked: boolean) => {
+  const handleGroupToggle = (groupPermissions: { id: string }[], isChecked: boolean) => {
       const groupPermissionIds = groupPermissions.map(p => p.id);
       if (isChecked) {
           setSelectedPermissions(prev => [...new Set([...prev, ...groupPermissionIds])]);
@@ -73,43 +114,13 @@ export const PermissionsEditModal: React.FC<PermissionsEditModalProps> = ({ role
 
   const isSuperAdminRole = role?.name.en.toLowerCase() === 'superadmin';
 
-  const PermissionCard: React.FC<{group: any}> = ({ group }) => {
-      const allGroupPermissions = group.permissions.map((p: any) => p.id);
-      const isAllSelected = allGroupPermissions.every((p: any) => selectedPermissions.includes(p));
-      const GroupIcon = group.icon;
+  const isEditingOwnRoleAsAdmin = useMemo(() => {
+    if (!currentUser || !role) return false;
+    const currentUserRoleDetails = roles.find(r => r.key === currentUser.role);
+    return currentUserRoleDetails?.name.en.toLowerCase() === 'admin' && role.key === currentUser.role;
+  }, [currentUser, role, roles]);
 
-      return (
-          <div className="border border-slate-200 dark:border-slate-700 rounded-lg overflow-hidden">
-              <div className="p-3 bg-slate-50 dark:bg-slate-700/50 border-b border-slate-200 dark:border-slate-700">
-                  <label className="flex items-center gap-3 cursor-pointer">
-                      <input
-                          type="checkbox"
-                          className="w-5 h-5 rounded text-primary-600 focus:ring-primary-500"
-                          checked={isAllSelected}
-                          onChange={(e) => handleGroupToggle(group.permissions, e.target.checked)}
-                          disabled={isSuperAdminRole}
-                      />
-                      <GroupIcon className="w-5 h-5 text-slate-500 dark:text-slate-400" />
-                      <span className="font-bold text-slate-700 dark:text-slate-200">{group.nameKey ? t[group.nameKey] : group.name}</span>
-                  </label>
-              </div>
-              <div className="p-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-4 gap-y-3">
-                  {group.permissions.map((permission: any) => (
-                      <label key={permission.id} className={`flex items-center gap-3 p-2 rounded-md transition-colors ${isSuperAdminRole ? 'cursor-not-allowed opacity-70' : 'cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-700/50'}`}>
-                          <input
-                              type="checkbox"
-                              className="w-5 h-5 rounded text-primary-600 focus:ring-primary-500 disabled:opacity-50"
-                              checked={selectedPermissions.includes(permission.id)}
-                              onChange={e => handleCheckboxChange(permission.id, e.target.checked)}
-                              disabled={isSuperAdminRole}
-                          />
-                          <span className="font-medium text-sm">{permission.nameKey ? t[permission.nameKey] : permission.name}</span>
-                      </label>
-                  ))}
-              </div>
-          </div>
-      );
-  }
+  const isDisabled = isSuperAdminRole || isEditingOwnRoleAsAdmin;
 
   if (!role) return null;
 
@@ -128,12 +139,24 @@ export const PermissionsEditModal: React.FC<PermissionsEditModalProps> = ({ role
               Super Admin permissions cannot be changed.
             </div>
           )}
+          {isEditingOwnRoleAsAdmin && (
+            <div className="bg-yellow-100 dark:bg-yellow-900/50 text-yellow-800 dark:text-yellow-200 p-3 rounded-lg text-sm">
+                {t.adminCannotEditOwnPermissions}
+            </div>
+          )}
           
           <div className="space-y-6">
              {allPermissionGroups.map((group, index) => (
-                <PermissionCard key={index} group={{...group, nameKey: group.nameKey}} />
+                <PermissionCard 
+                  key={index} 
+                  group={group}
+                  selectedPermissions={selectedPermissions}
+                  handleCheckboxChange={handleCheckboxChange}
+                  handleGroupToggle={handleGroupToggle}
+                  isDisabled={isDisabled}
+                  t={t}
+                />
              ))}
-             <PermissionCard group={dynamicStatusGroup} />
           </div>
 
         </div>
@@ -141,7 +164,7 @@ export const PermissionsEditModal: React.FC<PermissionsEditModalProps> = ({ role
           <button type="button" onClick={onClose} className="px-4 py-2 rounded-lg bg-slate-200 dark:bg-slate-600 hover:bg-slate-300 dark:hover:bg-slate-500 transition-colors">{t.cancel}</button>
           <button
             onClick={handleSave}
-            disabled={isSuperAdminRole}
+            disabled={isDisabled}
             className="px-4 py-2 rounded-lg bg-primary-500 text-white hover:bg-primary-600 transition-colors disabled:bg-slate-400 disabled:cursor-not-allowed"
           >
             {t.save}

@@ -137,6 +137,9 @@ export const translations = {
     manageRoles: 'Manage Roles',
     permissionDenied: 'Permission Denied.',
     permissionsUpdatedRedirect: "Your permissions have been updated. You've been redirected.",
+    permissionsUpdatedSuccess: 'Permissions updated successfully.',
+    adminCannotEditSelf: 'Admins cannot edit their own profile from this panel. Please go to the Profile page.',
+    adminCannotEditOwnPermissions: 'Admins are not permitted to change their own role permissions.',
     
     // Permission Groups
     permission_group_orders: 'Orders & Cashier',
@@ -632,6 +635,9 @@ export const translations = {
     manageRoles: 'إدارة الأدوار',
     permissionDenied: 'تم رفض الإذن.',
     permissionsUpdatedRedirect: "تم تحديث أذوناتك. لقد تم إعادة توجيهك.",
+    permissionsUpdatedSuccess: 'تم تحديث الصلاحيات بنجاح.',
+    adminCannotEditSelf: 'لا يمكن للمسؤولين تعديل ملفهم الشخصي من هذه اللوحة. يرجى الذهاب إلى صفحة الملف الشخصي.',
+    adminCannotEditOwnPermissions: 'غير مسموح للمسؤولين بتغيير صلاحيات دورهم الوظيفي.',
     permission_group_orders: 'الطلبات والكاشير',
     permission_group_reports: 'التقارير',
     permission_group_menu: 'إدارة القائمة',
@@ -727,7 +733,7 @@ export const translations = {
     orderTypeDistribution: 'توزيع أنواع الطلبات',
     quantitySold: 'الكمية المباعة',
     revenue: 'الإيرادات',
-    orders: 'الطلبات',
+    orders: 'طلب',
     startDate: 'تاريخ البدء',
     productOptions: 'خيارات المنتج',
     addOptionGroup: 'إضافة مجموعة خيارات',

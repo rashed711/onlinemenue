@@ -6,6 +6,7 @@ import { useUI } from './UIContext';
 interface AuthContextType {
     currentUser: User | null;
     setCurrentUser: React.Dispatch<React.SetStateAction<User | null>>;
+    setRolePermissions: React.Dispatch<React.SetStateAction<Record<UserRole, Permission[]>>>;
     login: (mobile: string, password: string) => Promise<string | null>;
     logout: () => void;
     register: (newUserData: Omit<User, 'id' | 'role' | 'profilePicture'>) => Promise<string | null>;
@@ -181,6 +182,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const value: AuthContextType = {
         currentUser,
         setCurrentUser,
+        setRolePermissions,
         login,
         logout,
         register,
