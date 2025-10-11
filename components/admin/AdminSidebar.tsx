@@ -41,28 +41,18 @@ export const AdminSidebar: React.FC<AdminSidebarProps> = (props) => {
         ]
     };
 
-    const NavLink: React.FC<{ item: { id: string; label: string; icon: React.FC<any>; }; }> = ({ item }) => (
-        <button
-            onClick={() => {
-                setActiveTab(item.id as AdminTab);
-                setIsOpen(false);
-            }}
-            className={`w-full flex items-center p-3 my-1 rounded-lg transition-all duration-200 text-sm font-medium border-s-4 text-start ${
-                activeTab === item.id
-                    ? 'bg-primary-100 dark:bg-primary-900/50 text-primary-600 dark:text-primary-300 border-primary-500 font-semibold'
-                    : 'text-gray-600 dark:text-gray-300 hover:bg-gray-200/50 dark:hover:bg-gray-700/50 border-transparent'
-            }`}
-        >
-            <item.icon className="w-5 h-5" />
-            <span className="mx-4">{item.label}</span>
-        </button>
-    );
-    
-    const handleButtonClickNav = (path: string) => {
-        setIsOpen(false);
+    const handleNav = (e: React.MouseEvent, path: string) => {
+        e.preventDefault();
         window.location.hash = path;
+        setIsOpen(false);
     };
 
+    const handleTabChange = (e: React.MouseEvent, tab: AdminTab) => {
+        e.preventDefault();
+        setActiveTab(tab); 
+        setIsOpen(false);
+    };
+    
     if (!currentUser || !restaurantInfo) return null;
 
     const userRoleName = roles.find(r => r.key === currentUser?.role)?.name[language] || currentUser?.role;
@@ -78,10 +68,10 @@ export const AdminSidebar: React.FC<AdminSidebarProps> = (props) => {
                 isOpen ? 'translate-x-0' : (language === 'ar' ? 'translate-x-full' : '-translate-x-full')
             }`}>
                 <div className="flex items-center justify-between px-4 h-20 border-b dark:border-gray-700">
-                    <button onClick={() => handleButtonClickNav('/')} className="flex items-center gap-3">
+                    <a href="#/" onClick={(e) => handleNav(e, '/')} className="flex items-center gap-3">
                         <img src={restaurantInfo.logo} alt="Logo" className="h-10 w-10 rounded-full" />
                         <span className="text-lg font-bold text-gray-800 dark:text-white">{restaurantInfo.name[language]}</span>
-                    </button>
+                    </a>
                     <button onClick={() => setIsOpen(false)} className="p-2 md:hidden">
                         <CloseIcon className="w-6 h-6"/>
                     </button>
@@ -95,7 +85,21 @@ export const AdminSidebar: React.FC<AdminSidebarProps> = (props) => {
                             return (
                                 <div key={index}>
                                    <h3 className="px-3 text-xs font-semibold uppercase text-gray-400 mb-2">{t[`permission_group_${Object.keys(navItems)[index]}` as keyof typeof t] || ''}</h3>
-                                   {visibleItems.map(item => <NavLink item={item} key={item.id} />)}
+                                   {visibleItems.map(item => (
+                                        <a
+                                            key={item.id}
+                                            href={`#/admin/${item.id}`}
+                                            onClick={(e) => handleTabChange(e, item.id as AdminTab)}
+                                            className={`w-full flex items-center p-3 my-1 rounded-lg transition-colors duration-200 text-sm font-medium border-s-4 text-start ${
+                                                activeTab === item.id
+                                                    ? 'bg-primary-100 dark:bg-primary-900/50 text-primary-600 dark:text-primary-300 border-primary-500 font-semibold'
+                                                    : 'text-gray-600 dark:text-gray-300 hover:bg-gray-200/50 dark:hover:bg-gray-700/50 border-transparent'
+                                            }`}
+                                        >
+                                            <item.icon className="w-5 h-5" />
+                                            <span className="mx-4">{item.label}</span>
+                                        </a>
+                                   ))}
                                 </div>
                             );
                         })}
@@ -103,7 +107,7 @@ export const AdminSidebar: React.FC<AdminSidebarProps> = (props) => {
                 </div>
 
                 <div className="p-4 border-t dark:border-gray-700">
-                     <button onClick={() => handleButtonClickNav('/profile')} className="block w-full text-start p-2 rounded-lg hover:bg-gray-200/50 dark:hover:bg-gray-700/50 transition-colors">
+                     <a href="#/profile" onClick={(e) => handleNav(e, '/profile')} className="block w-full text-start p-2 rounded-lg hover:bg-gray-200/50 dark:hover:bg-gray-700/50 transition-colors">
                         <div className="flex items-center gap-3">
                             <img src={currentUser.profilePicture} alt="User" className="w-10 h-10 rounded-full bg-slate-200 object-cover" />
                             <div>
@@ -111,12 +115,12 @@ export const AdminSidebar: React.FC<AdminSidebarProps> = (props) => {
                                 <p className="text-xs text-gray-500 dark:text-gray-400">{userRoleName}</p>
                             </div>
                         </div>
-                     </button>
+                     </a>
                      <div className="mt-2 space-y-1">
-                        <button onClick={() => handleButtonClickNav('/')} className="w-full flex items-center p-3 rounded-lg text-sm font-medium text-gray-600 dark:text-gray-300 hover:bg-gray-200/50 dark:hover:bg-gray-700/50 transition-colors">
+                        <a href="#/" onClick={(e) => handleNav(e, '/')} className="w-full flex items-center p-3 rounded-lg text-sm font-medium text-gray-600 dark:text-gray-300 hover:bg-gray-200/50 dark:hover:bg-gray-700/50 transition-colors">
                             <HomeIcon className="w-5 h-5"/>
                             <span className="mx-4">{t.backToMenu}</span>
-                        </button>
+                        </a>
                         <button onClick={logout} className="w-full flex items-center p-3 rounded-lg text-sm font-medium text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/40 transition-colors">
                             <LogoutIcon className="w-5 h-5"/>
                             <span className="mx-4">{t.logout}</span>
