@@ -2,7 +2,7 @@ import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import type { User, Product, Category, CartItem, Order, RestaurantInfo, OrderType, Tag } from '../../types';
 import { calculateTotal, formatNumber } from '../../utils/helpers';
 import { ProductModal } from '../ProductModal';
-import { MinusIcon, PlusIcon, TrashIcon, CloseIcon, CartIcon, SearchIcon, FilterIcon } from '../icons/Icons';
+import { MinusIcon, PlusIcon, TrashIcon, CloseIcon, CartIcon, SearchIcon, FilterIcon, ChevronUpIcon, ChevronDownIcon } from '../icons/Icons';
 import { TableSelector } from '../TableSelector';
 import { useUI } from '../../contexts/UIContext';
 import { useAuth } from '../../contexts/AuthContext';
@@ -20,7 +20,7 @@ export const CashierPage: React.FC = () => {
     const [notes, setNotes] = useState('');
     const [selectedCategory, setSelectedCategory] = useState<number | null>(null);
     const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
-    const [isCartOpen, setIsCartOpen] = useState(false);
+    const [isCartExpanded, setIsCartExpanded] = useState(false);
     
     // New state for search and filtering
     const [searchTerm, setSearchTerm] = useState('');
@@ -163,7 +163,7 @@ export const CashierPage: React.FC = () => {
             await placeOrder(orderData);
             showToast(t.orderSentToKitchen);
             clearCart();
-            setIsCartOpen(false);
+            setIsCartExpanded(false);
         } catch (error) {
             // Error is handled and shown by the placeOrder function in App.tsx
             console.error("Failed to place order from cashier:", error);
@@ -190,8 +190,8 @@ export const CashierPage: React.FC = () => {
         <>
             <div className="flex flex-col md:flex-row h-[calc(100vh-5rem)] overflow-hidden">
                 {/* Product Selection Panel */}
-                <div className="flex-1 flex flex-col bg-slate-100/50 dark:bg-slate-900/50">
-                    <div className="p-4 border-b border-slate-200 dark:border-slate-700 shrink-0 space-y-4">
+                <div className="flex-1 flex flex-col bg-slate-100/50 dark:bg-slate-900/50 overflow-y-hidden">
+                    <div className="p-3 border-b border-slate-200 dark:border-slate-700 shrink-0 space-y-3">
                         {/* Search and Tag Filter */}
                         <div className="flex flex-col sm:flex-row gap-2 items-center">
                             <div className="relative w-full sm:flex-grow">
@@ -200,15 +200,15 @@ export const CashierPage: React.FC = () => {
                                     placeholder={t.search}
                                     value={searchTerm}
                                     onChange={(e) => setSearchTerm(e.target.value)}
-                                    className="w-full p-2.5 ps-10 text-base border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-800 focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-colors"
+                                    className="w-full p-2 ps-9 text-base border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-800 focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-colors"
                                 />
-                                <div className="absolute top-1/2 -translate-y-1/2 start-3 text-slate-400 dark:text-slate-500">
+                                <div className="absolute top-1/2 -translate-y-1/2 start-2.5 text-slate-400 dark:text-slate-500">
                                     <SearchIcon className="w-5 h-5" />
                                 </div>
                             </div>
                             <button
                                 onClick={() => setIsFilterOpen(!isFilterOpen)}
-                                className={`w-full sm:w-auto flex-shrink-0 flex items-center justify-center gap-2 px-4 py-2.5 border rounded-lg font-bold text-sm transition-colors ${isFilterOpen ? 'bg-primary-100 dark:bg-primary-900/50 border-primary-500 text-primary-700 dark:text-primary-300' : 'bg-white dark:bg-slate-800 border-slate-300 dark:border-slate-600 hover:border-primary-400 dark:hover:border-primary-500'}`}
+                                className={`w-full sm:w-auto flex-shrink-0 flex items-center justify-center gap-2 px-3 py-2 border rounded-lg font-bold text-sm transition-colors ${isFilterOpen ? 'bg-primary-100 dark:bg-primary-900/50 border-primary-500 text-primary-700 dark:text-primary-300' : 'bg-white dark:bg-slate-800 border-slate-300 dark:border-slate-600 hover:border-primary-400 dark:hover:border-primary-500'}`}
                             >
                                 <FilterIcon className="w-5 h-5" />
                                 <span>{t.tags}</span>
@@ -219,7 +219,7 @@ export const CashierPage: React.FC = () => {
                                 )}
                             </button>
                         </div>
-                        <div className={`transition-all duration-300 ease-in-out overflow-hidden ${isFilterOpen ? 'max-h-40 opacity-100 pt-4 border-t border-slate-200 dark:border-slate-700' : 'max-h-0 opacity-0'}`}>
+                        <div className={`transition-all duration-300 ease-in-out overflow-hidden ${isFilterOpen ? 'max-h-40 opacity-100 pt-3 border-t border-slate-200 dark:border-slate-700' : 'max-h-0 opacity-0'}`}>
                             <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
                             {allTags.map(tag => (
                                 <label key={tag.id} className="flex items-center gap-2 cursor-pointer">
@@ -242,7 +242,7 @@ export const CashierPage: React.FC = () => {
                                 <button
                                     key={category.id}
                                     onClick={() => setSelectedCategory(category.id)}
-                                    className={`px-5 py-2 rounded-full text-sm font-bold transition-all duration-300 whitespace-nowrap ${selectedCategory === category.id ? 'bg-primary-600 text-white shadow-lg' : 'bg-white dark:bg-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-600'}`}
+                                    className={`px-4 py-1.5 rounded-full text-sm font-bold transition-all duration-300 whitespace-nowrap ${selectedCategory === category.id ? 'bg-primary-600 text-white shadow-lg' : 'bg-white dark:bg-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-600'}`}
                                 >
                                     {category.name[language]}
                                 </button>
@@ -264,31 +264,16 @@ export const CashierPage: React.FC = () => {
                     </div>
                 </div>
 
-                {/* Mobile overlay background */}
-                 <div
-                    className={`fixed inset-0 bg-black bg-opacity-60 z-40 transition-opacity duration-300 md:hidden ${
-                    isCartOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'
-                    }`}
-                    onClick={() => setIsCartOpen(false)}
-                    aria-hidden="true"
-                />
-
                 {/* Cart/Order Panel */}
-                <div className={`
-                    fixed bottom-0 inset-x-0 h-[85vh] transition-transform duration-300 ease-in-out z-50
-                    md:relative md:h-auto md:w-[400px] md:translate-y-0 md:flex-shrink-0
-                    bg-white dark:bg-slate-800 flex flex-col shadow-lg 
-                    border-l border-slate-200 dark:border-slate-700
-                    ${ isCartOpen ? 'translate-y-0' : 'translate-y-full md:translate-y-0' }
-                `}>
+                <div className="md:w-[400px] md:flex-shrink-0 bg-white dark:bg-slate-800 flex flex-col shadow-lg border-t md:border-t-0 md:border-l border-slate-200 dark:border-slate-700">
                     <div className="p-4 border-b dark:border-slate-700 flex justify-between items-center shrink-0">
                         <h3 className="text-xl font-bold">{t.newOrder}</h3>
-                        <button onClick={() => setIsCartOpen(false)} className="p-2 rounded-full hover:bg-slate-100 dark:hover:bg-slate-700 md:hidden">
-                            <CloseIcon className="w-6 h-6"/>
+                         <button onClick={() => setIsCartExpanded(!isCartExpanded)} className="p-2 rounded-full hover:bg-slate-100 dark:hover:bg-slate-700 md:hidden">
+                            {isCartExpanded ? <ChevronDownIcon className="w-6 h-6"/> : <ChevronUpIcon className="w-6 h-6"/>}
                         </button>
                     </div>
-
-                    <div className="flex-1 overflow-y-auto">
+                    
+                    <div className={`flex-1 overflow-y-auto transition-all duration-500 ease-in-out ${isCartExpanded ? 'max-h-[40vh]' : 'max-h-0'} md:max-h-none`}>
                         <div className="p-4 border-b dark:border-slate-700 space-y-4">
                              <div className="flex items-center p-1 rounded-lg bg-slate-200 dark:bg-slate-900">
                                 <button onClick={() => handleOrderTypeChange('Dine-in')} className={`${orderTypeClasses} ${orderType === 'Dine-in' ? activeOrderTypeClasses : inactiveOrderTypeClasses}`}>{t.dineIn}</button>
@@ -355,45 +340,29 @@ export const CashierPage: React.FC = () => {
                                 ))
                             )}
                         </div>
+                    </div>
 
-                        <div className="p-4 border-t dark:border-slate-700 space-y-4 bg-slate-50 dark:bg-slate-800/50">
-                             <div>
-                                 <textarea value={notes} onChange={e => setNotes(e.target.value)} placeholder={t.orderNotes} rows={2} className="w-full p-2 border rounded-md dark:bg-gray-700 dark:border-gray-600 focus:ring-primary-500 focus:border-primary-500"></textarea>
-                            </div>
-                            <div className="flex justify-between font-bold text-xl">
-                                <span>{t.total}</span>
-                                <span>{total.toFixed(2)} {t.currency}</span>
-                            </div>
-                            <div className="flex gap-2">
-                                <button onClick={clearCart} className="w-1/4 bg-red-500 text-white p-3 rounded-lg font-bold hover:bg-red-600 flex items-center justify-center"><TrashIcon className="w-6 h-6"/></button>
-                                <button 
-                                    onClick={handlePlaceOrder} 
-                                    className="w-3/4 bg-green-500 text-white p-3 rounded-lg font-bold hover:bg-green-600 disabled:bg-gray-400 disabled:cursor-not-allowed"
-                                    disabled={isPlaceOrderDisabled}
-                                >
-                                    {t.placeOrder}
-                                </button>
-                            </div>
+                    <div className="p-3 border-t dark:border-slate-700 space-y-3 bg-slate-50 dark:bg-slate-800/50 mt-auto shrink-0">
+                         <div>
+                             <textarea value={notes} onChange={e => setNotes(e.target.value)} placeholder={t.orderNotes} rows={1} className="w-full p-2 border rounded-md dark:bg-gray-700 dark:border-gray-600 focus:ring-primary-500 focus:border-primary-500"></textarea>
+                        </div>
+                        <div className="flex justify-between font-bold text-xl">
+                            <span>{t.total}</span>
+                            <span>{total.toFixed(2)} {t.currency}</span>
+                        </div>
+                        <div className="flex gap-2">
+                            <button onClick={clearCart} className="w-1/4 bg-red-500 text-white p-2.5 rounded-lg font-bold hover:bg-red-600 flex items-center justify-center"><TrashIcon className="w-6 h-6"/></button>
+                            <button 
+                                onClick={handlePlaceOrder} 
+                                className="w-3/4 bg-green-500 text-white p-2.5 rounded-lg font-bold hover:bg-green-600 disabled:bg-gray-400 disabled:cursor-not-allowed"
+                                disabled={isPlaceOrderDisabled}
+                            >
+                                {t.placeOrder}
+                            </button>
                         </div>
                     </div>
                 </div>
             </div>
-
-            {/* Floating Action Button for Mobile */}
-            {!isCartOpen && (
-                <button
-                    onClick={() => setIsCartOpen(true)}
-                    className="md:hidden fixed bottom-6 end-6 z-30 bg-primary-600 text-white rounded-full shadow-lg hover:bg-primary-700 transition-all duration-300 flex items-center justify-center p-4"
-                    aria-label={t.viewOrder}
-                >
-                    <CartIcon className="w-6 h-6" />
-                     {cartItems.length > 0 && (
-                         <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs font-bold rounded-full h-5 w-5 flex items-center justify-center">
-                            {formatNumber(cartItems.reduce((acc, item) => acc + item.quantity, 0))}
-                        </span>
-                     )}
-                </button>
-            )}
 
              {selectedProduct && (
                 <ProductModal
