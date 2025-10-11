@@ -1,4 +1,3 @@
-// FIX: Removed extraneous file marker comments
 import React, { useState } from 'react';
 import type { Order } from '../../types';
 import { useTranslations } from '../../i18n/translations';

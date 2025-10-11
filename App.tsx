@@ -4,7 +4,6 @@ import { UIProvider, useUI } from './contexts/UIContext';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { DataProvider, useData } from './contexts/DataContext';
 import { CartProvider } from './contexts/CartContext';
-// FIX: Import useAdmin to provide props to ForgotPasswordPage
 import { AdminProvider, useAdmin } from './contexts/AdminContext';
 
 import { MenuPage } from './components/MenuPage';
@@ -35,7 +34,6 @@ function getSnapshot() {
 
 const AppContent: React.FC = () => {
   const {
-    // FIX: Destructure language from useUI
     language,
     toast,
     isChangePasswordModalOpen,
@@ -48,7 +46,6 @@ const AppContent: React.FC = () => {
   } = useUI();
   const { currentUser } = useAuth();
   const { restaurantInfo } = useData();
-  // FIX: Get users and resetUserPassword from useAdmin
   const { users, resetUserPassword } = useAdmin();
 
   // Routing State
@@ -70,7 +67,6 @@ const AppContent: React.FC = () => {
     }
     if (baseRoute.startsWith('#/login')) return <LoginPage />;
     if (baseRoute.startsWith('#/register')) return <RegisterPage />;
-    // FIX: Pass required props to ForgotPasswordPage
     if (baseRoute.startsWith('#/forgot-password')) return <ForgotPasswordPage language={language} users={users} onPasswordReset={resetUserPassword} />;
     if (baseRoute.startsWith('#/profile')) return <ProfilePage />;
     if (baseRoute.startsWith('#/checkout')) return <CheckoutPage />;

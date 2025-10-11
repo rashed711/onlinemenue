@@ -1,4 +1,3 @@
-// FIX: Import React to resolve 'Cannot find namespace 'React'' error.
 import React from 'react';
 import type { Permission } from '../types';
 import { translations } from '../i18n/translations';
@@ -12,6 +11,11 @@ import {
   UsersIcon,
   ShieldCheckIcon,
   CogIcon,
+  CurrencyDollarIcon,
+  ShoppingCartIcon,
+  UserGroupIcon,
+  TruckIcon,
+  UserIcon,
 } from '../components/icons/Icons';
 
 // Define a type for translation keys to ensure type safety
@@ -56,6 +60,14 @@ export const PERMISSION_GROUPS: Record<string, PermissionGroup> = {
     icon: ChartBarIcon,
     permissions: [
       { id: 'view_reports_page', nameKey: 'permission_view_reports_page' },
+      { id: 'view_sales_report', nameKey: 'permission_view_sales_report' },
+      { id: 'view_orders_report', nameKey: 'permission_view_orders_report' },
+      { id: 'view_profit_report', nameKey: 'permission_view_profit_report' },
+      { id: 'view_customers_report', nameKey: 'permission_view_customers_report' },
+      { id: 'view_products_report', nameKey: 'permission_view_products_report' },
+      { id: 'view_payments_report', nameKey: 'permission_view_payments_report' },
+      { id: 'view_delivery_report', nameKey: 'permission_view_delivery_report' },
+      { id: 'view_user_activity_report', nameKey: 'permission_view_user_activity_report' },
     ],
   },
   products: {

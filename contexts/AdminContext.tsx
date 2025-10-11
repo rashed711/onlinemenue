@@ -1,4 +1,5 @@
 
+
 import React, { createContext, useState, useCallback, useContext, useEffect } from 'react';
 import type { Order, Product, Promotion, User, Permission, UserRole, Role, Category, Tag } from '../types';
 import { API_BASE_URL } from '../utils/config';
@@ -35,7 +36,6 @@ interface AdminContextType {
     addRole: (roleData: Omit<Role, 'isSystem' | 'key'>) => Promise<void>;
     updateRole: (roleData: Role) => Promise<void>;
     deleteRole: (roleKey: string) => Promise<void>;
-    // FIX: Add state for viewing/refusing orders to the context
     viewingOrder: Order | null;
     setViewingOrder: React.Dispatch<React.SetStateAction<Order | null>>;
     refusingOrder: Order | null;
@@ -59,7 +59,6 @@ export const AdminProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     const [orders, setOrders] = useState<Order[]>([]);
     const [users, setUsers] = useState<User[]>([]);
     const [rolePermissions, setRolePermissions] = useState<Record<UserRole, Permission[]>>({});
-    // FIX: Add state for viewing/refusing modals
     const [viewingOrder, setViewingOrder] = useState<Order | null>(null);
     const [refusingOrder, setRefusingOrder] = useState<Order | null>(null);
 
@@ -188,7 +187,6 @@ export const AdminProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         addCategory, updateCategory, deleteCategory,
         addTag, updateTag, deleteTag,
         addRole, updateRole, deleteRole,
-        // FIX: Provide modal state and setters in context
         viewingOrder,
         setViewingOrder,
         refusingOrder,

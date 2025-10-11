@@ -1,4 +1,5 @@
 
+
 import React, { useState, useMemo, useEffect } from 'react';
 import type { Language, Product, RestaurantInfo, Order, OrderStatus, User, UserRole, Promotion, Permission, Category, Tag, CartItem, SocialLink, LocalizedString, OrderStatusColumn, OrderType, Role } from '../../types';
 import { MenuAlt2Icon, PlusIcon, PencilIcon, TrashIcon, ShieldCheckIcon, SearchIcon } from '../icons/Icons';
@@ -63,7 +64,6 @@ export const AdminPage: React.FC<AdminPageProps> = ({ activeSubRoute, reportSubR
         updateRolePermissions,
         addCategory, updateCategory, deleteCategory, addTag, updateTag, deleteTag,
         addRole, updateRole, deleteRole,
-        // FIX: Use modal state from context
         viewingOrder, setViewingOrder,
         refusingOrder, setRefusingOrder,
     } = useAdmin();
@@ -71,7 +71,6 @@ export const AdminPage: React.FC<AdminPageProps> = ({ activeSubRoute, reportSubR
     const [activeTab, setActiveTab] = useState<AdminTab>(activeSubRoute as AdminTab);
     const [isSidebarOpen, setSidebarOpen] = useState(false);
     
-    // const [viewingOrder, setViewingOrder] = useState<Order | null>(null); // FIX: Removed local state
     const [editingOrder, setEditingOrder] = useState<Order | null>(null);
     const [editingProduct, setEditingProduct] = useState<Product | 'new' | null>(null);
     const [editingPromotion, setEditingPromotion] = useState<Promotion | 'new' | null>(null);
@@ -80,7 +79,6 @@ export const AdminPage: React.FC<AdminPageProps> = ({ activeSubRoute, reportSubR
     const [editingRole, setEditingRole] = useState<Role | 'new' | null>(null);
     const [editingCategory, setEditingCategory] = useState<Category | 'new' | null>(null);
     const [editingTag, setEditingTag] = useState<Tag | 'new' | null>(null);
-    // const [refusingOrder, setRefusingOrder] = useState<Order | null>(null); // FIX: Removed local state
 
     const [orderSearchTerm, setOrderSearchTerm] = useState('');
     const [startDate, setStartDate] = useState(new Date().toISOString().split('T')[0]);

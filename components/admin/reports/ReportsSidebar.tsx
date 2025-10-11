@@ -2,20 +2,21 @@ import React from 'react';
 import { useUI } from '../../../contexts/UIContext';
 import { useAuth } from '../../../contexts/AuthContext';
 import { ChartBarIcon, ClipboardListIcon, CollectionIcon, CurrencyDollarIcon, ShoppingCartIcon, TruckIcon, UserGroupIcon, UserIcon } from '../../icons/Icons'; // Assuming CurrencyDollarIcon etc are created
+import type { Permission } from '../../../types';
 
 // A simple placeholder for icons that might not exist yet
 const PlaceholderIcon: React.FC<{className?: string}> = ({className}) => <div className={`w-5 h-5 bg-slate-300 rounded ${className}`} />;
 
-const navItems = [
+const navItems: { id: string, labelKey: string, icon: React.FC<any>, permission: Permission }[] = [
     { id: 'dashboard', labelKey: 'dashboard', icon: ChartBarIcon, permission: 'view_reports_page' },
-    { id: 'sales', labelKey: 'salesReport', icon: CurrencyDollarIcon || PlaceholderIcon, permission: 'view_reports_page' },
-    { id: 'orders', labelKey: 'ordersReport', icon: ShoppingCartIcon || PlaceholderIcon, permission: 'view_reports_page' },
-    { id: 'profit', labelKey: 'profitReport', icon: PlaceholderIcon, permission: 'view_reports_page' },
-    { id: 'customers', labelKey: 'customersReport', icon: UserGroupIcon || PlaceholderIcon, permission: 'view_reports_page' },
-    { id: 'products', labelKey: 'productsReport', icon: CollectionIcon, permission: 'view_reports_page' },
-    { id: 'payments', labelKey: 'paymentsReport', icon: PlaceholderIcon, permission: 'view_reports_page' },
-    { id: 'delivery', labelKey: 'deliveryReport', icon: TruckIcon, permission: 'view_reports_page' },
-    { id: 'userActivity', labelKey: 'userActivityReport', icon: UserIcon, permission: 'view_reports_page' },
+    { id: 'sales', labelKey: 'salesReport', icon: CurrencyDollarIcon, permission: 'view_sales_report' },
+    { id: 'orders', labelKey: 'ordersReport', icon: ShoppingCartIcon, permission: 'view_orders_report' },
+    { id: 'profit', labelKey: 'profitReport', icon: PlaceholderIcon, permission: 'view_profit_report' },
+    { id: 'customers', labelKey: 'customersReport', icon: UserGroupIcon, permission: 'view_customers_report' },
+    { id: 'products', labelKey: 'productsReport', icon: CollectionIcon, permission: 'view_products_report' },
+    { id: 'payments', labelKey: 'paymentsReport', icon: PlaceholderIcon, permission: 'view_payments_report' },
+    { id: 'delivery', labelKey: 'deliveryReport', icon: TruckIcon, permission: 'view_delivery_report' },
+    { id: 'userActivity', labelKey: 'userActivityReport', icon: UserIcon, permission: 'view_user_activity_report' },
 ];
 
 interface ReportsSidebarProps {

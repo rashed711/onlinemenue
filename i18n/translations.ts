@@ -1,4 +1,3 @@
-// FIX: Removed extraneous file marker comments
 import type { Language } from '../types';
 
 export const translations = {
@@ -186,6 +185,14 @@ export const translations = {
     permission_manage_settings_operations: 'Manage Operations Settings',
     permission_manage_settings_social: 'Manage Social Links',
     permission_manage_settings_statuses: 'Manage Order Statuses',
+    permission_view_sales_report: 'View Sales Report',
+    permission_view_orders_report: 'View Orders Report',
+    permission_view_profit_report: 'View Profit Report',
+    permission_view_customers_report: 'View Customers Report',
+    permission_view_products_report: 'View Products Report',
+    permission_view_payments_report: 'View Payments Report',
+    permission_view_delivery_report: 'View Delivery Report',
+    permission_view_user_activity_report: 'View User Activity Report',
 
     editPermissions: 'Edit Permissions',
     classifications: 'Classifications',
@@ -400,7 +407,6 @@ export const translations = {
     paymentCollectedVia: 'Payment Collected Via:',
     selectMethod: 'Select Method',
     savePayment: 'Save Payment',
-    // FIX: Add 'cash' translation key
     cash: 'Cash',
 
     // Dynamic Payment Methods
@@ -670,6 +676,14 @@ export const translations = {
     permission_manage_settings_operations: 'إدارة إعدادات التشغيل',
     permission_manage_settings_social: 'إدارة روابط التواصل',
     permission_manage_settings_statuses: 'إدارة حالات الطلب',
+    permission_view_sales_report: 'عرض تقرير المبيعات',
+    permission_view_orders_report: 'عرض تقرير الطلبات',
+    permission_view_profit_report: 'عرض تقرير الأرباح',
+    permission_view_customers_report: 'عرض تقرير العملاء',
+    permission_view_products_report: 'عرض تقرير المنتجات',
+    permission_view_payments_report: 'عرض تقرير المدفوعات',
+    permission_view_delivery_report: 'عرض تقرير التوصيل',
+    permission_view_user_activity_report: 'عرض تقرير نشاط المستخدمين',
     editPermissions: 'تعديل الصلاحيات',
     classifications: 'التصنيفات',
     manageCategories: 'إدارة الفئات',
@@ -881,7 +895,6 @@ export const translations = {
     paymentCollectedVia: 'تم التحصيل عبر:',
     selectMethod: 'اختر الطريقة',
     savePayment: 'حفظ الدفع',
-    // FIX: Add 'cash' translation key
     cash: 'نقداً',
     onlinePaymentMethods: 'طرق الدفع عبر الإنترنت',
     addNewPaymentMethod: 'إضافة طريقة دفع جديدة',

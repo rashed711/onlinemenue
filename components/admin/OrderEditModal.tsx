@@ -6,25 +6,12 @@ import { ProductModal } from '../ProductModal';
 import { Modal } from '../Modal';
 import { useUI } from '../../contexts/UIContext';
 import { useData } from '../../contexts/DataContext';
+import { calculateItemTotal } from '../../utils/helpers';
 
 interface OrderEditModalProps {
     order: Order;
     onClose: () => void;
     onSave: (updatedOrderData: {items: CartItem[], notes: string, tableNumber?: string}) => void;
-}
-
-const calculateItemTotal = (item: CartItem): number => {
-    let itemPrice = item.product.price;
-    if (item.options && item.product.options) {
-        Object.entries(item.options).forEach(([optionKey, valueKey]) => {
-            const option = item.product.options?.find(opt => opt.name.en === optionKey);
-            const value = option?.values.find(val => val.name.en === valueKey);
-            if (value) {
-                itemPrice += value.priceModifier;
-            }
-        });
-    }
-    return itemPrice * item.quantity;
 }
 
 export const OrderEditModal: React.FC<OrderEditModalProps> = ({ order, onClose, onSave }) => {

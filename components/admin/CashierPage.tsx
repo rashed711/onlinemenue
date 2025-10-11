@@ -1,8 +1,8 @@
 import React, { useState, useMemo, useCallback, useEffect } from 'react';
-import type { User, Product, Category, CartItem, Order, RestaurantInfo, OrderType } from '../../types';
+import type { User, Product, Category, CartItem, Order, RestaurantInfo, OrderType, Tag } from '../../types';
 import { calculateTotal, formatNumber } from '../../utils/helpers';
 import { ProductModal } from '../ProductModal';
-import { MinusIcon, PlusIcon, TrashIcon, CloseIcon, CartIcon } from '../icons/Icons';
+import { MinusIcon, PlusIcon, TrashIcon, CloseIcon, CartIcon, SearchIcon, FilterIcon } from '../icons/Icons';
 import { TableSelector } from '../TableSelector';
 import { useUI } from '../../contexts/UIContext';
 import { useAuth } from '../../contexts/AuthContext';
@@ -10,24 +10,10 @@ import { useData } from '../../contexts/DataContext';
 import { useAdmin } from '../../contexts/AdminContext';
 
 
-const calculateItemTotal = (item: CartItem): number => {
-    let itemPrice = item.product.price;
-    if (item.options && item.product.options) {
-        Object.entries(item.options).forEach(([optionKey, valueKey]) => {
-            const option = item.product.options?.find(opt => opt.name.en === optionKey);
-            const value = option?.values.find(val => val.name.en === valueKey);
-            if (value) {
-                itemPrice += value.priceModifier;
-            }
-        });
-    }
-    return itemPrice * item.quantity;
-}
-
 export const CashierPage: React.FC = () => {
     const { language, t, showToast } = useUI();
     const { currentUser } = useAuth();
-    const { products: allProducts, categories: allCategories, restaurantInfo } = useData();
+    const { products: allProducts, categories: allCategories, tags: allTags, restaurantInfo } = useData();
     const { placeOrder } = useAdmin();
 
     const [cartItems, setCartItems] = useState<CartItem[]>([]);
@@ -35,6 +21,12 @@ export const CashierPage: React.FC = () => {
     const [selectedCategory, setSelectedCategory] = useState<number | null>(null);
     const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
     const [isCartOpen, setIsCartOpen] = useState(false);
+    
+    // New state for search and filtering
+    const [searchTerm, setSearchTerm] = useState('');
+    const [selectedTags, setSelectedTags] = useState<string[]>([]);
+    const [isFilterOpen, setIsFilterOpen] = useState(false);
+
 
     // Order Type and Customer Info State
     const [orderType, setOrderType] = useState<OrderType>('Dine-in');
@@ -53,9 +45,17 @@ export const CashierPage: React.FC = () => {
     const visibleProducts = useMemo(() => allProducts.filter(p => p.isVisible), [allProducts]);
     
     const filteredProducts = useMemo(() => {
-        if (selectedCategory === null) return visibleProducts;
-        return visibleProducts.filter(p => p.categoryId === selectedCategory);
-    }, [selectedCategory, visibleProducts]);
+        return visibleProducts.filter(product => {
+            const matchesCategory = selectedCategory === null || product.categoryId === selectedCategory;
+            
+            const name = product.name[language] || product.name['en'];
+            const matchesSearch = name.toLowerCase().includes(searchTerm.toLowerCase());
+
+            const matchesTags = selectedTags.length === 0 || selectedTags.every(tag => product.tags.includes(tag));
+            
+            return matchesCategory && matchesSearch && matchesTags;
+        });
+    }, [selectedCategory, visibleProducts, searchTerm, selectedTags, language]);
 
     const total = useMemo(() => calculateTotal(cartItems), [cartItems]);
 
@@ -94,6 +94,14 @@ export const CashierPage: React.FC = () => {
         setCustomerMobile('');
         setCustomerAddress('');
     }, []);
+
+    const handleTagChange = (tagId: string) => {
+        setSelectedTags(prev => 
+            prev.includes(tagId) 
+            ? prev.filter(t => t !== tagId) 
+            : [...prev, tagId]
+        );
+    };
 
     const handleOrderTypeChange = (type: OrderType) => {
         const oldOrderType = orderType;
@@ -183,7 +191,52 @@ export const CashierPage: React.FC = () => {
             <div className="flex flex-col md:flex-row h-[calc(100vh-5rem)] overflow-hidden">
                 {/* Product Selection Panel */}
                 <div className="flex-1 flex flex-col bg-slate-100/50 dark:bg-slate-900/50">
-                    <div className="p-4 border-b border-slate-200 dark:border-slate-700 shrink-0">
+                    <div className="p-4 border-b border-slate-200 dark:border-slate-700 shrink-0 space-y-4">
+                        {/* Search and Tag Filter */}
+                        <div className="flex flex-col sm:flex-row gap-2 items-center">
+                            <div className="relative w-full sm:flex-grow">
+                                <input
+                                    type="text"
+                                    placeholder={t.search}
+                                    value={searchTerm}
+                                    onChange={(e) => setSearchTerm(e.target.value)}
+                                    className="w-full p-2.5 ps-10 text-base border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-800 focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-colors"
+                                />
+                                <div className="absolute top-1/2 -translate-y-1/2 start-3 text-slate-400 dark:text-slate-500">
+                                    <SearchIcon className="w-5 h-5" />
+                                </div>
+                            </div>
+                            <button
+                                onClick={() => setIsFilterOpen(!isFilterOpen)}
+                                className={`w-full sm:w-auto flex-shrink-0 flex items-center justify-center gap-2 px-4 py-2.5 border rounded-lg font-bold text-sm transition-colors ${isFilterOpen ? 'bg-primary-100 dark:bg-primary-900/50 border-primary-500 text-primary-700 dark:text-primary-300' : 'bg-white dark:bg-slate-800 border-slate-300 dark:border-slate-600 hover:border-primary-400 dark:hover:border-primary-500'}`}
+                            >
+                                <FilterIcon className="w-5 h-5" />
+                                <span>{t.tags}</span>
+                                {selectedTags.length > 0 && (
+                                    <span className="bg-primary-500 text-white text-xs font-bold rounded-full h-5 w-5 flex items-center justify-center">
+                                    {formatNumber(selectedTags.length)}
+                                    </span>
+                                )}
+                            </button>
+                        </div>
+                        <div className={`transition-all duration-300 ease-in-out overflow-hidden ${isFilterOpen ? 'max-h-40 opacity-100 pt-4 border-t border-slate-200 dark:border-slate-700' : 'max-h-0 opacity-0'}`}>
+                            <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
+                            {allTags.map(tag => (
+                                <label key={tag.id} className="flex items-center gap-2 cursor-pointer">
+                                <input
+                                    type="checkbox"
+                                    checked={selectedTags.includes(tag.id)}
+                                    onChange={() => handleTagChange(tag.id)}
+                                    className="sr-only peer"
+                                />
+                                <span className="px-3 py-1.5 rounded-full text-xs font-semibold border-2 border-slate-300 dark:border-slate-600 peer-checked:bg-primary-100 dark:peer-checked:bg-primary-900/50 peer-checked:border-primary-500 peer-checked:text-primary-700 dark:peer-checked:text-primary-300 transition-colors">
+                                    {tag.name[language]}
+                                </span>
+                                </label>
+                            ))}
+                            </div>
+                        </div>
+
                         <div className="flex overflow-x-auto space-x-2 space-x-reverse pb-2 scrollbar-hide">
                             {allCategories.map(category => (
                                 <button
@@ -291,7 +344,7 @@ export const CashierPage: React.FC = () => {
                                                     })}
                                                 </div>
                                             )}
-                                            <p className="text-xs text-slate-500 mt-1">{calculateItemTotal(item).toFixed(2)} {t.currency}</p>
+                                            <p className="text-xs text-slate-500 mt-1">{calculateTotal([item]).toFixed(2)} {t.currency}</p>
                                         </div>
                                         <div className="flex items-center gap-2">
                                             <button onClick={() => updateCartQuantity(index, item.quantity - 1)} className="p-1 rounded-full bg-slate-200 dark:bg-slate-700"><MinusIcon className="w-4 h-4" /></button>

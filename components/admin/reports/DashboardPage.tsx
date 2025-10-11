@@ -4,7 +4,7 @@ import { useAdmin } from '../../../contexts/AdminContext';
 import { useData } from '../../../contexts/DataContext';
 import { formatNumber, calculateTotal } from '../../../utils/helpers';
 import { ArrowDownIcon, ArrowUpIcon, InformationCircleIcon } from '../../icons/Icons';
-import type { Order, CartItem, OrderType, RestaurantInfo } from '../../../types';
+import type { Order, CartItem, OrderType, RestaurantInfo, Product } from '../../../types';
 
 // Simple, dependency-free components for data visualization
 const KpiCard: React.FC<{ title: string; value: string; change?: number; tooltip: string }> = ({ title, value, change, tooltip }) => {
@@ -55,8 +55,9 @@ const BarChart: React.FC<{ data: { label: string, value: number }[] }> = ({ data
 };
 
 const DonutChart: React.FC<{ data: { label: string, value: number, color: string }[] }> = ({ data }) => {
+    const { t } = useUI();
     const total = data.reduce((sum, item) => sum + item.value, 0);
-    if (total === 0) return <div className="flex items-center justify-center h-40 text-slate-500">{useUI().t.noDataForPeriod}</div>;
+    if (total === 0) return <div className="flex items-center justify-center h-40 text-slate-500">{t.noDataForPeriod}</div>;
     
     let accumulatedAngle = 0;
     const circumference = 2 * Math.PI * 45; // r=45
@@ -76,16 +77,23 @@ const DonutChart: React.FC<{ data: { label: string, value: number, color: string
                     })}
                 </svg>
             </div>
-            <div className="space-y-2 text-sm w-full">
-                {data.map((segment, index) => (
+            <div className="space-y-3 text-sm w-full">
+                {data.map((segment, index) => {
+                     const percentage = total > 0 ? (segment.value / total) * 100 : 0;
+                     const displayPercentage = isNaN(percentage) ? 0 : percentage;
+                    return (
                     <div key={index} className="flex items-center justify-between gap-3">
                         <div className="flex items-center gap-2">
                             <div className="w-3 h-3 rounded-full" style={{ backgroundColor: segment.color }}></div>
-                            <span className="font-semibold">{segment.label}</span>
+                            <span className="font-semibold text-slate-700 dark:text-slate-200">{segment.label}</span>
                         </div>
-                        <span className="text-slate-500 dark:text-slate-400">{((segment.value / total) * 100).toFixed(1)}%</span>
+                        <div className="text-right">
+                           <span className="font-bold text-slate-800 dark:text-slate-100">{formatNumber(segment.value)}</span>
+                           <span className="text-xs font-medium text-slate-500 dark:text-slate-400 ms-1">{t.orders}</span>
+                           <span className="text-slate-500 dark:text-slate-400 text-xs ms-1.5">({displayPercentage.toFixed(1)}%)</span>
+                        </div>
                     </div>
-                ))}
+                )})}
             </div>
         </div>
     );
@@ -141,6 +149,7 @@ export const DashboardPage: React.FC = () => {
     const [dateRange, setDateRange] = useState('last7days');
     const [customStartDate, setCustomStartDate] = useState('');
     const [customEndDate, setCustomEndDate] = useState('');
+    const [topProductsFilter, setTopProductsFilter] = useState<OrderType | 'All'>('All');
 
     const completedStatusId = useMemo(() => {
         return restaurantInfo?.orderStatusColumns.find(col => col.color === 'green')?.id || 'completed';
@@ -167,29 +176,39 @@ export const DashboardPage: React.FC = () => {
 
     const topProducts = useMemo(() => {
         const stats: { [key: number]: number } = {};
-        filteredOrders.filter(o => o.status === completedStatusId).forEach(order => {
-            order.items.forEach(item => {
-                stats[item.product.id] = (stats[item.product.id] || 0) + item.quantity;
+        filteredOrders
+            .filter(o => {
+                if (o.status !== completedStatusId) return false;
+                if (topProductsFilter === 'All') return true;
+                return o.orderType === topProductsFilter;
+            })
+            .forEach(order => {
+                order.items.forEach(item => {
+                    stats[item.product.id] = (stats[item.product.id] || 0) + item.quantity;
+                });
             });
-        });
         return Object.entries(stats)
             .map(([id, quantity]) => ({ product: allProducts.find(p => p.id === +id), quantity }))
-            .filter(p => p.product)
+            .filter((p): p is { product: Product; quantity: number } => !!p.product)
             .sort((a, b) => b.quantity - a.quantity)
             .slice(0, 5)
             .map(p => ({ label: p.product!.name[language], value: p.quantity }));
-    }, [filteredOrders, allProducts, completedStatusId, language]);
+    }, [filteredOrders, allProducts, completedStatusId, language, topProductsFilter]);
     
     const orderTypeDistribution = useMemo(() => {
-        const stats: Record<OrderType, number> = { 'Dine-in': 0, 'Delivery': 0, 'Takeaway': 0 };
-        filteredOrders.forEach(order => { stats[order.orderType]++; });
+        const stats: Record<string, number> = { 'Dine-in': 0, 'Delivery': 0, 'Takeaway': 0 };
+        filteredOrders.forEach(order => {
+            if (stats.hasOwnProperty(order.orderType)) {
+                stats[order.orderType]++;
+            }
+        });
         return [
-            { label: t.dineIn, value: stats['Dine-in'], color: '#3b82f6' },
+            { label: t.dineIn, value: stats['Dine-in'], color: '#4f46e5' },
             { label: t.takeaway, value: stats['Takeaway'], color: '#f59e0b' },
             { label: t.delivery, value: stats['Delivery'], color: '#10b981' },
         ];
     }, [filteredOrders, t]);
-
+    
     const recentOrders = useMemo(() => {
         return [...allOrders].sort((a,b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()).slice(0, 5);
     }, [allOrders]);
@@ -228,8 +247,28 @@ export const DashboardPage: React.FC = () => {
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                <div className="lg:col-span-2 bg-white dark:bg-slate-800 p-5 rounded-xl shadow-sm border dark:border-slate-700/80">
-                    <h3 className="font-semibold mb-4">{t.topSellingProducts}</h3>
+                 <div className="lg:col-span-2 bg-white dark:bg-slate-800 p-5 rounded-xl shadow-sm border dark:border-slate-700/80">
+                    <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-3 mb-4">
+                        <h3 className="font-semibold">{t.topSellingProducts}</h3>
+                         <div className="flex items-center p-1 rounded-lg bg-slate-100 dark:bg-slate-700 self-start sm:self-center">
+                            {(['All', 'Dine-in', 'Takeaway', 'Delivery'] as (OrderType | 'All')[]).map(type => {
+                                const typeKey = type === 'All' ? 'all' : type === 'Dine-in' ? 'dineIn' : type === 'Takeaway' ? 'takeaway' : 'delivery';
+                                return (
+                                    <button
+                                        key={type}
+                                        onClick={() => setTopProductsFilter(type)}
+                                        className={`px-3 py-1 text-xs font-bold transition-colors duration-200 rounded-md ${
+                                            topProductsFilter === type
+                                            ? 'bg-white dark:bg-slate-800 text-primary-600 shadow'
+                                            : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200'
+                                        }`}
+                                    >
+                                        {t[typeKey]}
+                                    </button>
+                                );
+                            })}
+                        </div>
+                    </div>
                     {topProducts.length > 0 ? <BarChart data={topProducts} /> : <div className="flex items-center justify-center h-40 text-slate-500">{t.noDataForPeriod}</div>}
                 </div>
                 <div className="bg-white dark:bg-slate-800 p-5 rounded-xl shadow-sm border dark:border-slate-700/80">
