@@ -1,3 +1,4 @@
+// FIX: Removed extraneous file marker comments
 import React, { useState } from 'react';
 import type { Order } from '../../types';
 import { useTranslations } from '../../i18n/translations';
@@ -7,6 +8,7 @@ import { formatDateTime, formatNumber, generateReceiptImage } from '../../utils/
 import { Modal } from '../Modal';
 import { useUI } from '../../contexts/UIContext';
 import { useData } from '../../contexts/DataContext';
+import { useAdmin } from '../../contexts/AdminContext';
 
 interface OrderDetailsModalProps {
     order: Order;
@@ -26,10 +28,12 @@ const getStatusChipColor = (status: string, restaurantInfo: any) => {
 export const OrderDetailsModal: React.FC<OrderDetailsModalProps> = ({ order, onClose, canEdit, onEdit, canDelete, onDelete, creatorName }) => {
     const { language } = useUI();
     const { restaurantInfo } = useData();
+    const { updateOrder } = useAdmin();
     const t = useTranslations(language);
     
     const [isReceiptViewerOpen, setIsReceiptViewerOpen] = useState(false);
     const { isProcessing, setIsProcessing } = useUI();
+    const [codPaymentDetail, setCodPaymentDetail] = useState('');
 
     const handleShare = async () => {
         setIsProcessing(true);
@@ -100,8 +104,15 @@ export const OrderDetailsModal: React.FC<OrderDetailsModalProps> = ({ order, onC
         }
     };
 
+    const handleSaveCodPayment = () => {
+        if (codPaymentDetail) {
+            updateOrder(order.id, { paymentDetail: codPaymentDetail });
+        }
+    }
+
     if (!restaurantInfo) return null;
     const statusDetails = restaurantInfo.orderStatusColumns.find(s => s.id === order.status);
+    const availableOnlineMethods = restaurantInfo.onlinePaymentMethods?.filter(m => m.isVisible) || [];
 
     return (
         <>
@@ -128,22 +139,51 @@ export const OrderDetailsModal: React.FC<OrderDetailsModalProps> = ({ order, onC
                                     {order.tableNumber && <p className="text-xs text-slate-500 dark:text-slate-400">({t.table} {formatNumber(parseInt(order.tableNumber, 10))})</p>}
                                 </div>
                             </div>
-                            <div>
+                            <div className="sm:col-span-2">
                                 <p className="font-semibold text-slate-500 dark:text-slate-400 mb-1">{t.paymentMethod}</p>
                                 <p className="font-bold">{order.paymentMethod === 'cod' ? t.cashOnDelivery : t.onlinePayment}</p>
+                                {order.paymentDetail && (
+                                    <p className="text-xs text-slate-500 dark:text-slate-400">{t.paymentCollectedVia} <span className="font-medium text-slate-600 dark:text-slate-300">{order.paymentDetail}</span></p>
+                                )}
                                 {order.paymentMethod === 'online' && order.paymentReceiptUrl && (
                                      <button onClick={() => setIsReceiptViewerOpen(true)} className="mt-1 text-sm font-semibold text-blue-600 hover:underline dark:text-blue-400">
                                         {t.viewReceipt}
                                     </button>
                                 )}
                             </div>
-                             <div>
+                            <div>
                                 <p className="font-semibold text-slate-500 dark:text-slate-400 mb-1">{t.status}</p>
                                  <span className={`px-3 py-1 text-xs font-semibold rounded-full border ${getStatusChipColor(order.status, restaurantInfo)}`}>
                                     {statusDetails?.name[language] || order.status}
                                 </span>
                             </div>
                         </div>
+
+                        {order.paymentMethod === 'cod' && !order.paymentDetail && (
+                            <div className="p-4 bg-blue-50 dark:bg-blue-900/30 rounded-lg border border-blue-200 dark:border-blue-700/50">
+                                <label className="block text-sm font-semibold mb-2 text-blue-800 dark:text-blue-200">{t.recordPayment}</label>
+                                <div className="flex items-center gap-2">
+                                    <select
+                                        value={codPaymentDetail}
+                                        onChange={(e) => setCodPaymentDetail(e.target.value)}
+                                        className="w-full p-2 border rounded-md dark:bg-slate-700 dark:border-slate-600"
+                                    >
+                                        <option value="">{t.selectMethod}</option>
+                                        <option value={t.cash}>{t.cash}</option>
+                                        {availableOnlineMethods.map(method => (
+                                            <option key={method.id} value={method.name[language]}>{method.name[language]}</option>
+                                        ))}
+                                    </select>
+                                    <button 
+                                        onClick={handleSaveCodPayment} 
+                                        disabled={!codPaymentDetail}
+                                        className="bg-blue-500 text-white font-bold py-2 px-3 rounded-lg hover:bg-blue-600 disabled:bg-blue-300 transition-colors"
+                                    >
+                                        {t.savePayment}
+                                    </button>
+                                </div>
+                            </div>
+                        )}
                         
                         {order.notes && (
                             <div className="bg-blue-50 dark:bg-blue-900/40 p-4 rounded-lg border border-blue-200 dark:border-blue-500/30">

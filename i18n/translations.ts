@@ -1,5 +1,4 @@
-
-
+// FIX: Removed extraneous file marker comments
 import type { Language } from '../types';
 
 export const translations = {
@@ -371,6 +370,7 @@ export const translations = {
 
     // Checkout Page
     deliveryInformation: 'Delivery Information',
+    takeawayDetails: 'Takeaway Details',
     paymentMethod: 'Payment Method',
     orderSummary: 'Order Summary',
     confirmAndPay: 'Confirm & Pay',
@@ -395,6 +395,13 @@ export const translations = {
     edit: 'Edit',
     yourOrder: 'Your Order',
     completeAddress: 'Complete Address',
+    choosePaymentMethod: 'Choose payment method',
+    recordPayment: 'Record Payment',
+    paymentCollectedVia: 'Payment Collected Via:',
+    selectMethod: 'Select Method',
+    savePayment: 'Save Payment',
+    // FIX: Add 'cash' translation key
+    cash: 'Cash',
 
     // Dynamic Payment Methods
     onlinePaymentMethods: 'Online Payment Methods',
@@ -406,6 +413,9 @@ export const translations = {
     methodNameAr: 'Method Name (Arabic)',
     methodType: 'Method Type',
     methodDetails: 'Details (Number or Link)',
+    methodInstructions: 'Payment Instructions',
+    methodInstructionsEn: 'Instructions (English)',
+    methodInstructionsAr: 'Instructions (Arabic)',
     numberText: 'Number/Text',
     linkUrl: 'Link/URL',
     copy: 'Copy',
@@ -435,6 +445,50 @@ export const translations = {
     last7days: 'Last 7 Days',
     last30days: 'Last 30 Days',
     thisMonth: 'This Month',
+    customRange: 'Custom Range',
+    filterByDate: 'Filter by date',
+    searchTable: 'Search table...',
+    showing: 'Showing',
+    of: 'of',
+    results: 'results',
+    previous: 'Previous',
+    next: 'Next',
+
+    // New Reports Section & Tables
+    dashboard: 'Dashboard',
+    salesReport: 'Sales Report',
+    ordersReport: 'Orders Report',
+    profitReport: 'Profit Report',
+    customersReport: 'Customers Report',
+
+    productsReport: 'Products Report',
+    paymentsReport: 'Payments Report',
+    deliveryReport: 'Delivery Report',
+    userActivityReport: 'User Activity Report',
+
+    totalSales: 'Total Sales',
+    grossRevenue: 'Gross Revenue',
+    estimatedCOGS: 'Estimated COGS',
+    estimatedProfit: 'Estimated Profit',
+    profitNotice: 'Profit is estimated based on a 70% margin from revenue as cost data is not available.',
+    
+    totalCustomers: 'Total Customers',
+    newCustomers: 'New Customers',
+    returningCustomers: 'Returning Customers',
+    firstOrderDate: 'First Order',
+    lastOrderDate: 'Last Order',
+    totalSpent: 'Total Spent',
+
+    totalItemsSold: 'Total Items Sold',
+    
+    totalPaidOnline: 'Total Paid Online',
+    totalCOD: 'Total COD',
+    
+    totalDeliveryOrders: 'Delivery Orders',
+    
+    mostActiveUser: 'Most Active User',
+    ordersCreated: 'Orders Created',
+    totalSalesValue: 'Total Sales Value',
   },
   ar: {
     restaurantName: 'مطعم فريسكو',
@@ -550,7 +604,7 @@ export const translations = {
     orderType: 'نوع الطلب',
     dineIn: 'محلي',
     delivery: 'توصيل',
-    takeaway: 'سفري',
+    takeaway: 'تيك اواي',
     superAdmin: 'مدير عام',
     admin: 'مدير',
     employee: 'موظف',
@@ -583,7 +637,7 @@ export const translations = {
     permission_delete_order: 'حذف الطلب',
     permission_use_cashier_page: 'استخدام صفحة الكاشير',
     permission_view_dine_in_orders: 'عرض الطلبات المحلية',
-    permission_view_takeaway_orders: 'عرض الطلبات السفري',
+    permission_view_takeaway_orders: 'عرض الطلبات التيك اواي',
     permission_view_delivery_orders: 'عرض طلبات التوصيل',
     permission_view_reports_page: 'عرض صفحة التقارير',
     permission_view_products_page: 'عرض صفحة المنتجات',
@@ -797,6 +851,7 @@ export const translations = {
     paymentStatusCod: 'الدفع عند الاستلام',
     paymentStatusPaidOnline: 'مدفوع عبر الإنترنت',
     deliveryInformation: 'معلومات التوصيل',
+    takeawayDetails: 'تفاصيل الاستلام',
     paymentMethod: 'طريقة الدفع',
     orderSummary: 'ملخص الطلب',
     confirmAndPay: 'تأكيد ودفع',
@@ -821,6 +876,13 @@ export const translations = {
     edit: 'تعديل',
     yourOrder: 'طلبك',
     completeAddress: 'العنوان الكامل',
+    choosePaymentMethod: 'اختر طريقة الدفع',
+    recordPayment: 'تسجيل الدفع',
+    paymentCollectedVia: 'تم التحصيل عبر:',
+    selectMethod: 'اختر الطريقة',
+    savePayment: 'حفظ الدفع',
+    // FIX: Add 'cash' translation key
+    cash: 'نقداً',
     onlinePaymentMethods: 'طرق الدفع عبر الإنترنت',
     addNewPaymentMethod: 'إضافة طريقة دفع جديدة',
     editPaymentMethod: 'تعديل طريقة الدفع',
@@ -830,6 +892,9 @@ export const translations = {
     methodNameAr: 'اسم الطريقة (عربي)',
     methodType: 'نوع الطريقة',
     methodDetails: 'التفاصيل (رقم أو رابط)',
+    methodInstructions: 'تعليمات الدفع',
+    methodInstructionsEn: 'التعليمات (انجليزي)',
+    methodInstructionsAr: 'التعليمات (عربي)',
     numberText: 'رقم/نص',
     linkUrl: 'رابط/URL',
     copy: 'نسخ',
@@ -840,7 +905,7 @@ export const translations = {
     print: 'طباعة',
     shareOrder: 'مشاركة الطلب',
     printOrder: 'طباعة الطلب',
-    takeawayCustomer: 'عميل سفري',
+    takeawayCustomer: 'عميل تيك اواي',
     paymentInstructionsSettings: 'تعليمات الدفع',
     codNotes: 'ملاحظات الدفع عند الاستلام',
     onlinePaymentNotes: 'ملاحظات الدفع عبر الإنترنت',
@@ -857,10 +922,52 @@ export const translations = {
     last7days: 'آخر 7 أيام',
     last30days: 'آخر 30 يومًا',
     thisMonth: 'هذا الشهر',
+    customRange: 'نطاق مخصص',
+    filterByDate: 'تصفية حسب التاريخ',
+    searchTable: 'ابحث في الجدول...',
+    showing: 'عرض',
+    of: 'من',
+    results: 'نتائج',
+    previous: 'السابق',
+    next: 'التالي',
+
+    // New Reports Section & Tables
+    dashboard: 'لوحة المعلومات',
+    salesReport: 'تقرير المبيعات',
+    ordersReport: 'تقرير الطلبات',
+    profitReport: 'تقرير الأرباح',
+    customersReport: 'تقرير العملاء',
+    productsReport: 'تقرير المنتجات',
+    paymentsReport: 'تقرير المدفوعات',
+    deliveryReport: 'تقرير التوصيل',
+    userActivityReport: 'تقرير نشاط المستخدمين',
+
+    totalSales: 'إجمالي المبيعات',
+    grossRevenue: 'الإيرادات الإجمالية',
+    estimatedCOGS: 'التكلفة التقديرية',
+    estimatedProfit: 'الربح التقديري',
+    profitNotice: 'الأرباح تقديرية بناءً على هامش 70% من الإيرادات لعدم توفر بيانات التكلفة.',
+    
+    totalCustomers: 'إجمالي العملاء',
+    newCustomers: 'عملاء جدد',
+    returningCustomers: 'عملاء حاليون',
+    firstOrderDate: 'أول طلب',
+    lastOrderDate: 'آخر طلب',
+    totalSpent: 'إجمالي الإنفاق',
+
+    totalItemsSold: 'إجمالي الأصناف المباعة',
+    
+    totalPaidOnline: 'إجمالي المدفوع عبر الإنترنت',
+    totalCOD: 'إجمالي الدفع عند الاستلام',
+    
+    totalDeliveryOrders: 'طلبات التوصيل',
+    
+    mostActiveUser: 'المستخدم الأكثر نشاطًا',
+    ordersCreated: 'الطلبات المنشأة',
+    totalSalesValue: 'قيمة المبيعات الإجمالية',
   },
 };
 
-// FIX: Export a `useTranslations` hook function that returns the translation object for the given language.
 export const useTranslations = (language: Language) => {
     return translations[language];
 };

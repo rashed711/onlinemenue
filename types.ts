@@ -85,6 +85,7 @@ export interface OnlinePaymentMethod {
   details: string;
   icon: string; // Image URL or data URL
   isVisible: boolean;
+  instructions?: LocalizedString;
 }
 
 export interface RestaurantInfo {
@@ -147,6 +148,7 @@ export interface Order {
     comment: string;
   };
   paymentMethod?: PaymentMethod;
+  paymentDetail?: string; // The specific payment method used, e.g., "Cash", "Vodafone Cash"
   paymentReceiptUrl?: string; // URL or Data URL of the uploaded receipt
 }
 

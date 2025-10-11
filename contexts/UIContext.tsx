@@ -16,7 +16,6 @@ interface UIContextType {
     setIsLoading: React.Dispatch<React.SetStateAction<boolean>>;
     isProcessing: boolean;
     setIsProcessing: React.Dispatch<React.SetStateAction<boolean>>;
-    // FIX: Change type from a function to the actual translation object type.
     t: typeof translations['en'];
     progress: number;
     setProgress: React.Dispatch<React.SetStateAction<number>>;

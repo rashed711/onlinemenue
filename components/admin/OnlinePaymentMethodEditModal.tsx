@@ -15,6 +15,7 @@ const emptyMethod: Omit<OnlinePaymentMethod, 'id'> = {
     details: '',
     icon: '',
     isVisible: true,
+    instructions: { en: '', ar: '' },
 };
 
 export const OnlinePaymentMethodEditModal: React.FC<OnlinePaymentMethodEditModalProps> = ({ method, onClose, onSave }) => {
@@ -24,7 +25,7 @@ export const OnlinePaymentMethodEditModal: React.FC<OnlinePaymentMethodEditModal
     useEffect(() => {
         if (method) {
             const { id, ...editableData } = method;
-            setFormData(editableData);
+            setFormData({ ...emptyMethod, ...editableData });
         } else {
             setFormData(emptyMethod);
         }
@@ -38,7 +39,7 @@ export const OnlinePaymentMethodEditModal: React.FC<OnlinePaymentMethodEditModal
             const [field, lang] = name.split('.');
             setFormData(prev => ({
                 ...prev,
-                [field]: { ...(prev[field as 'name'] as LocalizedString), [lang]: value }
+                [field]: { ...(prev[field as 'name' | 'instructions'] as LocalizedString), [lang]: value }
             }));
         } else {
             setFormData(prev => ({ ...prev, [name]: value }));
@@ -98,6 +99,11 @@ export const OnlinePaymentMethodEditModal: React.FC<OnlinePaymentMethodEditModal
                  <div>
                     <label className="block text-sm font-medium mb-1">{t.methodDetails}</label>
                     <input type="text" name="details" value={formData.details} onChange={handleChange} className="w-full p-2 border rounded-md dark:bg-gray-700 dark:border-gray-600" placeholder={formData.type === 'number' ? 'e.g., 01012345678' : 'e.g., https://...'} required />
+                </div>
+                <div>
+                    <label className="block text-sm font-medium mb-1">{t.methodInstructions}</label>
+                     <textarea name="instructions.en" value={formData.instructions?.en || ''} onChange={handleChange} placeholder={t.methodInstructionsEn} rows={3} className="w-full p-2 border rounded-md dark:bg-gray-700 dark:border-gray-600 mb-2"></textarea>
+                     <textarea name="instructions.ar" value={formData.instructions?.ar || ''} onChange={handleChange} placeholder={t.methodInstructionsAr} rows={3} className="w-full p-2 border rounded-md dark:bg-gray-700 dark:border-gray-600"></textarea>
                 </div>
                 <div>
                     <label className="block text-sm font-medium mb-1">{t.icon}</label>

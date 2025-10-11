@@ -32,7 +32,11 @@ export const restaurantInfo: RestaurantInfo = {
             type: 'number',
             details: '01012345678',
             icon: 'https://img.icons8.com/color/48/vodafone.png',
-            isVisible: true 
+            isVisible: true,
+            instructions: {
+                en: 'Please transfer the total amount to the following Vodafone Cash number: 01012345678. Then, upload a screenshot of the confirmation.',
+                ar: 'يرجى تحويل المبلغ الإجمالي إلى رقم فودافون كاش التالي: 01012345678. بعد ذلك، قم برفع صورة من إيصال التحويل.'
+            }
         },
         { 
             id: 2, 
@@ -40,7 +44,11 @@ export const restaurantInfo: RestaurantInfo = {
             type: 'link',
             details: 'https://instapay.eg/your-payment-link',
             icon: 'https://img.icons8.com/?size=48&id=t22b6i0gJgqJ&format=png',
-            isVisible: true 
+            isVisible: true,
+            instructions: {
+                en: 'Click the "Pay Now" button or use our InstaPay address: YourInstaPay@instapay. Then, upload a screenshot of the confirmation.',
+                ar: 'اضغط على زر "ادفع الآن" أو استخدم عنوان انستا باي الخاص بنا: YourInstaPay@instapay. بعد ذلك، قم برفع صورة من إيصال التحويل.'
+            }
         },
     ],
     codNotes: { en: 'Please prepare the exact amount. The driver does not carry much change.', ar: 'يرجى تجهيز المبلغ المطلوب. السائق لا يحمل الكثير من الفكة.' },

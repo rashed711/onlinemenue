@@ -10,11 +10,10 @@ interface DataContextType {
     categories: Category[];
     tags: Tag[];
     promotions: Promotion[];
-    // FIX: Add state setters to the context type to match the provided value.
     setProducts: React.Dispatch<React.SetStateAction<Product[]>>;
+    setPromotions: React.Dispatch<React.SetStateAction<Promotion[]>>;
     setCategories: React.Dispatch<React.SetStateAction<Category[]>>;
     setTags: React.Dispatch<React.SetStateAction<Tag[]>>;
-    setPromotions: React.Dispatch<React.SetStateAction<Promotion[]>>;
     fetchAllData: (isInitialLoad?: boolean) => Promise<void>;
     updateRestaurantInfo: (updatedInfo: Partial<RestaurantInfo>) => Promise<void>;
 }

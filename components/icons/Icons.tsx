@@ -189,6 +189,18 @@ export const ChevronRightIcon: React.FC<IconProps> = ({ className }) => (
     </svg>
 );
 
+export const ChevronUpIcon: React.FC<IconProps> = ({ className }) => (
+    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
+    </svg>
+);
+
+export const ChevronDownIcon: React.FC<IconProps> = ({ className }) => (
+    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+    </svg>
+);
+
 export const CogIcon: React.FC<IconProps> = ({ className }) => (
     <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor">
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
@@ -322,5 +334,23 @@ export const ArrowDownIcon: React.FC<IconProps> = ({ className }) => (
 export const InformationCircleIcon: React.FC<IconProps> = ({ className }) => (
     <svg className={className} fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
       <path strokeLinecap="round" strokeLinejoin="round" d="M11.25 11.25l.041-.02a.75.75 0 011.063.852l-.708 2.836a.75.75 0 001.063.853l.041-.021M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-9-3.75h.008v.008H12V8.25z" />
+    </svg>
+);
+
+export const CurrencyDollarIcon: React.FC<IconProps> = ({ className }) => (
+  <svg className={className} fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+    <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v12m-3-2.818.879.659c1.171.879 3.07.879 4.242 0 1.172-.879 1.172-2.303 0-3.182C13.536 12.219 12.768 12 12 12c-.725 0-1.45-.22-2.003-.659-1.106-.879-1.106-2.303 0-3.182s2.9-.879 4.006 0l.415.33M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
+  </svg>
+);
+
+export const ShoppingCartIcon: React.FC<IconProps> = ({ className }) => (
+  <svg className={className} fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+    <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 3h1.386c.51 0 .955.343 1.087.835l.383 1.437M7.5 14.25a3 3 0 0 0-3 3h15.75m-12.75-3h11.218c.51 0 .962-.343 1.087-.835l1.838-5.512A1.125 1.125 0 0 0 16.218 6H5.218a1.125 1.125 0 0 0-1.087.835L3 14.25Z" />
+  </svg>
+);
+
+export const UserGroupIcon: React.FC<IconProps> = ({ className }) => (
+    <svg className={className} fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+        <path strokeLinecap="round" strokeLinejoin="round" d="M18 18.72a9.094 9.094 0 0 0 3.741-.479 3 3 0 0 0-4.682-2.72m-7.5-2.962c.57-.063 1.14-.094 1.722-.094m-2.456 2.456-2.456-2.456m3.89-3.89 2.456 2.456m-2.456-2.456L12 11.332m-2.11 2.11-2.456 2.456m2.456-2.456-.479 3.742a9.094 9.094 0 0 1-1.843.058 3 3 0 0 1-2.72-4.682 9.094 9.094 0 0 1 .058-1.843m3.742-.479L6 18.72m0 0c-.217.009-.433.018-.65.026a9.094 9.094 0 0 1-2.412-.892 3 3 0 0 1-2.72-4.682 9.094 9.094 0 0 1-.892-2.412c-.009-.217-.018-.433-.026-.65m18 0c.008.217.017.433.026.65a9.094 9.094 0 0 1-.892 2.412 3 3 0 0 1-4.682 2.72 9.094 9.094 0 0 1-1.843-.058m-1.156 0c.57.063 1.14.094 1.722.094m2.456-2.456 2.456 2.456m-3.89 3.89-2.456-2.456m2.456 2.456.479-3.742a9.094 9.094 0 0 0 1.843-.058 3 3 0 0 0 2.72 4.682 9.094 9.094 0 0 0 .058 1.843m-3.742-.479L18 6.28m0 0c.217-.009.433-.018.65-.026a9.094 9.094 0 0 0 2.412.892 3 3 0 0 0 2.72 4.682 9.094 9.094 0 0 0 .892 2.412c.009.217.018.433.026.65m-18 0c-.008-.217-.017-.433-.026-.65a9.094 9.094 0 0 0 .892-2.412 3 3 0 0 0 4.682-2.72 9.094 9.094 0 0 0 1.843.058m1.156 0c-.57-.063-1.14-.094-1.722-.094m-2.456 2.456-2.456-2.456m3.89-3.89-2.456-2.456m2.456-2.456L12 8.668m2.11-2.11 2.456-2.456m-2.456 2.456.479-3.742a9.094 9.094 0 0 1 1.843.058 3 3 0 0 1 2.72 4.682 9.094 9.094 0 0 1 .058 1.843m-3.742-.479L18 17.72m-12-1.442.479 3.742a9.094 9.094 0 0 0-1.843.058 3 3 0 0 0-2.72-4.682 9.094 9.094 0 0 0-.058-1.843m3.742.479L6 6.28m0 0c-.217.009-.433.018-.65.026a9.094 9.094 0 0 0-2.412.892 3 3 0 0 0-2.72 4.682 9.094 9.094 0 0 0 .892 2.412c.009.217.018.433.026.65" />
     </svg>
 );

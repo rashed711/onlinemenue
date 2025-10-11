@@ -1,9 +1,11 @@
+
 import React, { useSyncExternalStore, useMemo } from 'react';
 import { UIProvider, useUI } from './contexts/UIContext';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { DataProvider, useData } from './contexts/DataContext';
 import { CartProvider } from './contexts/CartContext';
-import { AdminProvider } from './contexts/AdminContext';
+// FIX: Import useAdmin to provide props to ForgotPasswordPage
+import { AdminProvider, useAdmin } from './contexts/AdminContext';
 
 import { MenuPage } from './components/MenuPage';
 import { LoginPage } from './components/auth/LoginPage';
@@ -32,11 +34,13 @@ function getSnapshot() {
 }
 
 const AppContent: React.FC = () => {
-  const { 
-    toast, 
-    isChangePasswordModalOpen, 
-    setIsChangePasswordModalOpen, 
-    isLoading, 
+  const {
+    // FIX: Destructure language from useUI
+    language,
+    toast,
+    isChangePasswordModalOpen,
+    setIsChangePasswordModalOpen,
+    isLoading,
     isProcessing,
     transitionStage,
     progress,
@@ -44,25 +48,30 @@ const AppContent: React.FC = () => {
   } = useUI();
   const { currentUser } = useAuth();
   const { restaurantInfo } = useData();
+  // FIX: Get users and resetUserPassword from useAdmin
+  const { users, resetUserPassword } = useAdmin();
 
   // Routing State
   const hash = useSyncExternalStore(subscribe, getSnapshot, () => '');
   const displayedRoute = useMemo(() => hash || (restaurantInfo?.defaultPage === 'social' ? '#/social' : '#/'), [hash, restaurantInfo]);
 
   const renderPage = () => {
-    const [baseRoute] = displayedRoute.split('?');
+    const routeParts = displayedRoute.split('?')[0].split('/');
+    const baseRoute = routeParts.slice(0, 3).join('/'); // #/admin/reports
 
     if (isLoading || !restaurantInfo) {
       return <LoadingOverlay isVisible={true} />;
     }
 
     if (baseRoute.startsWith('#/admin')) {
-        const adminSubRoute = baseRoute.split('/')[2] || 'orders';
-        return <AdminPage activeSubRoute={adminSubRoute} />;
+        const adminSubRoute = routeParts[2] || 'orders';
+        const reportSubRoute = routeParts[3] || 'dashboard'; // For /reports/dashboard etc.
+        return <AdminPage activeSubRoute={adminSubRoute} reportSubRoute={reportSubRoute} />;
     }
     if (baseRoute.startsWith('#/login')) return <LoginPage />;
     if (baseRoute.startsWith('#/register')) return <RegisterPage />;
-    if (baseRoute.startsWith('#/forgot-password')) return <ForgotPasswordPage />;
+    // FIX: Pass required props to ForgotPasswordPage
+    if (baseRoute.startsWith('#/forgot-password')) return <ForgotPasswordPage language={language} users={users} onPasswordReset={resetUserPassword} />;
     if (baseRoute.startsWith('#/profile')) return <ProfilePage />;
     if (baseRoute.startsWith('#/checkout')) return <CheckoutPage />;
     if (baseRoute.startsWith('#/social')) return <SocialPage />;
