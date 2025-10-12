@@ -509,7 +509,7 @@ export const translations = {
     newItems: 'أطباق جديدة',
     newItem: 'جديد',
     todaysOffers: "عروض اليوم",
-    fullMenu: 'القائمة الكاملة',
+    fullMenu: 'المنيو',
     addToCart: 'أضف إلى السلة',
     viewDetails: 'عرض التفاصيل',
     cart: 'سلتي',

@@ -1,5 +1,3 @@
-
-
 import React, { useState } from 'react';
 import type { Language, Category, Tag } from '../types';
 import { useTranslations } from '../i18n/translations';
@@ -42,25 +40,26 @@ export const SearchAndFilter: React.FC<SearchAndFilterProps> = ({
   return (
     <div id="menu" className="mb-12 p-4 sm:p-6 bg-white dark:bg-slate-900/50 rounded-2xl shadow-xl border border-slate-200/50 dark:border-slate-800/50 space-y-4">
       {/* Top row: Search and Filter Toggle */}
-      <div className="flex flex-col md:flex-row gap-4 items-center">
-        <div className="relative w-full md:flex-grow">
+      <div className="flex flex-row gap-2 items-center">
+        <div className="relative w-full flex-grow">
           <input
             type="text"
             placeholder={t.searchPlaceholder}
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full p-3 ps-10 text-base border-2 border-slate-200 dark:border-slate-700 rounded-full bg-slate-100 dark:bg-slate-800 focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-colors"
+            className="w-full p-2 ps-8 text-sm border-2 border-slate-200 dark:border-slate-700 rounded-full bg-slate-100 dark:bg-slate-800 focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-colors"
           />
-          <div className="absolute top-1/2 -translate-y-1/2 start-4 text-slate-400 dark:text-slate-500">
-            <SearchIcon className="w-5 h-5" />
+          <div className="absolute top-1/2 -translate-y-1/2 start-2.5 text-slate-400 dark:text-slate-500">
+            <SearchIcon className="w-4 h-4" />
           </div>
         </div>
         <button
           onClick={() => setIsFilterOpen(!isFilterOpen)}
-          className={`w-full md:w-auto flex-shrink-0 flex items-center justify-center gap-2 px-5 py-3 border-2 rounded-full font-bold text-sm transition-colors ${isFilterOpen ? 'bg-primary-100 dark:bg-primary-900/50 border-primary-500 text-primary-700 dark:text-primary-300' : 'border-slate-300 dark:border-slate-600 hover:border-primary-400 dark:hover:border-primary-500'}`}
+          className={`flex-shrink-0 flex items-center justify-center gap-2 px-3 py-2 border-2 rounded-full font-bold text-xs sm:text-sm transition-colors ${isFilterOpen ? 'bg-primary-100 dark:bg-primary-900/50 border-primary-500 text-primary-700 dark:text-primary-300' : 'border-slate-300 dark:border-slate-600 hover:border-primary-400 dark:hover:border-primary-500'}`}
         >
-          <FilterIcon className="w-5 h-5" />
-          <span>{t.filterByTags}</span>
+          <FilterIcon className="w-4 h-4 sm:w-5 sm:h-5" />
+          <span className="hidden sm:inline">{t.filterByTags}</span>
+          <span className="sm:hidden">{t.filter}</span>
           {selectedTags.length > 0 && (
             <span className="bg-primary-500 text-white text-xs font-bold rounded-full h-5 w-5 flex items-center justify-center">
               {formatNumber(selectedTags.length)}
