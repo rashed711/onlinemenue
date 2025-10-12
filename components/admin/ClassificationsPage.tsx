@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import type { Category, Tag } from '../../types';
 import { PlusIcon, PencilIcon, TrashIcon } from '../icons/Icons';
 import { useUI } from '../../contexts/UIContext';
@@ -27,6 +27,14 @@ export const ClassificationsPage: React.FC<ClassificationsPageProps> = (props) =
     const canAddTag = hasPermission('add_tag');
     const canEditTag = hasPermission('edit_tag');
     const canDeleteTag = hasPermission('delete_tag');
+
+    const sortedCategories = useMemo(() => {
+        return [...categories].sort((a, b) => a.name[language].localeCompare(b.name[language], language));
+    }, [categories, language]);
+
+    const sortedTags = useMemo(() => {
+        return [...tags].sort((a, b) => a.name[language].localeCompare(b.name[language], language));
+    }, [tags, language]);
     
     const handleDeleteCategory = (categoryId: number) => {
         if (window.confirm(t.confirmDeleteCategory)) {
@@ -57,7 +65,7 @@ export const ClassificationsPage: React.FC<ClassificationsPageProps> = (props) =
                     </div>
                     <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md">
                         <ul className="divide-y divide-gray-200 dark:divide-gray-700">
-                            {categories.map(category => (
+                            {sortedCategories.map(category => (
                                 <li key={category.id} className="p-4 flex justify-between items-center hover:bg-slate-50 dark:hover:bg-gray-700/50">
                                     <span className="font-medium">{category.name[language]}</span>
                                     <div className="flex items-center gap-2">
@@ -83,7 +91,7 @@ export const ClassificationsPage: React.FC<ClassificationsPageProps> = (props) =
                     </div>
                     <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md">
                          <ul className="divide-y divide-gray-200 dark:divide-gray-700">
-                            {tags.map(tag => (
+                            {sortedTags.map(tag => (
                                 <li key={tag.id} className="p-4 flex justify-between items-center hover:bg-slate-50 dark:hover:bg-gray-700/50">
                                     <span className="font-medium">{tag.name[language]}</span>
                                     <div className="flex items-center gap-2">

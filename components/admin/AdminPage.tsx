@@ -1,8 +1,6 @@
-
-
 import React, { useState, useMemo, useEffect } from 'react';
 import type { Language, Product, RestaurantInfo, Order, OrderStatus, User, UserRole, Promotion, Permission, Category, Tag, CartItem, SocialLink, LocalizedString, OrderStatusColumn, OrderType, Role } from '../../types';
-import { MenuAlt2Icon, PlusIcon, PencilIcon, TrashIcon, ShieldCheckIcon, SearchIcon } from '../icons/Icons';
+import { MenuAlt2Icon, PlusIcon, PencilIcon, TrashIcon, ShieldCheckIcon, SearchIcon, FilterIcon, ChevronUpIcon, ChevronDownIcon } from '../icons/Icons';
 import { OrderDetailsModal } from './OrderDetailsModal';
 import { ProductEditModal } from './ProductEditModal';
 import { PromotionEditModal } from './PromotionEditModal';
@@ -53,6 +51,8 @@ export const AdminPage: React.FC<AdminPageProps> = ({ activeSubRoute, reportSubR
         products: allProducts, 
         promotions: allPromotions, 
         restaurantInfo, 
+        categories,
+        tags
     } = useData();
     const {
         orders: allOrders, 
@@ -80,12 +80,24 @@ export const AdminPage: React.FC<AdminPageProps> = ({ activeSubRoute, reportSubR
     const [editingCategory, setEditingCategory] = useState<Category | 'new' | null>(null);
     const [editingTag, setEditingTag] = useState<Tag | 'new' | null>(null);
 
+    // Order Filters
     const [orderSearchTerm, setOrderSearchTerm] = useState('');
     const [startDate, setStartDate] = useState(new Date().toISOString().split('T')[0]);
     const [endDate, setEndDate] = useState(new Date().toISOString().split('T')[0]);
     const [activeDateFilter, setActiveDateFilter] = useState<DateFilter>('today');
     const [orderFilterType, setOrderFilterType] = useState<'all' | 'Dine-in' | 'Delivery' | 'Takeaway'>('all');
     const [orderFilterCreator, setOrderFilterCreator] = useState<string>('all');
+    const [isOrderFilterExpanded, setIsOrderFilterExpanded] = useState(false);
+
+    // Product Filters
+    const [productSearchTerm, setProductSearchTerm] = useState('');
+    const [productFilterCategory, setProductFilterCategory] = useState('all');
+    const [productFilterTag, setProductFilterTag] = useState('all');
+    const [isProductFilterExpanded, setIsProductFilterExpanded] = useState(false);
+    
+    // User Filters
+    const [userSearchTerm, setUserSearchTerm] = useState('');
+
 
     const [transitionStage, setTransitionStage] = useState<'in' | 'out'>('in');
     const [displayedTab, setDisplayedTab] = useState(activeTab);
@@ -219,18 +231,43 @@ export const AdminPage: React.FC<AdminPageProps> = ({ activeSubRoute, reportSubR
         return filtered.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
     }, [ordersToDisplay, startDate, endDate, orderFilterType, orderFilterCreator, orderSearchTerm]);
 
+    const filteredProducts = useMemo(() => {
+        const lowercasedTerm = productSearchTerm.toLowerCase();
+        const filtered = allProducts.filter(product => {
+            const nameEn = product.name.en.toLowerCase();
+            const nameAr = product.name.ar.toLowerCase();
+            const code = product.code.toLowerCase();
+
+            const matchesSearch = nameEn.includes(lowercasedTerm) || nameAr.includes(lowercasedTerm) || code.includes(lowercasedTerm);
+            const matchesCategory = productFilterCategory === 'all' || product.categoryId.toString() === productFilterCategory;
+            const matchesTag = productFilterTag === 'all' || product.tags.includes(productFilterTag);
+            
+            return matchesSearch && matchesCategory && matchesTag;
+        });
+
+        return filtered.sort((a, b) => a.name[language].localeCompare(b.name[language], language));
+    }, [allProducts, productSearchTerm, productFilterCategory, productFilterTag, language]);
+
+
     const usersToDisplay = useMemo(() => {
         if (!currentUser) return [];
         const superAdminRole = roles.find(r => r.name.en.toLowerCase() === 'superadmin');
         const currentUserIsSuperAdmin = currentUser.role === superAdminRole?.key;
 
-        if (currentUserIsSuperAdmin) {
-            return allUsers;
+        let baseUsers = currentUserIsSuperAdmin
+            ? allUsers
+            : allUsers.filter(user => user.role !== superAdminRole?.key);
+
+        const lowercasedTerm = userSearchTerm.toLowerCase();
+        if (lowercasedTerm) {
+            baseUsers = baseUsers.filter(user =>
+                user.name.toLowerCase().includes(lowercasedTerm) ||
+                user.mobile.toLowerCase().includes(lowercasedTerm)
+            );
         }
         
-        // Filter out superAdmins for all other users
-        return allUsers.filter(user => user.role !== superAdminRole?.key);
-    }, [allUsers, currentUser, roles]);
+        return baseUsers.sort((a, b) => a.name.localeCompare(b.name, language));
+    }, [allUsers, currentUser, roles, userSearchTerm, language]);
 
     const viewingOrderCreatorName = useMemo(() => {
         if (!viewingOrder || !viewingOrder.createdBy) return undefined;
@@ -288,49 +325,64 @@ export const AdminPage: React.FC<AdminPageProps> = ({ activeSubRoute, reportSubR
                 return (
                      <div>
                         <h2 className="text-2xl font-bold mb-6">{t.manageOrders}</h2>
-                        <div className="bg-white dark:bg-slate-800 p-4 rounded-xl shadow-lg mb-6 border border-slate-200 dark:border-slate-700">
-                             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 items-end">
-                                <div className="md:col-span-2 lg:col-span-4">
-                                     <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">{t.search}</label>
-                                    <div className="relative">
-                                        <input type="text" placeholder={`${t.orderId}, ${t.name}, ${t.mobileNumber}...`} value={orderSearchTerm} onChange={(e) => setOrderSearchTerm(e.target.value)} className="w-full p-2 ps-10 rounded-lg border-slate-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 sm:text-sm dark:bg-slate-700 dark:border-slate-600"/>
-                                        <div className="absolute top-1/2 -translate-y-1/2 start-3 text-slate-400"><SearchIcon className="w-5 h-5" /></div>
+
+                        <div className="bg-white dark:bg-slate-800 rounded-xl shadow-lg mb-6 border border-slate-200 dark:border-slate-700">
+                            <div className="p-4 flex justify-between items-center cursor-pointer select-none" onClick={() => setIsOrderFilterExpanded(!isOrderFilterExpanded)}>
+                                <div className="flex items-center gap-2">
+                                    <FilterIcon className="w-5 h-5 text-slate-500 dark:text-slate-400" />
+                                    <h3 className="font-semibold text-slate-700 dark:text-slate-200">{t.filter}</h3>
+                                </div>
+                                <button className="p-1 rounded-full hover:bg-slate-200 dark:hover:bg-slate-700">
+                                    {isOrderFilterExpanded ? <ChevronUpIcon className="w-6 h-6" /> : <ChevronDownIcon className="w-6 h-6" />}
+                                </button>
+                            </div>
+                            <div className={`transition-all duration-300 ease-in-out overflow-hidden ${isOrderFilterExpanded ? 'max-h-[500px] opacity-100' : 'max-h-0 opacity-0'}`}>
+                                <div className="p-4 border-t border-slate-200 dark:border-slate-700">
+                                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 items-end">
+                                        <div className="md:col-span-2 lg:col-span-4">
+                                            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">{t.search}</label>
+                                            <div className="relative">
+                                                <input type="text" placeholder={`${t.orderId}, ${t.name}, ${t.mobileNumber}...`} value={orderSearchTerm} onChange={(e) => setOrderSearchTerm(e.target.value)} className="w-full p-2 ps-10 rounded-lg border-slate-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 sm:text-sm dark:bg-slate-700 dark:border-slate-600"/>
+                                                <div className="absolute top-1/2 -translate-y-1/2 start-3 text-slate-400"><SearchIcon className="w-5 h-5" /></div>
+                                            </div>
+                                        </div>
+                                        <div className="md:col-span-2 lg:col-span-4 flex flex-wrap items-center gap-2">
+                                            <button onClick={() => setDateFilter('today')} className={dateFilterButtonClasses('today')}>{t.today}</button>
+                                            <button onClick={() => setDateFilter('yesterday')} className={dateFilterButtonClasses('yesterday')}>{t.yesterday}</button>
+                                            <button onClick={() => setDateFilter('week')} className={dateFilterButtonClasses('week')}>{language === 'ar' ? 'هذا الأسبوع' : 'This Week'}</button>
+                                            <button onClick={() => setDateFilter('month')} className={dateFilterButtonClasses('month')}>{t.thisMonth}</button>
+                                        </div>
+                                        <div>
+                                            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">{t.startDate}</label>
+                                            <input type="date" value={startDate} onChange={handleStartDateChange} className="w-full p-2 rounded-lg border-slate-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 sm:text-sm dark:bg-slate-700 dark:border-slate-600"/>
+                                        </div>
+                                        <div>
+                                            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">{t.endDate}</label>
+                                            <input type="date" value={endDate} onChange={handleEndDateChange} className="w-full p-2 rounded-lg border-slate-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 sm:text-sm dark:bg-slate-700 dark:border-slate-600"/>
+                                        </div>
+                                        <div className="min-w-[150px]">
+                                            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">{t.orderType}</label>
+                                            <select value={orderFilterType} onChange={(e) => setOrderFilterType(e.target.value as any)} className="w-full p-2 rounded-lg border-slate-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 sm:text-sm dark:bg-slate-700 dark:border-slate-600">
+                                                <option value="all">{t.all}</option>
+                                                <option value="Dine-in">{t.dineIn}</option>
+                                                <option value="Takeaway">{t.takeaway}</option>
+                                                <option value="Delivery">{t.delivery}</option>
+                                            </select>
+                                        </div>
+                                        {orderCreators.length > 0 && (
+                                            <div className="min-w-[150px]">
+                                                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">{t.creator}</label>
+                                                <select value={orderFilterCreator} onChange={(e) => setOrderFilterCreator(e.target.value)} className="w-full p-2 rounded-lg border-slate-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 sm:text-sm dark:bg-slate-700 dark:border-slate-600">
+                                                    <option value="all">{t.all}</option>
+                                                    {orderCreators.map(user => <option key={user.id} value={user.id}>{user.name}</option>)}
+                                                </select>
+                                            </div>
+                                        )}
                                     </div>
                                 </div>
-                                <div className="md:col-span-2 lg:col-span-4 flex flex-wrap items-center gap-2">
-                                     <button onClick={() => setDateFilter('today')} className={dateFilterButtonClasses('today')}>{t.today}</button>
-                                     <button onClick={() => setDateFilter('yesterday')} className={dateFilterButtonClasses('yesterday')}>{t.yesterday}</button>
-                                     <button onClick={() => setDateFilter('week')} className={dateFilterButtonClasses('week')}>{language === 'ar' ? 'هذا الأسبوع' : 'This Week'}</button>
-                                     <button onClick={() => setDateFilter('month')} className={dateFilterButtonClasses('month')}>{t.thisMonth}</button>
-                                </div>
-                                <div>
-                                    <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">{t.startDate}</label>
-                                    <input type="date" value={startDate} onChange={handleStartDateChange} className="w-full p-2 rounded-lg border-slate-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 sm:text-sm dark:bg-slate-700 dark:border-slate-600"/>
-                                </div>
-                                <div>
-                                    <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">{t.endDate}</label>
-                                    <input type="date" value={endDate} onChange={handleEndDateChange} className="w-full p-2 rounded-lg border-slate-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 sm:text-sm dark:bg-slate-700 dark:border-slate-600"/>
-                                </div>
-                                 <div className="min-w-[150px]">
-                                    <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">{t.orderType}</label>
-                                    <select value={orderFilterType} onChange={(e) => setOrderFilterType(e.target.value as any)} className="w-full p-2 rounded-lg border-slate-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 sm:text-sm dark:bg-slate-700 dark:border-slate-600">
-                                        <option value="all">{t.all}</option>
-                                        <option value="Dine-in">{t.dineIn}</option>
-                                        <option value="Takeaway">{t.takeaway}</option>
-                                        <option value="Delivery">{t.delivery}</option>
-                                    </select>
-                                </div>
-                                 {orderCreators.length > 0 && (
-                                     <div className="min-w-[150px]">
-                                        <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">{t.creator}</label>
-                                        <select value={orderFilterCreator} onChange={(e) => setOrderFilterCreator(e.target.value)} className="w-full p-2 rounded-lg border-slate-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 sm:text-sm dark:bg-slate-700 dark:border-slate-600">
-                                            <option value="all">{t.all}</option>
-                                            {orderCreators.map(user => <option key={user.id} value={user.id}>{user.name}</option>)}
-                                        </select>
-                                    </div>
-                                )}
                             </div>
                         </div>
+
 
                         <div className="w-full overflow-x-auto pb-4">
                           <div className="inline-grid gap-6 min-w-max" style={{ gridTemplateColumns: `repeat(${restaurantInfo.orderStatusColumns.length}, 20rem)` }}>
@@ -365,6 +417,46 @@ export const AdminPage: React.FC<AdminPageProps> = ({ activeSubRoute, reportSubR
                             <h2 className="text-2xl font-bold">{t.productList}</h2>
                             {hasPermission('add_product') && <button onClick={() => setEditingProduct('new')} className="bg-green-500 text-white font-bold py-2 px-4 rounded-lg hover:bg-green-600 transition-colors flex items-center gap-2"><PlusIcon className="w-5 h-5" />{t.addNewProduct}</button>}
                         </div>
+
+                        <div className="bg-white dark:bg-slate-800 rounded-xl shadow-lg mb-6 border border-slate-200 dark:border-slate-700">
+                            <div className="p-4 flex justify-between items-center cursor-pointer select-none" onClick={() => setIsProductFilterExpanded(!isProductFilterExpanded)}>
+                                <div className="flex items-center gap-2">
+                                    <FilterIcon className="w-5 h-5 text-slate-500 dark:text-slate-400" />
+                                    <h3 className="font-semibold text-slate-700 dark:text-slate-200">{t.filter}</h3>
+                                </div>
+                                <button className="p-1 rounded-full hover:bg-slate-200 dark:hover:bg-slate-700">
+                                    {isProductFilterExpanded ? <ChevronUpIcon className="w-6 h-6" /> : <ChevronDownIcon className="w-6 h-6" />}
+                                </button>
+                            </div>
+                            <div className={`transition-all duration-300 ease-in-out overflow-hidden ${isProductFilterExpanded ? 'max-h-[500px] opacity-100' : 'max-h-0 opacity-0'}`}>
+                                <div className="p-4 border-t border-slate-200 dark:border-slate-700">
+                                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
+                                        <div className="md:col-span-3">
+                                            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">{t.search}</label>
+                                            <div className="relative">
+                                                <input type="text" placeholder={`${t.productNameEn}, ${t.code}...`} value={productSearchTerm} onChange={(e) => setProductSearchTerm(e.target.value)} className="w-full p-2 ps-10 rounded-lg border-slate-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 sm:text-sm dark:bg-slate-700 dark:border-slate-600"/>
+                                                <div className="absolute top-1/2 -translate-y-1/2 start-3 text-slate-400"><SearchIcon className="w-5 h-5" /></div>
+                                            </div>
+                                        </div>
+                                        <div>
+                                            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">{t.category}</label>
+                                            <select value={productFilterCategory} onChange={(e) => setProductFilterCategory(e.target.value)} className="w-full p-2 rounded-lg border-slate-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 sm:text-sm dark:bg-slate-700 dark:border-slate-600">
+                                                <option value="all">{t.allCategories}</option>
+                                                {categories.map(cat => <option key={cat.id} value={cat.id}>{cat.name[language]}</option>)}
+                                            </select>
+                                        </div>
+                                        <div>
+                                            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">{t.tags}</label>
+                                            <select value={productFilterTag} onChange={(e) => setProductFilterTag(e.target.value)} className="w-full p-2 rounded-lg border-slate-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 sm:text-sm dark:bg-slate-700 dark:border-slate-600">
+                                                <option value="all">{t.all} {t.tags}</option>
+                                                {tags.map(tag => <option key={tag.id} value={tag.id}>{tag.name[language]}</option>)}
+                                            </select>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
                         {/* Desktop Table */}
                         <div className="hidden md:block bg-white dark:bg-slate-800 rounded-lg shadow-md overflow-hidden border border-slate-200 dark:border-slate-700">
                              <table className="min-w-full divide-y divide-slate-200 dark:divide-slate-700">
@@ -375,7 +467,7 @@ export const AdminPage: React.FC<AdminPageProps> = ({ activeSubRoute, reportSubR
                                     </tr>
                                 </thead>
                                  <tbody className="divide-y divide-slate-200 dark:divide-slate-700">
-                                    {allProducts.map((product) => (
+                                    {filteredProducts.map((product) => (
                                         <tr key={product.id} className="odd:bg-white even:bg-slate-50 dark:odd:bg-slate-800 dark:even:bg-slate-800/50 hover:bg-slate-100 dark:hover:bg-slate-700/50 transition-colors">
                                             <td className="px-6 py-4 whitespace-nowrap"><div className="flex items-center"><img src={product.image} alt={product.name[language]} className="w-12 h-12 rounded-md object-cover me-4" /><div><div className="text-sm font-semibold text-slate-900 dark:text-slate-100">{product.name[language]}</div><div className="text-xs text-slate-500 dark:text-slate-400">{product.code}</div></div></div></td>
                                             <td className="px-6 py-4 whitespace-nowrap text-slate-600 dark:text-slate-300"><div className="text-sm">{product.price.toFixed(2)} {t.currency}</div></td>
@@ -390,7 +482,7 @@ export const AdminPage: React.FC<AdminPageProps> = ({ activeSubRoute, reportSubR
                         </div>
                         {/* Mobile Cards */}
                         <div className="md:hidden space-y-4">
-                            {allProducts.map(product => (
+                            {filteredProducts.map(product => (
                                 <div key={product.id} className="bg-white dark:bg-slate-800 rounded-lg shadow p-4 space-y-4 border-l-4 border-primary-500">
                                     <div className="flex items-start justify-between gap-4">
                                         <div className="flex items-center gap-4 flex-1 min-w-0">
@@ -472,6 +564,18 @@ export const AdminPage: React.FC<AdminPageProps> = ({ activeSubRoute, reportSubR
                 return (
                     <div>
                         <div className="flex justify-between items-center mb-6"><h2 className="text-2xl font-bold">{t.manageUsers}</h2>{hasPermission('add_user') && <button onClick={() => setEditingUser('new')} className="bg-green-500 text-white font-bold py-2 px-4 rounded-lg hover:bg-green-600 transition-colors flex items-center gap-2"><PlusIcon className="w-5 h-5" />{t.addNewUser}</button>}</div>
+                        <div className="mb-6">
+                            <div className="relative">
+                                <input
+                                    type="text"
+                                    placeholder={`${t.search} ${t.name}, ${t.mobileNumber}...`}
+                                    value={userSearchTerm}
+                                    onChange={(e) => setUserSearchTerm(e.target.value)}
+                                    className="w-full p-2 ps-10 rounded-lg border-slate-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 sm:text-sm dark:bg-slate-700 dark:border-slate-600"
+                                />
+                                <div className="absolute top-1/2 -translate-y-1/2 start-3 text-slate-400"><SearchIcon className="w-5 h-5" /></div>
+                            </div>
+                        </div>
                         {/* Desktop Table */}
                         <div className="hidden md:block bg-white dark:bg-slate-800 rounded-lg shadow-md overflow-x-auto border border-slate-200 dark:border-slate-700">
                            <table className="min-w-full divide-y divide-slate-200 dark:divide-slate-700">

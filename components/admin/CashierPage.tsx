@@ -27,6 +27,9 @@ export const CashierPage: React.FC = () => {
     const [selectedTags, setSelectedTags] = useState<string[]>([]);
     const [isFilterOpen, setIsFilterOpen] = useState(false);
 
+    // New state for mobile multi-step UI
+    const [mobileStep, setMobileStep] = useState<'info' | 'cart'>('info');
+
 
     // Order Type and Customer Info State
     const [orderType, setOrderType] = useState<OrderType>('Dine-in');
@@ -40,6 +43,13 @@ export const CashierPage: React.FC = () => {
             setSelectedCategory(allCategories[0].id);
         }
     }, [allCategories, selectedCategory]);
+
+    useEffect(() => {
+        // When cart becomes empty, always go back to the info step on mobile
+        if (cartItems.length === 0) {
+            setMobileStep('info');
+        }
+    }, [cartItems.length]);
 
 
     const visibleProducts = useMemo(() => allProducts.filter(p => p.isVisible), [allProducts]);
@@ -63,6 +73,11 @@ export const CashierPage: React.FC = () => {
         setCartItems(prevItems => {
             const itemVariantId = product.id + JSON.stringify(options || {});
             const existingItem = prevItems.find(item => (item.product.id + JSON.stringify(item.options || {})) === itemVariantId);
+            
+            if (prevItems.length === 0) {
+                setIsCartExpanded(true); // Auto-expand cart on mobile when first item is added
+            }
+
             if (existingItem) {
                 return prevItems.map(item =>
                     (item.product.id + JSON.stringify(item.options || {})) === itemVariantId
@@ -107,12 +122,21 @@ export const CashierPage: React.FC = () => {
         const oldOrderType = orderType;
         setOrderType(type);
 
-        if (type === 'Takeaway') {
-            setCustomerName(t.takeawayCustomer);
-        } else if (oldOrderType === 'Takeaway') {
+        if (type === 'Takeaway' && (customerName === '' || customerName === t.takeawayCustomer)) {
+             setCustomerName(t.takeawayCustomer);
+        } else if (oldOrderType === 'Takeaway' && customerName === t.takeawayCustomer) {
             setCustomerName('');
         }
     };
+
+    const canProceedFromInfo = useMemo(() => {
+        if (cartItems.length === 0) return false;
+        if (orderType === 'Dine-in') return tableNumber.trim() !== '';
+        if (orderType === 'Takeaway') return customerName.trim() !== '';
+        if (orderType === 'Delivery') return customerName.trim() !== '' && customerMobile.trim() !== '' && customerAddress.trim() !== '';
+        return false;
+    }, [cartItems.length, orderType, tableNumber, customerName, customerMobile, customerAddress]);
+
 
     const isPlaceOrderDisabled = useMemo(() => {
         if (cartItems.length === 0) return true;
@@ -192,9 +216,8 @@ export const CashierPage: React.FC = () => {
                 {/* Product Selection Panel */}
                 <div className="flex-1 flex flex-col bg-slate-100/50 dark:bg-slate-900/50 overflow-y-hidden">
                     <div className="p-3 border-b border-slate-200 dark:border-slate-700 shrink-0 space-y-3">
-                        {/* Search and Tag Filter */}
-                        <div className="flex flex-col sm:flex-row gap-2 items-center">
-                            <div className="relative w-full sm:flex-grow">
+                        <div className="flex flex-row gap-2 items-center">
+                            <div className="relative w-full flex-grow">
                                 <input
                                     type="text"
                                     placeholder={t.search}
@@ -206,9 +229,9 @@ export const CashierPage: React.FC = () => {
                                     <SearchIcon className="w-5 h-5" />
                                 </div>
                             </div>
-                            <button
+                             <button
                                 onClick={() => setIsFilterOpen(!isFilterOpen)}
-                                className={`w-full sm:w-auto flex-shrink-0 flex items-center justify-center gap-2 px-3 py-2 border rounded-lg font-bold text-sm transition-colors ${isFilterOpen ? 'bg-primary-100 dark:bg-primary-900/50 border-primary-500 text-primary-700 dark:text-primary-300' : 'bg-white dark:bg-slate-800 border-slate-300 dark:border-slate-600 hover:border-primary-400 dark:hover:border-primary-500'}`}
+                                className={`flex-shrink-0 flex items-center justify-center gap-2 px-3 py-2 border rounded-lg font-bold text-sm transition-colors ${isFilterOpen ? 'bg-primary-100 dark:bg-primary-900/50 border-primary-500 text-primary-700 dark:text-primary-300' : 'bg-white dark:bg-slate-800 border-slate-300 dark:border-slate-600 hover:border-primary-400 dark:hover:border-primary-500'}`}
                             >
                                 <FilterIcon className="w-5 h-5" />
                                 <span>{t.tags}</span>
@@ -266,99 +289,148 @@ export const CashierPage: React.FC = () => {
 
                 {/* Cart/Order Panel */}
                 <div className="md:w-[400px] md:flex-shrink-0 bg-white dark:bg-slate-800 flex flex-col shadow-lg border-t md:border-t-0 md:border-l border-slate-200 dark:border-slate-700">
-                    <div className="p-4 border-b dark:border-slate-700 flex justify-between items-center shrink-0">
+                    <div
+                        onClick={() => setIsCartExpanded(!isCartExpanded)}
+                        className="p-4 border-b dark:border-slate-700 flex justify-between items-center shrink-0 cursor-pointer md:cursor-default"
+                    >
                         <h3 className="text-xl font-bold">{t.newOrder}</h3>
-                         <button onClick={() => setIsCartExpanded(!isCartExpanded)} className="p-2 rounded-full hover:bg-slate-100 dark:hover:bg-slate-700 md:hidden">
-                            {isCartExpanded ? <ChevronDownIcon className="w-6 h-6"/> : <ChevronUpIcon className="w-6 h-6"/>}
+                        <button className="p-2 rounded-full hover:bg-slate-100 dark:hover:bg-slate-700 md:hidden pointer-events-none">
+                            {isCartExpanded ? <ChevronDownIcon className="w-6 h-6" /> : <ChevronUpIcon className="w-6 h-6" />}
                         </button>
                     </div>
                     
                     <div className={`flex-1 overflow-y-auto transition-all duration-500 ease-in-out ${isCartExpanded ? 'max-h-[40vh]' : 'max-h-0'} md:max-h-none`}>
-                        <div className="p-4 border-b dark:border-slate-700 space-y-4">
-                             <div className="flex items-center p-1 rounded-lg bg-slate-200 dark:bg-slate-900">
-                                <button onClick={() => handleOrderTypeChange('Dine-in')} className={`${orderTypeClasses} ${orderType === 'Dine-in' ? activeOrderTypeClasses : inactiveOrderTypeClasses}`}>{t.dineIn}</button>
-                                <button onClick={() => handleOrderTypeChange('Takeaway')} className={`${orderTypeClasses} ${orderType === 'Takeaway' ? activeOrderTypeClasses : inactiveOrderTypeClasses}`}>{t.takeaway}</button>
-                                <button onClick={() => handleOrderTypeChange('Delivery')} className={`${orderTypeClasses} ${orderType === 'Delivery' ? activeOrderTypeClasses : inactiveOrderTypeClasses}`}>{t.delivery}</button>
+                         <div className={`md:block ${mobileStep === 'info' ? '' : 'hidden'}`}>
+                             <div className="p-4 border-b dark:border-slate-700 space-y-4">
+                                <div className="flex items-center p-1 rounded-lg bg-slate-200 dark:bg-slate-900">
+                                    <button onClick={() => handleOrderTypeChange('Dine-in')} className={`${orderTypeClasses} ${orderType === 'Dine-in' ? activeOrderTypeClasses : inactiveOrderTypeClasses}`}>{t.dineIn}</button>
+                                    <button onClick={() => handleOrderTypeChange('Takeaway')} className={`${orderTypeClasses} ${orderType === 'Takeaway' ? activeOrderTypeClasses : inactiveOrderTypeClasses}`}>{t.takeaway}</button>
+                                    <button onClick={() => handleOrderTypeChange('Delivery')} className={`${orderTypeClasses} ${orderType === 'Delivery' ? activeOrderTypeClasses : inactiveOrderTypeClasses}`}>{t.delivery}</button>
+                                </div>
+                                {orderType === 'Dine-in' && (
+                                    <div>
+                                        <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">{t.tableNumber}</label>
+                                        <TableSelector
+                                            tableCount={restaurantInfo.tableCount || 0}
+                                            selectedTable={tableNumber}
+                                            onSelectTable={setTableNumber}
+                                        />
+                                    </div>
+                                )}
+                                {orderType === 'Takeaway' && (
+                                    <div className="space-y-3">
+                                        <input type="text" value={customerName} onChange={e => setCustomerName(e.target.value)} placeholder={t.customer + ' ' + t.name} className="w-full p-2 border rounded-md dark:bg-gray-700 dark:border-gray-600" required />
+                                        <input type="tel" value={customerMobile} onChange={e => setCustomerMobile(e.target.value)} placeholder={t.mobileNumber + ` (${t.yourComment})`} className="w-full p-2 border rounded-md dark:bg-gray-700 dark:border-gray-600" />
+                                    </div>
+                                )}
+                                {orderType === 'Delivery' && (
+                                    <div className="space-y-3">
+                                         <input type="text" value={customerName} onChange={e => setCustomerName(e.target.value)} placeholder={t.customer + ' ' + t.name} className="w-full p-2 border rounded-md dark:bg-gray-700 dark:border-gray-600" required />
+                                         <input type="tel" value={customerMobile} onChange={e => setCustomerMobile(e.target.value)} placeholder={t.mobileNumber} className="w-full p-2 border rounded-md dark:bg-gray-700 dark:border-gray-600" required />
+                                         <textarea value={customerAddress} onChange={e => setCustomerAddress(e.target.value)} placeholder={t.address} rows={2} className="w-full p-2 border rounded-md dark:bg-gray-700 dark:border-gray-600" required />
+                                    </div>
+                                )}
                             </div>
-
-                            {orderType === 'Dine-in' && (
-                                <div>
-                                    <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">{t.tableNumber}</label>
-                                    <TableSelector
-                                        tableCount={restaurantInfo.tableCount || 0}
-                                        selectedTable={tableNumber}
-                                        onSelectTable={setTableNumber}
-                                    />
-                                </div>
-                            )}
-
-                            {orderType === 'Takeaway' && (
-                                <div className="space-y-3">
-                                    <input type="text" value={customerName} onChange={e => setCustomerName(e.target.value)} placeholder={t.customer + ' ' + t.name} className="w-full p-2 border rounded-md dark:bg-gray-700 dark:border-gray-600" required />
-                                    <input type="tel" value={customerMobile} onChange={e => setCustomerMobile(e.target.value)} placeholder={t.mobileNumber + ` (${t.yourComment})`} className="w-full p-2 border rounded-md dark:bg-gray-700 dark:border-gray-600" />
-                                </div>
-                            )}
-                            
-                            {orderType === 'Delivery' && (
-                                <div className="space-y-3">
-                                     <input type="text" value={customerName} onChange={e => setCustomerName(e.target.value)} placeholder={t.customer + ' ' + t.name} className="w-full p-2 border rounded-md dark:bg-gray-700 dark:border-gray-600" required />
-                                     <input type="tel" value={customerMobile} onChange={e => setCustomerMobile(e.target.value)} placeholder={t.mobileNumber} className="w-full p-2 border rounded-md dark:bg-gray-700 dark:border-gray-600" required />
-                                     <textarea value={customerAddress} onChange={e => setCustomerAddress(e.target.value)} placeholder={t.address} rows={2} className="w-full p-2 border rounded-md dark:bg-gray-700 dark:border-gray-600" required />
-                                </div>
-                            )}
-
                         </div>
 
-                        <div className="p-4 space-y-3">
-                            {cartItems.length === 0 ? (
-                                 <p className="text-center text-slate-500 py-10">{t.emptyCart}</p>
-                            ) : (
-                                cartItems.map((item, index) => (
-                                    <div key={index} className="flex items-start gap-3">
-                                        <div className="flex-grow">
-                                            <p className="font-semibold text-sm">{item.product.name[language]}</p>
-                                            {item.options && (
-                                                <div className="text-xs text-slate-500 dark:text-slate-400 mt-1 pl-2">
-                                                    {Object.entries(item.options).map(([optionKey, valueKey]) => {
-                                                        const option = item.product.options?.find(o => o.name.en === optionKey);
-                                                        const value = option?.values.find(v => v.name.en === valueKey);
-                                                        if (option && value) {
-                                                            return <div key={optionKey}>- {value.name[language]}</div>
-                                                        }
-                                                        return null;
-                                                    })}
-                                                </div>
-                                            )}
-                                            <p className="text-xs text-slate-500 mt-1">{calculateTotal([item]).toFixed(2)} {t.currency}</p>
+                        <div className={`md:block ${mobileStep === 'cart' ? '' : 'hidden'}`}>
+                            <div className="p-4 space-y-3">
+                                {cartItems.length === 0 ? (
+                                    <p className="text-center text-slate-500 py-10">{t.emptyCart}</p>
+                                ) : (
+                                    cartItems.map((item, index) => (
+                                        <div key={index} className="flex items-start gap-3">
+                                            <div className="flex-grow">
+                                                <p className="font-semibold text-sm">{item.product.name[language]}</p>
+                                                {item.options && (
+                                                    <div className="text-xs text-slate-500 dark:text-slate-400 mt-1 pl-2">
+                                                        {Object.entries(item.options).map(([optionKey, valueKey]) => {
+                                                            const option = item.product.options?.find(o => o.name.en === optionKey);
+                                                            const value = option?.values.find(v => v.name.en === valueKey);
+                                                            if (option && value) {
+                                                                return <div key={optionKey}>- {value.name[language]}</div>
+                                                            }
+                                                            return null;
+                                                        })}
+                                                    </div>
+                                                )}
+                                                <p className="text-xs text-slate-500 mt-1">{calculateTotal([item]).toFixed(2)} {t.currency}</p>
+                                            </div>
+                                            <div className="flex items-center gap-2">
+                                                <button onClick={() => updateCartQuantity(index, item.quantity - 1)} className="p-1 rounded-full bg-slate-200 dark:bg-slate-700"><MinusIcon className="w-4 h-4" /></button>
+                                                <span className="font-bold w-6 text-center">{formatNumber(item.quantity)}</span>
+                                                <button onClick={() => updateCartQuantity(index, item.quantity + 1)} className="p-1 rounded-full bg-slate-200 dark:bg-slate-700"><PlusIcon className="w-4 h-4" /></button>
+                                            </div>
                                         </div>
-                                        <div className="flex items-center gap-2">
-                                            <button onClick={() => updateCartQuantity(index, item.quantity - 1)} className="p-1 rounded-full bg-slate-200 dark:bg-slate-700"><MinusIcon className="w-4 h-4" /></button>
-                                            <span className="font-bold w-6 text-center">{formatNumber(item.quantity)}</span>
-                                            <button onClick={() => updateCartQuantity(index, item.quantity + 1)} className="p-1 rounded-full bg-slate-200 dark:bg-slate-700"><PlusIcon className="w-4 h-4" /></button>
-                                        </div>
+                                    ))
+                                )}
+                                 {cartItems.length > 0 && (
+                                    <div className="pt-2">
+                                        <textarea value={notes} onChange={e => setNotes(e.target.value)} placeholder={t.orderNotes} rows={1} className="w-full p-2 border rounded-md dark:bg-gray-700 dark:border-gray-600 focus:ring-primary-500 focus:border-primary-500"></textarea>
                                     </div>
-                                ))
-                            )}
+                                 )}
+                            </div>
                         </div>
                     </div>
 
-                    <div className="p-3 border-t dark:border-slate-700 space-y-3 bg-slate-50 dark:bg-slate-800/50 mt-auto shrink-0">
-                         <div>
-                             <textarea value={notes} onChange={e => setNotes(e.target.value)} placeholder={t.orderNotes} rows={1} className="w-full p-2 border rounded-md dark:bg-gray-700 dark:border-gray-600 focus:ring-primary-500 focus:border-primary-500"></textarea>
+                    <div className="p-3 border-t dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50 mt-auto shrink-0">
+                        {/* Mobile Footer */}
+                        <div className="md:hidden space-y-3">
+                            {mobileStep === 'info' ? (
+                                <>
+                                    <div className="flex justify-between font-bold text-xl">
+                                        <span>{t.total}</span>
+                                        <span>{total.toFixed(2)} {t.currency}</span>
+                                    </div>
+                                    <button
+                                        onClick={() => setMobileStep('cart')}
+                                        disabled={!canProceedFromInfo}
+                                        className="w-full bg-primary-600 text-white p-2.5 rounded-lg font-bold hover:bg-primary-700 disabled:bg-slate-400"
+                                    >
+                                        {t.nextStep}
+                                    </button>
+                                </>
+                            ) : (
+                                <>
+                                    <div className="flex justify-between font-bold text-xl">
+                                        <span>{t.total}</span>
+                                        <span>{total.toFixed(2)} {t.currency}</span>
+                                    </div>
+                                    <div className="flex gap-2">
+                                        <button onClick={() => setMobileStep('info')} className="w-1/3 bg-slate-200 text-slate-800 p-2.5 rounded-lg font-bold hover:bg-slate-300">
+                                            {t.previousStep}
+                                        </button>
+                                        <button 
+                                            onClick={handlePlaceOrder} 
+                                            className="w-2/3 bg-green-500 text-white p-2.5 rounded-lg font-bold hover:bg-green-600 disabled:bg-gray-400 disabled:cursor-not-allowed"
+                                            disabled={isPlaceOrderDisabled}
+                                        >
+                                            {t.placeOrder}
+                                        </button>
+                                    </div>
+                                </>
+                            )}
                         </div>
-                        <div className="flex justify-between font-bold text-xl">
-                            <span>{t.total}</span>
-                            <span>{total.toFixed(2)} {t.currency}</span>
-                        </div>
-                        <div className="flex gap-2">
-                            <button onClick={clearCart} className="w-1/4 bg-red-500 text-white p-2.5 rounded-lg font-bold hover:bg-red-600 flex items-center justify-center"><TrashIcon className="w-6 h-6"/></button>
-                            <button 
-                                onClick={handlePlaceOrder} 
-                                className="w-3/4 bg-green-500 text-white p-2.5 rounded-lg font-bold hover:bg-green-600 disabled:bg-gray-400 disabled:cursor-not-allowed"
-                                disabled={isPlaceOrderDisabled}
-                            >
-                                {t.placeOrder}
-                            </button>
+
+                        {/* Desktop Footer */}
+                        <div className="hidden md:block space-y-3">
+                            <div>
+                                <textarea value={notes} onChange={e => setNotes(e.target.value)} placeholder={t.orderNotes} rows={1} className="w-full p-2 border rounded-md dark:bg-gray-700 dark:border-gray-600 focus:ring-primary-500 focus:border-primary-500"></textarea>
+                            </div>
+                            <div className="flex justify-between font-bold text-xl">
+                                <span>{t.total}</span>
+                                <span>{total.toFixed(2)} {t.currency}</span>
+                            </div>
+                            <div className="flex gap-2">
+                                <button onClick={clearCart} className="bg-red-500 text-white p-2.5 rounded-lg font-bold hover:bg-red-600 flex items-center justify-center px-4"><TrashIcon className="w-5 h-5"/></button>
+                                <button 
+                                    onClick={handlePlaceOrder} 
+                                    className="flex-grow bg-green-500 text-white p-2.5 rounded-lg font-bold hover:bg-green-600 disabled:bg-gray-400 disabled:cursor-not-allowed"
+                                    disabled={isPlaceOrderDisabled}
+                                >
+                                    {t.placeOrder}
+                                </button>
+                            </div>
                         </div>
                     </div>
                 </div>

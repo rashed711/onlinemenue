@@ -96,7 +96,7 @@ export const MenuPage: React.FC = () => {
             
             <HeroSection language={language} restaurantInfo={restaurantInfo} />
 
-            <div className="container mx-auto max-w-7xl px-4 py-8">
+            <div className="container mx-auto max-w-7xl px-4">
                 <main>
                     <PromotionSection promotions={promotions} products={visibleProducts} onProductClick={setSelectedProduct} />
 
