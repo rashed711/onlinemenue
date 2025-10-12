@@ -9,6 +9,11 @@ export const restaurantInfo: RestaurantInfo = {
     whatsappNumber: "201060637363", // Replace with actual WhatsApp number
     tableCount: 5,
     defaultPage: 'menu',
+    activationEndDate: null, // null means active indefinitely
+    deactivationMessage: {
+        en: "The system is temporarily deactivated. Please contact support for more information.",
+        ar: "تم إيقاف النظام مؤقتًا. يرجى التواصل مع الدعم الفني لمزيد من المعلومات."
+    },
     socialLinks: [
         { id: 1, name: 'Instagram', url: 'https://instagram.com', icon: 'https://img.icons8.com/color/48/instagram-new--v1.png', isVisible: true },
         { id: 2, name: 'Facebook', url: 'https://facebook.com', icon: 'https://img.icons8.com/color/48/facebook.png', isVisible: true },

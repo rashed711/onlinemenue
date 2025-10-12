@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import type { Language, Order, OrderStatusColumn, Permission, RestaurantInfo, SocialLink, OnlinePaymentMethod } from '../../types';
 import { PlusIcon, PencilIcon, TrashIcon } from '../icons/Icons';
 import { SocialLinkEditModal } from './SocialLinkEditModal';
@@ -8,6 +8,7 @@ import { useUI } from '../../contexts/UIContext';
 import { useData } from '../../contexts/DataContext';
 import { useAdmin } from '../../contexts/AdminContext';
 import { useAuth } from '../../contexts/AuthContext';
+import { formatDateTime } from '../../utils/helpers';
 
 type SettingsTab = 'general' | 'operations' | 'social' | 'statuses';
 
@@ -36,11 +37,21 @@ const FormGroup: React.FC<{ label: string, children: React.ReactNode, helperText
     </div>
 );
 
+const formatDateForInput = (isoDate: string | null | undefined): string => {
+    if (!isoDate) return '';
+    const date = new Date(isoDate);
+    // Adjust for timezone offset to show the correct local time in the input
+    const timezoneOffset = date.getTimezoneOffset() * 60000;
+    const localDate = new Date(date.getTime() - timezoneOffset);
+    return localDate.toISOString().slice(0, 16);
+};
+
+
 export const SettingsPage: React.FC = () => {
     const { language, t, showToast } = useUI();
     const { restaurantInfo, updateRestaurantInfo } = useData();
-    const { orders: allOrders } = useAdmin();
-    const { hasPermission } = useAuth();
+    const { orders: allOrders, roles } = useAdmin();
+    const { currentUser, hasPermission } = useAuth();
     
     const [localInfo, setLocalInfo] = useState<RestaurantInfo | null>(restaurantInfo);
     const [isDirty, setIsDirty] = useState(false);
@@ -57,6 +68,10 @@ export const SettingsPage: React.FC = () => {
     }
     const [activeTab, setActiveTab] = useState<SettingsTab>(getDefaultTab());
 
+    const isSuperAdmin = useMemo(() => {
+        const superAdminRole = roles.find(r => r.name.en.toLowerCase() === 'superadmin');
+        return currentUser?.role === superAdminRole?.key;
+    }, [currentUser, roles]);
 
     useEffect(() => {
         setLocalInfo(restaurantInfo);
@@ -64,17 +79,7 @@ export const SettingsPage: React.FC = () => {
 
     useEffect(() => {
         if (!localInfo || !restaurantInfo) return;
-        const original = { ...restaurantInfo };
-        const current = { ...localInfo };
-        
-        original.socialLinks = [];
-        current.socialLinks = [];
-        original.orderStatusColumns = [];
-        current.orderStatusColumns = [];
-        original.onlinePaymentMethods = [];
-        current.onlinePaymentMethods = [];
-
-        setIsDirty(JSON.stringify(current) !== JSON.stringify(original));
+        setIsDirty(JSON.stringify(localInfo) !== JSON.stringify(restaurantInfo));
     }, [localInfo, restaurantInfo]);
 
 
@@ -84,7 +89,7 @@ export const SettingsPage: React.FC = () => {
         const [field, lang] = name.split('.');
         setLocalInfo(prev => prev ? ({
             ...prev,
-            [field]: { ...prev[field as 'name' | 'description' | 'heroTitle' | 'codNotes' | 'onlinePaymentNotes'], [lang]: value }
+            [field]: { ...prev[field as 'name' | 'description' | 'heroTitle' | 'codNotes' | 'onlinePaymentNotes' | 'deactivationMessage'], [lang]: value }
         }) : null);
     };
 
@@ -190,6 +195,26 @@ export const SettingsPage: React.FC = () => {
         }
     };
 
+    const handleExtendActivation = (amount: number, unit: 'day' | 'month' | 'year') => {
+        if (!localInfo) return;
+        const startDate = localInfo.activationEndDate && new Date(localInfo.activationEndDate) > new Date()
+            ? new Date(localInfo.activationEndDate)
+            : new Date();
+        
+        const newDate = new Date(startDate);
+        if (unit === 'day') newDate.setDate(newDate.getDate() + amount);
+        if (unit === 'month') newDate.setMonth(newDate.getMonth() + amount);
+        if (unit === 'year') newDate.setFullYear(newDate.getFullYear() + amount);
+
+        setLocalInfo(prev => prev ? { ...prev, activationEndDate: newDate.toISOString() } : null);
+    };
+
+    const handleDeactivateNow = async () => {
+        if (window.confirm(t.confirmDeactivation)) {
+            await updateRestaurantInfo({ activationEndDate: new Date(0).toISOString() });
+        }
+    };
+
     if (!localInfo || !restaurantInfo) {
         return <div className="p-8 text-center">Loading settings...</div>;
     }
@@ -232,64 +257,114 @@ export const SettingsPage: React.FC = () => {
 
             <div className="mt-8">
                 {activeTab === 'general' && hasPermission('manage_settings_general') && (
-                    <div className="grid grid-cols-1 xl:grid-cols-2 gap-8">
-                        <SettingsCard title={t.restaurantInformation} subtitle={t.settingsInfoDescription}>
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                <FormGroup label={t.productNameEn}>
-                                    <input type="text" name="name.en" value={localInfo.name.en} onChange={handleInfoChange} className={formInputClasses} />
+                    <div className="grid grid-cols-1 xl:grid-cols-3 gap-8">
+                        <div className="xl:col-span-2">
+                             <SettingsCard title={t.restaurantInformation} subtitle={t.settingsInfoDescription}>
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                    <FormGroup label={t.productNameEn}>
+                                        <input type="text" name="name.en" value={localInfo.name.en} onChange={handleInfoChange} className={formInputClasses} />
+                                    </FormGroup>
+                                    <FormGroup label={t.productNameAr}>
+                                        <input type="text" name="name.ar" value={localInfo.name.ar} onChange={handleInfoChange} className={formInputClasses} />
+                                    </FormGroup>
+                                </div>
+                                <hr className="border-slate-200 dark:border-slate-700"/>
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                    <FormGroup label={t.descriptionEn}>
+                                        <textarea name="description.en" value={localInfo.description?.en || ''} onChange={handleInfoChange} rows={3} className={formInputClasses}></textarea>
+                                    </FormGroup>
+                                    <FormGroup label={t.descriptionAr}>
+                                        <textarea name="description.ar" value={localInfo.description?.ar || ''} onChange={handleInfoChange} rows={3} className={formInputClasses}></textarea>
+                                    </FormGroup>
+                                </div>
+                            </SettingsCard>
+                        </div>
+                       
+                        <div className="xl:col-span-1">
+                             <SettingsCard title={t.settingsBranding} subtitle={t.settingsHeroDescription}>
+                                <FormGroup label={t.logo} helperText={t.settingsLogoDescription}>
+                                    <div className="flex items-center gap-4">
+                                        <img src={localInfo.logo} alt="Logo preview" className="w-20 h-20 object-contain rounded-full bg-slate-100 dark:bg-slate-700/50 p-1 border-2 border-white dark:border-slate-600 shadow-md" />
+                                        <input type="file" accept="image/*" onChange={(e) => handleFileChange(e, 'logo')} className={fileInputClasses} />
+                                    </div>
                                 </FormGroup>
-                                <FormGroup label={t.productNameAr}>
-                                    <input type="text" name="name.ar" value={localInfo.name.ar} onChange={handleInfoChange} className={formInputClasses} />
+                                <hr className="border-slate-200 dark:border-slate-700"/>
+                                <FormGroup label={t.heroImage} helperText={t.settingsHeroDescription}>
+                                    <div className="flex items-center gap-4">
+                                        {localInfo.heroImage && <img src={localInfo.heroImage} alt="Hero preview" className="w-28 h-20 object-cover rounded-lg bg-slate-100 dark:bg-slate-700 p-1 border-2 border-white dark:border-slate-600 shadow-md" />}
+                                        <input type="file" accept="image/*" onChange={(e) => handleFileChange(e, 'heroImage')} className={fileInputClasses} />
+                                    </div>
                                 </FormGroup>
-                            </div>
-                            <hr className="border-slate-200 dark:border-slate-700"/>
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                <FormGroup label={t.descriptionEn}>
-                                    <textarea name="description.en" value={localInfo.description?.en || ''} onChange={handleInfoChange} rows={3} className={formInputClasses}></textarea>
+                                <hr className="border-slate-200 dark:border-slate-700"/>
+                                <div className="grid grid-cols-1 gap-4">
+                                    <FormGroup label={t.heroTitleEn}>
+                                        <input type="text" name="heroTitle.en" value={localInfo.heroTitle?.en || ''} onChange={handleInfoChange} className={formInputClasses} />
+                                    </FormGroup>
+                                    <FormGroup label={t.heroTitleAr}>
+                                        <input type="text" name="heroTitle.ar" value={localInfo.heroTitle?.ar || ''} onChange={handleInfoChange} className={formInputClasses} />
+                                    </FormGroup>
+                                </div>
+                                <hr className="border-slate-200 dark:border-slate-700"/>
+                                <FormGroup label={t.defaultHomepage} helperText={t.settingsHomepageDescription}>
+                                    <div className="flex items-center space-x-6 rtl:space-x-reverse bg-slate-100 dark:bg-slate-900/50 p-4 rounded-xl">
+                                        <label className="flex items-center gap-3 cursor-pointer">
+                                            <input type="radio" name="homepage" value="menu" checked={localInfo.defaultPage === 'menu'} onChange={handleHomepageChange} className="w-5 h-5 text-primary-600 focus:ring-primary-500" />
+                                            <span className='font-medium'>{t.menuPage}</span>
+                                        </label>
+                                        <label className="flex items-center gap-3 cursor-pointer">
+                                            <input type="radio" name="homepage" value="social" checked={localInfo.defaultPage === 'social'} onChange={handleHomepageChange} className="w-5 h-5 text-primary-600 focus:ring-primary-500" />
+                                            <span className='font-medium'>{t.socialLinksPage}</span>
+                                        </label>
+                                    </div>
                                 </FormGroup>
-                                <FormGroup label={t.descriptionAr}>
-                                    <textarea name="description.ar" value={localInfo.description?.ar || ''} onChange={handleInfoChange} rows={3} className={formInputClasses}></textarea>
-                                </FormGroup>
-                            </div>
-                        </SettingsCard>
+                            </SettingsCard>
+                        </div>
 
-                        <SettingsCard title={t.settingsBranding} subtitle={t.settingsHeroDescription}>
-                             <FormGroup label={t.logo} helperText={t.settingsLogoDescription}>
-                                <div className="flex items-center gap-4">
-                                    <img src={localInfo.logo} alt="Logo preview" className="w-20 h-20 object-contain rounded-full bg-slate-100 dark:bg-slate-700/50 p-1 border-2 border-white dark:border-slate-600 shadow-md" />
-                                    <input type="file" accept="image/*" onChange={(e) => handleFileChange(e, 'logo')} className={fileInputClasses} />
-                                </div>
-                            </FormGroup>
-                            <hr className="border-slate-200 dark:border-slate-700"/>
-                             <FormGroup label={t.heroImage} helperText={t.settingsHeroDescription}>
-                                <div className="flex items-center gap-4">
-                                    {localInfo.heroImage && <img src={localInfo.heroImage} alt="Hero preview" className="w-28 h-20 object-cover rounded-lg bg-slate-100 dark:bg-slate-700 p-1 border-2 border-white dark:border-slate-600 shadow-md" />}
-                                    <input type="file" accept="image/*" onChange={(e) => handleFileChange(e, 'heroImage')} className={fileInputClasses} />
-                                </div>
-                            </FormGroup>
-                            <hr className="border-slate-200 dark:border-slate-700"/>
-                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                <FormGroup label={t.heroTitleEn}>
-                                    <input type="text" name="heroTitle.en" value={localInfo.heroTitle?.en || ''} onChange={handleInfoChange} className={formInputClasses} />
-                                </FormGroup>
-                                <FormGroup label={t.heroTitleAr}>
-                                    <input type="text" name="heroTitle.ar" value={localInfo.heroTitle?.ar || ''} onChange={handleInfoChange} className={formInputClasses} />
-                                </FormGroup>
+                         {isSuperAdmin && (
+                            <div className="xl:col-span-3">
+                                <SettingsCard title={t.systemActivation} subtitle={t.systemActivationSubtitle}>
+                                    <div className="p-4 rounded-lg bg-slate-100 dark:bg-slate-900/50">
+                                        <h4 className="font-semibold text-slate-500 dark:text-slate-400">{t.activationStatus}</h4>
+                                        {localInfo.activationEndDate && new Date(localInfo.activationEndDate) > new Date() ? (
+                                            <p className="text-lg font-bold text-green-600 dark:text-green-400">{t.activeUntil} {formatDateTime(localInfo.activationEndDate)}</p>
+                                        ) : !localInfo.activationEndDate ? (
+                                            <p className="text-lg font-bold text-green-600 dark:text-green-400">{t.activeIndefinitely}</p>
+                                        ) : (
+                                            <p className="text-lg font-bold text-red-600 dark:text-red-400">{t.inactive}</p>
+                                        )}
+                                    </div>
+                                    <FormGroup label={t.extendActivation}>
+                                        <div className="flex flex-wrap gap-2">
+                                            {[
+                                                { label: t.add1Day, amount: 1, unit: 'day'}, { label: t.add3Days, amount: 3, unit: 'day'},
+                                                { label: t.add1Week, amount: 7, unit: 'day'}, { label: t.add1Month, amount: 1, unit: 'month'},
+                                                { label: t.add3Months, amount: 3, unit: 'month'}, { label: t.add6Months, amount: 6, unit: 'month'},
+                                                { label: t.add1Year, amount: 1, unit: 'year'},
+                                            ].map(ext => (
+                                                <button key={`${ext.amount}-${ext.unit}`} type="button" onClick={() => handleExtendActivation(ext.amount, ext.unit as any)} className="px-3 py-1.5 text-sm font-semibold rounded-md bg-blue-100 text-blue-800 hover:bg-blue-200 dark:bg-blue-900/50 dark:text-blue-200 dark:hover:bg-blue-900">
+                                                    {ext.label}
+                                                </button>
+                                            ))}
+                                        </div>
+                                    </FormGroup>
+                                    <FormGroup label={t.setCustomEndDate}>
+                                        <input 
+                                            type="datetime-local"
+                                            value={formatDateForInput(localInfo.activationEndDate)}
+                                            onChange={(e) => setLocalInfo(prev => prev ? { ...prev, activationEndDate: new Date(e.target.value).toISOString() } : null)}
+                                            className={formInputClasses}
+                                        />
+                                    </FormGroup>
+                                     <FormGroup label={t.deactivationMessage}>
+                                        <textarea name="deactivationMessage.en" value={localInfo.deactivationMessage?.en || ''} onChange={handleInfoChange} placeholder="English Deactivation Message" rows={2} className={formInputClasses + ' mb-2'}></textarea>
+                                        <textarea name="deactivationMessage.ar" value={localInfo.deactivationMessage?.ar || ''} onChange={handleInfoChange} placeholder="Arabic Deactivation Message" rows={2} className={formInputClasses}></textarea>
+                                    </FormGroup>
+                                    <button type="button" onClick={handleDeactivateNow} className="w-full text-center px-4 py-2 bg-red-100 text-red-700 font-bold rounded-lg hover:bg-red-200 dark:bg-red-900/50 dark:text-red-200 dark:hover:bg-red-900">
+                                        {t.deactivateNow}
+                                    </button>
+                                </SettingsCard>
                             </div>
-                            <hr className="border-slate-200 dark:border-slate-700"/>
-                             <FormGroup label={t.defaultHomepage} helperText={t.settingsHomepageDescription}>
-                                <div className="flex items-center space-x-6 rtl:space-x-reverse bg-slate-100 dark:bg-slate-900/50 p-4 rounded-xl">
-                                    <label className="flex items-center gap-3 cursor-pointer">
-                                        <input type="radio" name="homepage" value="menu" checked={localInfo.defaultPage === 'menu'} onChange={handleHomepageChange} className="w-5 h-5 text-primary-600 focus:ring-primary-500" />
-                                        <span className='font-medium'>{t.menuPage}</span>
-                                    </label>
-                                    <label className="flex items-center gap-3 cursor-pointer">
-                                        <input type="radio" name="homepage" value="social" checked={localInfo.defaultPage === 'social'} onChange={handleHomepageChange} className="w-5 h-5 text-primary-600 focus:ring-primary-500" />
-                                        <span className='font-medium'>{t.socialLinksPage}</span>
-                                    </label>
-                                </div>
-                            </FormGroup>
-                        </SettingsCard>
+                        )}
                     </div>
                 )}
 

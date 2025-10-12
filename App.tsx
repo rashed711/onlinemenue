@@ -1,4 +1,3 @@
-
 import React, { useSyncExternalStore, useMemo } from 'react';
 import { UIProvider, useUI } from './contexts/UIContext';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
@@ -18,6 +17,7 @@ import { TopProgressBar } from './components/TopProgressBar';
 import { ForgotPasswordPage } from './components/auth/ForgotPasswordPage';
 import { ChangePasswordModal } from './components/profile/ChangePasswordModal';
 import { LoadingOverlay } from './components/LoadingOverlay';
+import { DeactivatedScreen } from './components/DeactivatedScreen';
 
 // Subscribes to the browser's hashchange event.
 function subscribe(callback: () => void) {
@@ -44,7 +44,7 @@ const AppContent: React.FC = () => {
     progress,
     showProgress
   } = useUI();
-  const { currentUser } = useAuth();
+  const { currentUser, roles } = useAuth();
   const { restaurantInfo } = useData();
   const { users, resetUserPassword } = useAdmin();
 
@@ -58,6 +58,20 @@ const AppContent: React.FC = () => {
 
     if (isLoading || !restaurantInfo) {
       return <LoadingOverlay isVisible={true} />;
+    }
+    
+    // System Activation Check Logic
+    const isDeactivated = restaurantInfo.activationEndDate && new Date() > new Date(restaurantInfo.activationEndDate);
+    const superAdminRole = roles.find(r => r.name.en.toLowerCase() === 'superadmin');
+    const isSuperAdmin = currentUser?.role === superAdminRole?.key;
+
+    // A super admin can access settings even if deactivated. Anyone can access login.
+    const canBypassDeactivation = 
+        (isSuperAdmin && baseRoute.startsWith('#/admin/settings')) || 
+        baseRoute.startsWith('#/login');
+
+    if (isDeactivated && !canBypassDeactivation) {
+        return <DeactivatedScreen />;
     }
 
     if (baseRoute.startsWith('#/admin')) {

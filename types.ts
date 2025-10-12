@@ -102,6 +102,8 @@ export interface RestaurantInfo {
     onlinePaymentMethods: OnlinePaymentMethod[];
     codNotes?: LocalizedString;
     onlinePaymentNotes?: LocalizedString;
+    activationEndDate?: string | null; // Null means active indefinitely
+    deactivationMessage?: LocalizedString;
 }
 
 // New Types for Users and Orders
