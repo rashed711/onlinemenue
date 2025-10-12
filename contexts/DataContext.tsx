@@ -63,9 +63,30 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
             if (settingsRes.ok) {
                 const data = await settingsRes.json();
                 
+                // Robustly handle activationEndDate from DB
                 if (data.activationEndDate && typeof data.activationEndDate === 'string') {
-                    const localDateString = data.activationEndDate.replace(' ', 'T');
-                    data.activationEndDate = new Date(localDateString).toISOString();
+                    if (data.activationEndDate.startsWith('0000-00-00')) {
+                        data.activationEndDate = null;
+                    } else {
+                        const localDateString = data.activationEndDate.replace(' ', 'T');
+                        const dateObj = new Date(localDateString);
+                        if (!isNaN(dateObj.getTime())) {
+                            data.activationEndDate = dateObj.toISOString();
+                        } else {
+                            console.warn("Invalid activationEndDate received from server:", data.activationEndDate);
+                            data.activationEndDate = null;
+                        }
+                    }
+                }
+
+                // Robustly handle deactivationMessage (might be a JSON string from DB)
+                if (data.deactivationMessage && typeof data.deactivationMessage === 'string') {
+                    try {
+                        data.deactivationMessage = JSON.parse(data.deactivationMessage);
+                    } catch (e) {
+                        console.error("Failed to parse deactivationMessage, treating as plain text:", e);
+                        data.deactivationMessage = { en: data.deactivationMessage, ar: data.deactivationMessage };
+                    }
                 }
                 
                 data.logo = resolveImageUrl(data.logo);
@@ -128,12 +149,10 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 const value = updatedInfo[key];
 
                 switch (key) {
-                    case 'name': case 'description': case 'heroTitle': case 'codNotes': case 'onlinePaymentNotes':
+                    case 'name': case 'description': case 'heroTitle': case 'codNotes': case 'onlinePaymentNotes': case 'deactivationMessage':
                         const localizedValue = value as LocalizedString;
                         if (localizedValue) {
-                            const dbKey = key === 'codNotes' ? 'cod_notes' : key === 'onlinePaymentNotes' ? 'online_payment_notes' : key;
-                            dbPayload[`${dbKey}_en`] = localizedValue.en;
-                            dbPayload[`${dbKey}_ar`] = localizedValue.ar;
+                           dbPayload[key] = localizedValue;
                         }
                         (uiUpdates as any)[key] = value;
                         break;
@@ -155,7 +174,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
                         (uiUpdates as any)[key] = processedItems.map(item => ({...item, icon: resolveImageUrl(item.icon)}));
                         break;
                     case 'activationEndDate':
-                        // Pass ISO string or null directly, MySQL can handle it.
+                        // Pass ISO string or null directly, the PHP backend will format it.
                         dbPayload[key] = value;
                         (uiUpdates as any)[key] = value;
                         break;
