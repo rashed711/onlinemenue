@@ -155,35 +155,35 @@ export const ProductEditModal: React.FC<ProductEditModalProps> = ({ product, onC
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
                         <label className="block text-sm font-medium mb-1">{t.productNameEn}</label>
-                        <input type="text" name="name.en" value={formData.name.en} onChange={handleTextChange} className="w-full p-2 border rounded-md dark:bg-gray-700 dark:border-gray-600" required />
+                        <input type="text" name="name.en" value={formData.name.en} onChange={handleTextChange} className="w-full p-2 border rounded-md dark:bg-slate-700 dark:border-slate-600" required />
                     </div>
                     <div>
                         <label className="block text-sm font-medium mb-1">{t.productNameAr}</label>
-                        <input type="text" name="name.ar" value={formData.name.ar} onChange={handleTextChange} className="w-full p-2 border rounded-md dark:bg-gray-700 dark:border-gray-600" required />
+                        <input type="text" name="name.ar" value={formData.name.ar} onChange={handleTextChange} className="w-full p-2 border rounded-md dark:bg-slate-700 dark:border-slate-600" required />
                     </div>
                 </div>
                  <div>
                     <label className="block text-sm font-medium mb-1">{t.code}</label>
-                    <input type="text" name="code" value={formData.code} onChange={handleTextChange} className="w-full p-2 border rounded-md dark:bg-gray-700 dark:border-gray-600" required />
+                    <input type="text" name="code" value={formData.code} onChange={handleTextChange} className="w-full p-2 border rounded-md dark:bg-slate-700 dark:border-slate-600" required />
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                      <div>
                         <label className="block text-sm font-medium mb-1">{t.descriptionEn}</label>
-                        <textarea name="description.en" value={formData.description.en} onChange={handleTextChange} rows={3} className="w-full p-2 border rounded-md dark:bg-gray-700 dark:border-gray-600" required></textarea>
+                        <textarea name="description.en" value={formData.description.en} onChange={handleTextChange} rows={3} className="w-full p-2 border rounded-md dark:bg-slate-700 dark:border-slate-600" required></textarea>
                     </div>
                      <div>
                         <label className="block text-sm font-medium mb-1">{t.descriptionAr}</label>
-                        <textarea name="description.ar" value={formData.description.ar} onChange={handleTextChange} rows={3} className="w-full p-2 border rounded-md dark:bg-gray-700 dark:border-gray-600" required></textarea>
+                        <textarea name="description.ar" value={formData.description.ar} onChange={handleTextChange} rows={3} className="w-full p-2 border rounded-md dark:bg-slate-700 dark:border-slate-600" required></textarea>
                     </div>
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
                         <label className="block text-sm font-medium mb-1">{t.price}</label>
-                        <input type="number" name="price" value={formData.price} onChange={handleNumberChange} className="w-full p-2 border rounded-md dark:bg-gray-700 dark:border-gray-600" required step="0.01" />
+                        <input type="number" name="price" value={formData.price} onChange={handleNumberChange} className="w-full p-2 border rounded-md dark:bg-slate-700 dark:border-slate-600" required step="0.01" />
                     </div>
                     <div>
                         <label className="block text-sm font-medium mb-1">{t.category}</label>
-                        <select name="categoryId" value={formData.categoryId} onChange={handleNumberChange} className="w-full p-2 border rounded-md dark:bg-gray-700 dark:border-gray-600" required>
+                        <select name="categoryId" value={formData.categoryId} onChange={handleNumberChange} className="w-full p-2 border rounded-md dark:bg-slate-700 dark:border-slate-600" required>
                             {categories.map(cat => (
                                 <option key={cat.id} value={cat.id}>{cat.name[language]}</option>
                             ))}
@@ -192,14 +192,14 @@ export const ProductEditModal: React.FC<ProductEditModalProps> = ({ product, onC
                 </div>
                  <div>
                     <label className="block text-sm font-medium mb-1">{t.tags}</label>
-                    <div className="p-3 border rounded-md dark:bg-gray-700/50 dark:border-gray-600 flex flex-wrap gap-x-4 gap-y-2">
+                    <div className="p-3 border rounded-md dark:bg-slate-700/50 dark:border-slate-600 flex flex-wrap gap-x-4 gap-y-2">
                         {allTags.map(tag => (
                             <label key={tag.id} className="flex items-center gap-2 cursor-pointer">
                                 <input
                                     type="checkbox"
                                     checked={formData.tags.includes(tag.id)}
                                     onChange={() => handleTagChange(tag.id)}
-                                    className="w-4 h-4 rounded text-primary-600 focus:ring-primary-500 dark:bg-gray-900 dark:border-gray-600"
+                                    className="w-4 h-4 rounded text-primary-600 focus:ring-primary-500 dark:bg-slate-900 dark:border-slate-600"
                                 />
                                 <span className="text-sm text-slate-700 dark:text-slate-200">{tag.name[language]}</span>
                             </label>
@@ -229,11 +229,11 @@ export const ProductEditModal: React.FC<ProductEditModalProps> = ({ product, onC
                             />
                             <label 
                                 htmlFor="product-image-upload" 
-                                className="cursor-pointer bg-white dark:bg-gray-700 text-sm text-primary-600 dark:text-primary-400 font-semibold py-2 px-4 border border-primary-300 dark:border-primary-600 rounded-lg hover:bg-primary-50 dark:hover:bg-primary-900/50 transition-colors inline-block"
+                                className="cursor-pointer bg-white dark:bg-slate-700 text-sm text-primary-600 dark:text-primary-400 font-semibold py-2 px-4 border border-primary-300 dark:border-primary-600 rounded-lg hover:bg-primary-50 dark:hover:bg-primary-900/50 transition-colors inline-block"
                             >
                                 {t.changeImage}
                             </label>
-                            <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">{t.uploadImageHelpText}</p> 
+                            <p className="text-xs text-slate-500 dark:text-slate-400 mt-2">{t.uploadImageHelpText}</p> 
                         </div>
                     </div>
                 </div>
@@ -253,11 +253,11 @@ export const ProductEditModal: React.FC<ProductEditModalProps> = ({ product, onC
                 </div>
 
                 {/* Options Editor */}
-                <div className="pt-4 border-t border-gray-200 dark:border-gray-600">
+                <div className="pt-4 border-t border-slate-200 dark:border-slate-600">
                     <h3 className="text-lg font-semibold mb-2">{t.productOptions}</h3>
                     <div className="space-y-4">
                         {formData.options?.map((option, groupIndex) => (
-                            <div key={groupIndex} className="p-4 border rounded-lg bg-gray-50 dark:bg-gray-700/50 dark:border-gray-600 space-y-4">
+                            <div key={groupIndex} className="p-4 border rounded-lg bg-slate-50 dark:bg-slate-700/50 dark:border-slate-600 space-y-4">
                                 <div className="flex justify-between items-center">
                                     <h4 className="font-semibold">{`Group #${groupIndex + 1}`}</h4>
                                     <button type="button" onClick={() => removeOptionGroup(groupIndex)} className="text-red-500 hover:text-red-700 p-1 rounded-full hover:bg-red-100 dark:hover:bg-red-900/50">
@@ -265,17 +265,17 @@ export const ProductEditModal: React.FC<ProductEditModalProps> = ({ product, onC
                                     </button>
                                 </div>
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                    <input type="text" placeholder={t.optionNameEn} value={option.name.en} onChange={e => handleOptionGroupChange(groupIndex, 'name.en', e.target.value)} className="w-full p-2 border rounded-md dark:bg-gray-700 dark:border-gray-600" />
-                                    <input type="text" placeholder={t.optionNameAr} value={option.name.ar} onChange={e => handleOptionGroupChange(groupIndex, 'name.ar', e.target.value)} className="w-full p-2 border rounded-md dark:bg-gray-700 dark:border-gray-600" />
+                                    <input type="text" placeholder={t.optionNameEn} value={option.name.en} onChange={e => handleOptionGroupChange(groupIndex, 'name.en', e.target.value)} className="w-full p-2 border rounded-md dark:bg-slate-700 dark:border-slate-600" />
+                                    <input type="text" placeholder={t.optionNameAr} value={option.name.ar} onChange={e => handleOptionGroupChange(groupIndex, 'name.ar', e.target.value)} className="w-full p-2 border rounded-md dark:bg-slate-700 dark:border-slate-600" />
                                 </div>
-                                <hr className="dark:border-gray-600" />
+                                <hr className="dark:border-slate-600" />
                                 <div className="space-y-2">
                                     <h5 className="text-sm font-medium">{t.optionValues}</h5>
                                     {option.values.map((value, valueIndex) => (
                                         <div key={valueIndex} className="grid grid-cols-1 md:grid-cols-7 gap-2 items-center">
-                                            <input type="text" placeholder={t.valueNameEn} value={value.name.en} onChange={e => handleOptionValueChange(groupIndex, valueIndex, 'name.en', e.target.value)} className="md:col-span-3 w-full p-2 text-sm border rounded-md dark:bg-gray-700 dark:border-gray-600" />
-                                            <input type="text" placeholder={t.valueNameAr} value={value.name.ar} onChange={e => handleOptionValueChange(groupIndex, valueIndex, 'name.ar', e.target.value)} className="md:col-span-2 w-full p-2 text-sm border rounded-md dark:bg-gray-700 dark:border-gray-600" />
-                                            <input type="number" placeholder={t.priceModifier} value={value.priceModifier} onChange={e => handleOptionValueChange(groupIndex, valueIndex, 'priceModifier', e.target.value)} className="md:col-span-1 w-full p-2 text-sm border rounded-md dark:bg-gray-700 dark:border-gray-600" step="0.01" />
+                                            <input type="text" placeholder={t.valueNameEn} value={value.name.en} onChange={e => handleOptionValueChange(groupIndex, valueIndex, 'name.en', e.target.value)} className="md:col-span-3 w-full p-2 text-sm border rounded-md dark:bg-slate-700 dark:border-slate-600" />
+                                            <input type="text" placeholder={t.valueNameAr} value={value.name.ar} onChange={e => handleOptionValueChange(groupIndex, valueIndex, 'name.ar', e.target.value)} className="md:col-span-2 w-full p-2 text-sm border rounded-md dark:bg-slate-700 dark:border-slate-600" />
+                                            <input type="number" placeholder={t.priceModifier} value={value.priceModifier} onChange={e => handleOptionValueChange(groupIndex, valueIndex, 'priceModifier', e.target.value)} className="md:col-span-1 w-full p-2 text-sm border rounded-md dark:bg-slate-700 dark:border-slate-600" step="0.01" />
                                             <button type="button" onClick={() => removeOptionValue(groupIndex, valueIndex)} className="md:col-span-1 text-red-500 hover:text-red-700 p-2 rounded-full hover:bg-red-100 dark:hover:bg-red-900/50 justify-self-center">
                                                 <TrashIcon className="w-4 h-4" />
                                             </button>
@@ -293,8 +293,8 @@ export const ProductEditModal: React.FC<ProductEditModalProps> = ({ product, onC
                     </button>
                 </div>
 
-                <div className="flex justify-end gap-4 p-4 border-t border-gray-200 dark:border-gray-700 shrink-0">
-                    <button type="button" onClick={onClose} className="px-4 py-2 rounded-lg bg-gray-200 dark:bg-gray-600 hover:bg-gray-300 dark:hover:bg-gray-500 transition-colors">{t.cancel}</button>
+                <div className="flex justify-end gap-4 p-4 border-t border-slate-200 dark:border-slate-700 shrink-0">
+                    <button type="button" onClick={onClose} className="px-4 py-2 rounded-lg bg-slate-200 dark:bg-slate-600 hover:bg-slate-300 dark:hover:bg-slate-500 transition-colors">{t.cancel}</button>
                     <button type="submit" className="px-4 py-2 rounded-lg bg-primary-500 text-white hover:bg-primary-600 transition-colors">{t.save}</button>
                 </div>
             </form>

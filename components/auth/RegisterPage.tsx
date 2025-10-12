@@ -33,11 +33,11 @@ export const RegisterPage: React.FC = () => {
 
     return (
         <div className="flex items-center justify-center min-h-screen bg-slate-100 dark:bg-slate-900 p-4">
-            <div className="w-full max-w-md p-8 space-y-6 bg-white dark:bg-gray-800 rounded-2xl shadow-xl border border-slate-200 dark:border-slate-700">
+            <div className="w-full max-w-md p-8 space-y-6 bg-white dark:bg-slate-800 rounded-2xl shadow-xl border border-slate-200 dark:border-slate-700">
                 <h1 className="text-3xl font-bold text-center text-primary-600 dark:text-primary-400">{t.createAccount}</h1>
                 <form className="space-y-6" onSubmit={handleRegister}>
                     <div>
-                        <label htmlFor="name" className="block mb-2 text-sm font-medium text-gray-900 dark:text-gray-300">
+                        <label htmlFor="name" className="block mb-2 text-sm font-medium text-slate-800 dark:text-slate-300">
                             {t.name}
                         </label>
                         <input
@@ -45,12 +45,12 @@ export const RegisterPage: React.FC = () => {
                             id="name"
                             value={name}
                             onChange={(e) => setName(e.target.value)}
-                            className="w-full p-3 text-gray-900 bg-gray-50 dark:bg-gray-700 dark:text-white border-2 border-gray-200 dark:border-gray-600 rounded-lg focus:ring-primary-500 focus:border-primary-500 transition"
+                            className="w-full p-3 text-slate-900 bg-slate-50 dark:bg-slate-700 dark:text-white border-2 border-slate-200 dark:border-slate-600 rounded-lg focus:ring-primary-500 focus:border-primary-500 transition"
                             required
                         />
                     </div>
                      <div>
-                        <label htmlFor="mobile" className="block mb-2 text-sm font-medium text-gray-900 dark:text-gray-300">
+                        <label htmlFor="mobile" className="block mb-2 text-sm font-medium text-slate-800 dark:text-slate-300">
                             {t.mobileNumber}
                         </label>
                         <input
@@ -58,12 +58,12 @@ export const RegisterPage: React.FC = () => {
                             id="mobile"
                             value={mobile}
                             onChange={(e) => setMobile(e.target.value)}
-                            className="w-full p-3 text-gray-900 bg-gray-50 dark:bg-gray-700 dark:text-white border-2 border-gray-200 dark:border-gray-600 rounded-lg focus:ring-primary-500 focus:border-primary-500 transition"
+                            className="w-full p-3 text-slate-900 bg-slate-50 dark:bg-slate-700 dark:text-white border-2 border-slate-200 dark:border-slate-600 rounded-lg focus:ring-primary-500 focus:border-primary-500 transition"
                             required
                         />
                     </div>
                     <div>
-                        <label htmlFor="password" className="block mb-2 text-sm font-medium text-gray-900 dark:text-gray-300">
+                        <label htmlFor="password" className="block mb-2 text-sm font-medium text-slate-800 dark:text-slate-300">
                             {t.password}
                         </label>
                         <input
@@ -71,7 +71,7 @@ export const RegisterPage: React.FC = () => {
                             id="password"
                             value={password}
                             onChange={(e) => setPassword(e.target.value)}
-                            className="w-full p-3 text-gray-900 bg-gray-50 dark:bg-gray-700 dark:text-white border-2 border-gray-200 dark:border-gray-600 rounded-lg focus:ring-primary-500 focus:border-primary-500 transition"
+                            className="w-full p-3 text-slate-900 bg-slate-50 dark:bg-slate-700 dark:text-white border-2 border-slate-200 dark:border-slate-600 rounded-lg focus:ring-primary-500 focus:border-primary-500 transition"
                             required
                         />
                     </div>
@@ -84,7 +84,7 @@ export const RegisterPage: React.FC = () => {
                     </button>
                 </form>
                 <div className="text-center text-sm">
-                     <span className="text-gray-600 dark:text-gray-400">{t.alreadyHaveAccount} </span>
+                     <span className="text-slate-600 dark:text-slate-400">{t.alreadyHaveAccount} </span>
                     <a href="#/login" onClick={(e) => handleNav(e, '/login')} className="font-medium text-primary-600 hover:underline dark:text-primary-500">
                         {t.login}
                     </a>

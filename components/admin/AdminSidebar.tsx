@@ -67,13 +67,13 @@ export const AdminSidebar: React.FC<AdminSidebarProps> = (props) => {
                 onClick={() => setIsOpen(false)}
             ></div>
 
-            <aside className={`fixed top-0 bottom-0 flex flex-col w-64 h-screen bg-white dark:bg-gray-800 border-e dark:border-gray-700 transition-transform z-40 start-0 md:translate-x-0 ${
+            <aside className={`fixed top-0 bottom-0 flex flex-col w-64 h-screen bg-white dark:bg-slate-800 border-e dark:border-slate-700 transition-transform z-40 start-0 md:translate-x-0 ${
                 isOpen ? 'translate-x-0' : (language === 'ar' ? 'translate-x-full' : '-translate-x-full')
             }`}>
-                <div className="flex items-center justify-between px-4 h-20 border-b dark:border-gray-700">
+                <div className="flex items-center justify-between px-4 h-20 border-b dark:border-slate-700">
                     <a href="#/" onClick={(e) => handleNav(e, '/')} className="flex items-center gap-3">
                         <img src={restaurantInfo.logo} alt="Logo" className="h-10 w-10 rounded-full" />
-                        <span className="text-lg font-bold text-gray-800 dark:text-white">{restaurantInfo.name[language]}</span>
+                        <span className="text-lg font-bold text-slate-800 dark:text-slate-100">{restaurantInfo.name[language]}</span>
                     </a>
                     <button onClick={() => setIsOpen(false)} className="p-2 md:hidden">
                         <CloseIcon className="w-6 h-6"/>
@@ -87,7 +87,7 @@ export const AdminSidebar: React.FC<AdminSidebarProps> = (props) => {
                             if (visibleItems.length === 0) return null;
                             return (
                                 <div key={index}>
-                                   <h3 className="px-3 text-xs font-semibold uppercase text-gray-400 mb-2">{t[`permission_group_${groupKey}` as keyof typeof t] || groupKey}</h3>
+                                   <h3 className="px-3 text-xs font-semibold uppercase text-slate-400 mb-2">{t[`permission_group_${groupKey}` as keyof typeof t] || groupKey}</h3>
                                    {visibleItems.map(item => (
                                         <a
                                             key={item.id}
@@ -96,7 +96,7 @@ export const AdminSidebar: React.FC<AdminSidebarProps> = (props) => {
                                             className={`w-full flex items-center p-3 my-1 rounded-lg transition-colors duration-200 text-sm font-medium border-s-4 text-start ${
                                                 activeTab === item.id
                                                     ? 'bg-primary-100 dark:bg-primary-900/50 text-primary-600 dark:text-primary-300 border-primary-500 font-semibold'
-                                                    : 'text-gray-600 dark:text-gray-300 hover:bg-gray-200/50 dark:hover:bg-gray-700/50 border-transparent'
+                                                    : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 border-transparent'
                                             }`}
                                         >
                                             <item.icon className="w-5 h-5" />
@@ -109,18 +109,18 @@ export const AdminSidebar: React.FC<AdminSidebarProps> = (props) => {
                     </nav>
                 </div>
 
-                <div className="p-4 border-t dark:border-gray-700">
-                     <a href="#/profile" onClick={(e) => handleNav(e, '/profile')} className="block w-full text-start p-2 rounded-lg hover:bg-gray-200/50 dark:hover:bg-gray-700/50 transition-colors">
+                <div className="p-4 border-t dark:border-slate-700">
+                     <a href="#/profile" onClick={(e) => handleNav(e, '/profile')} className="block w-full text-start p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors">
                         <div className="flex items-center gap-3">
                             <img src={currentUser.profilePicture} alt="User" className="w-10 h-10 rounded-full bg-slate-200 object-cover" />
                             <div>
-                                <p className="font-semibold text-sm text-gray-800 dark:text-gray-100">{currentUser.name}</p>
-                                <p className="text-xs text-gray-500 dark:text-gray-400">{userRoleName}</p>
+                                <p className="font-semibold text-sm text-slate-800 dark:text-slate-100">{currentUser.name}</p>
+                                <p className="text-xs text-slate-500 dark:text-slate-400">{userRoleName}</p>
                             </div>
                         </div>
                      </a>
                      <div className="mt-2 space-y-1">
-                        <a href="#/" onClick={(e) => handleNav(e, '/')} className="w-full flex items-center p-3 rounded-lg text-sm font-medium text-gray-600 dark:text-gray-300 hover:bg-gray-200/50 dark:hover:bg-gray-700/50 transition-colors">
+                        <a href="#/" onClick={(e) => handleNav(e, '/')} className="w-full flex items-center p-3 rounded-lg text-sm font-medium text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors">
                             <HomeIcon className="w-5 h-5"/>
                             <span className="mx-4">{t.backToMenu}</span>
                         </a>

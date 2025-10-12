@@ -231,7 +231,7 @@ export const CashierPage: React.FC = () => {
                             </div>
                              <button
                                 onClick={() => setIsFilterOpen(!isFilterOpen)}
-                                className={`flex-shrink-0 flex items-center justify-center gap-2 px-3 py-2 border rounded-lg font-bold text-sm transition-colors ${isFilterOpen ? 'bg-primary-100 dark:bg-primary-900/50 border-primary-500 text-primary-700 dark:text-primary-300' : 'bg-white dark:bg-slate-800 border-slate-300 dark:border-slate-600 hover:border-primary-400 dark:hover:border-primary-500'}`}
+                                className={`flex-shrink-0 flex items-center justify-center gap-2 px-3 py-2 border rounded-lg font-bold text-sm transition-colors ${isFilterOpen ? 'bg-primary-100 dark:bg-primary-900/50 border-primary-500 text-primary-700 dark:text-primary-300' : 'bg-white dark:bg-slate-800 border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-200 hover:border-primary-400 dark:hover:border-primary-500'}`}
                             >
                                 <FilterIcon className="w-5 h-5" />
                                 <span>{t.tags}</span>
@@ -252,7 +252,7 @@ export const CashierPage: React.FC = () => {
                                     onChange={() => handleTagChange(tag.id)}
                                     className="sr-only peer"
                                 />
-                                <span className="px-3 py-1.5 rounded-full text-xs font-semibold border-2 border-slate-300 dark:border-slate-600 peer-checked:bg-primary-100 dark:peer-checked:bg-primary-900/50 peer-checked:border-primary-500 peer-checked:text-primary-700 dark:peer-checked:text-primary-300 transition-colors">
+                                <span className="px-3 py-1.5 rounded-full text-xs font-semibold border-2 border-slate-300 dark:border-slate-600 text-slate-600 dark:text-slate-300 peer-checked:bg-primary-100 dark:peer-checked:bg-primary-900/50 peer-checked:border-primary-500 peer-checked:text-primary-700 dark:peer-checked:text-primary-300 transition-colors">
                                     {tag.name[language]}
                                 </span>
                                 </label>
@@ -278,7 +278,7 @@ export const CashierPage: React.FC = () => {
                                 <div key={product.id} onClick={() => handleProductClick(product)} className="bg-white dark:bg-slate-800 rounded-lg shadow-md hover:shadow-xl hover:scale-105 transition-all duration-200 cursor-pointer text-center flex flex-col">
                                     <img src={product.image} alt={product.name[language]} className="w-full h-24 object-cover rounded-t-lg" />
                                     <div className="p-2 flex-grow flex flex-col justify-center">
-                                        <h4 className="text-sm font-semibold leading-tight line-clamp-2">{product.name[language]}</h4>
+                                        <h4 className="text-sm font-semibold leading-tight line-clamp-2 text-slate-800 dark:text-slate-100">{product.name[language]}</h4>
                                         <p className="text-xs text-primary-600 dark:text-primary-400 font-bold mt-1">{product.price.toFixed(2)}</p>
                                     </div>
                                 </div>
@@ -293,7 +293,7 @@ export const CashierPage: React.FC = () => {
                         onClick={() => setIsCartExpanded(!isCartExpanded)}
                         className="p-4 border-b dark:border-slate-700 flex justify-between items-center shrink-0 cursor-pointer md:cursor-default"
                     >
-                        <h3 className="text-xl font-bold">{t.newOrder}</h3>
+                        <h3 className="text-xl font-bold text-slate-800 dark:text-slate-100">{t.newOrder}</h3>
                         <button className="p-2 rounded-full hover:bg-slate-100 dark:hover:bg-slate-700 md:hidden pointer-events-none">
                             {isCartExpanded ? <ChevronDownIcon className="w-6 h-6" /> : <ChevronUpIcon className="w-6 h-6" />}
                         </button>
@@ -319,15 +319,15 @@ export const CashierPage: React.FC = () => {
                                 )}
                                 {orderType === 'Takeaway' && (
                                     <div className="space-y-3">
-                                        <input type="text" value={customerName} onChange={e => setCustomerName(e.target.value)} placeholder={t.customer + ' ' + t.name} className="w-full p-2 border rounded-md dark:bg-gray-700 dark:border-gray-600" required />
-                                        <input type="tel" value={customerMobile} onChange={e => setCustomerMobile(e.target.value)} placeholder={t.mobileNumber + ` (${t.yourComment})`} className="w-full p-2 border rounded-md dark:bg-gray-700 dark:border-gray-600" />
+                                        <input type="text" value={customerName} onChange={e => setCustomerName(e.target.value)} placeholder={t.customer + ' ' + t.name} className="w-full p-2 border rounded-md dark:bg-slate-700 dark:border-slate-600 dark:text-white" required />
+                                        <input type="tel" value={customerMobile} onChange={e => setCustomerMobile(e.target.value)} placeholder={t.mobileNumber + ` (${t.yourComment})`} className="w-full p-2 border rounded-md dark:bg-slate-700 dark:border-slate-600 dark:text-white" />
                                     </div>
                                 )}
                                 {orderType === 'Delivery' && (
                                     <div className="space-y-3">
-                                         <input type="text" value={customerName} onChange={e => setCustomerName(e.target.value)} placeholder={t.customer + ' ' + t.name} className="w-full p-2 border rounded-md dark:bg-gray-700 dark:border-gray-600" required />
-                                         <input type="tel" value={customerMobile} onChange={e => setCustomerMobile(e.target.value)} placeholder={t.mobileNumber} className="w-full p-2 border rounded-md dark:bg-gray-700 dark:border-gray-600" required />
-                                         <textarea value={customerAddress} onChange={e => setCustomerAddress(e.target.value)} placeholder={t.address} rows={2} className="w-full p-2 border rounded-md dark:bg-gray-700 dark:border-gray-600" required />
+                                         <input type="text" value={customerName} onChange={e => setCustomerName(e.target.value)} placeholder={t.customer + ' ' + t.name} className="w-full p-2 border rounded-md dark:bg-slate-700 dark:border-slate-600 dark:text-white" required />
+                                         <input type="tel" value={customerMobile} onChange={e => setCustomerMobile(e.target.value)} placeholder={t.mobileNumber} className="w-full p-2 border rounded-md dark:bg-slate-700 dark:border-slate-600 dark:text-white" required />
+                                         <textarea value={customerAddress} onChange={e => setCustomerAddress(e.target.value)} placeholder={t.address} rows={2} className="w-full p-2 border rounded-md dark:bg-slate-700 dark:border-slate-600 dark:text-white" required />
                                     </div>
                                 )}
                             </div>
@@ -366,7 +366,7 @@ export const CashierPage: React.FC = () => {
                                 )}
                                  {cartItems.length > 0 && (
                                     <div className="pt-2">
-                                        <textarea value={notes} onChange={e => setNotes(e.target.value)} placeholder={t.orderNotes} rows={1} className="w-full p-2 border rounded-md dark:bg-gray-700 dark:border-gray-600 focus:ring-primary-500 focus:border-primary-500"></textarea>
+                                        <textarea value={notes} onChange={e => setNotes(e.target.value)} placeholder={t.orderNotes} rows={1} className="w-full p-2 border rounded-md dark:bg-slate-700 dark:text-white dark:border-slate-600 focus:ring-primary-500 focus:border-primary-500"></textarea>
                                     </div>
                                  )}
                             </div>
@@ -378,7 +378,7 @@ export const CashierPage: React.FC = () => {
                         <div className="md:hidden space-y-3">
                             {mobileStep === 'info' ? (
                                 <>
-                                    <div className="flex justify-between font-bold text-xl">
+                                    <div className="flex justify-between font-bold text-xl text-slate-800 dark:text-slate-100">
                                         <span>{t.total}</span>
                                         <span>{total.toFixed(2)} {t.currency}</span>
                                     </div>
@@ -392,7 +392,7 @@ export const CashierPage: React.FC = () => {
                                 </>
                             ) : (
                                 <>
-                                    <div className="flex justify-between font-bold text-xl">
+                                    <div className="flex justify-between font-bold text-xl text-slate-800 dark:text-slate-100">
                                         <span>{t.total}</span>
                                         <span>{total.toFixed(2)} {t.currency}</span>
                                     </div>
@@ -415,9 +415,9 @@ export const CashierPage: React.FC = () => {
                         {/* Desktop Footer */}
                         <div className="hidden md:block space-y-3">
                             <div>
-                                <textarea value={notes} onChange={e => setNotes(e.target.value)} placeholder={t.orderNotes} rows={1} className="w-full p-2 border rounded-md dark:bg-gray-700 dark:border-gray-600 focus:ring-primary-500 focus:border-primary-500"></textarea>
+                                <textarea value={notes} onChange={e => setNotes(e.target.value)} placeholder={t.orderNotes} rows={1} className="w-full p-2 border rounded-md dark:bg-slate-700 dark:text-white dark:border-slate-600 focus:ring-primary-500 focus:border-primary-500"></textarea>
                             </div>
-                            <div className="flex justify-between font-bold text-xl">
+                            <div className="flex justify-between font-bold text-xl text-slate-800 dark:text-slate-100">
                                 <span>{t.total}</span>
                                 <span>{total.toFixed(2)} {t.currency}</span>
                             </div>

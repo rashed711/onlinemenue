@@ -47,7 +47,7 @@ export const ChangePasswordModal: React.FC<ChangePasswordModalProps> = ({ onClos
                         type="password"
                         value={currentPassword}
                         onChange={(e) => setCurrentPassword(e.target.value)}
-                        className="w-full p-2 border rounded-md dark:bg-gray-700 dark:border-gray-600"
+                        className="w-full p-2 border rounded-md dark:bg-slate-700 dark:border-slate-600"
                         required
                     />
                 </div>
@@ -57,7 +57,7 @@ export const ChangePasswordModal: React.FC<ChangePasswordModalProps> = ({ onClos
                         type="password"
                         value={newPassword}
                         onChange={(e) => setNewPassword(e.target.value)}
-                        className="w-full p-2 border rounded-md dark:bg-gray-700 dark:border-gray-600"
+                        className="w-full p-2 border rounded-md dark:bg-slate-700 dark:border-slate-600"
                         required
                     />
                 </div>
@@ -67,14 +67,14 @@ export const ChangePasswordModal: React.FC<ChangePasswordModalProps> = ({ onClos
                         type="password"
                         value={confirmPassword}
                         onChange={(e) => setConfirmPassword(e.target.value)}
-                        className="w-full p-2 border rounded-md dark:bg-gray-700 dark:border-gray-600"
+                        className="w-full p-2 border rounded-md dark:bg-slate-700 dark:border-slate-600"
                         required
                     />
                 </div>
                 {error && <p className="text-sm text-red-500">{error}</p>}
                 <div className="flex justify-end gap-4 pt-4">
-                    <button type="button" onClick={onClose} className="px-4 py-2 rounded-lg bg-gray-200 dark:bg-gray-600 hover:bg-gray-300 dark:hover:bg-gray-500">{t.cancel}</button>
-                    <button type="submit" disabled={isProcessing} className="px-4 py-2 rounded-lg bg-primary-500 text-white hover:bg-primary-600 disabled:bg-gray-400">
+                    <button type="button" onClick={onClose} className="px-4 py-2 rounded-lg bg-slate-200 dark:bg-slate-600 hover:bg-slate-300 dark:hover:bg-slate-500">{t.cancel}</button>
+                    <button type="submit" disabled={isProcessing} className="px-4 py-2 rounded-lg bg-primary-500 text-white hover:bg-primary-600 disabled:bg-slate-400">
                         {isProcessing ? 'Saving...' : t.save}
                     </button>
                 </div>

@@ -33,7 +33,7 @@ export const LoginPage: React.FC = () => {
                 <h1 className="text-3xl font-bold text-center text-primary-600 dark:text-primary-400">{t.login}</h1>
                 <form className="space-y-6" onSubmit={handleLogin}>
                     <div>
-                        <label htmlFor="mobile" className="block mb-2 text-sm font-medium text-gray-900 dark:text-gray-300">
+                        <label htmlFor="mobile" className="block mb-2 text-sm font-medium text-slate-800 dark:text-slate-300">
                             {t.username}
                         </label>
                         <input
@@ -41,12 +41,12 @@ export const LoginPage: React.FC = () => {
                             id="mobile"
                             value={mobile}
                             onChange={(e) => setMobile(e.target.value)}
-                            className="w-full p-3 text-gray-900 bg-gray-50 dark:bg-gray-700 dark:text-white border-2 border-gray-200 dark:border-gray-600 rounded-lg focus:ring-primary-500 focus:border-primary-500 transition"
+                            className="w-full p-3 text-slate-900 bg-slate-50 dark:bg-slate-700 dark:text-white border-2 border-slate-200 dark:border-slate-600 rounded-lg focus:ring-primary-500 focus:border-primary-500 transition"
                             required
                         />
                     </div>
                     <div>
-                        <label htmlFor="password" className="block mb-2 text-sm font-medium text-gray-900 dark:text-gray-300">
+                        <label htmlFor="password" className="block mb-2 text-sm font-medium text-slate-800 dark:text-slate-300">
                             {t.password}
                         </label>
                         <input
@@ -54,7 +54,7 @@ export const LoginPage: React.FC = () => {
                             id="password"
                             value={password}
                             onChange={(e) => setPassword(e.target.value)}
-                            className="w-full p-3 text-gray-900 bg-gray-50 dark:bg-gray-700 dark:text-white border-2 border-gray-200 dark:border-gray-600 rounded-lg focus:ring-primary-500 focus:border-primary-500 transition"
+                            className="w-full p-3 text-slate-900 bg-slate-50 dark:bg-slate-700 dark:text-white border-2 border-slate-200 dark:border-slate-600 rounded-lg focus:ring-primary-500 focus:border-primary-500 transition"
                             required
                         />
                     </div>
@@ -68,7 +68,7 @@ export const LoginPage: React.FC = () => {
                     </button>
                 </form>
                  <div className="flex justify-between items-center text-sm">
-                    <span className="text-gray-600 dark:text-gray-400">{t.dontHaveAccount} <a href="#/register" onClick={(e) => handleNav(e, '/register')} className="font-medium text-primary-600 hover:underline dark:text-primary-500">{t.register}</a></span>
+                    <span className="text-slate-600 dark:text-slate-400">{t.dontHaveAccount} <a href="#/register" onClick={(e) => handleNav(e, '/register')} className="font-medium text-primary-600 hover:underline dark:text-primary-500">{t.register}</a></span>
                     <a href="#/forgot-password" onClick={(e) => handleNav(e, '/forgot-password')} className="font-medium text-primary-600 hover:underline dark:text-primary-500">
                         {t.forgotPassword}
                     </a>

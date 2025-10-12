@@ -77,7 +77,7 @@ export const ForgotPasswordPage: React.FC<ForgotPasswordPageProps> = ({ language
                     <form className="space-y-6" onSubmit={handleMobileSubmit}>
                         <p className="text-center text-slate-600 dark:text-slate-300">{t.enterMobilePrompt}</p>
                         <div>
-                            <label htmlFor="mobile" className="block mb-2 text-sm font-medium text-gray-900 dark:text-gray-300">
+                            <label htmlFor="mobile" className="block mb-2 text-sm font-medium text-slate-800 dark:text-slate-300">
                                 {t.mobileNumber}
                             </label>
                             <input
@@ -85,7 +85,7 @@ export const ForgotPasswordPage: React.FC<ForgotPasswordPageProps> = ({ language
                                 id="mobile"
                                 value={mobile}
                                 onChange={(e) => setMobile(e.target.value)}
-                                className="w-full p-3 text-gray-900 bg-gray-50 dark:bg-gray-700 dark:text-white border-2 border-gray-200 dark:border-gray-600 rounded-lg focus:ring-primary-500 focus:border-primary-500 transition"
+                                className="w-full p-3 text-slate-900 bg-slate-50 dark:bg-slate-700 dark:text-white border-2 border-slate-200 dark:border-slate-600 rounded-lg focus:ring-primary-500 focus:border-primary-500 transition"
                                 required
                             />
                         </div>
@@ -97,7 +97,7 @@ export const ForgotPasswordPage: React.FC<ForgotPasswordPageProps> = ({ language
                 ) : (
                     <form className="space-y-6" onSubmit={handlePasswordSubmit}>
                         <div>
-                            <label htmlFor="newPassword" className="block mb-2 text-sm font-medium text-gray-900 dark:text-gray-300">
+                            <label htmlFor="newPassword" className="block mb-2 text-sm font-medium text-slate-800 dark:text-slate-300">
                                 {t.newPassword}
                             </label>
                             <input
@@ -105,12 +105,12 @@ export const ForgotPasswordPage: React.FC<ForgotPasswordPageProps> = ({ language
                                 id="newPassword"
                                 value={newPassword}
                                 onChange={(e) => setNewPassword(e.target.value)}
-                                className="w-full p-3 text-gray-900 bg-gray-50 dark:bg-gray-700 dark:text-white border-2 border-gray-200 dark:border-gray-600 rounded-lg focus:ring-primary-500 focus:border-primary-500 transition"
+                                className="w-full p-3 text-slate-900 bg-slate-50 dark:bg-slate-700 dark:text-white border-2 border-slate-200 dark:border-slate-600 rounded-lg focus:ring-primary-500 focus:border-primary-500 transition"
                                 required
                             />
                         </div>
                         <div>
-                            <label htmlFor="confirmPassword" className="block mb-2 text-sm font-medium text-gray-900 dark:text-gray-300">
+                            <label htmlFor="confirmPassword" className="block mb-2 text-sm font-medium text-slate-800 dark:text-slate-300">
                                 {t.confirmNewPassword}
                             </label>
                             <input
@@ -118,7 +118,7 @@ export const ForgotPasswordPage: React.FC<ForgotPasswordPageProps> = ({ language
                                 id="confirmPassword"
                                 value={confirmPassword}
                                 onChange={(e) => setConfirmPassword(e.target.value)}
-                                className="w-full p-3 text-gray-900 bg-gray-50 dark:bg-gray-700 dark:text-white border-2 border-gray-200 dark:border-gray-600 rounded-lg focus:ring-primary-500 focus:border-primary-500 transition"
+                                className="w-full p-3 text-slate-900 bg-slate-50 dark:bg-slate-700 dark:text-white border-2 border-slate-200 dark:border-slate-600 rounded-lg focus:ring-primary-500 focus:border-primary-500 transition"
                                 required
                             />
                         </div>

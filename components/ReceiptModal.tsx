@@ -72,7 +72,7 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({ isOpen, onClose, rec
     return (
         <Modal title={t.receiptTitle} onClose={onClose} size="md">
             <div className="p-4 sm:p-5 overflow-y-auto">
-                <div className="mb-6 border border-gray-300 dark:border-gray-600 rounded-lg overflow-hidden">
+                <div className="mb-6 border border-slate-300 dark:border-slate-600 rounded-lg overflow-hidden">
                     <img src={receiptImageUrl} alt="Order Receipt" className="w-full h-auto" />
                 </div>
 
@@ -82,7 +82,7 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({ isOpen, onClose, rec
                         <button
                             onClick={handleShare}
                             disabled={isSharing}
-                            className="w-full bg-green-500 text-white font-bold py-2.5 px-4 rounded-lg hover:bg-green-600 transition-colors flex items-center justify-center gap-2 disabled:bg-gray-400"
+                            className="w-full bg-green-500 text-white font-bold py-2.5 px-4 rounded-lg hover:bg-green-600 transition-colors flex items-center justify-center gap-2 disabled:bg-slate-400"
                         >
                             {isSharing ? '...' : t.shareOnWhatsApp}
                         </button>
@@ -90,7 +90,7 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({ isOpen, onClose, rec
                 ) : (
                     <>
                         <p className="mb-4 text-center font-semibold">{t.receiptInstructions}</p>
-                        <div className="bg-gray-100 dark:bg-gray-700 rounded-lg p-4 mb-4 text-sm space-y-2">
+                        <div className="bg-slate-100 dark:bg-slate-700 rounded-lg p-4 mb-4 text-sm space-y-2">
                             <p dangerouslySetInnerHTML={{ __html: t.receiptStep1 }} />
                             <p dangerouslySetInnerHTML={{ __html: t.receiptStep2 }} />
                         </div>

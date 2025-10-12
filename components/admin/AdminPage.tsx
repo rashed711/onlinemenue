@@ -322,11 +322,11 @@ export const AdminPage: React.FC<AdminPageProps> = ({ activeSubRoute, reportSubR
         switch(displayedTab) {
             case 'orders': {
                 if (!hasPermission('view_orders_page')) return <PermissionDeniedComponent />;
-                const dateFilterButtonClasses = (filter: DateFilter) => `px-3 py-1.5 rounded-md text-sm font-semibold transition-colors ${activeDateFilter === filter ? 'bg-primary-600 text-white shadow' : 'bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 dark:hover:bg-slate-600'}`;
+                const dateFilterButtonClasses = (filter: DateFilter) => `px-3 py-1.5 rounded-md text-sm font-semibold transition-colors ${activeDateFilter === filter ? 'bg-primary-600 text-white shadow' : 'bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-300 dark:hover:bg-slate-600'}`;
                 
                 return (
                      <div>
-                        <h2 className="text-2xl font-bold mb-6">{t.manageOrders}</h2>
+                        <h2 className="text-2xl font-bold mb-6 text-slate-800 dark:text-slate-100">{t.manageOrders}</h2>
 
                         <div className="bg-white dark:bg-slate-800 rounded-xl shadow-lg mb-6 border border-slate-200 dark:border-slate-700">
                             <div className="p-4 flex justify-between items-center cursor-pointer select-none" onClick={() => setIsOrderFilterExpanded(!isOrderFilterExpanded)}>
@@ -356,15 +356,15 @@ export const AdminPage: React.FC<AdminPageProps> = ({ activeSubRoute, reportSubR
                                         </div>
                                         <div>
                                             <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">{t.startDate}</label>
-                                            <input type="date" value={startDate} onChange={handleStartDateChange} className="w-full p-2 rounded-lg border-slate-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 sm:text-sm dark:bg-slate-700 dark:border-slate-600"/>
+                                            <input type="date" value={startDate} onChange={handleStartDateChange} className="w-full p-2 rounded-lg border-slate-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 sm:text-sm dark:bg-slate-700 dark:border-slate-600 dark:text-white"/>
                                         </div>
                                         <div>
                                             <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">{t.endDate}</label>
-                                            <input type="date" value={endDate} onChange={handleEndDateChange} className="w-full p-2 rounded-lg border-slate-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 sm:text-sm dark:bg-slate-700 dark:border-slate-600"/>
+                                            <input type="date" value={endDate} onChange={handleEndDateChange} className="w-full p-2 rounded-lg border-slate-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 sm:text-sm dark:bg-slate-700 dark:border-slate-600 dark:text-white"/>
                                         </div>
                                         <div className="min-w-[150px]">
                                             <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">{t.orderType}</label>
-                                            <select value={orderFilterType} onChange={(e) => setOrderFilterType(e.target.value as any)} className="w-full p-2 rounded-lg border-slate-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 sm:text-sm dark:bg-slate-700 dark:border-slate-600">
+                                            <select value={orderFilterType} onChange={(e) => setOrderFilterType(e.target.value as any)} className="w-full p-2 rounded-lg border-slate-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 sm:text-sm dark:bg-slate-700 dark:border-slate-600 dark:text-white">
                                                 <option value="all">{t.all}</option>
                                                 <option value="Dine-in">{t.dineIn}</option>
                                                 <option value="Takeaway">{t.takeaway}</option>
@@ -374,7 +374,7 @@ export const AdminPage: React.FC<AdminPageProps> = ({ activeSubRoute, reportSubR
                                         {orderCreators.length > 0 && (
                                             <div className="min-w-[150px]">
                                                 <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">{t.creator}</label>
-                                                <select value={orderFilterCreator} onChange={(e) => setOrderFilterCreator(e.target.value)} className="w-full p-2 rounded-lg border-slate-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 sm:text-sm dark:bg-slate-700 dark:border-slate-600">
+                                                <select value={orderFilterCreator} onChange={(e) => setOrderFilterCreator(e.target.value)} className="w-full p-2 rounded-lg border-slate-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 sm:text-sm dark:bg-slate-700 dark:border-slate-600 dark:text-white">
                                                     <option value="all">{t.all}</option>
                                                     {orderCreators.map(user => <option key={user.id} value={user.id}>{user.name}</option>)}
                                                 </select>
@@ -416,7 +416,7 @@ export const AdminPage: React.FC<AdminPageProps> = ({ activeSubRoute, reportSubR
                 return (
                     <div>
                         <div className="flex justify-between items-center mb-6">
-                            <h2 className="text-2xl font-bold">{t.productList}</h2>
+                            <h2 className="text-2xl font-bold text-slate-800 dark:text-slate-100">{t.productList}</h2>
                             {hasPermission('add_product') && <button onClick={() => setEditingProduct('new')} className="bg-green-500 text-white font-bold py-2 px-4 rounded-lg hover:bg-green-600 transition-colors flex items-center gap-2"><PlusIcon className="w-5 h-5" />{t.addNewProduct}</button>}
                         </div>
 
@@ -442,14 +442,14 @@ export const AdminPage: React.FC<AdminPageProps> = ({ activeSubRoute, reportSubR
                                         </div>
                                         <div>
                                             <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">{t.category}</label>
-                                            <select value={productFilterCategory} onChange={(e) => setProductFilterCategory(e.target.value)} className="w-full p-2 rounded-lg border-slate-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 sm:text-sm dark:bg-slate-700 dark:border-slate-600">
+                                            <select value={productFilterCategory} onChange={(e) => setProductFilterCategory(e.target.value)} className="w-full p-2 rounded-lg border-slate-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 sm:text-sm dark:bg-slate-700 dark:border-slate-600 dark:text-white">
                                                 <option value="all">{t.allCategories}</option>
                                                 {categories.map(cat => <option key={cat.id} value={cat.id}>{cat.name[language]}</option>)}
                                             </select>
                                         </div>
                                         <div>
                                             <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">{t.tags}</label>
-                                            <select value={productFilterTag} onChange={(e) => setProductFilterTag(e.target.value)} className="w-full p-2 rounded-lg border-slate-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 sm:text-sm dark:bg-slate-700 dark:border-slate-600">
+                                            <select value={productFilterTag} onChange={(e) => setProductFilterTag(e.target.value)} className="w-full p-2 rounded-lg border-slate-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 sm:text-sm dark:bg-slate-700 dark:border-slate-600 dark:text-white">
                                                 <option value="all">{t.all} {t.tags}</option>
                                                 {tags.map(tag => <option key={tag.id} value={tag.id}>{tag.name[language]}</option>)}
                                             </select>

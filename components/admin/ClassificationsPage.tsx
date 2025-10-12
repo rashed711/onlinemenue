@@ -63,10 +63,10 @@ export const ClassificationsPage: React.FC<ClassificationsPageProps> = (props) =
                             </button>
                         )}
                     </div>
-                    <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md">
-                        <ul className="divide-y divide-gray-200 dark:divide-gray-700">
+                    <div className="bg-white dark:bg-slate-800 rounded-lg shadow-md">
+                        <ul className="divide-y divide-slate-200 dark:divide-slate-700">
                             {sortedCategories.map(category => (
-                                <li key={category.id} className="p-4 flex justify-between items-center hover:bg-slate-50 dark:hover:bg-gray-700/50">
+                                <li key={category.id} className="p-4 flex justify-between items-center hover:bg-slate-50 dark:hover:bg-slate-700/50">
                                     <span className="font-medium">{category.name[language]}</span>
                                     <div className="flex items-center gap-2">
                                         {canEditCategory && <button onClick={() => onEditCategory(category)} className="p-2 text-indigo-600 hover:bg-indigo-100 dark:hover:bg-indigo-900/50 rounded-full"><PencilIcon className="w-5 h-5" /></button>}
@@ -89,10 +89,10 @@ export const ClassificationsPage: React.FC<ClassificationsPageProps> = (props) =
                             </button>
                         )}
                     </div>
-                    <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md">
-                         <ul className="divide-y divide-gray-200 dark:divide-gray-700">
+                    <div className="bg-white dark:bg-slate-800 rounded-lg shadow-md">
+                         <ul className="divide-y divide-slate-200 dark:divide-slate-700">
                             {sortedTags.map(tag => (
-                                <li key={tag.id} className="p-4 flex justify-between items-center hover:bg-slate-50 dark:hover:bg-gray-700/50">
+                                <li key={tag.id} className="p-4 flex justify-between items-center hover:bg-slate-50 dark:hover:bg-slate-700/50">
                                     <span className="font-medium">{tag.name[language]}</span>
                                     <div className="flex items-center gap-2">
                                         {canEditTag && <button onClick={() => onEditTag(tag)} className="p-2 text-indigo-600 hover:bg-indigo-100 dark:hover:bg-indigo-900/50 rounded-full"><PencilIcon className="w-5 h-5" /></button>}
