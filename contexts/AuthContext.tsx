@@ -41,9 +41,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     useEffect(() => {
         const fetchBaseAuthData = async () => {
              try {
+                const cacheBuster = `?v=${Date.now()}`;
                 const [rolesResponse, permissionsResponse] = await Promise.all([
-                    fetch(`${API_BASE_URL}get_roles.php`, { cache: 'no-cache' }),
-                    fetch(`${API_BASE_URL}get_permissions.php`, { cache: 'no-cache' })
+                    fetch(`${API_BASE_URL}get_roles.php${cacheBuster}`, { cache: 'no-cache' }),
+                    fetch(`${API_BASE_URL}get_permissions.php${cacheBuster}`, { cache: 'no-cache' })
                 ]);
                 if (rolesResponse.ok) setRoles(await rolesResponse.json() || []);
                 if (permissionsResponse.ok) setRolePermissions(await permissionsResponse.json() || {});

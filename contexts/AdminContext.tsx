@@ -67,10 +67,11 @@ export const AdminProvider: React.FC<{ children: React.ReactNode }> = ({ childre
                 return;
             }
             try {
+                const cacheBuster = `?v=${Date.now()}`;
                 const [ordersRes, usersRes, permissionsRes] = await Promise.all([
-                    fetch(`${API_BASE_URL}get_orders.php`, { cache: 'no-cache' }),
-                    fetch(`${API_BASE_URL}get_users.php`, { cache: 'no-cache' }),
-                    fetch(`${API_BASE_URL}get_permissions.php`, { cache: 'no-cache' })
+                    fetch(`${API_BASE_URL}get_orders.php${cacheBuster}`, { cache: 'no-cache' }),
+                    fetch(`${API_BASE_URL}get_users.php${cacheBuster}`, { cache: 'no-cache' }),
+                    fetch(`${API_BASE_URL}get_permissions.php${cacheBuster}`, { cache: 'no-cache' })
                 ]);
                 if (ordersRes.ok) setOrders((await ordersRes.json() || []).map((o: any) => ({ ...o, paymentReceiptUrl: resolveImageUrl(o.paymentReceiptUrl)})));
                 if (usersRes.ok) setUsers((await usersRes.json() || []).map((u: any) => ({ id: Number(u.id), name: u.name, mobile: u.mobile, password: '', role: String(u.role_id), profilePicture: resolveImageUrl(u.profile_picture) || `https://placehold.co/512x512/60a5fa/white?text=${u.name.charAt(0).toUpperCase()}` })));
