@@ -14,6 +14,7 @@ import { RefusalReasonModal } from './RefusalReasonModal';
 import { OrderEditModal } from './OrderEditModal';
 import { CashierPage } from './CashierPage';
 import { SettingsPage } from './SettingsPage';
+import { NotificationsPage } from './NotificationsPage';
 import { formatDate, formatNumber } from '../../utils/helpers';
 import { OrderCard } from './OrderCard';
 import { RoleEditModal } from './RoleEditModal';
@@ -28,7 +29,7 @@ interface AdminPageProps {
     reportSubRoute?: string;
 }
 
-type AdminTab = 'orders' | 'cashier' | 'reports' | 'productList' | 'classifications' | 'promotions' | 'users' | 'roles' | 'settings';
+type AdminTab = 'orders' | 'cashier' | 'reports' | 'productList' | 'classifications' | 'promotions' | 'notifications' | 'users' | 'roles' | 'settings';
 type DateFilter = 'today' | 'yesterday' | 'week' | 'month' | 'custom';
 
 const NAV_ITEMS_WITH_PERMS = [
@@ -38,6 +39,7 @@ const NAV_ITEMS_WITH_PERMS = [
     { id: 'productList', permission: 'view_products_page' },
     { id: 'classifications', permission: 'view_classifications_page' },
     { id: 'promotions', permission: 'view_promotions_page' },
+    { id: 'notifications', permission: 'view_notifications_page' },
     { id: 'users', permission: 'view_users_page' },
     { id: 'roles', permission: 'view_roles_page' },
     { id: 'settings', permission: 'view_settings_page' },
@@ -559,6 +561,7 @@ export const AdminPage: React.FC<AdminPageProps> = ({ activeSubRoute, reportSubR
                         </div>
                     </div>
                 );
+             case 'notifications': return hasPermission('view_notifications_page') ? <NotificationsPage /> : <PermissionDeniedComponent />;
              case 'users':
                 if (!hasPermission('view_users_page')) return <PermissionDeniedComponent />;
                 return (

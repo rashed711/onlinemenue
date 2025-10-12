@@ -1,4 +1,4 @@
-import React, { useSyncExternalStore, useMemo } from 'react';
+import React, { useSyncExternalStore, useMemo, useEffect } from 'react';
 import { UIProvider, useUI } from './contexts/UIContext';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { DataProvider, useData } from './contexts/DataContext';
@@ -36,6 +36,7 @@ const AppContent: React.FC = () => {
   const {
     language,
     toast,
+    showToast,
     isChangePasswordModalOpen,
     setIsChangePasswordModalOpen,
     isLoading,
@@ -51,6 +52,36 @@ const AppContent: React.FC = () => {
   // Routing State
   const hash = useSyncExternalStore(subscribe, getSnapshot, () => '');
   const displayedRoute = useMemo(() => hash || (restaurantInfo?.defaultPage === 'social' ? '#/social' : '#/'), [hash, restaurantInfo]);
+
+  // In-app notification handler
+  useEffect(() => {
+    const handleSWMessage = (event: MessageEvent) => {
+        if (event.data && event.data.type === 'push-notification') {
+            const notificationData = event.data.data;
+            console.log('In-app notification received:', notificationData);
+            
+            // Play a sound
+            if (notificationData.with_sound !== false) {
+              const audio = new Audio('/notification.mp3');
+              audio.play().catch(e => console.error("Failed to play notification sound:", e));
+            }
+
+            // Show a toast
+            showToast(notificationData.body || 'New notification!');
+        }
+    };
+
+    if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.addEventListener('message', handleSWMessage);
+    }
+
+    return () => {
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.removeEventListener('message', handleSWMessage);
+        }
+    };
+  }, [showToast]);
+
 
   const renderPage = () => {
     const routeParts = displayedRoute.split('?')[0].split('/');

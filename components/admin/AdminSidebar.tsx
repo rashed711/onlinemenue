@@ -1,12 +1,12 @@
 import React from 'react';
 import type { Permission, User, UserRole, Role } from '../../types';
-import { ClipboardListIcon, CollectionIcon, UsersIcon, CloseIcon, ShieldCheckIcon, BookmarkAltIcon, ChartBarIcon, TagIcon, CogIcon, CashRegisterIcon, LogoutIcon, HomeIcon } from '../icons/Icons';
+import { ClipboardListIcon, CollectionIcon, UsersIcon, CloseIcon, ShieldCheckIcon, BookmarkAltIcon, ChartBarIcon, TagIcon, CogIcon, CashRegisterIcon, LogoutIcon, HomeIcon, BellIcon } from '../icons/Icons';
 import { useUI } from '../../contexts/UIContext';
 import { useAuth } from '../../contexts/AuthContext';
 import { useData } from '../../contexts/DataContext';
 import { useAdmin } from '../../contexts/AdminContext';
 
-type AdminTab = 'orders' | 'cashier' | 'reports' | 'productList' | 'classifications' | 'promotions' | 'users' | 'roles' | 'settings';
+type AdminTab = 'orders' | 'cashier' | 'reports' | 'productList' | 'classifications' | 'promotions' | 'notifications' | 'users' | 'roles' | 'settings';
 
 interface AdminSidebarProps {
     activeTab: AdminTab;
@@ -33,6 +33,9 @@ export const AdminSidebar: React.FC<AdminSidebarProps> = (props) => {
             { id: 'productList', label: t.productList, icon: CollectionIcon, permission: 'view_products_page' as Permission },
             { id: 'classifications', label: t.classifications, icon: BookmarkAltIcon, permission: 'view_classifications_page' as Permission },
             { id: 'promotions', label: t.managePromotions, icon: TagIcon, permission: 'view_promotions_page' as Permission },
+        ],
+        communication: [
+            { id: 'notifications', label: t.notifications, icon: BellIcon, permission: 'view_notifications_page' as Permission },
         ],
         administration: [
             { id: 'users', label: t.manageUsers, icon: UsersIcon, permission: 'view_users_page' as Permission },
@@ -79,12 +82,12 @@ export const AdminSidebar: React.FC<AdminSidebarProps> = (props) => {
                  
                  <div className="flex-1 overflow-y-auto">
                     <nav className="p-4 space-y-4">
-                        {Object.values(navItems).map((group, index) => {
-                            const visibleItems = group.filter(item => hasPermission(item.permission));
+                        {Object.entries(navItems).map(([groupKey, groupItems], index) => {
+                            const visibleItems = groupItems.filter(item => hasPermission(item.permission));
                             if (visibleItems.length === 0) return null;
                             return (
                                 <div key={index}>
-                                   <h3 className="px-3 text-xs font-semibold uppercase text-gray-400 mb-2">{t[`permission_group_${Object.keys(navItems)[index]}` as keyof typeof t] || ''}</h3>
+                                   <h3 className="px-3 text-xs font-semibold uppercase text-gray-400 mb-2">{t[`permission_group_${groupKey}` as keyof typeof t] || groupKey}</h3>
                                    {visibleItems.map(item => (
                                         <a
                                             key={item.id}

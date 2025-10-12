@@ -5,6 +5,7 @@ import { useUI } from '../contexts/UIContext';
 import { useAuth } from '../contexts/AuthContext';
 import { useData } from '../contexts/DataContext';
 import { useCart } from '../contexts/CartContext';
+import { NotificationBell } from './NotificationBell';
 
 interface HeaderProps {
   onCartClick: () => void;
@@ -115,6 +116,7 @@ export const Header: React.FC<HeaderProps> = ({ onCartClick }) => {
             <h1 className="text-xl sm:text-2xl font-bold text-slate-800 dark:text-slate-100 group-hover:text-primary-600 dark:group-hover:text-primary-400 transition-colors">{restaurantInfo.name[language]}</h1>
           </a>
           <div className="flex items-center gap-1 sm:gap-2">
+            <NotificationBell />
             <button onClick={toggleFullscreen} className="hidden sm:flex p-2 h-10 w-10 items-center justify-center rounded-full hover:bg-slate-200/60 dark:hover:bg-slate-700/60 transition-colors" aria-label="Toggle fullscreen">
               {isFullscreen ? <ExitFullscreenIcon className="w-6 h-6" /> : <FullscreenIcon className="w-6 h-6" />}
             </button>

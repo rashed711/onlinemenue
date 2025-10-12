@@ -147,6 +147,7 @@ export const translations = {
     permission_group_menu: 'Menu Management',
     permission_group_admin: 'Administration',
     permission_group_settings: 'Settings',
+    permission_group_communication: 'Communication',
 
     // Granular Permissions
     permission_view_orders_page: 'View Orders Page',
@@ -197,6 +198,8 @@ export const translations = {
     permission_view_payments_report: 'View Payments Report',
     permission_view_delivery_report: 'View Delivery Report',
     permission_view_user_activity_report: 'View User Activity Report',
+    permission_view_notifications_page: 'View Notifications Page',
+    permission_send_broadcast_notifications: 'Send Broadcast Notifications',
 
     editPermissions: 'Edit Permissions',
     classifications: 'Classifications',
@@ -522,6 +525,17 @@ export const translations = {
     deactivateNow: 'Deactivate Now',
     confirmDeactivation: 'Are you sure you want to deactivate the system immediately?',
     loginAsAdmin: 'Login as Administrator',
+
+    // Notifications
+    notifications: 'Notifications',
+    sendNotifications: 'Send Notifications',
+    notificationMessage: 'Notification Message',
+    imageOptional: 'Image (Optional)',
+    targetAudience: 'Target Audience',
+    sendTo: 'Send To',
+    allUsers: 'All Users',
+    withSound: 'Play sound for in-app notification',
+    send: 'Send',
   },
   ar: {
     restaurantName: 'مطعم فريسكو',
@@ -667,6 +681,7 @@ export const translations = {
     permission_group_menu: 'إدارة القائمة',
     permission_group_admin: 'الإدارة',
     permission_group_settings: 'الإعدادات',
+    permission_group_communication: 'التواصل',
     permission_view_orders_page: 'عرض صفحة الطلبات',
     permission_manage_order_status: 'إدارة حالة الطلب',
     permission_edit_order_content: 'تعديل محتوى الطلب',
@@ -715,6 +730,8 @@ export const translations = {
     permission_view_payments_report: 'عرض تقرير المدفوعات',
     permission_view_delivery_report: 'عرض تقرير التوصيل',
     permission_view_user_activity_report: 'عرض تقرير نشاط المستخدمين',
+    permission_view_notifications_page: 'عرض صفحة الإشعارات',
+    permission_send_broadcast_notifications: 'إرسال إشعارات بث',
     editPermissions: 'تعديل الصلاحيات',
     classifications: 'التصنيفات',
     manageCategories: 'إدارة الفئات',
@@ -1032,6 +1049,17 @@ export const translations = {
     deactivateNow: 'إيقاف الآن',
     confirmDeactivation: 'هل أنت متأكد أنك تريد إيقاف النظام فوراً؟',
     loginAsAdmin: 'تسجيل الدخول كمسؤول',
+
+    // Notifications
+    notifications: 'الإشعارات',
+    sendNotifications: 'إرسال إشعارات',
+    notificationMessage: 'رسالة الإشعار',
+    imageOptional: 'صورة (اختياري)',
+    targetAudience: 'الجمهور المستهدف',
+    sendTo: 'إرسال إلى',
+    allUsers: 'كل المستخدمين',
+    withSound: 'تشغيل صوت مع الإشعار داخل التطبيق',
+    send: 'إرسال',
   },
 };
 

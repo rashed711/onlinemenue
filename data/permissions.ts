@@ -16,6 +16,7 @@ import {
   UserGroupIcon,
   TruckIcon,
   UserIcon,
+  BellIcon,
 } from '../components/icons/Icons';
 
 // Define a type for translation keys to ensure type safety
@@ -101,6 +102,14 @@ export const PERMISSION_GROUPS: Record<string, PermissionGroup> = {
        { id: 'add_promotion', nameKey: 'permission_add_promotion' },
        { id: 'edit_promotion', nameKey: 'permission_edit_promotion' },
        { id: 'delete_promotion', nameKey: 'permission_delete_promotion' },
+    ],
+  },
+  communication: {
+    nameKey: 'notifications',
+    icon: BellIcon,
+    permissions: [
+      { id: 'view_notifications_page', nameKey: 'permission_view_notifications_page' },
+      { id: 'send_broadcast_notifications', nameKey: 'permission_send_broadcast_notifications' },
     ],
   },
   users: {
