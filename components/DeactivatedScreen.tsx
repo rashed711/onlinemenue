@@ -1,13 +1,16 @@
-
 import React from 'react';
 import { useUI } from '../contexts/UIContext';
 import { useData } from '../contexts/DataContext';
-// FIX: Replace inline SVG with LockClosedIcon component, which is now correctly exported.
-import { LockClosedIcon } from './icons/Icons';
+import { LockClosedIcon, LoginIcon } from './icons/Icons';
 
 export const DeactivatedScreen: React.FC = () => {
-    const { language } = useUI();
+    const { language, t } = useUI();
     const { restaurantInfo } = useData();
+
+    const handleNav = (e: React.MouseEvent<HTMLAnchorElement>, path: string) => {
+        e.preventDefault();
+        window.location.hash = path;
+    };
 
     if (!restaurantInfo) {
         return (
@@ -34,6 +37,16 @@ export const DeactivatedScreen: React.FC = () => {
                 <p className="max-w-md mx-auto text-slate-500 dark:text-slate-400">
                     {message}
                 </p>
+                <div className="mt-8">
+                    <a
+                        href="#/login"
+                        onClick={(e) => handleNav(e, '/login')}
+                        className="bg-primary-500 hover:bg-primary-600 text-white font-bold py-3 px-6 rounded-full text-base transition-transform transform hover:scale-105 inline-flex items-center gap-2 shadow-lg shadow-primary-500/30"
+                    >
+                        <LoginIcon className="w-5 h-5" />
+                        <span>{t.loginAsAdmin}</span>
+                    </a>
+                </div>
             </div>
         </div>
     );

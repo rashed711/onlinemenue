@@ -520,6 +520,7 @@ export const translations = {
     deactivationMessage: 'Deactivation Message',
     deactivateNow: 'Deactivate Now',
     confirmDeactivation: 'Are you sure you want to deactivate the system immediately?',
+    loginAsAdmin: 'Login as Administrator',
   },
   ar: {
     restaurantName: 'مطعم فريسكو',
@@ -1028,6 +1029,7 @@ export const translations = {
     deactivationMessage: 'رسالة الإيقاف',
     deactivateNow: 'إيقاف الآن',
     confirmDeactivation: 'هل أنت متأكد أنك تريد إيقاف النظام فوراً؟',
+    loginAsAdmin: 'تسجيل الدخول كمسؤول',
   },
 };
 
