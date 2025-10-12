@@ -133,6 +133,7 @@ export const PERMISSION_GROUPS: Record<string, PermissionGroup> = {
         { id: 'manage_settings_operations', nameKey: 'permission_manage_settings_operations' },
         { id: 'manage_settings_social', nameKey: 'permission_manage_settings_social' },
         { id: 'manage_settings_statuses', nameKey: 'permission_manage_settings_statuses' },
+        { id: 'manage_settings_activation', nameKey: 'permission_manage_settings_activation' },
     ],
   },
 };

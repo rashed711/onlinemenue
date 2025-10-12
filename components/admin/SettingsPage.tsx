@@ -10,7 +10,7 @@ import { useAdmin } from '../../contexts/AdminContext';
 import { useAuth } from '../../contexts/AuthContext';
 import { formatDateTime } from '../../utils/helpers';
 
-type SettingsTab = 'general' | 'operations' | 'social' | 'statuses';
+type SettingsTab = 'general' | 'operations' | 'social' | 'statuses' | 'activation';
 
 // A reusable Card component for consistent styling
 const SettingsCard: React.FC<{ title: string, subtitle: string, children: React.ReactNode, actions?: React.ReactNode }> = ({ title, subtitle, children, actions }) => (
@@ -50,8 +50,8 @@ const formatDateForInput = (isoDate: string | null | undefined): string => {
 export const SettingsPage: React.FC = () => {
     const { language, t, showToast } = useUI();
     const { restaurantInfo, updateRestaurantInfo } = useData();
-    const { orders: allOrders, roles } = useAdmin();
-    const { currentUser, hasPermission } = useAuth();
+    const { orders: allOrders } = useAdmin();
+    const { hasPermission } = useAuth();
     
     const [localInfo, setLocalInfo] = useState<RestaurantInfo | null>(restaurantInfo);
     const [isDirty, setIsDirty] = useState(false);
@@ -64,14 +64,10 @@ export const SettingsPage: React.FC = () => {
         if (hasPermission('manage_settings_operations')) return 'operations';
         if (hasPermission('manage_settings_social')) return 'social';
         if (hasPermission('manage_settings_statuses')) return 'statuses';
+        if (hasPermission('manage_settings_activation')) return 'activation';
         return 'general';
     }
     const [activeTab, setActiveTab] = useState<SettingsTab>(getDefaultTab());
-
-    const isSuperAdmin = useMemo(() => {
-        const superAdminRole = roles.find(r => r.name.en.toLowerCase() === 'superadmin');
-        return currentUser?.role === superAdminRole?.key;
-    }, [currentUser, roles]);
 
     useEffect(() => {
         setLocalInfo(restaurantInfo);
@@ -81,6 +77,30 @@ export const SettingsPage: React.FC = () => {
         if (!localInfo || !restaurantInfo) return;
         setIsDirty(JSON.stringify(localInfo) !== JSON.stringify(restaurantInfo));
     }, [localInfo, restaurantInfo]);
+    
+    const handleSaveChanges = () => {
+        if (!localInfo || !restaurantInfo) return;
+
+        const diff: Partial<RestaurantInfo> = {};
+
+        // Compare each key to find differences
+        for (const key in localInfo) {
+            const typedKey = key as keyof RestaurantInfo;
+            const localValue = localInfo[typedKey];
+            const originalValue = restaurantInfo[typedKey];
+            
+            // Use stringify for a simple deep comparison of objects/arrays
+            if (JSON.stringify(localValue) !== JSON.stringify(originalValue)) {
+                (diff as any)[typedKey] = localValue;
+            }
+        }
+        
+        if (Object.keys(diff).length > 0) {
+            updateRestaurantInfo(diff);
+        } else {
+            setIsDirty(false); // Should not happen if button is visible, but good for safety
+        }
+    };
 
 
     const handleInfoChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
@@ -219,11 +239,12 @@ export const SettingsPage: React.FC = () => {
         return <div className="p-8 text-center">Loading settings...</div>;
     }
 
-    const tabs = [
+    const tabs: { id: SettingsTab; label: string; permission: Permission }[] = [
         { id: 'general', label: t.settingsTabGeneralBranding, permission: 'manage_settings_general' },
         { id: 'operations', label: t.settingsTabOperations, permission: 'manage_settings_operations' },
         { id: 'social', label: t.settingsTabSocial, permission: 'manage_settings_social' },
         { id: 'statuses', label: t.settingsTabStatuses, permission: 'manage_settings_statuses' },
+        { id: 'activation', label: t.settingsTabActivation, permission: 'manage_settings_activation' },
     ];
     
     const formInputClasses = "w-full p-2.5 border border-slate-300 rounded-lg bg-slate-50 dark:bg-slate-700/50 dark:border-slate-600 focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-colors duration-200 placeholder:text-slate-400 dark:placeholder:text-slate-500 text-slate-900 dark:text-slate-100 shadow-sm";
@@ -238,8 +259,10 @@ export const SettingsPage: React.FC = () => {
 
             <div className="border-b border-slate-200 dark:border-slate-700">
                 <nav className="-mb-px flex space-x-6 rtl:space-x-reverse overflow-x-auto" aria-label="Tabs">
-                    {tabs.map(tab => (
-                        hasPermission(tab.permission as Permission) && (
+                    {tabs.map(tab => {
+                        if (!hasPermission(tab.permission as Permission)) return null;
+
+                        return (
                             <button
                                 key={tab.id}
                                 onClick={() => setActiveTab(tab.id as SettingsTab)}
@@ -250,8 +273,8 @@ export const SettingsPage: React.FC = () => {
                             >
                                 {tab.label}
                             </button>
-                        )
-                    ))}
+                        );
+                    })}
                 </nav>
             </div>
 
@@ -319,52 +342,6 @@ export const SettingsPage: React.FC = () => {
                                 </FormGroup>
                             </SettingsCard>
                         </div>
-
-                         {isSuperAdmin && (
-                            <div className="xl:col-span-3">
-                                <SettingsCard title={t.systemActivation} subtitle={t.systemActivationSubtitle}>
-                                    <div className="p-4 rounded-lg bg-slate-100 dark:bg-slate-900/50">
-                                        <h4 className="font-semibold text-slate-500 dark:text-slate-400">{t.activationStatus}</h4>
-                                        {localInfo.activationEndDate && new Date(localInfo.activationEndDate) > new Date() ? (
-                                            <p className="text-lg font-bold text-green-600 dark:text-green-400">{t.activeUntil} {formatDateTime(localInfo.activationEndDate)}</p>
-                                        ) : !localInfo.activationEndDate ? (
-                                            <p className="text-lg font-bold text-green-600 dark:text-green-400">{t.activeIndefinitely}</p>
-                                        ) : (
-                                            <p className="text-lg font-bold text-red-600 dark:text-red-400">{t.inactive}</p>
-                                        )}
-                                    </div>
-                                    <FormGroup label={t.extendActivation}>
-                                        <div className="flex flex-wrap gap-2">
-                                            {[
-                                                { label: t.add1Day, amount: 1, unit: 'day'}, { label: t.add3Days, amount: 3, unit: 'day'},
-                                                { label: t.add1Week, amount: 7, unit: 'day'}, { label: t.add1Month, amount: 1, unit: 'month'},
-                                                { label: t.add3Months, amount: 3, unit: 'month'}, { label: t.add6Months, amount: 6, unit: 'month'},
-                                                { label: t.add1Year, amount: 1, unit: 'year'},
-                                            ].map(ext => (
-                                                <button key={`${ext.amount}-${ext.unit}`} type="button" onClick={() => handleExtendActivation(ext.amount, ext.unit as any)} className="px-3 py-1.5 text-sm font-semibold rounded-md bg-blue-100 text-blue-800 hover:bg-blue-200 dark:bg-blue-900/50 dark:text-blue-200 dark:hover:bg-blue-900">
-                                                    {ext.label}
-                                                </button>
-                                            ))}
-                                        </div>
-                                    </FormGroup>
-                                    <FormGroup label={t.setCustomEndDate}>
-                                        <input 
-                                            type="datetime-local"
-                                            value={formatDateForInput(localInfo.activationEndDate)}
-                                            onChange={(e) => setLocalInfo(prev => prev ? { ...prev, activationEndDate: new Date(e.target.value).toISOString() } : null)}
-                                            className={formInputClasses}
-                                        />
-                                    </FormGroup>
-                                     <FormGroup label={t.deactivationMessage}>
-                                        <textarea name="deactivationMessage.en" value={localInfo.deactivationMessage?.en || ''} onChange={handleInfoChange} placeholder="English Deactivation Message" rows={2} className={formInputClasses + ' mb-2'}></textarea>
-                                        <textarea name="deactivationMessage.ar" value={localInfo.deactivationMessage?.ar || ''} onChange={handleInfoChange} placeholder="Arabic Deactivation Message" rows={2} className={formInputClasses}></textarea>
-                                    </FormGroup>
-                                    <button type="button" onClick={handleDeactivateNow} className="w-full text-center px-4 py-2 bg-red-100 text-red-700 font-bold rounded-lg hover:bg-red-200 dark:bg-red-900/50 dark:text-red-200 dark:hover:bg-red-900">
-                                        {t.deactivateNow}
-                                    </button>
-                                </SettingsCard>
-                            </div>
-                        )}
                     </div>
                 )}
 
@@ -494,6 +471,56 @@ export const SettingsPage: React.FC = () => {
                         </ul>
                     </SettingsCard>
                 )}
+                 {activeTab === 'activation' && hasPermission('manage_settings_activation') && (
+                    <div className="grid grid-cols-1 xl:grid-cols-3 gap-8">
+                        <div className="xl:col-span-3">
+                             <SettingsCard title={t.systemActivation} subtitle={t.systemActivationSubtitle}>
+                                <div className="p-4 rounded-lg bg-slate-100 dark:bg-slate-900/50">
+                                    <h4 className="font-semibold text-slate-500 dark:text-slate-400">{t.activationStatus}</h4>
+                                    {localInfo.activationEndDate && new Date(localInfo.activationEndDate) > new Date() ? (
+                                        <p className="text-lg font-bold text-green-600 dark:text-green-400">{t.activeUntil} {formatDateTime(localInfo.activationEndDate)}</p>
+                                    ) : !localInfo.activationEndDate ? (
+                                        <p className="text-lg font-bold text-green-600 dark:text-green-400">{t.activeIndefinitely}</p>
+                                    ) : (
+                                        <p className="text-lg font-bold text-red-600 dark:text-red-400">{t.inactive}</p>
+                                    )}
+                                </div>
+                                <FormGroup label={t.extendActivation}>
+                                    <div className="flex flex-wrap gap-2">
+                                        {[
+                                            { label: t.add1Day, amount: 1, unit: 'day'}, { label: t.add3Days, amount: 3, unit: 'day'},
+                                            { label: t.add1Week, amount: 7, unit: 'day'}, { label: t.add1Month, amount: 1, unit: 'month'},
+                                            { label: t.add3Months, amount: 3, unit: 'month'}, { label: t.add6Months, amount: 6, unit: 'month'},
+                                            { label: t.add1Year, amount: 1, unit: 'year'},
+                                        ].map(ext => (
+                                            <button key={`${ext.amount}-${ext.unit}`} type="button" onClick={() => handleExtendActivation(ext.amount, ext.unit as any)} className="px-3 py-1.5 text-sm font-semibold rounded-md bg-blue-100 text-blue-800 hover:bg-blue-200 dark:bg-blue-900/50 dark:text-blue-200 dark:hover:bg-blue-900">
+                                                {ext.label}
+                                            </button>
+                                        ))}
+                                    </div>
+                                </FormGroup>
+                                <FormGroup label={t.setCustomEndDate}>
+                                    <input 
+                                        type="datetime-local"
+                                        value={formatDateForInput(localInfo.activationEndDate)}
+                                        onChange={(e) => {
+                                            const value = e.target.value;
+                                            setLocalInfo(prev => prev ? { ...prev, activationEndDate: value ? new Date(value).toISOString() : null } : null);
+                                        }}
+                                        className={formInputClasses}
+                                    />
+                                </FormGroup>
+                                    <FormGroup label={t.deactivationMessage}>
+                                    <textarea name="deactivationMessage.en" value={localInfo.deactivationMessage?.en || ''} onChange={handleInfoChange} placeholder="English Deactivation Message" rows={2} className={formInputClasses + ' mb-2'}></textarea>
+                                    <textarea name="deactivationMessage.ar" value={localInfo.deactivationMessage?.ar || ''} onChange={handleInfoChange} placeholder="Arabic Deactivation Message" rows={2} className={formInputClasses}></textarea>
+                                </FormGroup>
+                                <button type="button" onClick={handleDeactivateNow} className="w-full text-center px-4 py-2 bg-red-100 text-red-700 font-bold rounded-lg hover:bg-red-200 dark:bg-red-900/50 dark:text-red-200 dark:hover:bg-red-900">
+                                    {t.deactivateNow}
+                                </button>
+                            </SettingsCard>
+                        </div>
+                    </div>
+                )}
             </div>
             
             {editingPaymentMethod && (
@@ -533,7 +560,7 @@ export const SettingsPage: React.FC = () => {
                                 {language === 'ar' ? 'تجاهل' : 'Discard'}
                             </button>
                             <button
-                                onClick={() => localInfo && updateRestaurantInfo(localInfo)}
+                                onClick={handleSaveChanges}
                                 className="px-5 py-2.5 rounded-lg bg-primary-500 text-white hover:bg-primary-600 font-semibold transition-colors shadow-sm hover:shadow-md transform hover:-translate-y-0.5"
                             >
                                 {t.saveChanges}
