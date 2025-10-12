@@ -2,6 +2,7 @@ import React, { useState, useMemo } from 'react';
 import { useUI } from '../../../contexts/UIContext';
 import { useAdmin } from '../../../contexts/AdminContext';
 import { useData } from '../../../contexts/DataContext';
+import { useAuth } from '../../../contexts/AuthContext';
 import { formatNumber, calculateTotal, getStartAndEndDates } from '../../../utils/helpers';
 import { ArrowDownIcon, ArrowUpIcon, InformationCircleIcon } from '../../icons/Icons';
 import type { Order, CartItem, OrderType, RestaurantInfo, Product } from '../../../types';
@@ -12,7 +13,7 @@ const KpiCard: React.FC<{ title: string; value: string; change?: number; tooltip
     const isPositive = change !== undefined && change >= 0;
 
     return (
-        <div className="bg-white dark:bg-slate-800 p-5 rounded-xl shadow-sm border border-slate-200/80 dark:border-slate-700/80">
+        <div className="bg-white dark:bg-slate-800 p-5 rounded-xl shadow-sm border border-slate-200/80 dark:border-slate-700/80 h-full">
             <div className="flex items-center justify-between">
                 <h3 className="text-sm font-semibold text-slate-500 dark:text-slate-400">{title}</h3>
                 <div className="relative group">
@@ -57,14 +58,14 @@ const BarChart: React.FC<{ data: { label: string, value: number }[] }> = ({ data
 const DonutChart: React.FC<{ data: { label: string, value: number, color: string }[] }> = ({ data }) => {
     const { t } = useUI();
     const total = data.reduce((sum, item) => sum + item.value, 0);
-    if (total === 0) return <div className="flex items-center justify-center h-40 text-slate-500">{t.noDataForPeriod}</div>;
+    if (total === 0) return <div className="flex items-center justify-center h-full text-slate-500">{t.noDataForPeriod}</div>;
     
     let accumulatedAngle = 0;
     const circumference = 2 * Math.PI * 45; // r=45
     
     return (
-        <div className="flex flex-col sm:flex-row items-center gap-6">
-            <div className="relative w-40 h-40">
+        <div className="flex flex-col sm:flex-row items-center gap-6 h-full">
+            <div className="relative w-40 h-40 flex-shrink-0">
                 <svg viewBox="0 0 100 100" className="-rotate-90">
                     {data.map((segment, index) => {
                         const percentage = (segment.value / total) * 100;
@@ -99,10 +100,24 @@ const DonutChart: React.FC<{ data: { label: string, value: number, color: string
     );
 };
 
+const tailwindColorMap: { [key: string]: string } = {
+  slate: '#64748b',
+  red: '#ef4444',
+  orange: '#f97316',
+  yellow: '#f59e0b',
+  green: '#10b981',
+  cyan: '#06b6d4',
+  blue: '#3b82f6',
+  indigo: '#4f46e5',
+  purple: '#8b5cf6',
+  pink: '#ec4899',
+};
+
 export const DashboardPage: React.FC = () => {
     const { language, t } = useUI();
     const { orders: allOrders } = useAdmin();
     const { products: allProducts, restaurantInfo } = useData();
+    const { currentUser, hasPermission } = useAuth();
     const [dateRange, setDateRange] = useState('last7days');
     const [customStartDate, setCustomStartDate] = useState('');
     const [customEndDate, setCustomEndDate] = useState('');
@@ -112,13 +127,34 @@ export const DashboardPage: React.FC = () => {
         return restaurantInfo?.orderStatusColumns.find(col => col.color === 'green')?.id || 'completed';
     }, [restaurantInfo]);
 
+    const permissionFilteredOrders = useMemo(() => {
+        if (!currentUser || !hasPermission('view_reports_page')) return [];
+
+        const canViewDineIn = hasPermission('view_dine_in_orders');
+        const canViewTakeaway = hasPermission('view_takeaway_orders');
+        const canViewDelivery = hasPermission('view_delivery_orders');
+        
+        const hasSpecificOrderTypePermission = canViewDineIn || canViewTakeaway || canViewDelivery;
+        
+        if (!hasSpecificOrderTypePermission) {
+            return allOrders;
+        }
+    
+        const allowedTypes: OrderType[] = [];
+        if (canViewDineIn) allowedTypes.push('Dine-in');
+        if (canViewTakeaway) allowedTypes.push('Takeaway');
+        if (canViewDelivery) allowedTypes.push('Delivery');
+    
+        return allOrders.filter(order => allowedTypes.includes(order.orderType));
+    }, [allOrders, currentUser, hasPermission]);
+
     const filteredOrders = useMemo(() => {
         const { startDate, endDate } = getStartAndEndDates(dateRange, customStartDate, customEndDate);
-        return allOrders.filter(o => {
+        return permissionFilteredOrders.filter(o => {
             const orderDate = new Date(o.timestamp);
             return orderDate >= startDate && orderDate <= endDate;
         });
-    }, [allOrders, dateRange, customStartDate, customEndDate]);
+    }, [permissionFilteredOrders, dateRange, customStartDate, customEndDate]);
 
     const metrics = useMemo(() => {
         const completed = filteredOrders.filter(o => o.status === completedStatusId);
@@ -165,10 +201,26 @@ export const DashboardPage: React.FC = () => {
             { label: t.delivery, value: stats['Delivery'], color: '#10b981' },
         ];
     }, [filteredOrders, t]);
-    
-    const recentOrders = useMemo(() => {
-        return [...allOrders].sort((a,b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()).slice(0, 5);
-    }, [allOrders]);
+
+    const orderStatusDistribution = useMemo(() => {
+        if (!restaurantInfo) return [];
+
+        return restaurantInfo.orderStatusColumns
+            .map(status => {
+                const count = filteredOrders.filter(o => 
+                    o.status === status.id || 
+                    (status.id === 'cancelled' && o.status === 'refused')
+                ).length;
+                
+                return {
+                    label: status.name[language],
+                    value: count,
+                    color: tailwindColorMap[status.color] || '#64748b' // fallback to slate
+                };
+            })
+            .filter(item => item.value > 0); // Only show statuses with orders
+
+    }, [filteredOrders, restaurantInfo, language]);
     
     return (
         <div className="space-y-6 animate-fade-in">
@@ -196,15 +248,19 @@ export const DashboardPage: React.FC = () => {
                 </div>
             </div>
             
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
-                <KpiCard title={t.totalRevenue} value={`${metrics.totalRevenue.toFixed(2)} ${t.currency}`} tooltip={t.totalRevenueTooltip} />
-                <KpiCard title={t.totalOrders} value={formatNumber(metrics.totalOrders)} tooltip={t.totalOrdersTooltip} />
-                <KpiCard title={t.completedOrders} value={formatNumber(metrics.completedOrders)} tooltip={""} />
-                <KpiCard title={t.avgOrderValue} value={`${metrics.avgOrderValue.toFixed(2)} ${t.currency}`} tooltip={t.avgOrderValueTooltip} />
-            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+                
+                <div className="order-1 sm:col-span-2 lg:col-span-2 lg:order-6 bg-white dark:bg-slate-800 p-5 rounded-xl shadow-sm border dark:border-slate-700/80">
+                    <h3 className="font-semibold mb-4">{t.orderStatusDistribution}</h3>
+                    <DonutChart data={orderStatusDistribution} />
+                </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                 <div className="lg:col-span-2 bg-white dark:bg-slate-800 p-5 rounded-xl shadow-sm border dark:border-slate-700/80">
+                <div className="order-2 sm:col-span-2 lg:col-span-2 lg:order-7 bg-white dark:bg-slate-800 p-5 rounded-xl shadow-sm border dark:border-slate-700/80">
+                    <h3 className="font-semibold mb-4">{t.orderTypeDistribution}</h3>
+                    <DonutChart data={orderTypeDistribution} />
+                </div>
+
+                <div className="order-3 sm:col-span-2 lg:col-span-4 lg:order-5 bg-white dark:bg-slate-800 p-5 rounded-xl shadow-sm border dark:border-slate-700/80">
                     <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-3 mb-4">
                         <h3 className="font-semibold">{t.topSellingProducts}</h3>
                          <div className="flex items-center p-1 rounded-lg bg-slate-100 dark:bg-slate-700 self-start sm:self-center">
@@ -228,28 +284,19 @@ export const DashboardPage: React.FC = () => {
                     </div>
                     {topProducts.length > 0 ? <BarChart data={topProducts} /> : <div className="flex items-center justify-center h-40 text-slate-500">{t.noDataForPeriod}</div>}
                 </div>
-                <div className="bg-white dark:bg-slate-800 p-5 rounded-xl shadow-sm border dark:border-slate-700/80">
-                    <h3 className="font-semibold mb-4">{t.orderTypeDistribution}</h3>
-                    <DonutChart data={orderTypeDistribution} />
+                
+                <div className="order-4 lg:order-1">
+                    <KpiCard title={t.totalRevenue} value={`${metrics.totalRevenue.toFixed(2)} ${t.currency}`} tooltip={t.totalRevenueTooltip} />
                 </div>
-            </div>
-
-             <div className="bg-white dark:bg-slate-800 p-5 rounded-xl shadow-sm border dark:border-slate-700/80">
-                 <h3 className="font-semibold mb-4">Recent Activity</h3>
-                 <div className="divide-y divide-slate-200 dark:divide-slate-700">
-                     {recentOrders.map(order => (
-                         <div key={order.id} className="py-3 flex justify-between items-center">
-                             <div>
-                                <p className="font-medium">{order.customer.name}</p>
-                                <p className="text-sm text-slate-500">{order.items.length} items - {order.orderType}</p>
-                             </div>
-                             <div className="text-right">
-                                <p className="font-semibold">{order.total.toFixed(2)} {t.currency}</p>
-                                <p className="text-sm text-slate-500">{new Date(order.timestamp).toLocaleTimeString()}</p>
-                             </div>
-                         </div>
-                     ))}
-                 </div>
+                <div className="order-4 lg:order-2">
+                    <KpiCard title={t.totalOrders} value={formatNumber(metrics.totalOrders)} tooltip={t.totalOrdersTooltip} />
+                </div>
+                <div className="order-5 lg:order-3">
+                    <KpiCard title={t.completedOrders} value={formatNumber(metrics.completedOrders)} tooltip={""} />
+                </div>
+                <div className="order-5 lg:order-4">
+                    <KpiCard title={t.avgOrderValue} value={`${metrics.avgOrderValue.toFixed(2)} ${t.currency}`} tooltip={t.avgOrderValueTooltip} />
+                </div>
             </div>
 
         </div>
