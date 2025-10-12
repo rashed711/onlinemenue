@@ -65,9 +65,9 @@ const AppContent: React.FC = () => {
     const superAdminRole = roles.find(r => r.name.en.toLowerCase() === 'superadmin');
     const isSuperAdmin = currentUser?.role === superAdminRole?.key;
 
-    // A super admin can access settings even if deactivated. Anyone can access login.
+    // A super admin can access any admin page even if deactivated. Anyone can access login.
     const canBypassDeactivation = 
-        (isSuperAdmin && baseRoute.startsWith('#/admin/settings')) || 
+        (isSuperAdmin && baseRoute.startsWith('#/admin')) || 
         baseRoute.startsWith('#/login');
 
     if (isDeactivated && !canBypassDeactivation) {
