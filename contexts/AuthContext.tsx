@@ -107,14 +107,20 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 }
             } else {
                 // User is signed out from Firebase.
+                // We should only sign out the user if they are NOT an admin/staff.
+                // Staff login state is managed separately and doesn't depend on Firebase.
                 if (currentUser) {
-                    setCurrentUser(null);
+                    const role = roles.find(r => r.key === currentUser.role);
+                    const isStaff = role && role.name.en.toLowerCase() !== 'customer';
+                    if (!isStaff) {
+                        setCurrentUser(null);
+                    }
                 }
             }
         });
         
         return () => unsubscribe();
-    }, [currentUser]);
+    }, [currentUser, roles]);
 
     const userRoleDetails = useMemo(() => roles.find(r => r.key === currentUser?.role), [roles, currentUser]);
     
