@@ -113,8 +113,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     
     const sendOtp = useCallback(async (phoneNumber: string): Promise<{ success: boolean; error?: string }> => {
         setIsProcessing(true);
+    
+        const timeoutPromise = new Promise<ConfirmationResult>((_, reject) =>
+          setTimeout(() => reject(new Error('Request timed out.')), 10000)
+        );
+    
         try {
-            // If a verifier exists from a previous attempt, clear it to ensure a fresh state.
             if ((window as any).recaptchaVerifier) {
                 (window as any).recaptchaVerifier.clear();
                 const recaptchaContainer = document.getElementById('recaptcha-container');
@@ -123,13 +127,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 }
             }
     
-            // Create a new verifier for each attempt.
             const verifier = new RecaptchaVerifier(auth, 'recaptcha-container', {
                 'size': 'invisible'
             });
             (window as any).recaptchaVerifier = verifier;
     
-            const confirmation = await signInWithPhoneNumber(auth, phoneNumber, verifier);
+            const confirmation = await Promise.race([
+                signInWithPhoneNumber(auth, phoneNumber, verifier),
+                timeoutPromise
+            ]);
+    
             setConfirmationResult(confirmation);
             return { success: true };
         } catch (error: any) {
@@ -137,9 +144,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             if ((window as any).recaptchaVerifier) {
                 (window as any).recaptchaVerifier.clear();
             }
-
+    
             let errorMessage = error.message;
-            if (error.code === 'auth/invalid-phone-number') {
+            if (error.message === 'Request timed out.') {
+                errorMessage = t.language === 'ar' 
+                    ? 'انتهت مهلة الطلب. قد تكون بيئة التشغيل تمنع التحقق (reCAPTCHA). جرب على موقعك المباشر.'
+                    : 'Request timed out. The environment may be blocking reCAPTCHA. Please try on your live site.';
+            } else if (error.code === 'auth/invalid-phone-number') {
                 errorMessage = t.language === 'ar' 
                     ? 'رقم الهاتف غير صالح. يرجى التأكد من تضمين رمز البلد (مثال: +201012345678).' 
                     : 'Invalid phone number format. Please ensure you include the country code (e.g., +201012345678).';
