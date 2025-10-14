@@ -276,8 +276,12 @@ export const AdminPage: React.FC<AdminPageProps> = ({ activeSubRoute, reportSubR
         return allUsers.find(u => u.id === viewingOrder.createdBy)?.name;
     }, [viewingOrder, allUsers]);
 
-    const handleSaveProduct = (productData: Product | Omit<Product, 'id' | 'rating'>) => {
-        if ('id' in productData) updateProduct(productData); else addProduct(productData);
+    const handleSaveProduct = (productData: Product | Omit<Product, 'id' | 'rating'>, imageFile?: File | null) => {
+        if ('id' in productData) {
+            updateProduct(productData as Product, imageFile);
+        } else {
+            addProduct(productData as Omit<Product, 'id' | 'rating'>, imageFile);
+        }
         setEditingProduct(null);
     };
 

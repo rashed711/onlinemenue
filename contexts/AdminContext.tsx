@@ -14,8 +14,8 @@ interface AdminContextType {
     placeOrder: (order: Omit<Order, 'id' | 'timestamp'>) => Promise<Order>;
     updateOrder: (orderId: string, payload: Partial<Omit<Order, 'id' | 'timestamp' | 'customer'>>) => Promise<void>;
     deleteOrder: (orderId: string) => Promise<void>;
-    addProduct: (productData: Omit<Product, 'id' | 'rating'>) => Promise<void>;
-    updateProduct: (updatedProduct: Product) => Promise<void>;
+    addProduct: (productData: Omit<Product, 'id' | 'rating'>, imageFile?: File | null) => Promise<void>;
+    updateProduct: (updatedProduct: Product, imageFile?: File | null) => Promise<void>;
     deleteProduct: (productId: number) => Promise<void>;
     addPromotion: (promotionData: Omit<Promotion, 'id'>) => Promise<void>;
     updatePromotion: (updatedPromotion: Promotion) => Promise<void>;
@@ -192,41 +192,62 @@ export const AdminProvider: React.FC<{ children: React.ReactNode }> = ({ childre
             setIsProcessing(false);
         }
     }, [setIsProcessing, showToast]);
-
-    const addProduct = useCallback(async (productData: Omit<Product, 'id' | 'rating'>) => {
-        if (!hasPermission('add_product')) { showToast(t.permissionDenied); return; }
-        const result = await apiCall<{ product: any }>(
-            'add_product.php',
-            productData,
-            t.productAddedSuccess,
-            t.productAddFailed
-        );
-        if (result?.product) {
-            const newProduct = {
-                ...result.product,
-                image: resolveImageUrl(result.product.image)
-            };
-            setProducts(prev => [...prev, newProduct]);
-        }
-    }, [hasPermission, t, apiCall, setProducts]);
     
-    const updateProduct = useCallback(async (updatedProduct: Product) => {
+    const addProduct = useCallback(async (productData: Omit<Product, 'id' | 'rating'>, imageFile?: File | null) => {
+        if (!hasPermission('add_product')) { showToast(t.permissionDenied); return; }
+        setIsProcessing(true);
+        try {
+            let finalProductData = { ...productData };
+            if (imageFile) {
+                const formData = new FormData();
+                formData.append('image', imageFile);
+                formData.append('type', 'products');
+                const uploadRes = await fetch(`${API_BASE_URL}upload_image.php`, { method: 'POST', body: formData });
+                const result = await uploadRes.json();
+                if (!uploadRes.ok || !result.success) throw new Error(result.error || 'Image upload failed');
+                finalProductData.image = result.url;
+            }
+
+            const response = await fetch(`${API_BASE_URL}add_product.php`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(finalProductData) });
+            const result = await response.json();
+            if (!response.ok || !result.success) throw new Error(result.error || t.productAddFailed);
+            
+            const newProduct = { ...result.product, image: resolveImageUrl(result.product.image) };
+            setProducts(prev => [newProduct, ...prev]);
+            showToast(t.productAddedSuccess);
+        } catch (error: any) { showToast(error.message || t.productAddFailed); }
+        finally { setIsProcessing(false); }
+    }, [hasPermission, t, setProducts, showToast, setIsProcessing]);
+    
+    const updateProduct = useCallback(async (updatedProduct: Product, imageFile?: File | null) => {
         if (!hasPermission('edit_product')) { showToast(t.permissionDenied); return; }
-        const domain = new URL(API_BASE_URL).origin + '/';
-        const payload = { 
-            ...updatedProduct, 
-            image: updatedProduct.image ? updatedProduct.image.replace(domain, '') : null 
-        };
-        const result = await apiCall(
-            'update_product.php',
-            payload,
-            t.productUpdatedSuccess,
-            t.productUpdateFailed
-        );
-        if (result) {
-            setProducts(prev => prev.map(p => p.id === updatedProduct.id ? updatedProduct : p));
-        }
-    }, [hasPermission, t, apiCall, setProducts]);
+        setIsProcessing(true);
+        try {
+            let finalProductData = { ...updatedProduct };
+            if (imageFile) {
+                const formData = new FormData();
+                formData.append('image', imageFile);
+                formData.append('type', 'products');
+                formData.append('productId', updatedProduct.id.toString());
+                const uploadRes = await fetch(`${API_BASE_URL}upload_image.php`, { method: 'POST', body: formData });
+                const result = await uploadRes.json();
+                if (!uploadRes.ok || !result.success) throw new Error(result.error || 'Image upload failed');
+                finalProductData.image = result.url;
+            } else {
+                 const domain = new URL(API_BASE_URL).origin + '/';
+                 finalProductData.image = updatedProduct.image ? updatedProduct.image.replace(domain, '') : '';
+            }
+            
+            const response = await fetch(`${API_BASE_URL}update_product.php`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(finalProductData) });
+            const result = await response.json();
+            if (!response.ok || !result.success) throw new Error(result.error || t.productUpdateFailed);
+
+            const resolvedProduct = { ...finalProductData, image: resolveImageUrl(finalProductData.image) };
+            setProducts(prev => prev.map(p => p.id === resolvedProduct.id ? resolvedProduct : p));
+            showToast(t.productUpdatedSuccess);
+        } catch (error: any) { showToast(error.message || t.productUpdateFailed); }
+        finally { setIsProcessing(false); }
+    }, [hasPermission, t, setProducts, showToast, setIsProcessing]);
 
     const deleteProduct = useCallback(async (productId: number) => {
         if (!hasPermission('delete_product') || !window.confirm(t.confirmDelete)) return;

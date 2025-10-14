@@ -1,7 +1,7 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useCallback, useRef, useEffect } from 'react';
 import type { Language, Category, Tag } from '../types';
 import { useTranslations } from '../i18n/translations';
-import { SearchIcon, FilterIcon } from './icons/Icons';
+import { SearchIcon, FilterIcon, ChevronRightIcon } from './icons/Icons';
 import { formatNumber } from '../utils/helpers';
 
 interface SearchAndFilterProps {
@@ -16,26 +16,6 @@ interface SearchAndFilterProps {
   setSelectedTags: (tags: string[]) => void;
 }
 
-const flattenCategories = (categories: Category[], language: Language): { id: number; name: string; level: number }[] => {
-    const flatList: { id: number; name: string; level: number }[] = [];
-    
-    function traverse(category: Category, level: number) {
-        const prefix = level > 0 ? '└─ ' : '';
-        flatList.push({
-            id: category.id,
-            name: `${prefix}${category.name[language]}`,
-            level: level,
-        });
-        if (category.children) {
-            category.children.forEach(child => traverse(child, level + 1));
-        }
-    }
-
-    categories.forEach(cat => traverse(cat, 0));
-    return flatList;
-};
-
-
 export const SearchAndFilter: React.FC<SearchAndFilterProps> = ({
   language,
   categories,
@@ -49,6 +29,21 @@ export const SearchAndFilter: React.FC<SearchAndFilterProps> = ({
 }) => {
   const t = useTranslations(language);
   const [isFilterOpen, setIsFilterOpen] = useState(false);
+  const [openDropdown, setOpenDropdown] = useState<number | null>(null);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  // Close dropdown on outside click
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setOpenDropdown(null);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, []);
 
   const handleTagChange = (tagId: string) => {
     const newTags = selectedTags.includes(tagId)
@@ -57,7 +52,15 @@ export const SearchAndFilter: React.FC<SearchAndFilterProps> = ({
     setSelectedTags(newTags);
   };
   
-  const flattenedCategories = useMemo(() => flattenCategories(categories, language), [categories, language]);
+  // This helper will check if a category or any of its children are selected
+  const isCategoryOrChildSelected = useCallback((category: Category): boolean => {
+      if (selectedCategory === null) return false;
+      if (selectedCategory === category.id) return true;
+      if (!category.children) return false;
+
+      const childIds = category.children.map(c => c.id);
+      return childIds.includes(selectedCategory);
+  }, [selectedCategory]);
 
   return (
     <div id="menu" className="mb-12 p-4 sm:p-6 bg-white dark:bg-slate-900/50 rounded-2xl shadow-xl border border-slate-200/50 dark:border-slate-800/50 space-y-4">
@@ -109,24 +112,63 @@ export const SearchAndFilter: React.FC<SearchAndFilterProps> = ({
         </div>
       </div>
       
-      {/* Categories Scroller */}
-      <div>
-        <div className="flex overflow-x-auto space-x-2 space-x-reverse pb-2 -mx-4 sm:-mx-6 px-4 sm:px-6 scrollbar-hide">
+      {/* Categories */}
+      <div className="pt-4 border-t border-slate-200 dark:border-slate-700">
+        <div className="flex flex-wrap items-center gap-2">
             <button
                 onClick={() => setSelectedCategory(null)}
                 className={`px-5 py-2 rounded-full text-sm font-bold transition-all duration-300 whitespace-nowrap ${selectedCategory === null ? 'bg-primary-600 text-white shadow-lg' : 'bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-300 dark:hover:bg-slate-600'}`}
             >
                 {t.allCategories}
             </button>
-            {flattenedCategories.map(category => (
-                <button
-                key={category.id}
-                onClick={() => setSelectedCategory(category.id)}
-                className={`px-5 py-2 rounded-full text-sm font-bold transition-all duration-300 whitespace-nowrap ${selectedCategory === category.id ? 'bg-primary-600 text-white shadow-lg' : 'bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-300 dark:hover:bg-slate-600'}`}
-                >
-                {''.padStart(category.level, '\u00A0\u00A0')}{category.name}
-                </button>
-            ))}
+            {categories.map(category => {
+                const hasChildren = category.children && category.children.length > 0;
+                const isActive = isCategoryOrChildSelected(category);
+
+                if (hasChildren) {
+                    return (
+                        <div key={category.id} className="relative" ref={openDropdown === category.id ? dropdownRef : null}>
+                            <button
+                                onClick={() => setOpenDropdown(openDropdown === category.id ? null : category.id)}
+                                className={`px-4 py-2 rounded-full text-sm font-bold transition-all duration-300 whitespace-nowrap flex items-center gap-2 ${isActive ? 'bg-primary-600 text-white shadow-lg' : 'bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-300 dark:hover:bg-slate-600'}`}
+                            >
+                                <span>{category.name[language]}</span>
+                                <ChevronRightIcon className={`w-4 h-4 transition-transform ${language === 'ar' ? 'transform -scale-x-100' : ''} ${openDropdown === category.id ? 'rotate-90' : ''}`} />
+                            </button>
+                            {openDropdown === category.id && (
+                                <div className="absolute top-full mt-2 z-20 min-w-full bg-white dark:bg-slate-800 rounded-lg shadow-xl border border-slate-200 dark:border-slate-700 overflow-hidden animate-fade-in py-1">
+                                    <button
+                                        onClick={() => { setSelectedCategory(category.id); setOpenDropdown(null); }}
+                                        className={`block w-full text-start px-4 py-2 text-sm transition-colors ${selectedCategory === category.id ? 'font-bold text-primary-600 bg-primary-50 dark:bg-primary-900/40' : 'text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700'}`}
+                                    >
+                                        {t.all} {category.name[language]}
+                                    </button>
+                                    {category.children!.map(child => (
+                                        <button
+                                            key={child.id}
+                                            onClick={() => { setSelectedCategory(child.id); setOpenDropdown(null); }}
+                                            className={`block w-full text-start px-4 py-2 text-sm transition-colors ${selectedCategory === child.id ? 'font-bold text-primary-600 bg-primary-50 dark:bg-primary-900/40' : 'text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700'}`}
+                                        >
+                                            {child.name[language]}
+                                        </button>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+                    );
+                }
+
+                // Render simple button for categories without children
+                return (
+                    <button
+                        key={category.id}
+                        onClick={() => setSelectedCategory(category.id)}
+                        className={`px-4 py-2 rounded-full text-sm font-bold transition-all duration-300 whitespace-nowrap ${selectedCategory === category.id ? 'bg-primary-600 text-white shadow-lg' : 'bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-300 dark:hover:bg-slate-600'}`}
+                    >
+                        {category.name[language]}
+                    </button>
+                );
+            })}
         </div>
       </div>
     </div>

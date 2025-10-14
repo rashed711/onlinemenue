@@ -17,28 +17,40 @@ import { useCart } from '../contexts/CartContext';
 import { useAdmin } from '../contexts/AdminContext';
 
 const getDescendantCategoryIds = (categoryId: number, categories: Category[]): number[] => {
-    const ids = [categoryId];
-    const findChildren = (parentId: number) => {
-        const directChildren = categories.filter(cat => cat.parent_id === parentId);
-        for (const child of directChildren) {
-            ids.push(child.id);
-            findChildren(child.id);
+    const ids: number[] = [];
+
+    // Helper to find a category by its ID in the tree
+    const findCategory = (cats: Category[], id: number): Category | null => {
+        for (const cat of cats) {
+            if (cat.id === id) {
+                return cat;
+            }
+            if (cat.children) {
+                const foundInChildren = findCategory(cat.children, id);
+                if (foundInChildren) {
+                    return foundInChildren;
+                }
+            }
         }
+        return null;
     };
 
-    // To find children, we need a flat list, but the data is a tree. Let's flatten it first.
-    const flatCategories: Category[] = [];
-    const flatten = (cats: Category[]) => {
-        for (const cat of cats) {
-            flatCategories.push(cat);
-            if (cat.children && cat.children.length > 0) {
-                flatten(cat.children);
+    // Helper to recursively collect all child IDs, including the parent's
+    const collectAllIds = (category: Category) => {
+        ids.push(category.id);
+        if (category.children) {
+            for (const child of category.children) {
+                collectAllIds(child);
             }
         }
     };
-    flatten(categories);
 
-    findChildren(categoryId);
+    const startCategory = findCategory(categories, categoryId);
+
+    if (startCategory) {
+        collectAllIds(startCategory);
+    }
+    
     return ids;
 };
 

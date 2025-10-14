@@ -9,7 +9,7 @@ import { useData } from '../../contexts/DataContext';
 interface ProductEditModalProps {
     product: Product | null;
     onClose: () => void;
-    onSave: (productData: Product | Omit<Product, 'id' | 'rating'>) => void;
+    onSave: (productData: Product | Omit<Product, 'id' | 'rating'>, imageFile?: File | null) => void;
 }
 
 export const ProductEditModal: React.FC<ProductEditModalProps> = ({ product, onClose, onSave }) => {
@@ -32,6 +32,8 @@ export const ProductEditModal: React.FC<ProductEditModalProps> = ({ product, onC
     };
 
     const [formData, setFormData] = useState<Omit<Product, 'id' | 'rating'>>(emptyProduct);
+    const [imageFile, setImageFile] = useState<File | null>(null);
+    const [imagePreview, setImagePreview] = useState<string>('');
     
     useEffect(() => {
         if (product) {
@@ -40,9 +42,12 @@ export const ProductEditModal: React.FC<ProductEditModalProps> = ({ product, onC
                 ...editableData,
                 options: editableData.options ? JSON.parse(JSON.stringify(editableData.options)) : [] // Deep copy
             });
+            setImagePreview(product.image);
         } else {
             setFormData(emptyProduct);
+            setImagePreview('');
         }
+        setImageFile(null); // Reset file on modal open
     }, [product, categories]);
 
     const handleTextChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
@@ -80,20 +85,18 @@ export const ProductEditModal: React.FC<ProductEditModalProps> = ({ product, onC
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         if (file) {
-            const reader = new FileReader();
-            reader.onloadend = () => {
-                setFormData(prev => ({ ...prev, image: reader.result as string }));
-            };
-            reader.readAsDataURL(file);
+            setImageFile(file);
+            setImagePreview(URL.createObjectURL(file));
         }
     };
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
+        // The image path in formData is only updated in AdminContext after upload
         if (product) {
-             onSave({ ...product, ...formData });
+             onSave({ ...product, ...formData }, imageFile);
         } else {
-             onSave(formData);
+             onSave(formData, imageFile);
         }
     };
     
@@ -227,9 +230,9 @@ export const ProductEditModal: React.FC<ProductEditModalProps> = ({ product, onC
                  <div>
                     <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">{t.productImage}</label>
                     <div className="mt-2 flex flex-col sm:flex-row items-center gap-4 p-4 border-2 border-dashed border-slate-300 dark:border-slate-600 rounded-lg">
-                        {formData.image && (
+                        {imagePreview && (
                             <img 
-                                src={formData.image} 
+                                src={imagePreview} 
                                 alt={t.imagePreview} 
                                 className="w-32 h-24 object-cover rounded-lg bg-slate-100 dark:bg-slate-700 p-1 border dark:border-slate-600 flex-shrink-0" 
                             />
