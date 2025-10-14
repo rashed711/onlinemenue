@@ -55,7 +55,7 @@ export const SearchAndFilter: React.FC<SearchAndFilterProps> = ({
         </div>
         <button
           onClick={() => setIsFilterOpen(!isFilterOpen)}
-          className={`flex-shrink-0 flex items-center justify-center gap-2 px-3 py-2 border-2 rounded-full font-bold text-xs sm:text-sm transition-colors ${isFilterOpen ? 'bg-primary-100 dark:bg-primary-900/50 border-primary-500 text-primary-700 dark:text-primary-300' : 'border-slate-300 dark:border-slate-600 hover:border-primary-400 dark:hover:border-primary-500'}`}
+          className={`flex-shrink-0 flex items-center justify-center gap-2 px-3 py-2 border-2 rounded-full font-bold text-xs sm:text-sm transition-colors ${isFilterOpen ? 'bg-primary-100 dark:bg-primary-900/50 border-primary-500 text-primary-700 dark:text-primary-300' : 'border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-300 hover:border-primary-400 dark:hover:border-primary-500'}`}
         >
           <FilterIcon className="w-4 h-4 sm:w-5 sm:h-5" />
           <span className="hidden sm:inline">{t.filterByTags}</span>
@@ -79,7 +79,7 @@ export const SearchAndFilter: React.FC<SearchAndFilterProps> = ({
                 onChange={() => handleTagChange(tag.id)}
                 className="sr-only peer"
               />
-              <span className="px-3 py-1.5 rounded-full text-xs font-semibold border-2 border-slate-300 dark:border-slate-600 peer-checked:bg-primary-100 dark:peer-checked:bg-primary-900/50 peer-checked:border-primary-500 peer-checked:text-primary-700 dark:peer-checked:text-primary-300 transition-colors">
+              <span className="px-3 py-1.5 rounded-full text-xs font-semibold border-2 border-slate-300 dark:border-slate-600 text-slate-600 dark:text-slate-300 peer-checked:bg-primary-100 dark:peer-checked:bg-primary-900/50 peer-checked:border-primary-500 peer-checked:text-primary-700 dark:peer-checked:text-primary-300 transition-colors">
                 {tag.name[language]}
               </span>
             </label>

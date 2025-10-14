@@ -124,7 +124,7 @@ export const PromotionSection: React.FC<PromotionSectionProps> = ({ promotions, 
 
   return (
     <section className="my-12 animate-fade-in-up">
-        <h2 className="text-3xl font-extrabold mb-8">{t.todaysOffers}</h2>
+        <h2 className="text-3xl font-extrabold mb-8 text-slate-900 dark:text-slate-200">{t.todaysOffers}</h2>
         <div className="relative -mx-4" onMouseEnter={stopAutoPlay} onMouseLeave={startAutoPlay} onTouchStart={stopAutoPlay} onTouchEnd={startAutoPlay}>
             <div ref={sliderRef} className="flex overflow-x-auto snap-x snap-mandatory scroll-smooth scrollbar-hide px-2">
                 {displayablePromotions.map(({ promo, product }) => {
