@@ -112,28 +112,48 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }, []);
     
     const sendOtp = useCallback(async (phoneNumber: string): Promise<{ success: boolean; error?: string }> => {
+        setIsProcessing(true);
         try {
-            // Ensure RecaptchaVerifier is a singleton attached to window
-            let verifier = (window as any).recaptchaVerifier;
-            if (!verifier) {
-                verifier = new RecaptchaVerifier(auth, 'recaptcha-container', {
-                    'size': 'invisible'
-                });
-                (window as any).recaptchaVerifier = verifier;
+            // If a verifier exists from a previous attempt, clear it to ensure a fresh state.
+            if ((window as any).recaptchaVerifier) {
+                (window as any).recaptchaVerifier.clear();
+                const recaptchaContainer = document.getElementById('recaptcha-container');
+                if (recaptchaContainer) {
+                    recaptchaContainer.innerHTML = '';
+                }
             }
-
+    
+            // Create a new verifier for each attempt.
+            const verifier = new RecaptchaVerifier(auth, 'recaptcha-container', {
+                'size': 'invisible'
+            });
+            (window as any).recaptchaVerifier = verifier;
+    
             const confirmation = await signInWithPhoneNumber(auth, phoneNumber, verifier);
             setConfirmationResult(confirmation);
             return { success: true };
         } catch (error: any) {
             console.error("Firebase OTP send error:", error);
-            // On error, clear the existing verifier to allow a fresh start.
             if ((window as any).recaptchaVerifier) {
                 (window as any).recaptchaVerifier.clear();
             }
-            return { success: false, error: error.message };
+
+            let errorMessage = error.message;
+            if (error.code === 'auth/invalid-phone-number') {
+                errorMessage = t.language === 'ar' 
+                    ? 'رقم الهاتف غير صالح. يرجى التأكد من تضمين رمز البلد (مثال: +201012345678).' 
+                    : 'Invalid phone number format. Please ensure you include the country code (e.g., +201012345678).';
+            } else if (error.code === 'auth/internal-error') {
+                errorMessage = t.language === 'ar'
+                    ? 'حدث خطأ داخلي في Firebase. يرجى التأكد من تفعيل "تسجيل الدخول بالهاتف" في لوحة تحكم Firebase وأن نطاق الموقع مُصرح به.'
+                    : 'A Firebase internal error occurred. Please ensure Phone Number Sign-in is enabled in your Firebase console and the website domain is authorized.';
+            }
+            
+            return { success: false, error: errorMessage };
+        } finally {
+            setIsProcessing(false);
         }
-    }, []);
+    }, [setConfirmationResult, setIsProcessing, t.language]);
 
     const verifyOtp = useCallback(async (otp: string): Promise<string | null> => {
         if (!confirmationResult) return "No confirmation result found. Please try again.";

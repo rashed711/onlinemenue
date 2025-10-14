@@ -3,7 +3,7 @@ import { useUI } from '../../contexts/UIContext';
 import { useAuth } from '../../contexts/AuthContext';
 
 export const LoginPage: React.FC = () => {
-    const { language, t, isProcessing, setIsProcessing } = useUI();
+    const { language, t, isProcessing } = useUI();
     const { staffLogin, sendOtp, verifyOtp, confirmationResult } = useAuth();
 
     const [activeTab, setActiveTab] = useState<'customer' | 'staff'>('customer');
@@ -46,14 +46,13 @@ export const LoginPage: React.FC = () => {
     const handleSendOtp = async (e: React.FormEvent) => {
         e.preventDefault();
         setError('');
-        setIsProcessing(true);
+        // The '+' is prepended in the AuthContext, so the user should not enter it.
         const result = await sendOtp(`+${customerMobile}`);
         if (result.success) {
             setShowOtp(true);
         } else {
             setError(result.error || 'Failed to send OTP.');
         }
-        setIsProcessing(false);
     };
 
     const handleVerifyOtp = async (e: React.FormEvent) => {
@@ -125,7 +124,7 @@ export const LoginPage: React.FC = () => {
                                             value={customerMobile}
                                             onChange={(e) => setCustomerMobile(e.target.value.replace(/\D/g, ''))}
                                             className="w-full p-3 text-center tracking-wider text-slate-900 bg-slate-50 dark:bg-slate-700 dark:text-white border-2 border-slate-200 dark:border-slate-600 rounded-lg focus:ring-primary-500 focus:border-primary-500 transition"
-                                            placeholder={language === 'ar' ? 'مثال: 201012345678' : 'e.g., 201012345678'}
+                                            placeholder={language === 'ar' ? 'مثال: 201012345678 (مع كود الدولة)' : 'e.g., 201012345678 (with country code)'}
                                             required
                                         />
                                     </div>
