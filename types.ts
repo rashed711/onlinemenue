@@ -15,6 +15,8 @@ export interface Role {
 export interface Category {
   id: number;
   name: LocalizedString;
+  parent_id?: number | null;
+  children?: Category[];
 }
 
 export interface Tag {

@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useCallback } from 'react';
-import type { Product, CartItem, Order, OrderStatus, OrderType } from '../types';
+import type { Product, CartItem, Order, OrderStatus, OrderType, Category } from '../types';
 import { Header } from './Header';
 import { SearchAndFilter } from './SearchAndFilter';
 import { ProductList } from './ProductList';
@@ -15,6 +15,33 @@ import { useAuth } from '../contexts/AuthContext';
 import { useData } from '../contexts/DataContext';
 import { useCart } from '../contexts/CartContext';
 import { useAdmin } from '../contexts/AdminContext';
+
+const getDescendantCategoryIds = (categoryId: number, categories: Category[]): number[] => {
+    const ids = [categoryId];
+    const findChildren = (parentId: number) => {
+        const directChildren = categories.filter(cat => cat.parent_id === parentId);
+        for (const child of directChildren) {
+            ids.push(child.id);
+            findChildren(child.id);
+        }
+    };
+
+    // To find children, we need a flat list, but the data is a tree. Let's flatten it first.
+    const flatCategories: Category[] = [];
+    const flatten = (cats: Category[]) => {
+        for (const cat of cats) {
+            flatCategories.push(cat);
+            if (cat.children && cat.children.length > 0) {
+                flatten(cat.children);
+            }
+        }
+    };
+    flatten(categories);
+
+    findChildren(categoryId);
+    return ids;
+};
+
 
 export const MenuPage: React.FC = () => {
     const { language, setIsProcessing, t } = useUI();
@@ -43,12 +70,18 @@ export const MenuPage: React.FC = () => {
           const description = product.description[language] || product.description['en'];
     
           const matchesSearch = name.toLowerCase().includes(searchTerm.toLowerCase()) || description.toLowerCase().includes(searchTerm.toLowerCase());
-          const matchesCategory = selectedCategory === null || product.categoryId === selectedCategory;
+          
+          let matchesCategory = true;
+          if (selectedCategory !== null) {
+              const categoryIdsToMatch = getDescendantCategoryIds(selectedCategory, categories);
+              matchesCategory = categoryIdsToMatch.includes(product.categoryId);
+          }
+
           const matchesTags = selectedTags.length === 0 || selectedTags.every(tag => product.tags.includes(tag));
           
           return matchesSearch && matchesCategory && matchesTags;
         });
-      }, [searchTerm, selectedCategory, selectedTags, language, visibleProducts]);
+      }, [searchTerm, selectedCategory, selectedTags, language, visibleProducts, categories]);
       
     const popularProducts = useMemo(() => visibleProducts.filter(p => p.isPopular).slice(0, 8), [visibleProducts]);
     const newProducts = useMemo(() => visibleProducts.filter(p => p.isNew).slice(0, 4), [visibleProducts]);

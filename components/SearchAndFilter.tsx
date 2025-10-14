@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import type { Language, Category, Tag } from '../types';
 import { useTranslations } from '../i18n/translations';
 import { SearchIcon, FilterIcon } from './icons/Icons';
@@ -15,6 +15,26 @@ interface SearchAndFilterProps {
   selectedTags: string[];
   setSelectedTags: (tags: string[]) => void;
 }
+
+const flattenCategories = (categories: Category[], language: Language): { id: number; name: string; level: number }[] => {
+    const flatList: { id: number; name: string; level: number }[] = [];
+    
+    function traverse(category: Category, level: number) {
+        const prefix = level > 0 ? '└─ ' : '';
+        flatList.push({
+            id: category.id,
+            name: `${prefix}${category.name[language]}`,
+            level: level,
+        });
+        if (category.children) {
+            category.children.forEach(child => traverse(child, level + 1));
+        }
+    }
+
+    categories.forEach(cat => traverse(cat, 0));
+    return flatList;
+};
+
 
 export const SearchAndFilter: React.FC<SearchAndFilterProps> = ({
   language,
@@ -36,6 +56,8 @@ export const SearchAndFilter: React.FC<SearchAndFilterProps> = ({
       : [...selectedTags, tagId];
     setSelectedTags(newTags);
   };
+  
+  const flattenedCategories = useMemo(() => flattenCategories(categories, language), [categories, language]);
 
   return (
     <div id="menu" className="mb-12 p-4 sm:p-6 bg-white dark:bg-slate-900/50 rounded-2xl shadow-xl border border-slate-200/50 dark:border-slate-800/50 space-y-4">
@@ -96,13 +118,13 @@ export const SearchAndFilter: React.FC<SearchAndFilterProps> = ({
             >
                 {t.allCategories}
             </button>
-            {categories.map(category => (
+            {flattenedCategories.map(category => (
                 <button
                 key={category.id}
                 onClick={() => setSelectedCategory(category.id)}
                 className={`px-5 py-2 rounded-full text-sm font-bold transition-all duration-300 whitespace-nowrap ${selectedCategory === category.id ? 'bg-primary-600 text-white shadow-lg' : 'bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-300 dark:hover:bg-slate-600'}`}
                 >
-                {category.name[language]}
+                {''.padStart(category.level, '\u00A0\u00A0')}{category.name}
                 </button>
             ))}
         </div>

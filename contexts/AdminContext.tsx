@@ -52,7 +52,7 @@ const resolveImageUrl = (path: string | undefined): string => {
 export const AdminProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     const { setIsProcessing, showToast, t } = useUI();
     const { currentUser, hasPermission, roles: authRoles, setCurrentUser, setRolePermissions: setAuthRolePermissions } = useAuth();
-    const { restaurantInfo, setProducts, setPromotions, setCategories, setTags } = useData();
+    const { restaurantInfo, setProducts, setPromotions, fetchAllData } = useData();
 
     const [orders, setOrders] = useState<Order[]>([]);
     const [users, setUsers] = useState<User[]>([]);
@@ -337,38 +337,68 @@ export const AdminProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     const addCategory = useCallback(async (categoryData: Omit<Category, 'id'>) => {
         if (!hasPermission('add_category')) { showToast(t.permissionDenied); return; }
         const result = await apiCall<{ category: Category }>('add_category.php', categoryData, t.categoryAddedSuccess, t.categoryAddFailed);
-        if (result?.category) setCategories(prev => [...prev, result.category]);
-    }, [hasPermission, t, apiCall, setCategories]);
+        if (result?.category) await fetchAllData(); // Refetch all to rebuild tree
+    }, [hasPermission, t, apiCall, fetchAllData]);
     
     const updateCategory = useCallback(async (categoryData: Category) => {
         if (!hasPermission('edit_category')) { showToast(t.permissionDenied); return; }
         const result = await apiCall('update_category.php', categoryData, t.categoryUpdatedSuccess, t.categoryUpdateFailed);
-        if (result) setCategories(prev => prev.map(c => c.id === categoryData.id ? categoryData : c));
-    }, [hasPermission, t, apiCall, setCategories]);
+        if (result) await fetchAllData(); // Refetch all to rebuild tree
+    }, [hasPermission, t, apiCall, fetchAllData]);
 
     const deleteCategory = useCallback(async (categoryId: number) => {
         if (!hasPermission('delete_category')) { showToast(t.permissionDenied); return; }
-        const result = await apiCall('delete_category.php', { id: categoryId }, t.categoryDeletedSuccess, t.categoryDeleteFailed);
-        if(result) setCategories(prev => prev.filter(c => c.id !== categoryId));
-    }, [hasPermission, t, apiCall, setCategories]);
+        setIsProcessing(true);
+        try {
+            const response = await fetch(`${API_BASE_URL}delete_category.php`, { method: 'POST', body: JSON.stringify({ id: categoryId }) });
+            const result = await response.json();
+            if (!response.ok || !result.success) {
+                if (result.errorKey && t[result.errorKey as keyof typeof t]) {
+                    throw new Error(t[result.errorKey as keyof typeof t]);
+                }
+                throw new Error(result.error || t.categoryDeleteFailed);
+            }
+            showToast(t.categoryDeletedSuccess);
+            await fetchAllData();
+        } catch (error: any) {
+            showToast(error.message || t.categoryDeleteFailed);
+        } finally {
+            setIsProcessing(false);
+        }
+    }, [hasPermission, t, setIsProcessing, showToast, fetchAllData]);
 
     const addTag = useCallback(async (tagData: Omit<Tag, 'id'> & { id: string }) => {
         if (!hasPermission('add_tag')) { showToast(t.permissionDenied); return; }
         const result = await apiCall<{ tag: Tag }>('add_tag.php', tagData, t.tagAddedSuccess, t.tagAddFailed);
-        if (result?.tag) setTags(prev => [...prev, result.tag]);
-    }, [hasPermission, t, apiCall, setTags]);
+        if (result?.tag) await fetchAllData();
+    }, [hasPermission, t, apiCall, fetchAllData]);
     
     const updateTag = useCallback(async (tagData: Tag) => {
         if (!hasPermission('edit_tag')) { showToast(t.permissionDenied); return; }
         const result = await apiCall('update_tag.php', tagData, t.tagUpdatedSuccess, t.tagUpdateFailed);
-        if (result) setTags(prev => prev.map(tg => tg.id === tagData.id ? tagData : tg));
-    }, [hasPermission, t, apiCall, setTags]);
+        if (result) await fetchAllData();
+    }, [hasPermission, t, apiCall, fetchAllData]);
 
     const deleteTag = useCallback(async (tagId: string) => {
         if (!hasPermission('delete_tag')) { showToast(t.permissionDenied); return; }
-        const result = await apiCall('delete_tag.php', { id: tagId }, t.tagDeletedSuccess, t.tagDeleteFailed);
-        if(result) setTags(prev => prev.filter(tg => tg.id !== tagId));
-    }, [hasPermission, t, apiCall, setTags]);
+        setIsProcessing(true);
+        try {
+            const response = await fetch(`${API_BASE_URL}delete_tag.php`, { method: 'POST', body: JSON.stringify({ id: tagId }) });
+            const result = await response.json();
+            if (!response.ok || !result.success) {
+                if (result.errorKey && t[result.errorKey as keyof typeof t]) {
+                    throw new Error(t[result.errorKey as keyof typeof t]);
+                }
+                throw new Error(result.error || t.tagDeleteFailed);
+            }
+            showToast(t.tagDeletedSuccess);
+            await fetchAllData();
+        } catch (error: any) {
+            showToast(error.message || t.tagDeleteFailed);
+        } finally {
+            setIsProcessing(false);
+        }
+    }, [hasPermission, t, setIsProcessing, showToast, fetchAllData]);
     
     const addRole = async (roleData: Omit<Role, 'isSystem' | 'key'>) => {
         // This should probably trigger a full auth data refresh

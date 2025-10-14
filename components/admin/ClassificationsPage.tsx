@@ -1,10 +1,51 @@
-import React, { useMemo } from 'react';
+import React from 'react';
 import type { Category, Tag } from '../../types';
 import { PlusIcon, PencilIcon, TrashIcon } from '../icons/Icons';
 import { useUI } from '../../contexts/UIContext';
 import { useData } from '../../contexts/DataContext';
 import { useAdmin } from '../../contexts/AdminContext';
 import { useAuth } from '../../contexts/AuthContext';
+
+interface CategoryRowProps {
+    category: Category;
+    level: number;
+    onEditCategory: (category: Category) => void;
+    onDeleteCategory: (categoryId: number) => void;
+    canEdit: boolean;
+    canDelete: boolean;
+}
+
+const CategoryRow: React.FC<CategoryRowProps> = ({ category, level, onEditCategory, onDeleteCategory, canEdit, canDelete }) => {
+    const { language } = useUI();
+    const indentStyle = { paddingLeft: `${level * 1.5}rem` };
+    
+    return (
+        <>
+            <li className="flex justify-between items-center hover:bg-slate-50 dark:hover:bg-slate-700/50">
+                <span className="font-medium text-slate-700 dark:text-slate-200 p-4" style={indentStyle}>
+                    {level > 0 && <span className="text-slate-400 dark:text-slate-500 me-2">└─</span>}
+                    {category.name[language]}
+                </span>
+                <div className="flex items-center gap-2 p-4">
+                    {canEdit && <button onClick={() => onEditCategory(category)} className="p-2 text-indigo-600 hover:bg-indigo-100 dark:hover:bg-indigo-900/50 rounded-full"><PencilIcon className="w-5 h-5" /></button>}
+                    {canDelete && <button onClick={() => onDeleteCategory(category.id)} className="p-2 text-red-600 hover:bg-red-100 dark:hover:bg-red-900/50 rounded-full"><TrashIcon className="w-5 h-5" /></button>}
+                </div>
+            </li>
+            {category.children && category.children.map(child => (
+                <CategoryRow 
+                    key={child.id} 
+                    category={child} 
+                    level={level + 1} 
+                    onEditCategory={onEditCategory} 
+                    onDeleteCategory={onDeleteCategory}
+                    canEdit={canEdit}
+                    canDelete={canDelete}
+                />
+            ))}
+        </>
+    );
+};
+
 
 interface ClassificationsPageProps {
     onAddCategory: () => void;
@@ -27,14 +68,6 @@ export const ClassificationsPage: React.FC<ClassificationsPageProps> = (props) =
     const canAddTag = hasPermission('add_tag');
     const canEditTag = hasPermission('edit_tag');
     const canDeleteTag = hasPermission('delete_tag');
-
-    const sortedCategories = useMemo(() => {
-        return [...categories].sort((a, b) => a.name[language].localeCompare(b.name[language], language));
-    }, [categories, language]);
-
-    const sortedTags = useMemo(() => {
-        return [...tags].sort((a, b) => a.name[language].localeCompare(b.name[language], language));
-    }, [tags, language]);
     
     const handleDeleteCategory = (categoryId: number) => {
         if (window.confirm(t.confirmDeleteCategory)) {
@@ -63,16 +96,18 @@ export const ClassificationsPage: React.FC<ClassificationsPageProps> = (props) =
                             </button>
                         )}
                     </div>
-                    <div className="bg-white dark:bg-slate-800 rounded-lg shadow-md">
+                    <div className="bg-white dark:bg-slate-800 rounded-lg shadow-md overflow-hidden">
                         <ul className="divide-y divide-slate-200 dark:divide-slate-700">
-                            {sortedCategories.map(category => (
-                                <li key={category.id} className="p-4 flex justify-between items-center hover:bg-slate-50 dark:hover:bg-slate-700/50">
-                                    <span className="font-medium text-slate-700 dark:text-slate-200">{category.name[language]}</span>
-                                    <div className="flex items-center gap-2">
-                                        {canEditCategory && <button onClick={() => onEditCategory(category)} className="p-2 text-indigo-600 hover:bg-indigo-100 dark:hover:bg-indigo-900/50 rounded-full"><PencilIcon className="w-5 h-5" /></button>}
-                                        {canDeleteCategory && <button onClick={() => handleDeleteCategory(category.id)} className="p-2 text-red-600 hover:bg-red-100 dark:hover:bg-red-900/50 rounded-full"><TrashIcon className="w-5 h-5" /></button>}
-                                    </div>
-                                </li>
+                            {categories.map(category => (
+                                <CategoryRow 
+                                    key={category.id} 
+                                    category={category} 
+                                    level={0}
+                                    onEditCategory={onEditCategory}
+                                    onDeleteCategory={handleDeleteCategory}
+                                    canEdit={canEditCategory}
+                                    canDelete={canDeleteCategory}
+                                />
                             ))}
                         </ul>
                     </div>
@@ -91,7 +126,7 @@ export const ClassificationsPage: React.FC<ClassificationsPageProps> = (props) =
                     </div>
                     <div className="bg-white dark:bg-slate-800 rounded-lg shadow-md">
                          <ul className="divide-y divide-slate-200 dark:divide-slate-700">
-                            {sortedTags.map(tag => (
+                            {tags.map(tag => (
                                 <li key={tag.id} className="p-4 flex justify-between items-center hover:bg-slate-50 dark:hover:bg-slate-700/50">
                                     <span className="font-medium text-slate-700 dark:text-slate-200">{tag.name[language]}</span>
                                     <div className="flex items-center gap-2">

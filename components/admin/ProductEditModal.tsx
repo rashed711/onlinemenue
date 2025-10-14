@@ -147,6 +147,23 @@ export const ProductEditModal: React.FC<ProductEditModalProps> = ({ product, onC
         });
     };
 
+    // @FIX: Replaced JSX.Element with React.ReactElement to fix "Cannot find namespace 'JSX'" error.
+    const renderCategoryOptions = (categories: Category[], level: number): React.ReactElement[] => {
+        let options: React.ReactElement[] = [];
+        const prefix = '\u00A0\u00A0'.repeat(level * 2);
+        for (const category of categories) {
+            options.push(
+                <option key={category.id} value={category.id}>
+                    {prefix}{category.name[language]}
+                </option>
+            );
+            if (category.children && category.children.length > 0) {
+                options = options.concat(renderCategoryOptions(category.children, level + 1));
+            }
+        }
+        return options;
+    };
+
 
     return (
         <Modal title={product ? t.editProduct : t.addNewProduct} onClose={onClose} size="2xl">
@@ -184,9 +201,7 @@ export const ProductEditModal: React.FC<ProductEditModalProps> = ({ product, onC
                     <div>
                         <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">{t.category}</label>
                         <select name="categoryId" value={formData.categoryId} onChange={handleNumberChange} className="w-full p-2 border rounded-md dark:bg-slate-700 dark:border-slate-600 dark:text-slate-100" required>
-                            {categories.map(cat => (
-                                <option key={cat.id} value={cat.id}>{cat.name[language]}</option>
-                            ))}
+                             {renderCategoryOptions(categories, 0)}
                         </select>
                     </div>
                 </div>
