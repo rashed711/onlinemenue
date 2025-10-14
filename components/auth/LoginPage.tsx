@@ -6,8 +6,8 @@ export const LoginPage: React.FC = () => {
     const { language, t, isProcessing } = useUI();
     const { login } = useAuth();
 
-    const [mobile, setMobile] = useState('superadmin');
-    const [password, setPassword] = useState('password');
+    const [mobile, setMobile] = useState('');
+    const [password, setPassword] = useState('');
     const [error, setError] = useState('');
 
     const handleNav = (e: React.MouseEvent<HTMLAnchorElement>, path: string) => {
