@@ -2,7 +2,7 @@ import React, { createContext, useState, useEffect, useCallback, useContext, use
 import type { User, Permission, UserRole, Role } from '../types';
 import { API_BASE_URL } from '../utils/config';
 import { useUI } from './UIContext';
-import { auth, RecaptchaVerifier, signInWithPhoneNumber } from '../firebase';
+import { auth, RecaptchaVerifier, signInWithPhoneNumber, onAuthStateChanged, signOut } from '../firebase';
 import type { ConfirmationResult, User as FirebaseUser } from 'firebase/auth';
 
 interface AuthContextType {
@@ -39,7 +39,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const { setIsProcessing, showToast, t } = useUI();
     
     const [currentUser, setCurrentUser] = useState<User | null>(() => {
-        const savedUser = sessionStorage.getItem('restaurant_currentUser');
+        const savedUser = localStorage.getItem('restaurant_currentUser');
         return savedUser ? JSON.parse(savedUser) : null;
     });
     const [roles, setRoles] = useState<Role[]>([]);
@@ -66,8 +66,54 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }, []);
 
     useEffect(() => {
-      if (currentUser) sessionStorage.setItem('restaurant_currentUser', JSON.stringify(currentUser));
-      else sessionStorage.removeItem('restaurant_currentUser');
+      if (currentUser) localStorage.setItem('restaurant_currentUser', JSON.stringify(currentUser));
+      else localStorage.removeItem('restaurant_currentUser');
+    }, [currentUser]);
+
+     useEffect(() => {
+        const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
+            if (firebaseUser) {
+                // User is signed in to Firebase, see if we have them locally.
+                if (!currentUser) {
+                    setIsProcessing(true);
+                    try {
+                        const response = await fetch(`${API_BASE_URL}get_user_by_fid.php`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ firebase_uid: firebaseUser.uid })
+                        });
+                        const result = await response.json();
+
+                        if (result.success && result.user) {
+                            const dbUser = result.user;
+                            const profilePictureUrl = resolveImageUrl(dbUser.profile_picture) || `https://placehold.co/512x512/60a5fa/white?text=${(dbUser.name || 'U').charAt(0).toUpperCase()}`;
+                            setCurrentUser({ 
+                                id: Number(dbUser.id), 
+                                name: dbUser.name, 
+                                mobile: dbUser.mobile, 
+                                password: '', 
+                                role: String(dbUser.role_id), 
+                                profilePicture: profilePictureUrl 
+                            });
+                        } else {
+                            await signOut(auth);
+                        }
+                    } catch (error) {
+                        console.error("Failed to fetch user profile on auth state change:", error);
+                        await signOut(auth);
+                    } finally {
+                        setIsProcessing(false);
+                    }
+                }
+            } else {
+                // User is signed out from Firebase.
+                if (currentUser) {
+                    setCurrentUser(null);
+                }
+            }
+        });
+        
+        return () => unsubscribe();
     }, [currentUser]);
 
     const userRoleDetails = useMemo(() => roles.find(r => r.key === currentUser?.role), [roles, currentUser]);
@@ -141,7 +187,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         }
     }, [setIsProcessing, roles]);
 
-    const logout = useCallback(() => {
+    const logout = useCallback(async () => {
+        try {
+            await signOut(auth);
+        } catch (error) {
+            console.error("Error signing out from Firebase:", error);
+        }
         setConfirmationResult(null);
         setCurrentUser(null);
         window.location.hash = '#/';

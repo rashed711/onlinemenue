@@ -46,8 +46,17 @@ export const LoginPage: React.FC = () => {
     const handleSendOtp = async (e: React.FormEvent) => {
         e.preventDefault();
         setError('');
-        // The '+' is prepended in the AuthContext, so the user should not enter it.
-        const result = await sendOtp(`+${customerMobile}`);
+        let phoneNumber = customerMobile.replace(/\D/g, ''); // Remove all non-digit characters
+
+        // Logic for Egyptian numbers (country code +20)
+        if (phoneNumber.startsWith('0')) {
+            // Replace leading '0' with '20'
+            phoneNumber = '20' + phoneNumber.substring(1);
+        }
+        // If it already starts with '20', we do nothing.
+        // Other cases will be passed as is, and Firebase will validate.
+
+        const result = await sendOtp(`+${phoneNumber}`);
         if (result.success) {
             setShowOtp(true);
         } else {
@@ -124,7 +133,7 @@ export const LoginPage: React.FC = () => {
                                             value={customerMobile}
                                             onChange={(e) => setCustomerMobile(e.target.value.replace(/\D/g, ''))}
                                             className="w-full p-3 text-center tracking-wider text-slate-900 bg-slate-50 dark:bg-slate-700 dark:text-white border-2 border-slate-200 dark:border-slate-600 rounded-lg focus:ring-primary-500 focus:border-primary-500 transition"
-                                            placeholder={language === 'ar' ? 'مثال: 201012345678 (مع كود الدولة)' : 'e.g., 201012345678 (with country code)'}
+                                            placeholder={language === 'ar' ? 'مثال: 01012345678' : 'e.g., 01012345678'}
                                             required
                                         />
                                     </div>
