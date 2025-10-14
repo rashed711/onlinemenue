@@ -7,7 +7,7 @@ import { AdminProvider, useAdmin } from './contexts/AdminContext';
 
 import { MenuPage } from './components/MenuPage';
 import { LoginPage } from './components/auth/LoginPage';
-import { RegisterPage } from './components/auth/RegisterPage';
+import { CompleteProfileModal } from './components/auth/CompleteProfileModal';
 import { ProfilePage } from './components/profile/ProfilePage';
 import { AdminPage } from './components/admin/AdminPage';
 import { SocialPage } from './components/SocialPage';
@@ -45,7 +45,7 @@ const AppContent: React.FC = () => {
     progress,
     showProgress
   } = useUI();
-  const { currentUser, roles } = useAuth();
+  const { currentUser, roles, isCompletingProfile } = useAuth();
   const { restaurantInfo } = useData();
   const { users, resetUserPassword } = useAdmin();
 
@@ -111,7 +111,6 @@ const AppContent: React.FC = () => {
         return <AdminPage activeSubRoute={adminSubRoute} reportSubRoute={reportSubRoute} />;
     }
     if (baseRoute.startsWith('#/login')) return <LoginPage />;
-    if (baseRoute.startsWith('#/register')) return <RegisterPage />;
     if (baseRoute.startsWith('#/forgot-password')) return <ForgotPasswordPage language={language} users={users} onPasswordReset={resetUserPassword} />;
     if (baseRoute.startsWith('#/profile')) return <ProfilePage />;
     if (baseRoute.startsWith('#/checkout')) return <CheckoutPage />;
@@ -134,6 +133,7 @@ const AppContent: React.FC = () => {
               onClose={() => setIsChangePasswordModalOpen(false)}
           />
       )}
+      {isCompletingProfile && <CompleteProfileModal />}
     </>
   );
 };

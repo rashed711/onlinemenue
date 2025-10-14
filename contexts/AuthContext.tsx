@@ -2,14 +2,20 @@ import React, { createContext, useState, useEffect, useCallback, useContext, use
 import type { User, Permission, UserRole, Role } from '../types';
 import { API_BASE_URL } from '../utils/config';
 import { useUI } from './UIContext';
+import { auth, RecaptchaVerifier, signInWithPhoneNumber } from '../firebase';
+import type { ConfirmationResult, User as FirebaseUser } from 'firebase/auth';
 
 interface AuthContextType {
     currentUser: User | null;
     setCurrentUser: React.Dispatch<React.SetStateAction<User | null>>;
     setRolePermissions: React.Dispatch<React.SetStateAction<Record<UserRole, Permission[]>>>;
-    login: (mobile: string, password: string) => Promise<string | null>;
+    staffLogin: (mobile: string, password: string) => Promise<string | null>;
     logout: () => void;
-    register: (newUserData: Omit<User, 'id' | 'role' | 'profilePicture'>) => Promise<string | null>;
+    sendOtp: (phoneNumber: string) => Promise<{ success: boolean; error?: string }>;
+    verifyOtp: (otp: string) => Promise<string | null>;
+    completeProfile: (name: string) => Promise<void>;
+    confirmationResult: ConfirmationResult | null;
+    isCompletingProfile: boolean;
     updateUserProfile: (userId: number, updates: { name?: string; profilePicture?: string }) => Promise<void>;
     changeCurrentUserPassword: (currentPassword: string, newPassword: string) => Promise<string | null>;
     hasPermission: (permission: Permission) => boolean;
@@ -37,6 +43,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     });
     const [roles, setRoles] = useState<Role[]>([]);
     const [rolePermissions, setRolePermissions] = useState<Record<UserRole, Permission[]>>({});
+    
+    // Firebase state
+    const [confirmationResult, setConfirmationResult] = useState<ConfirmationResult | null>(null);
+    const [isCompletingProfile, setIsCompletingProfile] = useState(false);
+    const [newUserFirebaseData, setNewUserFirebaseData] = useState<{ uid: string; phoneNumber: string | null } | null>(null);
 
     useEffect(() => {
         const fetchBaseAuthData = async () => {
@@ -73,14 +84,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         return userPermissions.includes(permission);
     }, [currentUser, rolePermissions, userRoleDetails]);
 
-    const login = useCallback(async (mobile: string, password: string): Promise<string | null> => {
+    const staffLogin = useCallback(async (mobile: string, password: string): Promise<string | null> => {
         setIsProcessing(true);
         try {
             const response = await fetch(`${API_BASE_URL}login.php`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ mobile, password }) });
             const result = await response.json();
-            if (!response.ok) return result.error || t.invalidCredentials;
+            if (!response.ok || !result.success) return result.error || t.invalidCredentials;
 
-            const dbUser = result;
+            const dbUser = result.user;
             const roleFromApi = String(dbUser.role_id || '9');
             const profilePictureUrl = resolveImageUrl(dbUser.profile_picture) || `https://placehold.co/512x512/60a5fa/white?text=${(dbUser.name || 'U').charAt(0).toUpperCase()}`;
 
@@ -95,29 +106,103 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }, [setIsProcessing, t.invalidCredentials]);
 
     const logout = useCallback(() => {
+        setConfirmationResult(null);
         setCurrentUser(null);
         window.location.hash = '#/';
     }, []);
+    
+    const sendOtp = useCallback(async (phoneNumber: string): Promise<{ success: boolean; error?: string }> => {
+        try {
+            // Ensure RecaptchaVerifier is a singleton attached to window
+            let verifier = (window as any).recaptchaVerifier;
+            if (!verifier) {
+                verifier = new RecaptchaVerifier(auth, 'recaptcha-container', {
+                    'size': 'invisible'
+                });
+                (window as any).recaptchaVerifier = verifier;
+            }
 
-    const register = useCallback(async (newUserData: Omit<User, 'id' | 'role' | 'profilePicture'>): Promise<string | null> => {
+            const confirmation = await signInWithPhoneNumber(auth, phoneNumber, verifier);
+            setConfirmationResult(confirmation);
+            return { success: true };
+        } catch (error: any) {
+            console.error("Firebase OTP send error:", error);
+            // On error, clear the existing verifier to allow a fresh start.
+            if ((window as any).recaptchaVerifier) {
+                (window as any).recaptchaVerifier.clear();
+            }
+            return { success: false, error: error.message };
+        }
+    }, []);
+
+    const verifyOtp = useCallback(async (otp: string): Promise<string | null> => {
+        if (!confirmationResult) return "No confirmation result found. Please try again.";
+        setIsProcessing(true);
+        try {
+            const result = await confirmationResult.confirm(otp);
+            const firebaseUser = result.user;
+
+            // Check if user exists in our SQL database
+            const checkResponse = await fetch(`${API_BASE_URL}get_user_by_fid.php`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ firebase_uid: firebaseUser.uid })
+            });
+            const checkResult = await checkResponse.json();
+            
+            if (checkResult.success && checkResult.user) {
+                // User exists, log them in
+                const dbUser = checkResult.user;
+                const profilePictureUrl = resolveImageUrl(dbUser.profile_picture) || `https://placehold.co/512x512/60a5fa/white?text=${(dbUser.name || 'U').charAt(0).toUpperCase()}`;
+                setCurrentUser({ id: Number(dbUser.id), name: dbUser.name, mobile: dbUser.mobile, password: '', role: String(dbUser.role_id), profilePicture: profilePictureUrl });
+                window.location.hash = '#/';
+            } else {
+                // New user, trigger profile completion
+                setNewUserFirebaseData({ uid: firebaseUser.uid, phoneNumber: firebaseUser.phoneNumber });
+                setIsCompletingProfile(true);
+            }
+            return null;
+        } catch (error: any) {
+            console.error("Firebase OTP verify error:", error);
+            return error.message || "Invalid OTP or request expired.";
+        } finally {
+            setIsProcessing(false);
+        }
+    }, [confirmationResult, setIsProcessing]);
+
+    const completeProfile = useCallback(async (name: string) => {
+        if (!newUserFirebaseData) return;
         setIsProcessing(true);
         try {
             const customerRole = roles.find(r => r.name.en.toLowerCase() === 'customer');
-            const payload = { ...newUserData, role: customerRole?.key };
-            const response = await fetch(`${API_BASE_URL}add_user.php`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+            const payload = {
+                name,
+                mobile: newUserFirebaseData.phoneNumber,
+                firebase_uid: newUserFirebaseData.uid,
+                role: customerRole?.key,
+            };
+            const response = await fetch(`${API_BASE_URL}add_user.php`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
             const result = await response.json();
-            if (!response.ok || !result.success) throw new Error(result.error || 'Failed to register.');
+            if (!result.success) throw new Error(result.error || 'Failed to create profile.');
 
             const dbUser = result.user;
             const profilePictureUrl = resolveImageUrl(dbUser.profile_picture) || `https://placehold.co/512x512/60a5fa/white?text=${(dbUser.name || 'U').charAt(0).toUpperCase()}`;
             setCurrentUser({ id: Number(dbUser.id), name: dbUser.name, mobile: dbUser.mobile, password: '', role: customerRole?.key || '9', profilePicture: profilePictureUrl });
-            return null;
+            
+            setIsCompletingProfile(false);
+            setNewUserFirebaseData(null);
+            window.location.hash = '#/';
+
         } catch (error: any) {
-            return error.message || 'Registration failed.';
+            showToast(error.message || 'Failed to save profile.');
         } finally {
             setIsProcessing(false);
         }
-    }, [setIsProcessing, roles]);
+    }, [newUserFirebaseData, setIsProcessing, showToast, roles]);
 
     const updateUserProfile = useCallback(async (userId: number, updates: { name?: string; profilePicture?: string }) => {
         if (!currentUser || currentUser.id !== userId) return;
@@ -184,9 +269,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         currentUser,
         setCurrentUser,
         setRolePermissions,
-        login,
+        staffLogin,
         logout,
-        register,
+        sendOtp,
+        verifyOtp,
+        completeProfile,
+        confirmationResult,
+        isCompletingProfile,
         updateUserProfile,
         changeCurrentUserPassword,
         hasPermission,

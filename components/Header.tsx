@@ -168,7 +168,6 @@ export const Header: React.FC<HeaderProps> = ({ onCartClick }) => {
                   ) : (
                     <>
                       <a href="#/login" onClick={(e) => handleNav(e, '/login')} className="block w-full text-start px-3 py-2 text-sm hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors">{t.login}</a>
-                      <a href="#/register" onClick={(e) => handleNav(e, '/register')} className="block w-full text-start px-3 py-2 text-sm hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors">{t.register}</a>
                     </>
                   )}
                   <hr className="my-1 border-slate-200 dark:border-slate-700" />
