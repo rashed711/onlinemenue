@@ -73,18 +73,18 @@ export const OrderStatusEditModal: React.FC<OrderStatusEditModalProps> = (props)
             <form onSubmit={handleSubmit} className="p-5 space-y-4">
                 <div>
                     <label className="block text-sm font-medium mb-1">{t.statusId}</label>
-                    <input type="text" name="id" value={id} onChange={(e) => setId(e.target.value)} className="w-full p-2 border rounded-md dark:bg-slate-700 dark:border-slate-600 disabled:opacity-50" required disabled={!!statusColumn} />
+                    <input type="text" name="id" value={id} onChange={(e) => setId(e.target.value)} className="w-full p-2 border rounded-md dark:bg-slate-700 dark:border-slate-600 dark:text-slate-100 disabled:opacity-50" required disabled={!!statusColumn} />
                     <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">{t.statusIdHelper}</p>
                      {error && <p className="text-xs text-red-500 mt-1">{error}</p>}
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
                         <label className="block text-sm font-medium mb-1">{t.statusNameEn}</label>
-                        <input type="text" name="name.en" value={formData.name.en} onChange={handleTextChange} className="w-full p-2 border rounded-md dark:bg-slate-700 dark:border-slate-600" required />
+                        <input type="text" name="name.en" value={formData.name.en} onChange={handleTextChange} className="w-full p-2 border rounded-md dark:bg-slate-700 dark:border-slate-600 dark:text-slate-100" required />
                     </div>
                     <div>
                         <label className="block text-sm font-medium mb-1">{t.statusNameAr}</label>
-                        <input type="text" name="name.ar" value={formData.name.ar} onChange={handleTextChange} className="w-full p-2 border rounded-md dark:bg-slate-700 dark:border-slate-600" required />
+                        <input type="text" name="name.ar" value={formData.name.ar} onChange={handleTextChange} className="w-full p-2 border rounded-md dark:bg-slate-700 dark:border-slate-600 dark:text-slate-100" required />
                     </div>
                 </div>
                 <div>
@@ -106,7 +106,7 @@ export const OrderStatusEditModal: React.FC<OrderStatusEditModalProps> = (props)
                     </div>
                 </div>
                 <div className="flex justify-end gap-4 pt-4">
-                    <button type="button" onClick={onClose} className="px-4 py-2 rounded-lg bg-slate-200 dark:bg-slate-600 hover:bg-slate-300 dark:hover:bg-slate-500">{t.cancel}</button>
+                    <button type="button" onClick={onClose} className="px-4 py-2 rounded-lg bg-slate-200 dark:bg-slate-600 hover:bg-slate-300 dark:hover:bg-slate-500 font-semibold text-slate-800 dark:text-slate-300">{t.cancel}</button>
                     <button type="submit" className="px-4 py-2 rounded-lg bg-primary-500 text-white hover:bg-primary-600">{t.save}</button>
                 </div>
             </form>

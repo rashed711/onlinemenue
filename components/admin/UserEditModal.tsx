@@ -101,25 +101,25 @@ export const UserEditModal: React.FC<UserEditModalProps> = ({ user, onClose, onS
                 )}
                 <fieldset disabled={isFormDisabled}>
                     <div>
-                        <label className="block text-sm font-medium mb-1">{t.name}</label>
-                        <input type="text" name="name" value={formData.name} onChange={handleChange} className="w-full p-2 border rounded-md dark:bg-slate-700 dark:border-slate-600 disabled:opacity-50" required />
+                        <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">{t.name}</label>
+                        <input type="text" name="name" value={formData.name} onChange={handleChange} className="w-full p-2 border rounded-md dark:bg-slate-700 dark:border-slate-600 dark:text-slate-100 disabled:opacity-50" required />
                     </div>
                      <div>
-                        <label className="block text-sm font-medium mb-1">{t.mobileNumber}</label>
-                        <input type="text" name="mobile" value={formData.mobile} onChange={handleChange} className="w-full p-2 border rounded-md dark:bg-slate-700 dark:border-slate-600 disabled:opacity-50" required />
+                        <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">{t.mobileNumber}</label>
+                        <input type="text" name="mobile" value={formData.mobile} onChange={handleChange} className="w-full p-2 border rounded-md dark:bg-slate-700 dark:border-slate-600 dark:text-slate-100 disabled:opacity-50" required />
                     </div>
                     <div>
-                        <label className="block text-sm font-medium mb-1">{t.password}</label>
-                        <input type="password" name="password" value={formData.password} onChange={handleChange} className="w-full p-2 border rounded-md dark:bg-slate-700 dark:border-slate-600 disabled:opacity-50" placeholder={user ? t.passwordOptional : ''} required={!user} />
+                        <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">{t.password}</label>
+                        <input type="password" name="password" value={formData.password} onChange={handleChange} className="w-full p-2 border rounded-md dark:bg-slate-700 dark:border-slate-600 dark:text-slate-100 disabled:opacity-50" placeholder={user ? t.passwordOptional : ''} required={!user} />
                         {error && <p className="text-xs text-red-500 mt-1">{error}</p>}
                     </div>
                      <div>
-                        <label className="block text-sm font-medium mb-1">{t.role}</label>
+                        <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">{t.role}</label>
                         <select 
                             name="role" 
                             value={formData.role} 
                             onChange={handleChange} 
-                            className="w-full p-2 border rounded-md dark:bg-slate-700 dark:border-slate-600 disabled:opacity-50" 
+                            className="w-full p-2 border rounded-md dark:bg-slate-700 dark:border-slate-600 dark:text-slate-100 disabled:opacity-50" 
                             required
                             disabled={isFormDisabled || isEditingSuperAdmin} // Redundant but safe
                         >
@@ -130,7 +130,7 @@ export const UserEditModal: React.FC<UserEditModalProps> = ({ user, onClose, onS
                     </div>
                 </fieldset>
                 <div className="flex justify-end gap-4 pt-4">
-                    <button type="button" onClick={onClose} className="px-4 py-2 rounded-lg bg-slate-200 dark:bg-slate-600 hover:bg-slate-300 dark:hover:bg-slate-500 transition-colors">{t.cancel}</button>
+                    <button type="button" onClick={onClose} className="px-4 py-2 rounded-lg bg-slate-200 dark:bg-slate-600 hover:bg-slate-300 dark:hover:bg-slate-500 font-semibold text-slate-800 dark:text-slate-300 transition-colors">{t.cancel}</button>
                     <button type="submit" className="px-4 py-2 rounded-lg bg-primary-500 text-white hover:bg-primary-600 disabled:bg-slate-400 disabled:cursor-not-allowed" disabled={isFormDisabled}>{t.save}</button>
                 </div>
             </form>

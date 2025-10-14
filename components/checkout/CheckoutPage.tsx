@@ -76,6 +76,10 @@ export const CheckoutPage: React.FC = () => {
         }
     }, [cartItems, isProcessing, isReceiptModalOpen]);
 
+    useEffect(() => {
+        window.scrollTo(0, 0);
+    }, []);
+
     const subtotal = useMemo(() => calculateTotal(cartItems), [cartItems]);
 
     const canProceedToPayment = useMemo(() => {
@@ -172,7 +176,7 @@ export const CheckoutPage: React.FC = () => {
                         <div className="lg:col-span-2 space-y-8">
                             {step === 'delivery' && (
                                 <div className="bg-white dark:bg-slate-800 p-6 rounded-xl shadow-lg border dark:border-slate-700">
-                                    <h2 className="text-2xl font-bold mb-6">{orderType === 'Delivery' ? t.deliveryInformation : t.takeawayDetails}</h2>
+                                    <h2 className="text-2xl font-bold mb-6 text-slate-800 dark:text-slate-100">{orderType === 'Delivery' ? t.deliveryInformation : t.takeawayDetails}</h2>
                                     <div className="space-y-4">
                                         <div className="flex items-center p-1 rounded-lg bg-slate-100 dark:bg-slate-900">
                                             <button onClick={() => setOrderType('Delivery')} className={`${orderTypeClasses} ${orderType === 'Delivery' ? activeOrderTypeClasses : inactiveOrderTypeClasses}`}>{t.delivery}</button>
@@ -180,18 +184,18 @@ export const CheckoutPage: React.FC = () => {
                                         </div>
                                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                             <div>
-                                                <label className="block text-sm font-medium mb-1">{t.fullName}</label>
-                                                <input type="text" value={name} onChange={e => setName(e.target.value)} className="w-full p-2 border rounded-md dark:bg-slate-700 dark:border-slate-600" required />
+                                                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">{t.fullName}</label>
+                                                <input type="text" value={name} onChange={e => setName(e.target.value)} className="w-full p-2 border rounded-md dark:bg-slate-700 dark:border-slate-600 dark:text-white" required />
                                             </div>
                                             <div>
-                                                <label className="block text-sm font-medium mb-1">{t.mobileNumber}</label>
-                                                <input type="tel" value={mobile} onChange={e => setMobile(e.target.value)} className="w-full p-2 border rounded-md dark:bg-slate-700 dark:border-slate-600" required />
+                                                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">{t.mobileNumber}</label>
+                                                <input type="tel" value={mobile} onChange={e => setMobile(e.target.value)} className="w-full p-2 border rounded-md dark:bg-slate-700 dark:border-slate-600 dark:text-white" required />
                                             </div>
                                         </div>
                                         {orderType === 'Delivery' && (
                                             <div>
-                                                <label className="block text-sm font-medium mb-1">{t.completeAddress}</label>
-                                                <textarea value={address} onChange={e => setAddress(e.target.value)} rows={3} className="w-full p-2 border rounded-md dark:bg-slate-700 dark:border-slate-600" required />
+                                                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">{t.completeAddress}</label>
+                                                <textarea value={address} onChange={e => setAddress(e.target.value)} rows={3} className="w-full p-2 border rounded-md dark:bg-slate-700 dark:border-slate-600 dark:text-white" required />
                                             </div>
                                         )}
                                     </div>
@@ -205,20 +209,20 @@ export const CheckoutPage: React.FC = () => {
 
                             {step === 'payment' && (
                                 <div className="bg-white dark:bg-slate-800 p-6 rounded-xl shadow-lg border dark:border-slate-700">
-                                    <h2 className="text-2xl font-bold mb-6">{t.choosePaymentMethod}</h2>
+                                    <h2 className="text-2xl font-bold mb-6 text-slate-800 dark:text-slate-100">{t.choosePaymentMethod}</h2>
                                     <div className="space-y-4">
                                         <div onClick={() => setPaymentMethod('cod')} className={`p-4 border-2 rounded-lg cursor-pointer ${paymentMethod === 'cod' ? 'border-primary-500 bg-primary-50 dark:bg-primary-900/20' : 'border-slate-300 dark:border-slate-600'}`}>
-                                            <h3 className="font-bold">{t.cashOnDelivery}</h3>
-                                            {restaurantInfo.codNotes && <p className="text-sm text-slate-500 mt-1">{restaurantInfo.codNotes[language]}</p>}
+                                            <h3 className="font-bold text-slate-800 dark:text-slate-100">{t.cashOnDelivery}</h3>
+                                            {restaurantInfo.codNotes && <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">{restaurantInfo.codNotes[language]}</p>}
                                         </div>
                                         <div onClick={() => { setPaymentMethod('online'); setSelectedOnlineMethod(null); }} className={`p-4 border-2 rounded-lg cursor-pointer ${paymentMethod === 'online' ? 'border-primary-500 bg-primary-50 dark:bg-primary-900/20' : 'border-slate-300 dark:border-slate-600'}`}>
-                                            <h3 className="font-bold">{t.onlinePayment}</h3>
-                                            {restaurantInfo.onlinePaymentNotes && <p className="text-sm text-slate-500 mt-1">{restaurantInfo.onlinePaymentNotes[language]}</p>}
+                                            <h3 className="font-bold text-slate-800 dark:text-slate-100">{t.onlinePayment}</h3>
+                                            {restaurantInfo.onlinePaymentNotes && <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">{restaurantInfo.onlinePaymentNotes[language]}</p>}
                                         </div>
                                     </div>
                                     {paymentMethod === 'online' && (
-                                        <div className="mt-6 border-t pt-6 space-y-4">
-                                            <h3 className="font-semibold">{t.choosePaymentMethod}</h3>
+                                        <div className="mt-6 border-t pt-6 space-y-4 dark:border-slate-700">
+                                            <h3 className="font-semibold text-slate-800 dark:text-slate-100">{t.choosePaymentMethod}</h3>
                                             {restaurantInfo.onlinePaymentMethods?.filter(m => m.isVisible).map(method => (
                                                 <label 
                                                     key={method.id} 
@@ -231,7 +235,7 @@ export const CheckoutPage: React.FC = () => {
                                                     <div className="flex items-center justify-between gap-4">
                                                         <div className="flex items-center gap-4">
                                                             <img src={method.icon} alt={method.name[language]} className="w-10 h-10 object-contain"/>
-                                                            <span className="font-semibold">{method.name[language]}</span>
+                                                            <span className="font-semibold text-slate-800 dark:text-slate-100">{method.name[language]}</span>
                                                         </div>
                                                         <input 
                                                             type="radio" 
@@ -248,7 +252,7 @@ export const CheckoutPage: React.FC = () => {
                                                             <div className="flex items-center justify-between">
                                                                 {method.type === 'number' ? (
                                                                     <>
-                                                                        <span className="font-mono text-base bg-slate-100 dark:bg-slate-700/50 px-3 py-1.5 rounded-lg">{method.details}</span>
+                                                                        <span className="font-mono text-base bg-slate-100 dark:bg-slate-700/50 px-3 py-1.5 rounded-lg text-slate-800 dark:text-slate-100">{method.details}</span>
                                                                         <CopiedButton textToCopy={method.details}>{t.copy}</CopiedButton>
                                                                     </>
                                                                 ) : (
@@ -267,22 +271,22 @@ export const CheckoutPage: React.FC = () => {
                                                 </label>
                                             ))}
                                             <div>
-                                                <label className="block text-sm font-medium mb-1">{t.uploadReceipt}</label>
-                                                <div className="mt-2 flex items-center gap-4 p-4 border-2 border-dashed rounded-lg">
+                                                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">{t.uploadReceipt}</label>
+                                                <div className="mt-2 flex items-center gap-4 p-4 border-2 border-dashed rounded-lg dark:border-slate-600">
                                                     {receiptPreview && <img src={receiptPreview} alt={t.receiptPreview} className="w-20 h-20 object-cover rounded-lg" />}
                                                     <div className="flex-grow">
                                                         <input id="receipt-upload" type="file" accept="image/*" onChange={handleReceiptUpload} className="sr-only"/>
-                                                        <label htmlFor="receipt-upload" className="cursor-pointer bg-white text-sm text-primary-600 font-semibold py-2 px-4 border rounded-lg hover:bg-primary-50">
+                                                        <label htmlFor="receipt-upload" className="cursor-pointer bg-white dark:bg-slate-700 text-sm text-primary-600 dark:text-primary-400 font-semibold py-2 px-4 border border-primary-300 dark:border-primary-600 rounded-lg hover:bg-primary-50 dark:hover:bg-primary-900/50">
                                                             <UploadIcon className="w-5 h-5 inline-block me-2" /> {receiptFile ? t.changeReceipt : t.uploadReceipt}
                                                         </label>
-                                                        {receiptFile && <p className="text-xs text-slate-500 mt-2">{receiptFile.name}</p>}
+                                                        {receiptFile && <p className="text-xs text-slate-500 dark:text-slate-400 mt-2">{receiptFile.name}</p>}
                                                     </div>
                                                 </div>
                                             </div>
                                         </div>
                                     )}
                                     <div className="mt-6 flex justify-between">
-                                        <button onClick={handlePreviousStep} className="font-bold py-2 px-6 rounded-lg">{t.previousStep}</button>
+                                        <button onClick={handlePreviousStep} className="font-bold py-2 px-6 rounded-lg text-slate-700 dark:text-slate-200">{t.previousStep}</button>
                                         <button onClick={handleNextStep} disabled={!canProceedToConfirm} className="bg-primary-600 text-white font-bold py-2 px-6 rounded-lg hover:bg-primary-700 disabled:bg-slate-400">
                                             {t.nextStep} <ChevronRightIcon className={`inline-block w-5 h-5 ${language === 'ar' ? 'transform -scale-x-100' : ''}`} />
                                         </button>
@@ -292,32 +296,32 @@ export const CheckoutPage: React.FC = () => {
 
                              {step === 'confirm' && (
                                 <div className="bg-white dark:bg-slate-800 p-6 rounded-xl shadow-lg border dark:border-slate-700">
-                                    <h2 className="text-2xl font-bold mb-6">{t.stepConfirm}</h2>
+                                    <h2 className="text-2xl font-bold mb-6 text-slate-800 dark:text-slate-100">{t.stepConfirm}</h2>
                                     <div className="space-y-6 divide-y divide-slate-200 dark:divide-slate-700">
                                         <div className="pt-4 first:pt-0">
                                             <div className="flex justify-between items-baseline">
-                                                <h3 className="font-semibold text-slate-500">{t.shipTo}</h3>
-                                                <button onClick={() => setStep('delivery')} className="text-sm font-medium text-primary-600 hover:underline">{t.edit}</button>
+                                                <h3 className="font-semibold text-slate-500 dark:text-slate-400">{t.shipTo}</h3>
+                                                <button onClick={() => setStep('delivery')} className="text-sm font-medium text-primary-600 hover:underline dark:text-primary-400">{t.edit}</button>
                                             </div>
-                                            <div className="mt-2 text-sm">
-                                                <p className="font-bold">{name}</p>
+                                            <div className="mt-2 text-sm text-slate-700 dark:text-slate-300">
+                                                <p className="font-bold text-slate-800 dark:text-slate-100">{name}</p>
                                                 <p>{mobile}</p>
                                                 {orderType === 'Delivery' && <p>{address}</p>}
                                             </div>
                                         </div>
                                         <div className="pt-4">
                                             <div className="flex justify-between items-baseline">
-                                                <h3 className="font-semibold text-slate-500">{t.payWith}</h3>
-                                                <button onClick={() => setStep('payment')} className="text-sm font-medium text-primary-600 hover:underline">{t.edit}</button>
+                                                <h3 className="font-semibold text-slate-500 dark:text-slate-400">{t.payWith}</h3>
+                                                <button onClick={() => setStep('payment')} className="text-sm font-medium text-primary-600 hover:underline dark:text-primary-400">{t.edit}</button>
                                             </div>
-                                            <div className="mt-2 text-sm">
-                                                <p className="font-bold">{paymentMethod === 'cod' ? t.cashOnDelivery : t.onlinePayment}</p>
+                                            <div className="mt-2 text-sm text-slate-700 dark:text-slate-300">
+                                                <p className="font-bold text-slate-800 dark:text-slate-100">{paymentMethod === 'cod' ? t.cashOnDelivery : t.onlinePayment}</p>
                                                 {paymentMethod === 'online' && selectedOnlineMethod && <p>{selectedOnlineMethod.name[language]}</p>}
                                             </div>
                                         </div>
                                     </div>
                                     <div className="mt-8 flex justify-between">
-                                        <button onClick={handlePreviousStep} className="font-bold py-3 px-6 rounded-lg">{t.previousStep}</button>
+                                        <button onClick={handlePreviousStep} className="font-bold py-3 px-6 rounded-lg text-slate-700 dark:text-slate-200">{t.previousStep}</button>
                                         <button onClick={handleConfirmPurchase} disabled={isProcessing} className="bg-green-600 text-white font-bold py-3 px-8 rounded-lg hover:bg-green-700 disabled:bg-slate-400">
                                             {isProcessing ? '...' : t.confirmPurchase}
                                         </button>

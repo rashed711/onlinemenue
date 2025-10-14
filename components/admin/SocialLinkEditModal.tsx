@@ -66,15 +66,15 @@ export const SocialLinkEditModal: React.FC<SocialLinkEditModalProps> = ({ link, 
         <Modal title={link ? t.editLink : t.addNewLink} onClose={onClose} size="md">
             <form onSubmit={handleSubmit} className="p-5 space-y-4">
                 <div>
-                    <label className="block text-sm font-medium mb-1">{t.name}</label>
-                    <input type="text" name="name" value={formData.name} onChange={handleChange} className="w-full p-2 border rounded-md dark:bg-gray-700 dark:border-gray-600" placeholder={t.linkNamePlaceholder} required />
+                    <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">{t.name}</label>
+                    <input type="text" name="name" value={formData.name} onChange={handleChange} className="w-full p-2 border rounded-md dark:bg-slate-700 dark:border-slate-600 dark:text-slate-100" placeholder={t.linkNamePlaceholder} required />
                 </div>
                  <div>
-                    <label className="block text-sm font-medium mb-1">{t.url}</label>
-                    <input type="text" name="url" value={formData.url} onChange={handleChange} className="w-full p-2 border rounded-md dark:bg-gray-700 dark:border-gray-600" placeholder={t.linkUrlPlaceholder} required />
+                    <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">{t.url}</label>
+                    <input type="text" name="url" value={formData.url} onChange={handleChange} className="w-full p-2 border rounded-md dark:bg-slate-700 dark:border-slate-600 dark:text-slate-100" placeholder={t.linkUrlPlaceholder} required />
                 </div>
                 <div>
-                    <label className="block text-sm font-medium mb-1">{t.icon}</label>
+                    <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">{t.icon}</label>
                     <div className="mt-2 flex items-center gap-4">
                         {formData.icon && <img src={formData.icon} alt={t.iconPreview} className="w-12 h-12 object-contain rounded-md bg-slate-100 dark:bg-slate-700 p-1 border dark:border-slate-600" />}
                         <input
@@ -98,7 +98,7 @@ export const SocialLinkEditModal: React.FC<SocialLinkEditModalProps> = ({ link, 
                     </label>
                 </div>
                 <div className="flex justify-end gap-4 pt-4">
-                    <button type="button" onClick={onClose} className="px-4 py-2 rounded-lg bg-gray-200 dark:bg-gray-600 hover:bg-gray-300 dark:hover:bg-gray-500">{t.cancel}</button>
+                    <button type="button" onClick={onClose} className="px-4 py-2 rounded-lg bg-gray-200 dark:bg-gray-600 hover:bg-gray-300 dark:hover:bg-gray-500 font-semibold text-slate-800 dark:text-slate-300">{t.cancel}</button>
                     <button type="submit" className="px-4 py-2 rounded-lg bg-primary-500 text-white hover:bg-primary-600">{t.save}</button>
                 </div>
             </form>

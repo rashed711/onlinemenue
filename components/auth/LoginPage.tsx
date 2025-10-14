@@ -145,8 +145,8 @@ export const LoginPage: React.FC = () => {
                                                 onChange={e => handleOtpChange(e.target, index)}
                                                 onKeyDown={e => handleOtpKeyDown(e, index)}
                                                 onFocus={e => e.target.select()}
-                                                ref={el => otpInputs.current[index] = el}
-                                                className="w-12 h-14 text-center text-2xl font-bold border-2 rounded-lg bg-slate-50 dark:bg-slate-700 focus:border-primary-500 focus:ring-primary-500"
+                                                ref={el => { otpInputs.current[index] = el }}
+                                                className="w-12 h-14 text-center text-2xl font-bold border-2 rounded-lg bg-slate-50 dark:bg-slate-700 dark:text-slate-100 focus:border-primary-500 focus:ring-primary-500"
                                             />
                                         ))}
                                     </div>
@@ -161,24 +161,24 @@ export const LoginPage: React.FC = () => {
                             <h1 className="text-2xl font-bold text-center text-primary-600 dark:text-primary-400">{language === 'ar' ? 'تسجيل دخول الموظفين' : 'Staff Login'}</h1>
                             <form className="space-y-6 mt-6" onSubmit={handleStaffLogin}>
                                 <div>
-                                    <label htmlFor="staff-mobile" className="block mb-2 text-sm font-medium">{t.username}</label>
+                                    <label htmlFor="staff-mobile" className="block mb-2 text-sm font-medium text-slate-800 dark:text-slate-300">{t.username}</label>
                                     <input
                                         type="text"
                                         id="staff-mobile"
                                         value={staffMobile}
                                         onChange={(e) => setStaffMobile(e.target.value)}
-                                        className="w-full p-3 bg-slate-50 dark:bg-slate-700 border-2 rounded-lg"
+                                        className="w-full p-3 text-slate-900 bg-slate-50 dark:bg-slate-700 dark:text-white border-2 border-slate-200 dark:border-slate-600 rounded-lg focus:ring-primary-500 focus:border-primary-500 transition"
                                         required
                                     />
                                 </div>
                                 <div>
-                                    <label htmlFor="staff-password" className="block mb-2 text-sm font-medium">{t.password}</label>
+                                    <label htmlFor="staff-password" className="block mb-2 text-sm font-medium text-slate-800 dark:text-slate-300">{t.password}</label>
                                     <input
                                         type="password"
                                         id="staff-password"
                                         value={staffPassword}
                                         onChange={(e) => setStaffPassword(e.target.value)}
-                                        className="w-full p-3 bg-slate-50 dark:bg-slate-700 border-2 rounded-lg"
+                                        className="w-full p-3 text-slate-900 bg-slate-50 dark:bg-slate-700 dark:text-white border-2 border-slate-200 dark:border-slate-600 rounded-lg focus:ring-primary-500 focus:border-primary-500 transition"
                                         required
                                     />
                                 </div>

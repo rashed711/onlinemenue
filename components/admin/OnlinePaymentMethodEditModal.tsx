@@ -76,21 +76,21 @@ export const OnlinePaymentMethodEditModal: React.FC<OnlinePaymentMethodEditModal
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
                         <label className="block text-sm font-medium mb-1">{t.methodNameEn}</label>
-                        <input type="text" name="name.en" value={formData.name.en} onChange={handleChange} className="w-full p-2 border rounded-md dark:bg-slate-700 dark:border-slate-600" required />
+                        <input type="text" name="name.en" value={formData.name.en} onChange={handleChange} className="w-full p-2 border rounded-md dark:bg-slate-700 dark:border-slate-600 dark:text-slate-100" required />
                     </div>
                     <div>
                         <label className="block text-sm font-medium mb-1">{t.methodNameAr}</label>
-                        <input type="text" name="name.ar" value={formData.name.ar} onChange={handleChange} className="w-full p-2 border rounded-md dark:bg-slate-700 dark:border-slate-600" required />
+                        <input type="text" name="name.ar" value={formData.name.ar} onChange={handleChange} className="w-full p-2 border rounded-md dark:bg-slate-700 dark:border-slate-600 dark:text-slate-100" required />
                     </div>
                 </div>
                  <div>
                     <label className="block text-sm font-medium mb-1">{t.methodType}</label>
                     <div className="flex items-center space-x-4 rtl:space-x-reverse bg-slate-100 dark:bg-slate-900/50 p-2 rounded-lg">
-                       <label className="flex items-center gap-2 cursor-pointer p-2 rounded-md flex-1 justify-center transition-colors" data-active={formData.type === 'number'}>
+                       <label className="flex items-center gap-2 cursor-pointer p-2 rounded-md flex-1 justify-center transition-colors data-[active=true]:bg-primary-100 dark:data-[active=true]:bg-primary-900/50" data-active={formData.type === 'number'}>
                            <input type="radio" name="type" value="number" checked={formData.type === 'number'} onChange={handleChange} className="w-4 h-4 text-primary-600 focus:ring-primary-500" />
                            <span className='font-medium'>{t.numberText}</span>
                        </label>
-                       <label className="flex items-center gap-2 cursor-pointer p-2 rounded-md flex-1 justify-center transition-colors" data-active={formData.type === 'link'}>
+                       <label className="flex items-center gap-2 cursor-pointer p-2 rounded-md flex-1 justify-center transition-colors data-[active=true]:bg-primary-100 dark:data-[active=true]:bg-primary-900/50" data-active={formData.type === 'link'}>
                            <input type="radio" name="type" value="link" checked={formData.type === 'link'} onChange={handleChange} className="w-4 h-4 text-primary-600 focus:ring-primary-500" />
                            <span className='font-medium'>{t.linkUrl}</span>
                        </label>
@@ -98,12 +98,12 @@ export const OnlinePaymentMethodEditModal: React.FC<OnlinePaymentMethodEditModal
                 </div>
                  <div>
                     <label className="block text-sm font-medium mb-1">{t.methodDetails}</label>
-                    <input type="text" name="details" value={formData.details} onChange={handleChange} className="w-full p-2 border rounded-md dark:bg-slate-700 dark:border-slate-600" placeholder={formData.type === 'number' ? 'e.g., 01012345678' : 'e.g., https://...'} required />
+                    <input type="text" name="details" value={formData.details} onChange={handleChange} className="w-full p-2 border rounded-md dark:bg-slate-700 dark:border-slate-600 dark:text-slate-100" placeholder={formData.type === 'number' ? 'e.g., 01012345678' : 'e.g., https://...'} required />
                 </div>
                 <div>
                     <label className="block text-sm font-medium mb-1">{t.methodInstructions}</label>
-                     <textarea name="instructions.en" value={formData.instructions?.en || ''} onChange={handleChange} placeholder={t.methodInstructionsEn} rows={3} className="w-full p-2 border rounded-md dark:bg-slate-700 dark:border-slate-600 mb-2"></textarea>
-                     <textarea name="instructions.ar" value={formData.instructions?.ar || ''} onChange={handleChange} placeholder={t.methodInstructionsAr} rows={3} className="w-full p-2 border rounded-md dark:bg-slate-700 dark:border-slate-600"></textarea>
+                     <textarea name="instructions.en" value={formData.instructions?.en || ''} onChange={handleChange} placeholder={t.methodInstructionsEn} rows={3} className="w-full p-2 border rounded-md dark:bg-slate-700 dark:border-slate-600 dark:text-slate-100 mb-2"></textarea>
+                     <textarea name="instructions.ar" value={formData.instructions?.ar || ''} onChange={handleChange} placeholder={t.methodInstructionsAr} rows={3} className="w-full p-2 border rounded-md dark:bg-slate-700 dark:border-slate-600 dark:text-slate-100"></textarea>
                 </div>
                 <div>
                     <label className="block text-sm font-medium mb-1">{t.icon}</label>
@@ -129,7 +129,7 @@ export const OnlinePaymentMethodEditModal: React.FC<OnlinePaymentMethodEditModal
                     </label>
                 </div>
                 <div className="flex justify-end gap-4 pt-4">
-                    <button type="button" onClick={onClose} className="px-4 py-2 rounded-lg bg-slate-200 dark:bg-slate-600 hover:bg-slate-300 dark:hover:bg-slate-500">{t.cancel}</button>
+                    <button type="button" onClick={onClose} className="px-4 py-2 rounded-lg bg-slate-200 dark:bg-slate-600 hover:bg-slate-300 dark:hover:bg-slate-500 font-semibold text-slate-800 dark:text-slate-300">{t.cancel}</button>
                     <button type="submit" className="px-4 py-2 rounded-lg bg-primary-500 text-white hover:bg-primary-600">{t.save}</button>
                 </div>
             </form>

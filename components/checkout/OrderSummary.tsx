@@ -22,15 +22,21 @@ export const OrderSummary: React.FC = () => {
                         </span>
                     </div>
                     <div className="flex-grow">
-                        <p className="font-semibold text-sm leading-tight">{item.product.name[language]}</p>
+                        <p className="font-semibold text-sm leading-tight text-slate-800 dark:text-slate-100">{item.product.name[language]}</p>
                     </div>
-                    <p className="font-semibold text-sm">{calculateTotal([item]).toFixed(2)} {t.currency}</p>
+                    <p className="font-semibold text-sm text-slate-700 dark:text-slate-200">{calculateTotal([item]).toFixed(2)} {t.currency}</p>
                 </div>
             ))}
-            <div className="border-t border-slate-200 dark:border-slate-700 pt-4 space-y-2 text-sm">
-                <div className="flex justify-between"><span>{t.subtotal}</span><span>{subtotal.toFixed(2)} {t.currency}</span></div>
-                <div className="flex justify-between"><span>{t.shipping}</span><span>{t.free}</span></div>
-                <div className="border-t border-slate-200 dark:border-slate-700 pt-2 mt-2 flex justify-between font-bold text-lg">
+            <div className="border-t border-slate-200 dark:border-slate-700 pt-4 space-y-2 text-sm text-slate-600 dark:text-slate-300">
+                <div className="flex justify-between">
+                    <span>{t.subtotal}</span>
+                    <span className="font-medium text-slate-800 dark:text-slate-100">{subtotal.toFixed(2)} {t.currency}</span>
+                </div>
+                <div className="flex justify-between">
+                    <span>{t.shipping}</span>
+                    <span className="font-medium text-slate-800 dark:text-slate-100">{t.free}</span>
+                </div>
+                <div className="border-t border-slate-200 dark:border-slate-700 pt-2 mt-2 flex justify-between font-bold text-lg text-slate-800 dark:text-slate-100">
                     <span>{t.total}</span>
                     <span>{subtotal.toFixed(2)} {t.currency}</span>
                 </div>
@@ -43,12 +49,12 @@ export const OrderSummary: React.FC = () => {
             <div className="lg:hidden bg-slate-100 dark:bg-slate-800 rounded-xl border dark:border-slate-700 overflow-hidden">
                 <button onClick={() => setIsExpanded(!isExpanded)} className="w-full p-4 flex justify-between items-center">
                     <div className="flex items-center gap-4">
-                        <h2 className="font-bold text-lg">{t.yourOrder}</h2>
-                        <span className="text-sm text-slate-500">{cartItems.length} {t.items}</span>
+                        <h2 className="font-bold text-lg text-slate-800 dark:text-slate-100">{t.yourOrder}</h2>
+                        <span className="text-sm text-slate-500 dark:text-slate-400">{cartItems.length} {t.items}</span>
                     </div>
                     <div className="flex items-center gap-2">
-                        <span className="font-bold text-lg">{subtotal.toFixed(2)} {t.currency}</span>
-                        <ChevronRightIcon className={`w-6 h-6 transition-transform ${isExpanded ? 'rotate-90' : (language === 'ar' ? '-rotate-180' : 'rotate-0')}`} />
+                        <span className="font-bold text-lg text-slate-800 dark:text-slate-100">{subtotal.toFixed(2)} {t.currency}</span>
+                        <ChevronRightIcon className={`w-6 h-6 text-slate-600 dark:text-slate-400 transition-transform ${isExpanded ? 'rotate-90' : (language === 'ar' ? '-rotate-180' : 'rotate-0')}`} />
                     </div>
                 </button>
                 <div className={`transition-all duration-300 ease-in-out ${isExpanded ? 'max-h-screen' : 'max-h-0'}`}>
@@ -58,7 +64,7 @@ export const OrderSummary: React.FC = () => {
 
             <div className="hidden lg:block sticky top-28">
                 <div className="bg-white dark:bg-slate-800 p-6 rounded-xl shadow-lg border dark:border-slate-700">
-                    <h2 className="text-2xl font-bold mb-6">{t.yourOrder}</h2>
+                    <h2 className="text-2xl font-bold mb-6 text-slate-800 dark:text-slate-100">{t.yourOrder}</h2>
                     {summaryContent}
                 </div>
             </div>

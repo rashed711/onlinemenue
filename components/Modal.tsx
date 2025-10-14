@@ -49,7 +49,7 @@ export const Modal: React.FC<ModalProps> = ({ onClose, children, title, size = '
                 <div className="p-4 flex justify-between items-center border-b border-slate-200 dark:border-slate-700 shrink-0">
                     <h2 id="modal-title" className="text-lg font-bold text-slate-800 dark:text-slate-100">{title}</h2>
                     <button onClick={onClose} className="p-2 rounded-full hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors" aria-label="Close">
-                        <CloseIcon className="w-6 h-6"/>
+                        <CloseIcon className="w-6 h-6 text-slate-500 dark:text-slate-400"/>
                     </button>
                 </div>
                 {children}

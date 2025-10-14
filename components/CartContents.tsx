@@ -103,9 +103,9 @@ export const CartContents: React.FC<CartContentsProps> = ({
               </div>
               <div className="flex flex-col items-end gap-2">
                 <div className="flex items-center border border-slate-200 dark:border-slate-700 rounded-full">
-                  <button onClick={() => updateCartQuantity(item.product.id, item.options, item.quantity - 1)} className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-l-full" aria-label="Decrease quantity"><MinusIcon className="w-4 h-4" /></button>
-                  <span className="px-2 font-semibold text-sm" aria-live="polite">{formatNumber(item.quantity)}</span>
-                  <button onClick={() => updateCartQuantity(item.product.id, item.options, item.quantity + 1)} className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-r-full" aria-label="Increase quantity"><PlusIcon className="w-4 h-4" /></button>
+                  <button onClick={() => updateCartQuantity(item.product.id, item.options, item.quantity - 1)} className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-l-full" aria-label="Decrease quantity"><MinusIcon className="w-4 h-4 text-slate-700 dark:text-slate-300" /></button>
+                  <span className="px-2 font-semibold text-sm text-slate-800 dark:text-slate-100" aria-live="polite">{formatNumber(item.quantity)}</span>
+                  <button onClick={() => updateCartQuantity(item.product.id, item.options, item.quantity + 1)} className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-r-full" aria-label="Increase quantity"><PlusIcon className="w-4 h-4 text-slate-700 dark:text-slate-300" /></button>
                 </div>
               </div>
             </div>
@@ -128,7 +128,7 @@ export const CartContents: React.FC<CartContentsProps> = ({
             </div>
            )}
 
-          <div className="flex justify-between font-bold text-lg">
+          <div className="flex justify-between font-bold text-lg text-slate-800 dark:text-slate-100">
             <span>{t.total}</span>
             <span>{subtotal.toFixed(2)} {t.currency}</span>
           </div>

@@ -341,7 +341,7 @@ export const CashierPage: React.FC = () => {
                                     cartItems.map((item, index) => (
                                         <div key={index} className="flex items-start gap-3">
                                             <div className="flex-grow">
-                                                <p className="font-semibold text-sm">{item.product.name[language]}</p>
+                                                <p className="font-semibold text-sm text-slate-800 dark:text-slate-300">{item.product.name[language]}</p>
                                                 {item.options && (
                                                     <div className="text-xs text-slate-500 dark:text-slate-400 mt-1 pl-2">
                                                         {Object.entries(item.options).map(([optionKey, valueKey]) => {
@@ -358,7 +358,7 @@ export const CashierPage: React.FC = () => {
                                             </div>
                                             <div className="flex items-center gap-2">
                                                 <button onClick={() => updateCartQuantity(index, item.quantity - 1)} className="p-1 rounded-full bg-slate-200 dark:bg-slate-700"><MinusIcon className="w-4 h-4" /></button>
-                                                <span className="font-bold w-6 text-center">{formatNumber(item.quantity)}</span>
+                                                <span className="font-bold w-6 text-center text-slate-800 dark:text-slate-300">{formatNumber(item.quantity)}</span>
                                                 <button onClick={() => updateCartQuantity(index, item.quantity + 1)} className="p-1 rounded-full bg-slate-200 dark:bg-slate-700"><PlusIcon className="w-4 h-4" /></button>
                                             </div>
                                         </div>

@@ -213,7 +213,7 @@ export const OrderDetailsModal: React.FC<OrderDetailsModalProps> = ({ order, onC
 
                         <div className="space-y-2 pt-4 border-t dark:border-slate-700">
                             <div className="flex justify-between items-center">
-                                <h3 className="font-bold text-lg">{t.orderItems}</h3>
+                                <h3 className="font-bold text-lg text-slate-800 dark:text-slate-100">{t.orderItems}</h3>
                                 <span className="text-sm font-semibold bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 px-2.5 py-1 rounded-full">
                                     {formatNumber(order.items.length)} {language === 'ar' ? 'أصناف' : 'Items'}
                                 </span>
@@ -223,7 +223,7 @@ export const OrderDetailsModal: React.FC<OrderDetailsModalProps> = ({ order, onC
                                     <div key={`${item.product.id}-${index}`} className="flex items-start gap-4 py-3 border-b dark:border-slate-700 last:border-b-0">
                                         <img src={item.product.image} alt={item.product.name[language]} className="w-16 h-16 rounded-lg object-cover" />
                                         <div className="flex-grow">
-                                            <p className="font-semibold">{item.product.name[language]}</p>
+                                            <p className="font-semibold text-slate-800 dark:text-slate-300">{item.product.name[language]}</p>
                                             <p className="text-sm text-slate-500 dark:text-slate-400">{t.quantity}: {formatNumber(item.quantity)}</p>
                                             {item.options && (
                                                 <div className="text-xs text-slate-500 dark:text-slate-400 mt-1">

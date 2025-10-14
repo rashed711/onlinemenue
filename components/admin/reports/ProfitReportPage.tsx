@@ -71,9 +71,9 @@ export const ProfitReportPage: React.FC = () => {
                 setCustomEndDate={setCustomEndDate}
             />
              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-                <div className="bg-white dark:bg-slate-800 p-4 rounded-xl shadow-sm"><h4 className="text-sm text-slate-500">{t.grossRevenue}</h4><p className="text-2xl font-bold">{totals.revenue.toFixed(2)}</p></div>
-                <div className="bg-white dark:bg-slate-800 p-4 rounded-xl shadow-sm"><h4 className="text-sm text-slate-500">{t.estimatedCOGS}</h4><p className="text-2xl font-bold">{totals.cogs.toFixed(2)}</p></div>
-                <div className="bg-white dark:bg-slate-800 p-4 rounded-xl shadow-sm"><h4 className="text-sm text-green-600">{t.estimatedProfit}</h4><p className="text-2xl font-bold text-green-600">{totals.profit.toFixed(2)}</p></div>
+                <div className="bg-white dark:bg-slate-800 p-4 rounded-xl shadow-sm"><h4 className="text-sm text-slate-500">{t.grossRevenue}</h4><p className="text-2xl font-bold text-slate-800 dark:text-slate-100">{totals.revenue.toFixed(2)}</p></div>
+                <div className="bg-white dark:bg-slate-800 p-4 rounded-xl shadow-sm"><h4 className="text-sm text-slate-500">{t.estimatedCOGS}</h4><p className="text-2xl font-bold text-slate-800 dark:text-slate-100">{totals.cogs.toFixed(2)}</p></div>
+                <div className="bg-white dark:bg-slate-800 p-4 rounded-xl shadow-sm"><h4 className="text-sm text-green-600">{t.estimatedProfit}</h4><p className="text-2xl font-bold text-green-600 dark:text-green-400">{totals.profit.toFixed(2)}</p></div>
             </div>
              <div className="p-3 mb-6 bg-yellow-50 dark:bg-yellow-900/20 border-l-4 border-yellow-400 text-yellow-800 dark:text-yellow-200 text-sm">
                 {t.profitNotice}

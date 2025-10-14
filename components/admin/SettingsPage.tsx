@@ -332,11 +332,11 @@ export const SettingsPage: React.FC = () => {
                                     <div className="flex items-center space-x-6 rtl:space-x-reverse bg-slate-100 dark:bg-slate-900/50 p-4 rounded-xl">
                                         <label className="flex items-center gap-3 cursor-pointer">
                                             <input type="radio" name="homepage" value="menu" checked={localInfo.defaultPage === 'menu'} onChange={handleHomepageChange} className="w-5 h-5 text-primary-600 focus:ring-primary-500" />
-                                            <span className='font-medium'>{t.menuPage}</span>
+                                            <span className='font-medium text-slate-800 dark:text-slate-400'>{t.menuPage}</span>
                                         </label>
                                         <label className="flex items-center gap-3 cursor-pointer">
                                             <input type="radio" name="homepage" value="social" checked={localInfo.defaultPage === 'social'} onChange={handleHomepageChange} className="w-5 h-5 text-primary-600 focus:ring-primary-500" />
-                                            <span className='font-medium'>{t.socialLinksPage}</span>
+                                            <span className='font-medium text-slate-800 dark:text-slate-400'>{t.socialLinksPage}</span>
                                         </label>
                                     </div>
                                 </FormGroup>
@@ -383,7 +383,7 @@ export const SettingsPage: React.FC = () => {
                                         <div className="flex items-center gap-4 flex-grow">
                                             <img src={method.icon} alt={`${method.name[language]} icon`} className="w-8 h-8 object-contain flex-shrink-0" />
                                             <div className="flex-grow">
-                                                <div className="font-medium">{method.name[language]}</div>
+                                                <div className="font-medium text-slate-800 dark:text-slate-200">{method.name[language]}</div>
                                                 <div className="text-sm text-slate-500 dark:text-slate-400 truncate max-w-[200px] sm:max-w-xs block">{method.details}</div>
                                             </div>
                                         </div>
@@ -421,7 +421,7 @@ export const SettingsPage: React.FC = () => {
                                     <div className="flex items-center gap-4 flex-grow">
                                         <img src={link.icon} alt={`${link.name} icon`} className="w-8 h-8 object-contain flex-shrink-0" />
                                         <div className="flex-grow">
-                                            <div className="font-medium">{link.name}</div>
+                                            <div className="font-medium text-slate-800 dark:text-slate-200">{link.name}</div>
                                             <a href={link.url} target="_blank" rel="noopener noreferrer" className="text-sm text-primary-600 dark:text-primary-400 hover:underline truncate max-w-[200px] sm:max-w-xs block">{link.url}</a>
                                         </div>
                                     </div>
@@ -458,7 +458,7 @@ export const SettingsPage: React.FC = () => {
                                     <div className="flex items-center gap-3">
                                         <div className={`w-4 h-4 rounded-full bg-${status.color}-500 flex-shrink-0`}></div>
                                         <div>
-                                            <div className="font-medium">{status.name[language]}</div>
+                                            <div className="font-medium text-slate-800 dark:text-slate-200">{status.name[language]}</div>
                                             <div className="text-xs text-slate-500 dark:text-slate-400 font-mono">{status.id}</div>
                                         </div>
                                     </div>

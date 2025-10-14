@@ -55,7 +55,7 @@ export const NotificationsPage: React.FC = () => {
 
     return (
         <div className="max-w-3xl mx-auto">
-            <h2 className="text-2xl font-bold mb-6">{t.sendNotifications}</h2>
+            <h2 className="text-2xl font-bold mb-6 text-slate-800 dark:text-slate-100">{t.sendNotifications}</h2>
 
             <div className="bg-white dark:bg-slate-800 rounded-xl shadow-lg border border-slate-200 dark:border-slate-700">
                 <form onSubmit={handleSubmit}>
@@ -69,7 +69,7 @@ export const NotificationsPage: React.FC = () => {
                                 value={message}
                                 onChange={(e) => setMessage(e.target.value)}
                                 rows={5}
-                                className="w-full p-2 border rounded-md dark:bg-gray-700 dark:border-gray-600 focus:ring-primary-500 focus:border-primary-500"
+                                className="w-full p-2 border rounded-md dark:bg-slate-700 dark:border-slate-600 dark:text-slate-100 focus:ring-primary-500 focus:border-primary-500"
                                 placeholder={t.language === 'ar' ? 'اكتب رسالتك هنا...' : 'Write your message here...'}
                                 required
                                 disabled={!canSend}
@@ -85,7 +85,7 @@ export const NotificationsPage: React.FC = () => {
                                 id="imageUrl"
                                 value={imageUrl}
                                 onChange={(e) => setImageUrl(e.target.value)}
-                                className="w-full p-2 border rounded-md dark:bg-gray-700 dark:border-gray-600 focus:ring-primary-500 focus:border-primary-500"
+                                className="w-full p-2 border rounded-md dark:bg-slate-700 dark:border-slate-600 dark:text-slate-100 focus:ring-primary-500 focus:border-primary-500"
                                 placeholder="https://example.com/image.png"
                                 disabled={!canSend}
                             />
@@ -99,7 +99,7 @@ export const NotificationsPage: React.FC = () => {
                                 id="targetRole"
                                 value={targetRole}
                                 onChange={(e) => setTargetRole(e.target.value)}
-                                className="w-full p-2 border rounded-md dark:bg-gray-700 dark:border-gray-600 focus:ring-primary-500 focus:border-primary-500"
+                                className="w-full p-2 border rounded-md dark:bg-slate-700 dark:border-slate-600 dark:text-slate-100 focus:ring-primary-500 focus:border-primary-500"
                                 disabled={!canSend}
                             >
                                 <option value="all">{t.allUsers}</option>

@@ -55,8 +55,8 @@ export const PaymentsReportPage: React.FC = () => {
                 setCustomEndDate={setCustomEndDate}
             />
              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-                <div className="bg-white dark:bg-slate-800 p-4 rounded-xl shadow-sm"><h4 className="text-sm text-slate-500">{t.totalPaidOnline}</h4><p className="text-2xl font-bold">{totals.online.toFixed(2)}</p></div>
-                <div className="bg-white dark:bg-slate-800 p-4 rounded-xl shadow-sm"><h4 className="text-sm text-slate-500">{t.totalCOD}</h4><p className="text-2xl font-bold">{totals.cod.toFixed(2)}</p></div>
+                <div className="bg-white dark:bg-slate-800 p-4 rounded-xl shadow-sm"><h4 className="text-sm text-slate-500">{t.totalPaidOnline}</h4><p className="text-2xl font-bold text-slate-800 dark:text-slate-100">{totals.online.toFixed(2)}</p></div>
+                <div className="bg-white dark:bg-slate-800 p-4 rounded-xl shadow-sm"><h4 className="text-sm text-slate-500">{t.totalCOD}</h4><p className="text-2xl font-bold text-slate-800 dark:text-slate-100">{totals.cod.toFixed(2)}</p></div>
             </div>
             <DataTable columns={columns} data={paymentData} onRowClick={setViewingOrder} />
         </div>

@@ -569,6 +569,7 @@ export const translations = {
     minutes: 'دقيقة',
     seconds: 'ثانية',
     adminPanel: 'لوحة التحكم',
+// @FIX: Removed duplicate invalidCredentials key.
     invalidCredentials: 'اسم المستخدم أو كلمة المرور غير صحيحة.',
     receiptTitle: 'إيصال طلبك',
     receiptInstructions: 'يرجى اتباع الخطوات التالية:',

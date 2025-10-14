@@ -77,7 +77,7 @@ export const ProductModal: React.FC<ProductModalProps> = ({
                       <button
                         key={value.name.en}
                         onClick={() => handleOptionChange(option.name.en, value.name.en)}
-                        className={`px-4 py-2 rounded-full text-sm font-semibold transition-all duration-200 border-2 ${selectedOptions[option.name.en] === value.name.en ? 'bg-primary-500 border-primary-500 text-white shadow-md' : 'bg-white dark:bg-slate-700 border-slate-300 dark:border-slate-600 hover:border-primary-400 dark:hover:border-primary-500'}`}
+                        className={`px-4 py-2 rounded-full text-sm font-semibold transition-all duration-200 border-2 ${selectedOptions[option.name.en] === value.name.en ? 'bg-primary-500 border-primary-500 text-white shadow-md' : 'bg-white dark:bg-slate-700 border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-200 hover:border-primary-400 dark:hover:border-primary-500'}`}
                       >
                         {value.name[language]} {value.priceModifier > 0 && `(+${value.priceModifier.toFixed(2)})`}
                       </button>
@@ -90,9 +90,9 @@ export const ProductModal: React.FC<ProductModalProps> = ({
             <div className="flex items-center my-4">
               <h4 className="font-semibold me-4 text-slate-800 dark:text-slate-100">{t.quantity}:</h4>
               <div className="flex items-center border border-slate-200 dark:border-slate-600 rounded-full">
-                <button type="button" onClick={() => setQuantity(q => Math.max(1, q - 1))} className="px-4 py-2 text-xl font-bold hover:bg-slate-100 dark:hover:bg-slate-700 rounded-l-full" aria-label="Decrease quantity">-</button>
-                <span className="px-4 font-bold text-lg w-12 text-center" aria-live="polite">{formatNumber(quantity)}</span>
-                <button type="button" onClick={() => setQuantity(q => q + 1)} className="px-4 py-2 text-xl font-bold hover:bg-slate-100 dark:hover:bg-slate-700 rounded-r-full" aria-label="Increase quantity">+</button>
+                <button type="button" onClick={() => setQuantity(q => Math.max(1, q - 1))} className="px-4 py-2 text-xl font-bold text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-l-full" aria-label="Decrease quantity">-</button>
+                <span className="px-4 font-bold text-lg w-12 text-center text-slate-800 dark:text-slate-100" aria-live="polite">{formatNumber(quantity)}</span>
+                <button type="button" onClick={() => setQuantity(q => q + 1)} className="px-4 py-2 text-xl font-bold text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-r-full" aria-label="Increase quantity">+</button>
               </div>
             </div>
           </div>

@@ -10,6 +10,7 @@ interface AuthContextType {
     setCurrentUser: React.Dispatch<React.SetStateAction<User | null>>;
     setRolePermissions: React.Dispatch<React.SetStateAction<Record<UserRole, Permission[]>>>;
     staffLogin: (mobile: string, password: string) => Promise<string | null>;
+    register: (details: { name: string; mobile: string; password: string }) => Promise<string | null>;
     logout: () => void;
     sendOtp: (phoneNumber: string) => Promise<{ success: boolean; error?: string }>;
     verifyOtp: (otp: string) => Promise<string | null>;
@@ -104,6 +105,41 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             setIsProcessing(false);
         }
     }, [setIsProcessing, t.invalidCredentials]);
+
+    const register = useCallback(async (details: { name: string; mobile: string; password: string }): Promise<string | null> => {
+        setIsProcessing(true);
+        try {
+            const customerRole = roles.find(r => r.name.en.toLowerCase() === 'customer');
+            if (!customerRole) throw new Error("Customer role not found.");
+
+            const payload = {
+                name: details.name,
+                mobile: details.mobile,
+                password: details.password,
+                role: customerRole.key,
+            };
+            const response = await fetch(`${API_BASE_URL}add_user.php`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+            const result = await response.json();
+            if (!result.success) {
+                throw new Error(result.error || 'Registration failed.');
+            }
+            // After successful registration, log the user in.
+            const dbUser = result.user;
+            const profilePictureUrl = resolveImageUrl(dbUser.profile_picture) || `https://placehold.co/512x512/60a5fa/white?text=${(dbUser.name || 'U').charAt(0).toUpperCase()}`;
+            setCurrentUser({ id: Number(dbUser.id), name: dbUser.name, mobile: dbUser.mobile, password: '', role: customerRole.key, profilePicture: profilePictureUrl });
+            
+            return null; // No error
+        } catch (error: any) {
+            console.error("Registration error:", error);
+            return error.message || "An unknown error occurred during registration.";
+        } finally {
+            setIsProcessing(false);
+        }
+    }, [setIsProcessing, roles]);
 
     const logout = useCallback(() => {
         setConfirmationResult(null);
@@ -301,6 +337,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setCurrentUser,
         setRolePermissions,
         staffLogin,
+        register,
         logout,
         sendOtp,
         verifyOtp,

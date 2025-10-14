@@ -34,7 +34,7 @@ export const ReportHeader: React.FC<ReportHeaderProps> = ({
     `px-3 py-1.5 rounded-md text-sm font-semibold transition-colors ${
         dateRange === filterId 
         ? 'bg-primary-600 text-white shadow' 
-        : 'bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 dark:hover:bg-slate-600'
+        : 'bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-300 dark:hover:bg-slate-600'
     }`;
 
   const handleCustomDateChange = (setter: (date: string) => void) => (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -57,8 +57,8 @@ export const ReportHeader: React.FC<ReportHeaderProps> = ({
          ))}
         {dateRange === 'custom' && setCustomStartDate && setCustomEndDate && (
             <>
-                <input type="date" value={customStartDate} onChange={handleCustomDateChange(setCustomStartDate)} className="p-1.5 h-9 rounded-lg border-slate-300 shadow-sm sm:text-sm dark:bg-slate-700 dark:border-slate-600" />
-                <input type="date" value={customEndDate} onChange={handleCustomDateChange(setCustomEndDate)} className="p-1.5 h-9 rounded-lg border-slate-300 shadow-sm sm:text-sm dark:bg-slate-700 dark:border-slate-600" />
+                <input type="date" value={customStartDate} onChange={handleCustomDateChange(setCustomStartDate)} className="p-1.5 h-9 rounded-lg border-slate-300 shadow-sm sm:text-sm dark:bg-slate-700 dark:border-slate-600 dark:text-white dark:[color-scheme:dark]" />
+                <input type="date" value={customEndDate} onChange={handleCustomDateChange(setCustomEndDate)} className="p-1.5 h-9 rounded-lg border-slate-300 shadow-sm sm:text-sm dark:bg-slate-700 dark:border-slate-600 dark:text-white dark:[color-scheme:dark]" />
             </>
         )}
       </div>

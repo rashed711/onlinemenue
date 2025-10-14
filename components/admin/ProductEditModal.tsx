@@ -154,36 +154,36 @@ export const ProductEditModal: React.FC<ProductEditModalProps> = ({ product, onC
                 {/* Basic Info */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
-                        <label className="block text-sm font-medium mb-1">{t.productNameEn}</label>
-                        <input type="text" name="name.en" value={formData.name.en} onChange={handleTextChange} className="w-full p-2 border rounded-md dark:bg-slate-700 dark:border-slate-600" required />
+                        <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">{t.productNameEn}</label>
+                        <input type="text" name="name.en" value={formData.name.en} onChange={handleTextChange} className="w-full p-2 border rounded-md dark:bg-slate-700 dark:border-slate-600 dark:text-slate-100" required />
                     </div>
                     <div>
-                        <label className="block text-sm font-medium mb-1">{t.productNameAr}</label>
-                        <input type="text" name="name.ar" value={formData.name.ar} onChange={handleTextChange} className="w-full p-2 border rounded-md dark:bg-slate-700 dark:border-slate-600" required />
+                        <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">{t.productNameAr}</label>
+                        <input type="text" name="name.ar" value={formData.name.ar} onChange={handleTextChange} className="w-full p-2 border rounded-md dark:bg-slate-700 dark:border-slate-600 dark:text-slate-100" required />
                     </div>
                 </div>
                  <div>
-                    <label className="block text-sm font-medium mb-1">{t.code}</label>
-                    <input type="text" name="code" value={formData.code} onChange={handleTextChange} className="w-full p-2 border rounded-md dark:bg-slate-700 dark:border-slate-600" required />
+                    <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">{t.code}</label>
+                    <input type="text" name="code" value={formData.code} onChange={handleTextChange} className="w-full p-2 border rounded-md dark:bg-slate-700 dark:border-slate-600 dark:text-slate-100" required />
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                      <div>
-                        <label className="block text-sm font-medium mb-1">{t.descriptionEn}</label>
-                        <textarea name="description.en" value={formData.description.en} onChange={handleTextChange} rows={3} className="w-full p-2 border rounded-md dark:bg-slate-700 dark:border-slate-600" required></textarea>
+                        <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">{t.descriptionEn}</label>
+                        <textarea name="description.en" value={formData.description.en} onChange={handleTextChange} rows={3} className="w-full p-2 border rounded-md dark:bg-slate-700 dark:border-slate-600 dark:text-slate-100" required></textarea>
                     </div>
                      <div>
-                        <label className="block text-sm font-medium mb-1">{t.descriptionAr}</label>
-                        <textarea name="description.ar" value={formData.description.ar} onChange={handleTextChange} rows={3} className="w-full p-2 border rounded-md dark:bg-slate-700 dark:border-slate-600" required></textarea>
+                        <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">{t.descriptionAr}</label>
+                        <textarea name="description.ar" value={formData.description.ar} onChange={handleTextChange} rows={3} className="w-full p-2 border rounded-md dark:bg-slate-700 dark:border-slate-600 dark:text-slate-100" required></textarea>
                     </div>
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
-                        <label className="block text-sm font-medium mb-1">{t.price}</label>
-                        <input type="number" name="price" value={formData.price} onChange={handleNumberChange} className="w-full p-2 border rounded-md dark:bg-slate-700 dark:border-slate-600" required step="0.01" />
+                        <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">{t.price}</label>
+                        <input type="number" name="price" value={formData.price} onChange={handleNumberChange} className="w-full p-2 border rounded-md dark:bg-slate-700 dark:border-slate-600 dark:text-slate-100" required step="0.01" />
                     </div>
                     <div>
-                        <label className="block text-sm font-medium mb-1">{t.category}</label>
-                        <select name="categoryId" value={formData.categoryId} onChange={handleNumberChange} className="w-full p-2 border rounded-md dark:bg-slate-700 dark:border-slate-600" required>
+                        <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">{t.category}</label>
+                        <select name="categoryId" value={formData.categoryId} onChange={handleNumberChange} className="w-full p-2 border rounded-md dark:bg-slate-700 dark:border-slate-600 dark:text-slate-100" required>
                             {categories.map(cat => (
                                 <option key={cat.id} value={cat.id}>{cat.name[language]}</option>
                             ))}
@@ -191,7 +191,7 @@ export const ProductEditModal: React.FC<ProductEditModalProps> = ({ product, onC
                     </div>
                 </div>
                  <div>
-                    <label className="block text-sm font-medium mb-1">{t.tags}</label>
+                    <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">{t.tags}</label>
                     <div className="p-3 border rounded-md dark:bg-slate-700/50 dark:border-slate-600 flex flex-wrap gap-x-4 gap-y-2">
                         {allTags.map(tag => (
                             <label key={tag.id} className="flex items-center gap-2 cursor-pointer">
@@ -210,7 +210,7 @@ export const ProductEditModal: React.FC<ProductEditModalProps> = ({ product, onC
                     </div>
                 </div>
                  <div>
-                    <label className="block text-sm font-medium mb-1">{t.productImage}</label>
+                    <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">{t.productImage}</label>
                     <div className="mt-2 flex flex-col sm:flex-row items-center gap-4 p-4 border-2 border-dashed border-slate-300 dark:border-slate-600 rounded-lg">
                         {formData.image && (
                             <img 
@@ -240,42 +240,42 @@ export const ProductEditModal: React.FC<ProductEditModalProps> = ({ product, onC
                  <div className="flex flex-wrap items-center gap-x-8 gap-y-4 pt-2">
                     <label className="flex items-center gap-2 cursor-pointer">
                         <input type="checkbox" name="isPopular" checked={formData.isPopular} onChange={handleCheckboxChange} className="w-5 h-5 rounded text-primary-600 focus:ring-primary-500" />
-                        <span className="text-sm font-medium">{t.popular}</span>
+                        <span className="text-sm font-medium text-slate-700 dark:text-slate-300">{t.popular}</span>
                     </label>
                     <label className="flex items-center gap-2 cursor-pointer">
                         <input type="checkbox" name="isNew" checked={formData.isNew} onChange={handleCheckboxChange} className="w-5 h-5 rounded text-green-600 focus:ring-green-500" />
-                        <span className="text-sm font-medium">{t.new}</span>
+                        <span className="text-sm font-medium text-slate-700 dark:text-slate-300">{t.new}</span>
                     </label>
                     <label className="flex items-center gap-2 cursor-pointer">
                         <input type="checkbox" name="isVisible" checked={formData.isVisible} onChange={handleCheckboxChange} className="w-5 h-5 rounded text-blue-600 focus:ring-blue-500" />
-                        <span className="text-sm font-medium">{t.visibleInMenu}</span>
+                        <span className="text-sm font-medium text-slate-700 dark:text-slate-300">{t.visibleInMenu}</span>
                     </label>
                 </div>
 
                 {/* Options Editor */}
                 <div className="pt-4 border-t border-slate-200 dark:border-slate-600">
-                    <h3 className="text-lg font-semibold mb-2">{t.productOptions}</h3>
+                    <h3 className="text-lg font-semibold mb-2 text-slate-800 dark:text-slate-100">{t.productOptions}</h3>
                     <div className="space-y-4">
                         {formData.options?.map((option, groupIndex) => (
                             <div key={groupIndex} className="p-4 border rounded-lg bg-slate-50 dark:bg-slate-700/50 dark:border-slate-600 space-y-4">
                                 <div className="flex justify-between items-center">
-                                    <h4 className="font-semibold">{`Group #${groupIndex + 1}`}</h4>
+                                    <h4 className="font-semibold text-slate-800 dark:text-slate-100">{`Group #${groupIndex + 1}`}</h4>
                                     <button type="button" onClick={() => removeOptionGroup(groupIndex)} className="text-red-500 hover:text-red-700 p-1 rounded-full hover:bg-red-100 dark:hover:bg-red-900/50">
                                         <TrashIcon className="w-5 h-5" />
                                     </button>
                                 </div>
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                    <input type="text" placeholder={t.optionNameEn} value={option.name.en} onChange={e => handleOptionGroupChange(groupIndex, 'name.en', e.target.value)} className="w-full p-2 border rounded-md dark:bg-slate-700 dark:border-slate-600" />
-                                    <input type="text" placeholder={t.optionNameAr} value={option.name.ar} onChange={e => handleOptionGroupChange(groupIndex, 'name.ar', e.target.value)} className="w-full p-2 border rounded-md dark:bg-slate-700 dark:border-slate-600" />
+                                    <input type="text" placeholder={t.optionNameEn} value={option.name.en} onChange={e => handleOptionGroupChange(groupIndex, 'name.en', e.target.value)} className="w-full p-2 border rounded-md dark:bg-slate-700 dark:border-slate-600 dark:text-slate-100" />
+                                    <input type="text" placeholder={t.optionNameAr} value={option.name.ar} onChange={e => handleOptionGroupChange(groupIndex, 'name.ar', e.target.value)} className="w-full p-2 border rounded-md dark:bg-slate-700 dark:border-slate-600 dark:text-slate-100" />
                                 </div>
                                 <hr className="dark:border-slate-600" />
                                 <div className="space-y-2">
-                                    <h5 className="text-sm font-medium">{t.optionValues}</h5>
+                                    <h5 className="text-sm font-medium text-slate-800 dark:text-slate-100">{t.optionValues}</h5>
                                     {option.values.map((value, valueIndex) => (
                                         <div key={valueIndex} className="grid grid-cols-1 md:grid-cols-7 gap-2 items-center">
-                                            <input type="text" placeholder={t.valueNameEn} value={value.name.en} onChange={e => handleOptionValueChange(groupIndex, valueIndex, 'name.en', e.target.value)} className="md:col-span-3 w-full p-2 text-sm border rounded-md dark:bg-slate-700 dark:border-slate-600" />
-                                            <input type="text" placeholder={t.valueNameAr} value={value.name.ar} onChange={e => handleOptionValueChange(groupIndex, valueIndex, 'name.ar', e.target.value)} className="md:col-span-2 w-full p-2 text-sm border rounded-md dark:bg-slate-700 dark:border-slate-600" />
-                                            <input type="number" placeholder={t.priceModifier} value={value.priceModifier} onChange={e => handleOptionValueChange(groupIndex, valueIndex, 'priceModifier', e.target.value)} className="md:col-span-1 w-full p-2 text-sm border rounded-md dark:bg-slate-700 dark:border-slate-600" step="0.01" />
+                                            <input type="text" placeholder={t.valueNameEn} value={value.name.en} onChange={e => handleOptionValueChange(groupIndex, valueIndex, 'name.en', e.target.value)} className="md:col-span-3 w-full p-2 text-sm border rounded-md dark:bg-slate-700 dark:border-slate-600 dark:text-slate-100" />
+                                            <input type="text" placeholder={t.valueNameAr} value={value.name.ar} onChange={e => handleOptionValueChange(groupIndex, valueIndex, 'name.ar', e.target.value)} className="md:col-span-2 w-full p-2 text-sm border rounded-md dark:bg-slate-700 dark:border-slate-600 dark:text-slate-100" />
+                                            <input type="number" placeholder={t.priceModifier} value={value.priceModifier} onChange={e => handleOptionValueChange(groupIndex, valueIndex, 'priceModifier', e.target.value)} className="md:col-span-1 w-full p-2 text-sm border rounded-md dark:bg-slate-700 dark:border-slate-600 dark:text-slate-100" step="0.01" />
                                             <button type="button" onClick={() => removeOptionValue(groupIndex, valueIndex)} className="md:col-span-1 text-red-500 hover:text-red-700 p-2 rounded-full hover:bg-red-100 dark:hover:bg-red-900/50 justify-self-center">
                                                 <TrashIcon className="w-4 h-4" />
                                             </button>
@@ -294,7 +294,7 @@ export const ProductEditModal: React.FC<ProductEditModalProps> = ({ product, onC
                 </div>
 
                 <div className="flex justify-end gap-4 p-4 border-t border-slate-200 dark:border-slate-700 shrink-0">
-                    <button type="button" onClick={onClose} className="px-4 py-2 rounded-lg bg-slate-200 dark:bg-slate-600 hover:bg-slate-300 dark:hover:bg-slate-500 transition-colors">{t.cancel}</button>
+                    <button type="button" onClick={onClose} className="px-4 py-2 rounded-lg bg-slate-200 dark:bg-slate-600 hover:bg-slate-300 dark:hover:bg-slate-500 font-semibold text-slate-800 dark:text-slate-300 transition-colors">{t.cancel}</button>
                     <button type="submit" className="px-4 py-2 rounded-lg bg-primary-500 text-white hover:bg-primary-600 transition-colors">{t.save}</button>
                 </div>
             </form>

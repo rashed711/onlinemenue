@@ -335,7 +335,7 @@ export const AdminPage: React.FC<AdminPageProps> = ({ activeSubRoute, reportSubR
                                     <h3 className="font-semibold text-slate-700 dark:text-slate-200">{t.filter}</h3>
                                 </div>
                                 <button className="p-1 rounded-full hover:bg-slate-200 dark:hover:bg-slate-700">
-                                    {isOrderFilterExpanded ? <ChevronUpIcon className="w-6 h-6" /> : <ChevronDownIcon className="w-6 h-6" />}
+                                    {isOrderFilterExpanded ? <ChevronUpIcon className="w-6 h-6 text-slate-600 dark:text-slate-300" /> : <ChevronDownIcon className="w-6 h-6 text-slate-600 dark:text-slate-300" />}
                                 </button>
                             </div>
                             <div className={`transition-all duration-300 ease-in-out overflow-hidden ${isOrderFilterExpanded ? 'max-h-[500px] opacity-100' : 'max-h-0 opacity-0'}`}>
@@ -427,7 +427,7 @@ export const AdminPage: React.FC<AdminPageProps> = ({ activeSubRoute, reportSubR
                                     <h3 className="font-semibold text-slate-700 dark:text-slate-200">{t.filter}</h3>
                                 </div>
                                 <button className="p-1 rounded-full hover:bg-slate-200 dark:hover:bg-slate-700">
-                                    {isProductFilterExpanded ? <ChevronUpIcon className="w-6 h-6" /> : <ChevronDownIcon className="w-6 h-6" />}
+                                    {isProductFilterExpanded ? <ChevronUpIcon className="w-6 h-6 text-slate-600 dark:text-slate-300" /> : <ChevronDownIcon className="w-6 h-6 text-slate-600 dark:text-slate-300" />}
                                 </button>
                             </div>
                             <div className={`transition-all duration-300 ease-in-out overflow-hidden ${isProductFilterExpanded ? 'max-h-[500px] opacity-100' : 'max-h-0 opacity-0'}`}>
@@ -523,7 +523,7 @@ export const AdminPage: React.FC<AdminPageProps> = ({ activeSubRoute, reportSubR
                  if (!hasPermission('view_promotions_page')) return <PermissionDeniedComponent />;
                  return (
                     <div>
-                        <div className="flex justify-between items-center mb-6"><h2 className="text-2xl font-bold">{t.managePromotions}</h2>{hasPermission('add_promotion') && <button onClick={() => setEditingPromotion('new')} className="bg-green-500 text-white font-bold py-2 px-4 rounded-lg hover:bg-green-600 transition-colors flex items-center gap-2"><PlusIcon className="w-5 h-5" /> {t.addNewPromotion}</button>}</div>
+                        <div className="flex justify-between items-center mb-6"><h2 className="text-2xl font-bold text-slate-800 dark:text-slate-100">{t.managePromotions}</h2>{hasPermission('add_promotion') && <button onClick={() => setEditingPromotion('new')} className="bg-green-500 text-white font-bold py-2 px-4 rounded-lg hover:bg-green-600 transition-colors flex items-center gap-2"><PlusIcon className="w-5 h-5" /> {t.addNewPromotion}</button>}</div>
                         {/* Desktop Table */}
                         <div className="hidden md:block bg-white dark:bg-slate-800 rounded-lg shadow-md overflow-x-auto border border-slate-200 dark:border-slate-700">
                             <table className="min-w-full divide-y divide-slate-200 dark:divide-slate-700">
@@ -566,7 +566,7 @@ export const AdminPage: React.FC<AdminPageProps> = ({ activeSubRoute, reportSubR
                 if (!hasPermission('view_users_page')) return <PermissionDeniedComponent />;
                 return (
                     <div>
-                        <div className="flex justify-between items-center mb-6"><h2 className="text-2xl font-bold">{t.manageUsers}</h2>{hasPermission('add_user') && <button onClick={() => setEditingUser('new')} className="bg-green-500 text-white font-bold py-2 px-4 rounded-lg hover:bg-green-600 transition-colors flex items-center gap-2"><PlusIcon className="w-5 h-5" />{t.addNewUser}</button>}</div>
+                        <div className="flex justify-between items-center mb-6"><h2 className="text-2xl font-bold text-slate-800 dark:text-slate-100">{t.manageUsers}</h2>{hasPermission('add_user') && <button onClick={() => setEditingUser('new')} className="bg-green-500 text-white font-bold py-2 px-4 rounded-lg hover:bg-green-600 transition-colors flex items-center gap-2"><PlusIcon className="w-5 h-5" />{t.addNewUser}</button>}</div>
                         <div className="mb-6">
                             <div className="relative">
                                 <input
@@ -626,7 +626,7 @@ export const AdminPage: React.FC<AdminPageProps> = ({ activeSubRoute, reportSubR
                 
                 return (
                     <div>
-                        <div className="flex justify-between items-center mb-6"><h2 className="text-2xl font-bold">{t.manageRoles}</h2>{hasPermission('add_role') && <button onClick={() => setEditingRole('new')} className="bg-green-500 text-white font-bold py-2 px-4 rounded-lg hover:bg-green-600 transition-colors flex items-center gap-2"><PlusIcon className="w-5 h-5" />Add New Role</button>}</div>
+                        <div className="flex justify-between items-center mb-6"><h2 className="text-2xl font-bold text-slate-800 dark:text-slate-100">{t.manageRoles}</h2>{hasPermission('add_role') && <button onClick={() => setEditingRole('new')} className="bg-green-500 text-white font-bold py-2 px-4 rounded-lg hover:bg-green-600 transition-colors flex items-center gap-2"><PlusIcon className="w-5 h-5" />Add New Role</button>}</div>
                         {/* Desktop Table */}
                         <div className="hidden md:block bg-white dark:bg-slate-800 rounded-lg shadow-md overflow-x-auto border border-slate-200 dark:border-slate-700">
                            <table className="min-w-full divide-y divide-slate-200 dark:divide-slate-700">
@@ -676,7 +676,7 @@ export const AdminPage: React.FC<AdminPageProps> = ({ activeSubRoute, reportSubR
             <AdminSidebar activeTab={activeTab} setActiveTab={setTab} isOpen={isSidebarOpen} setIsOpen={setSidebarOpen} onChangePasswordClick={onChangePasswordClick} />
             <div className={`flex flex-col min-h-screen transition-all duration-300 ${language === 'ar' ? 'md:mr-64' : 'md:ml-64'}`}>
                 <header className="bg-white/80 dark:bg-slate-900/80 backdrop-blur-lg shadow-sm sticky top-0 z-20 border-b border-slate-200 dark:border-slate-700" id="admin-header">
-                    <div className="px-4 h-20 flex justify-between items-center"><div className="flex items-center gap-3"><button className="p-2 md:hidden" onClick={() => setSidebarOpen(true)}><MenuAlt2Icon className="w-6 h-6" /></button><h1 className="text-xl font-bold text-slate-800 dark:text-slate-100">{t.adminPanel}</h1></div></div>
+                    <div className="px-4 h-20 flex justify-between items-center"><div className="flex items-center gap-3"><button className="p-2 md:hidden rounded-full hover:bg-slate-200/60 dark:hover:bg-slate-700/60 transition-colors" onClick={() => setSidebarOpen(true)}><MenuAlt2Icon className="w-6 h-6 text-slate-600 dark:text-slate-300" /></button><h1 className="text-xl font-bold text-slate-800 dark:text-slate-100">{t.adminPanel}</h1></div></div>
                 </header>
                 <main className="container mx-auto max-w-full px-4 sm:px-6 lg:px-8 py-8 flex-1">
                     <div className={`transition-all duration-300 ease-in-out ${transitionStage === 'out' ? 'opacity-0 -translate-y-5' : 'opacity-100 translate-y-0'}`}>{renderContent()}</div>

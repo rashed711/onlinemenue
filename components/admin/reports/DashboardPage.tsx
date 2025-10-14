@@ -239,7 +239,7 @@ export const DashboardPage: React.FC = () => {
                             className={`px-3 py-1.5 rounded-md text-sm font-semibold transition-colors ${
                                 dateRange === filter.id 
                                 ? 'bg-primary-600 text-white shadow' 
-                                : 'bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 dark:hover:bg-slate-600'
+                                : 'bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-300 dark:hover:bg-slate-600'
                             }`}
                         >
                             {filter.label}
@@ -251,18 +251,18 @@ export const DashboardPage: React.FC = () => {
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
                 
                 <div className="order-1 sm:col-span-2 lg:col-span-2 lg:order-6 bg-white dark:bg-slate-800 p-5 rounded-xl shadow-sm border dark:border-slate-700/80">
-                    <h3 className="font-semibold mb-4">{t.orderStatusDistribution}</h3>
+                    <h3 className="font-semibold mb-4 text-slate-800 dark:text-slate-100">{t.orderStatusDistribution}</h3>
                     <DonutChart data={orderStatusDistribution} />
                 </div>
 
                 <div className="order-2 sm:col-span-2 lg:col-span-2 lg:order-7 bg-white dark:bg-slate-800 p-5 rounded-xl shadow-sm border dark:border-slate-700/80">
-                    <h3 className="font-semibold mb-4">{t.orderTypeDistribution}</h3>
+                    <h3 className="font-semibold mb-4 text-slate-800 dark:text-slate-100">{t.orderTypeDistribution}</h3>
                     <DonutChart data={orderTypeDistribution} />
                 </div>
 
                 <div className="order-3 sm:col-span-2 lg:col-span-4 lg:order-5 bg-white dark:bg-slate-800 p-5 rounded-xl shadow-sm border dark:border-slate-700/80">
                     <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-3 mb-4">
-                        <h3 className="font-semibold">{t.topSellingProducts}</h3>
+                        <h3 className="font-semibold text-slate-800 dark:text-slate-100">{t.topSellingProducts}</h3>
                          <div className="flex items-center p-1 rounded-lg bg-slate-100 dark:bg-slate-700 self-start sm:self-center">
                             {(['All', 'Dine-in', 'Takeaway', 'Delivery'] as (OrderType | 'All')[]).map(type => {
                                 const typeKey = type === 'All' ? 'all' : type === 'Dine-in' ? 'dineIn' : type === 'Takeaway' ? 'takeaway' : 'delivery';

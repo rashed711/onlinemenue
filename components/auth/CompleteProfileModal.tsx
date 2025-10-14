@@ -32,7 +32,7 @@ export const CompleteProfileModal: React.FC = () => {
                         type="text"
                         value={name}
                         onChange={(e) => setName(e.target.value)}
-                        className="w-full p-3 text-base border-2 border-slate-200 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-colors"
+                        className="w-full p-3 text-base border-2 border-slate-200 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 dark:text-slate-100 focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-colors"
                         required
                         autoFocus
                     />

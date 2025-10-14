@@ -150,7 +150,7 @@ export const ProfilePage: React.FC = () => {
                              <h2 className="text-lg font-bold text-slate-700 dark:text-slate-200 text-start mb-4">{t.security}</h2>
                             <div className="space-y-4">
                                 <button onClick={() => setIsChangePasswordModalOpen(true)} className="w-full flex justify-between items-center text-start p-4 rounded-lg bg-slate-100 hover:bg-slate-200 dark:bg-slate-700/50 dark:hover:bg-slate-700 transition-colors">
-                                    <div className="flex items-center gap-4"><KeyIcon className="w-6 h-6 text-slate-500 dark:text-slate-400" /><span className="font-semibold">{t.changePassword}</span></div>
+                                    <div className="flex items-center gap-4"><KeyIcon className="w-6 h-6 text-slate-500 dark:text-slate-400" /><span className="font-semibold text-slate-800 dark:text-slate-300">{t.changePassword}</span></div>
                                     <ChevronRightIcon className={`w-5 h-5 text-slate-500 dark:text-slate-400 ${language === 'ar' && 'transform -scale-x-100'}`} />
                                 </button>
                                 <button onClick={logout} className="w-full flex items-center gap-4 text-start p-4 rounded-lg text-red-600 dark:text-red-400 bg-red-50 hover:bg-red-100 dark:bg-red-900/20 dark:hover:bg-red-900/40 transition-colors">

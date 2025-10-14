@@ -86,7 +86,7 @@ export const OrderEditModal: React.FC<OrderEditModalProps> = ({ order, onClose, 
                                     value={tableNumber}
                                     onChange={(e) => setTableNumber(e.target.value)}
                                     placeholder={t.enterTableNumber}
-                                    className="w-full p-2 border rounded-md dark:bg-gray-700 dark:border-gray-600 focus:ring-primary-500 focus:border-primary-500"
+                                    className="w-full p-2 border rounded-md dark:bg-slate-700 dark:border-slate-600 dark:text-slate-100 focus:ring-primary-500 focus:border-primary-500"
                                 />
                             </div>
                         )}
@@ -95,7 +95,7 @@ export const OrderEditModal: React.FC<OrderEditModalProps> = ({ order, onClose, 
                         <div className="space-y-3">
                             <h3 className="font-bold text-lg">{t.orderItems}</h3>
                             {editedItems.map((item, index) => (
-                                <div key={index} className="flex items-center gap-4 p-2 rounded-md bg-slate-50 dark:bg-gray-700/50">
+                                <div key={index} className="flex items-center gap-4 p-2 rounded-md bg-slate-50 dark:bg-slate-700/50">
                                     <img src={item.product.image} alt={item.product.name[language]} className="w-12 h-12 rounded-md object-cover" />
                                     <div className="flex-grow">
                                         <p className="font-semibold">{item.product.name[language]}</p>
@@ -108,7 +108,7 @@ export const OrderEditModal: React.FC<OrderEditModalProps> = ({ order, onClose, 
                                             type="number"
                                             value={item.quantity}
                                             onChange={(e) => handleQuantityChange(index, parseInt(e.target.value, 10) || 1)}
-                                            className="w-12 p-1 text-center bg-transparent border-x dark:border-slate-600 focus:outline-none appearance-none [-moz-appearance:textfield]"
+                                            className="w-12 p-1 text-center bg-transparent border-x dark:border-slate-600 dark:text-slate-100 focus:outline-none appearance-none [-moz-appearance:textfield]"
                                             min="1"
                                         />
                                         <button type="button" onClick={() => handleQuantityChange(index, item.quantity + 1)} className="p-2 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-r-full" aria-label="Increase quantity">
@@ -123,12 +123,12 @@ export const OrderEditModal: React.FC<OrderEditModalProps> = ({ order, onClose, 
                         </div>
 
                         {/* Add Item Section */}
-                        <div className="pt-4 border-t dark:border-gray-700">
+                        <div className="pt-4 border-t dark:border-slate-700">
                             <div className="flex items-center gap-4">
                                 <select
                                     value={productToAdd}
                                     onChange={(e) => setProductToAdd(e.target.value)}
-                                    className="w-full p-2 border rounded-md dark:bg-gray-700 dark:border-gray-600"
+                                    className="w-full p-2 border rounded-md dark:bg-slate-700 dark:border-slate-600 dark:text-slate-100"
                                 >
                                     {allProducts.map(p => <option key={p.id} value={p.id}>{p.name[language]}</option>)}
                                 </select>
@@ -146,7 +146,7 @@ export const OrderEditModal: React.FC<OrderEditModalProps> = ({ order, onClose, 
                                 value={notes}
                                 onChange={(e) => setNotes(e.target.value)}
                                 rows={4}
-                                className="w-full p-2 border rounded-md dark:bg-gray-700 dark:border-gray-600 focus:ring-primary-500 focus:border-primary-500"
+                                className="w-full p-2 border rounded-md dark:bg-slate-700 dark:border-slate-600 dark:text-slate-100 focus:ring-primary-500 focus:border-primary-500"
                             />
                         </div>
                     </div>
@@ -157,7 +157,7 @@ export const OrderEditModal: React.FC<OrderEditModalProps> = ({ order, onClose, 
                             <p className="font-extrabold text-xl text-primary-600 dark:text-primary-400">{total.toFixed(2)} {t.currency}</p>
                         </div>
                         <div className="flex gap-4">
-                            <button type="button" onClick={onClose} className="px-4 py-2 rounded-lg bg-gray-200 dark:bg-gray-600 hover:bg-gray-300 dark:hover:bg-gray-500 transition-colors">{t.cancel}</button>
+                            <button type="button" onClick={onClose} className="px-4 py-2 rounded-lg bg-gray-200 dark:bg-gray-600 hover:bg-gray-300 dark:hover:bg-gray-500 font-semibold text-slate-800 dark:text-slate-300 transition-colors">{t.cancel}</button>
                             <button type="submit" className="px-6 py-2 rounded-lg bg-primary-500 text-white font-bold hover:bg-primary-600 transition-colors">{t.saveChanges}</button>
                         </div>
                     </div>
