@@ -61,28 +61,56 @@ export const AdminProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     const [refusingOrder, setRefusingOrder] = useState<Order | null>(null);
 
     useEffect(() => {
-        const fetchAdminData = async () => {
-            if (!currentUser || !hasPermission('view_orders_page')) {
-                setOrders([]); setUsers([]); setRolePermissions({});
+        const fetchData = async () => {
+            if (!currentUser) {
+                setOrders([]);
+                setUsers([]);
+                setRolePermissions({});
                 return;
             }
+
+            const isAdmin = hasPermission('view_orders_page');
+            
             try {
                 const cacheBuster = `?v=${Date.now()}`;
-                const [ordersRes, usersRes, permissionsRes] = await Promise.all([
-                    fetch(`${API_BASE_URL}get_orders.php${cacheBuster}`, { cache: 'no-cache' }),
-                    fetch(`${API_BASE_URL}get_users.php${cacheBuster}`, { cache: 'no-cache' }),
-                    fetch(`${API_BASE_URL}get_permissions.php${cacheBuster}`, { cache: 'no-cache' })
-                ]);
-                if (ordersRes.ok) setOrders((await ordersRes.json() || []).map((o: any) => ({ ...o, paymentReceiptUrl: resolveImageUrl(o.paymentReceiptUrl)})));
-                if (usersRes.ok) setUsers((await usersRes.json() || []).map((u: any) => ({ id: Number(u.id), name: u.name, mobile: u.mobile, password: '', role: String(u.role_id), profilePicture: resolveImageUrl(u.profile_picture) || `https://placehold.co/512x512/60a5fa/white?text=${u.name.charAt(0).toUpperCase()}` })));
+                // All logged-in users need permissions for UI checks.
+                const permissionsRes = await fetch(`${API_BASE_URL}get_permissions.php${cacheBuster}`, { cache: 'no-cache' });
                 if (permissionsRes.ok) {
                     const permissions = await permissionsRes.json() || {};
                     setRolePermissions(permissions);
                     setAuthRolePermissions(permissions);
                 }
-            } catch (error) { showToast("Failed to load admin data."); }
+
+                // All logged-in users need to fetch orders.
+                // NOTE: This leaks all order data to clients; a server-side filter would be better.
+                const ordersRes = await fetch(`${API_BASE_URL}get_orders.php${cacheBuster}`, { cache: 'no-cache' });
+                if (!ordersRes.ok) throw new Error('Failed to fetch orders');
+                const allOrders = (await ordersRes.json() || []).map((o: any) => ({ ...o, paymentReceiptUrl: resolveImageUrl(o.paymentReceiptUrl)}));
+
+                if (isAdmin) {
+                    // Admin: set all orders and fetch all users
+                    setOrders(allOrders);
+                    
+                    const usersRes = await fetch(`${API_BASE_URL}get_users.php${cacheBuster}`, { cache: 'no-cache' });
+                    if (usersRes.ok) {
+                        setUsers((await usersRes.json() || []).map((u: any) => ({ id: Number(u.id), name: u.name, mobile: u.mobile, password: '', role: String(u.role_id), profilePicture: resolveImageUrl(u.profile_picture) || `https://placehold.co/512x512/60a5fa/white?text=${u.name.charAt(0).toUpperCase()}` })));
+                    } else {
+                        setUsers([]);
+                    }
+                } else {
+                    // Customer: filter to their own orders and clear admin data
+                    const userOrders = allOrders.filter(o => o.customer.userId === currentUser.id);
+                    setOrders(userOrders);
+                    setUsers([]);
+                }
+            } catch (error) { 
+                console.error("Failed to load user or admin data:", error);
+                showToast("Failed to load user data."); 
+                setOrders([]);
+                setUsers([]);
+            }
         };
-        fetchAdminData();
+        fetchData();
     }, [currentUser, hasPermission, showToast, setAuthRolePermissions]);
 
     const placeOrder = useCallback(async (order: Omit<Order, 'id' | 'timestamp'>): Promise<Order> => {

@@ -163,7 +163,7 @@ export const ProfilePage: React.FC = () => {
                     <div className="lg:col-span-2 space-y-8">
                         {activeOrders.length > 0 && (
                              <div className="animate-fade-in-up" style={{ animationDelay: '200ms' }}>
-                                <h2 className="text-2xl font-bold text-slate-800 dark:text-slate-100 mb-4">Active Orders</h2>
+                                <h2 className="text-2xl font-bold text-slate-800 dark:text-slate-100 mb-4">{t.activeOrders}</h2>
                                 <div className="space-y-6">{activeOrders.map(order => <div key={order.id} className="bg-white dark:bg-slate-800 rounded-2xl shadow-xl border border-slate-200 dark:border-slate-700 p-6"><div className="flex justify-between items-start mb-4"><div><p className="font-bold text-slate-800 dark:text-slate-100">{t.orderId}: <span className="font-mono text-primary-600">{order.id}</span></p><p className="text-xs text-slate-500">{formatDateTime(order.timestamp)}</p></div><div className="text-end"><p className="text-2xl font-extrabold text-primary-600 dark:text-primary-400">{order.total.toFixed(2)}</p><p className="text-xs text-slate-500 -mt-1">{t.currency}</p></div></div><OrderStatusTracker order={order} /></div>)}</div>
                             </div>
                         )}
