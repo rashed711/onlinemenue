@@ -125,8 +125,12 @@ export const AdminProvider: React.FC<{ children: React.ReactNode }> = ({ childre
                 formData.append('type', 'payment');
                 const uploadRes = await fetch(`${API_BASE_URL}upload_image.php`, { method: 'POST', body: formData });
                 const result = await uploadRes.json();
-                if (result.success && result.url) orderForDb.paymentReceiptUrl = result.url;
-                else throw new Error(result.error || 'Failed to get URL for receipt');
+                if (result.success && result.url) {
+                    const relativeUrl = new URL(result.url, API_BASE_URL).pathname.substring(1);
+                    orderForDb.paymentReceiptUrl = relativeUrl.split('?v=')[0];
+                } else {
+                    throw new Error(result.error || 'Failed to get URL for receipt');
+                }
             }
             const statusId = restaurantInfo?.orderStatusColumns?.[0]?.id || 'pending';
             const payload = { ...orderForDb, id: `ORD-${Date.now().toString().slice(-6)}-${Math.random().toString(36).substring(2, 5)}`, status: statusId, createdBy: currentUser?.id };
@@ -205,7 +209,9 @@ export const AdminProvider: React.FC<{ children: React.ReactNode }> = ({ childre
                 const uploadRes = await fetch(`${API_BASE_URL}upload_image.php`, { method: 'POST', body: formData });
                 const result = await uploadRes.json();
                 if (!uploadRes.ok || !result.success) throw new Error(result.error || 'Image upload failed');
-                finalProductData.image = result.url;
+                
+                const relativeUrl = new URL(result.url, API_BASE_URL).pathname.substring(1);
+                finalProductData.image = relativeUrl.split('?v=')[0]; // Save clean URL to DB
             }
 
             const response = await fetch(`${API_BASE_URL}add_product.php`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(finalProductData) });
@@ -224,6 +230,8 @@ export const AdminProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         setIsProcessing(true);
         try {
             let finalProductData = { ...updatedProduct };
+            let serverImageUrl = '';
+
             if (imageFile) {
                 const formData = new FormData();
                 formData.append('image', imageFile);
@@ -232,17 +240,23 @@ export const AdminProvider: React.FC<{ children: React.ReactNode }> = ({ childre
                 const uploadRes = await fetch(`${API_BASE_URL}upload_image.php`, { method: 'POST', body: formData });
                 const result = await uploadRes.json();
                 if (!uploadRes.ok || !result.success) throw new Error(result.error || 'Image upload failed');
-                finalProductData.image = result.url;
+                
+                serverImageUrl = result.url; // This URL might have a cache buster
+                const relativeUrl = new URL(serverImageUrl, API_BASE_URL).pathname.substring(1);
+                finalProductData.image = relativeUrl.split('?v=')[0]; // Save clean URL to DB
             } else {
                  const domain = new URL(API_BASE_URL).origin + '/';
-                 finalProductData.image = updatedProduct.image ? updatedProduct.image.replace(domain, '') : '';
+                 finalProductData.image = updatedProduct.image ? updatedProduct.image.split('?v=')[0].replace(domain, '') : '';
             }
             
             const response = await fetch(`${API_BASE_URL}update_product.php`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(finalProductData) });
             const result = await response.json();
             if (!response.ok || !result.success) throw new Error(result.error || t.productUpdateFailed);
 
-            const resolvedProduct = { ...finalProductData, image: resolveImageUrl(finalProductData.image) };
+            // Use the URL from the server if a new image was uploaded, otherwise use the existing (cleaned) one
+            const resolvedImageUrl = serverImageUrl ? resolveImageUrl(serverImageUrl) : resolveImageUrl(finalProductData.image);
+            const resolvedProduct = { ...finalProductData, image: resolvedImageUrl };
+
             setProducts(prev => prev.map(p => p.id === resolvedProduct.id ? resolvedProduct : p));
             showToast(t.productUpdatedSuccess);
         } catch (error: any) { showToast(error.message || t.productUpdateFailed); }

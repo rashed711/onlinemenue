@@ -158,10 +158,15 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
                         (uiUpdates as any)[key] = value;
                         break;
                     case 'logo': case 'heroImage':
-                        const relativeUrl = await uploadImage(value as string, 'branding', key);
-                        if (relativeUrl !== null) {
-                            dbPayload[key] = relativeUrl;
-                            (uiUpdates as any)[key] = resolveImageUrl(relativeUrl);
+                        const wasDataUrl = (value as string).startsWith('data:image');
+                        const uploadResult = await uploadImage(value as string, 'branding', key);
+                        
+                        if (uploadResult !== null) {
+                            const relativeUrl = new URL(uploadResult, API_BASE_URL).pathname.substring(1);
+                            dbPayload[key] = relativeUrl.split('?v=')[0]; // Save clean URL to DB
+                            
+                            let finalUrl = resolveImageUrl(uploadResult);
+                            (uiUpdates as any)[key] = finalUrl;
                         }
                         break;
                     case 'socialLinks':
@@ -169,7 +174,11 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
                         const items = value as any[];
                         const type = key === 'socialLinks' ? 'icons' : 'payment';
                         const processedItems = await Promise.all(
-                            items.map(async (item, i) => ({ ...item, icon: await uploadImage(item.icon, type, `${key}_${i}_icon`) }))
+                            items.map(async (item, i) => {
+                                const uploadResult = await uploadImage(item.icon, type, `${key}_${i}_icon`);
+                                const relativeUrl = uploadResult ? new URL(uploadResult, API_BASE_URL).pathname.substring(1).split('?v=')[0] : item.icon;
+                                return { ...item, icon: relativeUrl };
+                            })
                         );
                         dbPayload[key] = processedItems;
                         (uiUpdates as any)[key] = processedItems.map(item => ({...item, icon: resolveImageUrl(item.icon)}));

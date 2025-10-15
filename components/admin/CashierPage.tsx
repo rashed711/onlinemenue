@@ -1,13 +1,43 @@
-import React, { useState, useMemo, useCallback, useEffect } from 'react';
+import React, { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import type { User, Product, Category, CartItem, Order, RestaurantInfo, OrderType, Tag } from '../../types';
 import { calculateTotal, formatNumber } from '../../utils/helpers';
 import { ProductModal } from '../ProductModal';
-import { MinusIcon, PlusIcon, TrashIcon, CloseIcon, CartIcon, SearchIcon, FilterIcon, ChevronUpIcon, ChevronDownIcon } from '../icons/Icons';
+import { MinusIcon, PlusIcon, TrashIcon, CloseIcon, CartIcon, SearchIcon, FilterIcon, ChevronUpIcon, ChevronDownIcon, ChevronRightIcon } from '../icons/Icons';
 import { TableSelector } from '../TableSelector';
 import { useUI } from '../../contexts/UIContext';
 import { useAuth } from '../../contexts/AuthContext';
 import { useData } from '../../contexts/DataContext';
 import { useAdmin } from '../../contexts/AdminContext';
+
+const getDescendantCategoryIds = (categoryId: number, categories: Category[]): number[] => {
+    const ids: number[] = [];
+
+    const findCategory = (cats: Category[], id: number): Category | null => {
+        for (const cat of cats) {
+            if (cat.id === id) return cat;
+            if (cat.children) {
+                const foundInChildren = findCategory(cat.children, id);
+                if (foundInChildren) return foundInChildren;
+            }
+        }
+        return null;
+    };
+
+    const collectAllIds = (category: Category) => {
+        ids.push(category.id);
+        if (category.children) {
+            for (const child of category.children) {
+                collectAllIds(child);
+            }
+        }
+    };
+
+    const startCategory = findCategory(categories, categoryId);
+    if (startCategory) {
+        collectAllIds(startCategory);
+    }
+    return ids;
+};
 
 
 export const CashierPage: React.FC = () => {
@@ -26,6 +56,9 @@ export const CashierPage: React.FC = () => {
     const [searchTerm, setSearchTerm] = useState('');
     const [selectedTags, setSelectedTags] = useState<string[]>([]);
     const [isFilterOpen, setIsFilterOpen] = useState(false);
+    const [openDropdown, setOpenDropdown] = useState<number | null>(null);
+    const dropdownRef = useRef<HTMLDivElement>(null);
+
 
     // New state for mobile multi-step UI
     const [mobileStep, setMobileStep] = useState<'info' | 'cart'>('info');
@@ -38,11 +71,18 @@ export const CashierPage: React.FC = () => {
     const [customerMobile, setCustomerMobile] = useState('');
     const [customerAddress, setCustomerAddress] = useState('');
 
-    useEffect(() => {
-        if (allCategories.length > 0 && selectedCategory === null) {
-            setSelectedCategory(allCategories[0].id);
-        }
-    }, [allCategories, selectedCategory]);
+     useEffect(() => {
+        const handleClickOutside = (event: MouseEvent) => {
+            if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+                setOpenDropdown(null);
+            }
+        };
+
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => {
+            document.removeEventListener('mousedown', handleClickOutside);
+        };
+    }, []);
 
     useEffect(() => {
         // When cart becomes empty, always go back to the info step on mobile
@@ -56,7 +96,11 @@ export const CashierPage: React.FC = () => {
     
     const filteredProducts = useMemo(() => {
         return visibleProducts.filter(product => {
-            const matchesCategory = selectedCategory === null || product.categoryId === selectedCategory;
+            let matchesCategory = true;
+            if (selectedCategory !== null) {
+                const categoryIdsToMatch = getDescendantCategoryIds(selectedCategory, allCategories);
+                matchesCategory = categoryIdsToMatch.includes(product.categoryId);
+            }
             
             const name = product.name[language] || product.name['en'];
             const matchesSearch = name.toLowerCase().includes(searchTerm.toLowerCase());
@@ -65,7 +109,7 @@ export const CashierPage: React.FC = () => {
             
             return matchesCategory && matchesSearch && matchesTags;
         });
-    }, [selectedCategory, visibleProducts, searchTerm, selectedTags, language]);
+    }, [selectedCategory, visibleProducts, searchTerm, selectedTags, language, allCategories]);
 
     const total = useMemo(() => calculateTotal(cartItems), [cartItems]);
 
@@ -201,6 +245,15 @@ export const CashierPage: React.FC = () => {
             addToCart(product, 1);
         }
     };
+
+    const isCategoryOrChildSelected = useCallback((category: Category): boolean => {
+        if (selectedCategory === null) return false;
+        if (selectedCategory === category.id) return true;
+        if (!category.children) return false;
+        
+        const childIds = category.children.map(c => c.id);
+        return childIds.includes(selectedCategory);
+    }, [selectedCategory]);
     
     if (!restaurantInfo) {
         return null; // or a loading spinner
@@ -260,16 +313,62 @@ export const CashierPage: React.FC = () => {
                             </div>
                         </div>
 
-                        <div className="flex overflow-x-auto space-x-2 space-x-reverse pb-2 scrollbar-hide">
-                            {allCategories.map(category => (
-                                <button
-                                    key={category.id}
-                                    onClick={() => setSelectedCategory(category.id)}
-                                    className={`px-4 py-1.5 rounded-full text-sm font-bold transition-all duration-300 whitespace-nowrap ${selectedCategory === category.id ? 'bg-primary-600 text-white shadow-lg' : 'bg-white dark:bg-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-600'}`}
-                                >
-                                    {category.name[language]}
-                                </button>
-                            ))}
+                        <div className="flex flex-wrap gap-2 pb-2">
+                             <button
+                                onClick={() => setSelectedCategory(null)}
+                                className={`px-4 py-1.5 rounded-full text-sm font-bold transition-all duration-300 whitespace-nowrap ${selectedCategory === null ? 'bg-primary-600 text-white shadow-lg' : 'bg-white dark:bg-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-600'}`}
+                            >
+                                {t.allCategories}
+                            </button>
+                            {allCategories.map(category => {
+                                const hasChildren = category.children && category.children.length > 0;
+                                const isActive = isCategoryOrChildSelected(category);
+                                
+                                const buttonClasses = `px-4 py-1.5 rounded-full text-sm font-bold transition-all duration-300 whitespace-nowrap flex items-center gap-2 ${isActive ? 'bg-primary-600 text-white shadow-lg' : 'bg-white dark:bg-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-600'}`;
+
+                                if (hasChildren) {
+                                    return (
+                                        <div key={category.id} className="relative" ref={openDropdown === category.id ? dropdownRef : null}>
+                                            <button
+                                                onClick={() => setOpenDropdown(openDropdown === category.id ? null : category.id)}
+                                                className={buttonClasses}
+                                            >
+                                                <span>{category.name[language]}</span>
+                                                <ChevronRightIcon className={`w-4 h-4 transition-transform ${language === 'ar' ? 'transform -scale-x-100' : ''} ${openDropdown === category.id ? 'rotate-90' : ''}`} />
+                                            </button>
+                                            {openDropdown === category.id && (
+                                                <div className="absolute top-full mt-2 z-20 min-w-max bg-white dark:bg-slate-800 rounded-lg shadow-xl border border-slate-200 dark:border-slate-700 overflow-hidden animate-fade-in py-1">
+                                                    <button
+                                                        onClick={() => { setSelectedCategory(category.id); setOpenDropdown(null); }}
+                                                        className={`block w-full text-start px-4 py-2 text-sm transition-colors ${selectedCategory === category.id ? 'font-bold text-primary-600 bg-primary-50 dark:bg-primary-900/40' : 'text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700'}`}
+                                                    >
+                                                        {t.all} {category.name[language]}
+                                                    </button>
+                                                    {category.children!.map(child => (
+                                                        <button
+                                                            key={child.id}
+                                                            onClick={() => { setSelectedCategory(child.id); setOpenDropdown(null); }}
+                                                            className={`block w-full text-start px-4 py-2 text-sm transition-colors ${selectedCategory === child.id ? 'font-bold text-primary-600 bg-primary-50 dark:bg-primary-900/40' : 'text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700'}`}
+                                                        >
+                                                            {child.name[language]}
+                                                        </button>
+                                                    ))}
+                                                </div>
+                                            )}
+                                        </div>
+                                    );
+                                }
+
+                                return (
+                                    <button
+                                        key={category.id}
+                                        onClick={() => setSelectedCategory(category.id)}
+                                        className={`px-4 py-1.5 rounded-full text-sm font-bold transition-all duration-300 whitespace-nowrap ${selectedCategory === category.id ? 'bg-primary-600 text-white shadow-lg' : 'bg-white dark:bg-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-600'}`}
+                                    >
+                                        {category.name[language]}
+                                    </button>
+                                );
+                            })}
                         </div>
                     </div>
                     <div className="overflow-y-auto p-4">

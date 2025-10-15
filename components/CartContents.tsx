@@ -86,7 +86,7 @@ export const CartContents: React.FC<CartContentsProps> = ({
         <div className="overflow-y-auto p-4 space-y-4 flex-grow">
           {cartItems.map(item => (
             <div key={getItemVariantId(item)} className="flex items-start gap-4">
-              <img src={item.product.image} alt={item.product.name[language]} className="w-20 h-20 rounded-lg object-cover" />
+              <img src={item.product.image} alt={item.product.name[language]} className="w-20 h-20 rounded-lg object-cover" loading="lazy" />
               <div className="flex-grow">
                 <h3 className="font-semibold text-slate-800 dark:text-slate-100">{item.product.name[language]}</h3>
                 {item.options && (

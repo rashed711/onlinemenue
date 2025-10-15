@@ -22,13 +22,24 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product, language, onP
     }
   }
 
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        onProductClick(product);
+    }
+  }
+
   return (
     <div 
         onClick={() => onProductClick(product)}
-        className="bg-white dark:bg-slate-800 rounded-2xl shadow-lg overflow-hidden group transform hover:shadow-2xl hover:-translate-y-1 transition-all duration-300 cursor-pointer flex flex-col border border-slate-200 dark:border-slate-700/50"
+        onKeyDown={handleKeyDown}
+        role="button"
+        tabIndex={0}
+        aria-label={`View details for ${product.name[language]}`}
+        className="bg-white dark:bg-slate-800 rounded-2xl shadow-lg overflow-hidden group transform hover:shadow-2xl hover:-translate-y-1 transition-all duration-300 cursor-pointer flex flex-col border border-slate-200 dark:border-slate-700/50 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 dark:focus:ring-offset-slate-950"
     >
       <div className="relative">
-        <img src={product.image} alt={product.name[language]} className="w-full h-40 sm:h-48 object-cover" />
+        <img src={product.image} alt={product.name[language]} className="w-full h-40 sm:h-48 object-cover" loading="lazy" />
         {product.isNew && <div className="absolute top-3 end-3 bg-green-500 text-white text-xs font-bold px-3 py-1 rounded-full shadow-md">{t.newItem}</div>}
         {product.isPopular && !product.isNew && <div className="absolute top-3 end-3 bg-primary-500 text-white text-xs font-bold px-3 py-1 rounded-full shadow-md">{t.mostPopular}</div>}
          <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent"></div>
@@ -51,6 +62,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product, language, onP
          <button
           onClick={handleAddToCart}
           className="w-full bg-primary-500 text-white font-bold py-2 sm:py-3 px-4 rounded-lg hover:bg-primary-600 flex items-center justify-center gap-2 transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 dark:focus:ring-offset-slate-800 shadow-sm hover:shadow-lg transform hover:scale-105 text-xs sm:text-sm"
+          aria-label={`Add ${product.name[language]} to cart`}
         >
           <PlusIcon className="w-5 h-5" />
           {t.addToCart}

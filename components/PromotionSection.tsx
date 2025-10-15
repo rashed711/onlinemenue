@@ -22,7 +22,7 @@ const PromotionCard: React.FC<PromotionCardProps> = ({ promotion, product, onPro
 
     return (
         <div onClick={() => onProductClick(product)} className="bg-gradient-to-br from-primary-500 to-primary-700 h-full text-white rounded-2xl p-6 lg:p-8 flex flex-col md:flex-row items-center gap-6 lg:gap-8 shadow-xl hover:shadow-2xl hover:shadow-primary-500/40 cursor-pointer transform hover:scale-105 transition-all duration-300 min-h-72">
-            <img src={product.image} alt={product.name[language]} className="w-full md:w-36 h-48 md:h-36 rounded-xl md:rounded-full object-cover border-4 border-primary-300 flex-shrink-0" />
+            <img src={product.image} alt={product.name[language]} className="w-full md:w-36 h-48 md:h-36 rounded-xl md:rounded-full object-cover border-4 border-primary-300 flex-shrink-0" loading="lazy" />
             <div className="flex flex-col flex-1 justify-center text-center md:text-start">
                 <div>
                     <div>
