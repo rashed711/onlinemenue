@@ -23,21 +23,26 @@ export const PaymentsReportPage: React.FC = () => {
 
     const columns = useMemo(() => {
         const getPaymentStatusText = (order: Order) => {
-            if (order.paymentDetail) {
-                // If payment detail exists (e.g., "Cash", "Vodafone Cash"), it's considered paid.
-                return t.paymentStatusPaidOnline; 
+            // If a specific payment detail is recorded (and it's not just the default COD placeholder),
+            // it means the payment has been collected or confirmed, so it's "Paid".
+            if (order.paymentDetail && order.paymentDetail !== t.cashOnDelivery) {
+                return t.paymentStatusPaidOnline; // Using this as a generic "Paid" status.
             }
-            if (order.paymentMethod === 'cod') {
-                // If payment method is COD but no detail is recorded yet, it's Pay on Delivery.
-                return t.paymentStatusCod;
-            }
+            
+            // For orders initiated as "Online Payment", we consider them in a "paid" state.
             if (order.paymentMethod === 'online') {
-                // It was an online payment but maybe something went wrong (no receipt/detail)
                 return t.paymentStatusPaidOnline;
             }
-            // Otherwise, it's unpaid.
+            
+            // For "Cash on Delivery" orders where payment hasn't been specifically recorded yet.
+            if (order.paymentMethod === 'cod') {
+                return t.paymentStatusCod;
+            }
+
+            // Default for orders without a predefined payment method (like Dine-in) and no recorded payment.
             return t.paymentStatusUnpaid;
         };
+
         return [
             { Header: t.orderId, accessor: 'id' },
             { Header: t.date, accessor: 'timestamp', Cell: (row: Order) => formatDateTime(row.timestamp) },
@@ -45,15 +50,18 @@ export const PaymentsReportPage: React.FC = () => {
                 Header: t.paymentMethod, 
                 accessor: 'paymentMethod', 
                 Cell: (row: Order) => {
+                    // Priority 1: Show the specific, recorded payment detail if it exists.
                     if (row.paymentDetail) {
                         return row.paymentDetail;
                     }
+                    // Priority 2: Fallback to the general method selected at checkout.
                     if (row.paymentMethod === 'cod') {
                         return t.cashOnDelivery;
                     }
                     if (row.paymentMethod === 'online') {
                         return t.onlinePayment;
                     }
+                    // Fallback for types like Dine-in before payment is recorded.
                     return 'N/A';
                 }
             },
@@ -63,8 +71,11 @@ export const PaymentsReportPage: React.FC = () => {
     }, [t]);
     
     const totals = useMemo(() => paymentData.reduce((acc, order) => {
-        if (order.paymentMethod === 'online') acc.online += order.total;
-        else if (order.paymentMethod === 'cod') acc.cod += order.total;
+        if (order.paymentMethod === 'online' || (order.paymentDetail && order.paymentMethod !== 'cod')) {
+             acc.online += order.total;
+        } else if (order.paymentMethod === 'cod' || (order.paymentDetail && order.paymentMethod === 'cod')) {
+             acc.cod += order.total;
+        }
         return acc;
     }, { online: 0, cod: 0}), [paymentData]);
 

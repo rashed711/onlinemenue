@@ -44,6 +44,7 @@ export const PERMISSION_GROUPS: Record<string, PermissionGroup> = {
       { id: 'manage_order_status', nameKey: 'permission_manage_order_status' },
       { id: 'edit_order_content', nameKey: 'permission_edit_order_content' },
       { id: 'delete_order', nameKey: 'permission_delete_order' },
+      { id: 'edit_recorded_payment', nameKey: 'permission_edit_recorded_payment' },
       { id: 'view_dine_in_orders', nameKey: 'permission_view_dine_in_orders' },
       { id: 'view_takeaway_orders', nameKey: 'permission_view_takeaway_orders' },
       { id: 'view_delivery_orders', nameKey: 'permission_view_delivery_orders' },

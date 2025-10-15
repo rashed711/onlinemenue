@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import type { Order } from '../../types';
 import { useTranslations } from '../../i18n/translations';
 import { DocumentTextIcon, PencilIcon, ShareIcon, PrintIcon, TrashIcon, CloseIcon } from '../icons/Icons';
@@ -8,6 +8,7 @@ import { Modal } from '../Modal';
 import { useUI } from '../../contexts/UIContext';
 import { useData } from '../../contexts/DataContext';
 import { useAdmin } from '../../contexts/AdminContext';
+import { useAuth } from '../../contexts/AuthContext';
 
 interface OrderDetailsModalProps {
     order: Order;
@@ -28,11 +29,24 @@ export const OrderDetailsModal: React.FC<OrderDetailsModalProps> = ({ order, onC
     const { language } = useUI();
     const { restaurantInfo } = useData();
     const { updateOrder } = useAdmin();
+    const { hasPermission } = useAuth();
     const t = useTranslations(language);
     
     const [isReceiptViewerOpen, setIsReceiptViewerOpen] = useState(false);
     const { isProcessing, setIsProcessing } = useUI();
     const [codPaymentDetail, setCodPaymentDetail] = useState('');
+    const [isEditingPayment, setIsEditingPayment] = useState(false);
+
+    const canEditPayment = hasPermission('edit_recorded_payment');
+
+    useEffect(() => {
+        setIsEditingPayment(!order.paymentDetail);
+        if (order.paymentDetail) {
+            setCodPaymentDetail(order.paymentDetail);
+        } else {
+            setCodPaymentDetail('');
+        }
+    }, [order]);
 
     const handleShare = async () => {
         setIsProcessing(true);
@@ -103,9 +117,10 @@ export const OrderDetailsModal: React.FC<OrderDetailsModalProps> = ({ order, onC
         }
     };
 
-    const handleSaveCodPayment = () => {
+    const handleSaveCodPayment = async () => {
         if (codPaymentDetail) {
-            updateOrder(order.id, { paymentDetail: codPaymentDetail });
+            await updateOrder(order.id, { paymentDetail: codPaymentDetail });
+            setIsEditingPayment(false);
         }
     }
 
@@ -140,10 +155,19 @@ export const OrderDetailsModal: React.FC<OrderDetailsModalProps> = ({ order, onC
                             </div>
                             <div className="sm:col-span-2">
                                 <p className="font-semibold text-slate-500 dark:text-slate-400 mb-1">{t.paymentMethod}</p>
-                                <p className="font-bold">{order.paymentMethod === 'cod' ? t.cashOnDelivery : t.onlinePayment}</p>
-                                {order.paymentDetail && (
-                                    <p className="text-xs text-slate-500 dark:text-slate-400">{t.paymentCollectedVia} <span className="font-medium text-slate-600 dark:text-slate-300">{order.paymentDetail}</span></p>
-                                )}
+                                <p className="font-bold">{order.paymentMethod === 'cod' ? t.cashOnDelivery : t.onlinePayment || "N/A"}</p>
+                                
+                                {!isEditingPayment && order.paymentDetail ? (
+                                    <div className="flex items-center gap-2 mt-1">
+                                        <p className="text-sm text-slate-500 dark:text-slate-400">{t.paymentCollectedVia} <span className="font-medium text-slate-700 dark:text-slate-200">{order.paymentDetail}</span></p>
+                                        {canEditPayment && (
+                                            <button onClick={() => setIsEditingPayment(true)} className="text-sm text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-1">
+                                                <PencilIcon className="w-4 h-4" /> {t.edit}
+                                            </button>
+                                        )}
+                                    </div>
+                                ) : null}
+
                                 {order.paymentMethod === 'online' && order.paymentReceiptUrl && (
                                      <button onClick={() => setIsReceiptViewerOpen(true)} className="mt-1 text-sm font-semibold text-blue-600 hover:underline dark:text-blue-400">
                                         {t.viewReceipt}
@@ -158,9 +182,9 @@ export const OrderDetailsModal: React.FC<OrderDetailsModalProps> = ({ order, onC
                             </div>
                         </div>
 
-                        {order.paymentMethod === 'cod' && !order.paymentDetail && (
+                        {isEditingPayment && (
                             <div className="p-4 bg-blue-50 dark:bg-blue-900/30 rounded-lg border border-blue-200 dark:border-blue-700/50">
-                                <label className="block text-sm font-semibold mb-2 text-blue-800 dark:text-blue-200">{t.recordPayment}</label>
+                                <label className="block text-sm font-semibold mb-2 text-blue-800 dark:text-blue-200">{order.paymentDetail ? t.edit : t.recordPayment}</label>
                                 <div className="flex items-center gap-2">
                                     <select
                                         value={codPaymentDetail}
@@ -175,11 +199,20 @@ export const OrderDetailsModal: React.FC<OrderDetailsModalProps> = ({ order, onC
                                     </select>
                                     <button 
                                         onClick={handleSaveCodPayment} 
-                                        disabled={!codPaymentDetail}
+                                        disabled={!codPaymentDetail || isProcessing}
                                         className="bg-blue-500 text-white font-bold py-2 px-3 rounded-lg hover:bg-blue-600 disabled:bg-blue-300 transition-colors"
                                     >
                                         {t.savePayment}
                                     </button>
+                                    {order.paymentDetail && (
+                                        <button 
+                                            type="button"
+                                            onClick={() => setIsEditingPayment(false)}
+                                            className="bg-slate-200 text-slate-800 font-bold py-2 px-3 rounded-lg hover:bg-slate-300 transition-colors"
+                                        >
+                                            {t.cancel}
+                                        </button>
+                                    )}
                                 </div>
                             </div>
                         )}
