@@ -346,7 +346,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 if (!uploadRes.ok) throw new Error(`Image upload failed: ${await uploadRes.text()}`);
                 const result = await uploadRes.json();
                 if (result.success && result.url) {
-                    dbPayload.profile_picture = result.url;
+                    dbPayload.profile_picture = result.url.split('?v=')[0];
                     uiUpdates.profilePicture = resolveImageUrl(result.url);
                 } else throw new Error(result.error || 'Failed to get URL');
             }

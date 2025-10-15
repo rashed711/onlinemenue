@@ -210,8 +210,7 @@ export const AdminProvider: React.FC<{ children: React.ReactNode }> = ({ childre
                 const result = await uploadRes.json();
                 if (!uploadRes.ok || !result.success) throw new Error(result.error || 'Image upload failed');
                 
-                const relativeUrl = new URL(result.url, API_BASE_URL).pathname.substring(1);
-                finalProductData.image = relativeUrl.split('?v=')[0]; // Save clean URL to DB
+                finalProductData.image = result.url.split('?v=')[0]; // Save clean URL to DB
             }
 
             const response = await fetch(`${API_BASE_URL}add_product.php`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(finalProductData) });
@@ -242,8 +241,7 @@ export const AdminProvider: React.FC<{ children: React.ReactNode }> = ({ childre
                 if (!uploadRes.ok || !result.success) throw new Error(result.error || 'Image upload failed');
                 
                 serverImageUrl = result.url; // This URL might have a cache buster
-                const relativeUrl = new URL(serverImageUrl, API_BASE_URL).pathname.substring(1);
-                finalProductData.image = relativeUrl.split('?v=')[0]; // Save clean URL to DB
+                finalProductData.image = serverImageUrl.split('?v=')[0]; // Save clean URL to DB
             } else {
                  const domain = new URL(API_BASE_URL).origin + '/';
                  finalProductData.image = updatedProduct.image ? updatedProduct.image.split('?v=')[0].replace(domain, '') : '';

@@ -45,6 +45,44 @@ const NAV_ITEMS_WITH_PERMS = [
     { id: 'settings', permission: 'view_settings_page' },
 ];
 
+const getDescendantCategoryIds = (categoryId: number, categories: Category[]): number[] => {
+    const ids: number[] = [];
+
+    // Helper to find a category by its ID in the tree
+    const findCategory = (cats: Category[], id: number): Category | null => {
+        for (const cat of cats) {
+            if (cat.id === id) {
+                return cat;
+            }
+            if (cat.children) {
+                const foundInChildren = findCategory(cat.children, id);
+                if (foundInChildren) {
+                    return foundInChildren;
+                }
+            }
+        }
+        return null;
+    };
+
+    // Helper to recursively collect all child IDs, including the parent's
+    const collectAllIds = (category: Category) => {
+        ids.push(category.id);
+        if (category.children) {
+            for (const child of category.children) {
+                collectAllIds(child);
+            }
+        }
+    };
+
+    const startCategory = findCategory(categories, categoryId);
+
+    if (startCategory) {
+        collectAllIds(startCategory);
+    }
+    
+    return ids;
+};
+
 
 export const AdminPage: React.FC<AdminPageProps> = ({ activeSubRoute, reportSubRoute }) => {
     const { language, t, showToast, setProgress, setShowProgress, setIsChangePasswordModalOpen } = useUI();
@@ -113,6 +151,27 @@ export const AdminPage: React.FC<AdminPageProps> = ({ activeSubRoute, reportSubR
     };
 
     const onChangePasswordClick = () => setIsChangePasswordModalOpen(true);
+
+    const renderCategoryFilterOptions = (categories: Category[], level: number): React.ReactElement[] => {
+        let options: React.ReactElement[] = [];
+        const prefix = '\u00A0\u00A0'.repeat(level * 2);
+        for (const category of categories) {
+            options.push(
+                <option 
+                    key={category.id} 
+                    value={category.id} 
+                    className={level > 0 ? 'bg-slate-100 dark:bg-slate-700' : 'font-bold'}
+                >
+                    {prefix}{category.name[language]}
+                </option>
+            );
+            if (category.children && category.children.length > 0) {
+                options = options.concat(renderCategoryFilterOptions(category.children, level + 1));
+            }
+        }
+        return options;
+    };
+
 
     useEffect(() => {
         const currentTabInfo = NAV_ITEMS_WITH_PERMS.find(item => item.id === activeTab);
@@ -241,14 +300,20 @@ export const AdminPage: React.FC<AdminPageProps> = ({ activeSubRoute, reportSubR
             const code = product.code.toLowerCase();
 
             const matchesSearch = nameEn.includes(lowercasedTerm) || nameAr.includes(lowercasedTerm) || code.includes(lowercasedTerm);
-            const matchesCategory = productFilterCategory === 'all' || product.categoryId.toString() === productFilterCategory;
+            
+            let matchesCategory = true;
+            if (productFilterCategory !== 'all') {
+                const categoryIdsToMatch = getDescendantCategoryIds(parseInt(productFilterCategory, 10), categories);
+                matchesCategory = categoryIdsToMatch.includes(product.categoryId);
+            }
+
             const matchesTag = productFilterTag === 'all' || product.tags.includes(productFilterTag);
             
             return matchesSearch && matchesCategory && matchesTag;
         });
 
         return filtered.sort((a, b) => a.name[language].localeCompare(b.name[language], language));
-    }, [allProducts, productSearchTerm, productFilterCategory, productFilterTag, language]);
+    }, [allProducts, productSearchTerm, productFilterCategory, productFilterTag, language, categories]);
 
 
     const usersToDisplay = useMemo(() => {
@@ -348,7 +413,7 @@ export const AdminPage: React.FC<AdminPageProps> = ({ activeSubRoute, reportSubR
                                         <div className="md:col-span-2 lg:col-span-4">
                                             <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">{t.search}</label>
                                             <div className="relative">
-                                                <input type="text" placeholder={`${t.orderId}, ${t.name}, ${t.mobileNumber}...`} value={orderSearchTerm} onChange={(e) => setOrderSearchTerm(e.target.value)} className="w-full p-2 ps-10 rounded-lg border-slate-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 sm:text-sm dark:bg-slate-700 dark:border-slate-600"/>
+                                                <input type="text" placeholder={`${t.orderId}, ${t.name}, ${t.mobileNumber}...`} value={orderSearchTerm} onChange={(e) => setOrderSearchTerm(e.target.value)} className="w-full p-2 ps-10 rounded-lg border-slate-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 sm:text-sm dark:bg-slate-700 dark:border-slate-600 dark:text-white dark:placeholder:text-slate-400"/>
                                                 <div className="absolute top-1/2 -translate-y-1/2 start-3 text-slate-400"><SearchIcon className="w-5 h-5" /></div>
                                             </div>
                                         </div>
@@ -440,7 +505,7 @@ export const AdminPage: React.FC<AdminPageProps> = ({ activeSubRoute, reportSubR
                                         <div className="md:col-span-3">
                                             <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">{t.search}</label>
                                             <div className="relative">
-                                                <input type="text" placeholder={`${t.productNameEn}, ${t.code}...`} value={productSearchTerm} onChange={(e) => setProductSearchTerm(e.target.value)} className="w-full p-2 ps-10 rounded-lg border-slate-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 sm:text-sm dark:bg-slate-700 dark:border-slate-600"/>
+                                                <input type="text" placeholder={`${t.productNameEn}, ${t.code}...`} value={productSearchTerm} onChange={(e) => setProductSearchTerm(e.target.value)} className="w-full p-2 ps-10 rounded-lg border-slate-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 sm:text-sm dark:bg-slate-700 dark:border-slate-600 dark:text-white dark:placeholder:text-slate-400"/>
                                                 <div className="absolute top-1/2 -translate-y-1/2 start-3 text-slate-400"><SearchIcon className="w-5 h-5" /></div>
                                             </div>
                                         </div>
@@ -448,7 +513,7 @@ export const AdminPage: React.FC<AdminPageProps> = ({ activeSubRoute, reportSubR
                                             <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">{t.category}</label>
                                             <select value={productFilterCategory} onChange={(e) => setProductFilterCategory(e.target.value)} className="w-full p-2 rounded-lg border-slate-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 sm:text-sm dark:bg-slate-700 dark:border-slate-600 dark:text-white">
                                                 <option value="all">{t.allCategories}</option>
-                                                {categories.map(cat => <option key={cat.id} value={cat.id}>{cat.name[language]}</option>)}
+                                                {renderCategoryFilterOptions(categories, 0)}
                                             </select>
                                         </div>
                                         <div>
@@ -578,7 +643,7 @@ export const AdminPage: React.FC<AdminPageProps> = ({ activeSubRoute, reportSubR
                                     placeholder={`${t.search} ${t.name}, ${t.mobileNumber}...`}
                                     value={userSearchTerm}
                                     onChange={(e) => setUserSearchTerm(e.target.value)}
-                                    className="w-full p-2 ps-10 rounded-lg border-slate-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 sm:text-sm dark:bg-slate-700 dark:border-slate-600"
+                                    className="w-full p-2 ps-10 rounded-lg border-slate-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 sm:text-sm dark:bg-slate-700 dark:border-slate-600 dark:text-white dark:placeholder:text-slate-400"
                                 />
                                 <div className="absolute top-1/2 -translate-y-1/2 start-3 text-slate-400"><SearchIcon className="w-5 h-5" /></div>
                             </div>

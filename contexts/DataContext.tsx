@@ -162,9 +162,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
                         const uploadResult = await uploadImage(value as string, 'branding', key);
                         
                         if (uploadResult !== null) {
-                            const relativeUrl = new URL(uploadResult, API_BASE_URL).pathname.substring(1);
-                            dbPayload[key] = relativeUrl.split('?v=')[0]; // Save clean URL to DB
-                            
+                            dbPayload[key] = uploadResult.split('?v=')[0]; // Save clean URL to DB
                             let finalUrl = resolveImageUrl(uploadResult);
                             (uiUpdates as any)[key] = finalUrl;
                         }
@@ -176,7 +174,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
                         const processedItems = await Promise.all(
                             items.map(async (item, i) => {
                                 const uploadResult = await uploadImage(item.icon, type, `${key}_${i}_icon`);
-                                const relativeUrl = uploadResult ? new URL(uploadResult, API_BASE_URL).pathname.substring(1).split('?v=')[0] : item.icon;
+                                const relativeUrl = uploadResult ? uploadResult.split('?v=')[0] : item.icon;
                                 return { ...item, icon: relativeUrl };
                             })
                         );

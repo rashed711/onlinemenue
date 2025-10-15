@@ -10,7 +10,7 @@ import { useAdmin } from '../../contexts/AdminContext';
 import { useAuth } from '../../contexts/AuthContext';
 import { formatDateTime } from '../../utils/helpers';
 
-type SettingsTab = 'general' | 'operations' | 'social' | 'statuses' | 'activation';
+type SettingsTab = 'general' | 'social' | 'statuses' | 'payments' | 'activation';
 
 // A reusable Card component for consistent styling
 const SettingsCard: React.FC<{ title: string, subtitle: string, children: React.ReactNode, actions?: React.ReactNode }> = ({ title, subtitle, children, actions }) => (
@@ -61,9 +61,9 @@ export const SettingsPage: React.FC = () => {
     
     const getDefaultTab = (): SettingsTab => {
         if (hasPermission('manage_settings_general')) return 'general';
-        if (hasPermission('manage_settings_operations')) return 'operations';
         if (hasPermission('manage_settings_social')) return 'social';
         if (hasPermission('manage_settings_statuses')) return 'statuses';
+        if (hasPermission('manage_settings_payments')) return 'payments';
         if (hasPermission('manage_settings_activation')) return 'activation';
         return 'general';
     }
@@ -241,9 +241,9 @@ export const SettingsPage: React.FC = () => {
 
     const tabs: { id: SettingsTab; label: string; permission: Permission }[] = [
         { id: 'general', label: t.settingsTabGeneralBranding, permission: 'manage_settings_general' },
-        { id: 'operations', label: t.settingsTabOperations, permission: 'manage_settings_operations' },
         { id: 'social', label: t.settingsTabSocial, permission: 'manage_settings_social' },
         { id: 'statuses', label: t.settingsTabStatuses, permission: 'manage_settings_statuses' },
+        { id: 'payments', label: t.settingsTabPayments, permission: 'manage_settings_payments' },
         { id: 'activation', label: t.settingsTabActivation, permission: 'manage_settings_activation' },
     ];
     
@@ -280,9 +280,9 @@ export const SettingsPage: React.FC = () => {
 
             <div className="mt-8">
                 {activeTab === 'general' && hasPermission('manage_settings_general') && (
-                    <div className="grid grid-cols-1 xl:grid-cols-3 gap-8">
-                        <div className="xl:col-span-2">
-                             <SettingsCard title={t.restaurantInformation} subtitle={t.settingsInfoDescription}>
+                    <div className="grid grid-cols-1 xl:grid-cols-2 gap-8">
+                        <div className="space-y-8">
+                            <SettingsCard title={t.restaurantInformation} subtitle={t.settingsInfoDescription}>
                                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                     <FormGroup label={t.productNameEn}>
                                         <input type="text" name="name.en" value={localInfo.name.en} onChange={handleInfoChange} className={formInputClasses} />
@@ -300,10 +300,19 @@ export const SettingsPage: React.FC = () => {
                                         <textarea name="description.ar" value={localInfo.description?.ar || ''} onChange={handleInfoChange} rows={3} className={formInputClasses}></textarea>
                                     </FormGroup>
                                 </div>
+                                <hr className="border-slate-200 dark:border-slate-700"/>
+                                <FormGroup label={t.whatsappNumberLabel} helperText={t.settingsWhatsappDescription}>
+                                    <input type="text" name="whatsappNumber" value={localInfo.whatsappNumber || ''} onChange={handleNonLocalizedChange} className={formInputClasses} />
+                                </FormGroup>
+                            </SettingsCard>
+                            <SettingsCard title={t.tableManagement} subtitle={t.settingsTablesDescription}>
+                                <FormGroup label={t.totalTables}>
+                                    <input type="number" name="tableCount" value={localInfo.tableCount || 0} onChange={handleNonLocalizedChange} className={formInputClasses} min="0" />
+                                </FormGroup>
                             </SettingsCard>
                         </div>
                        
-                        <div className="xl:col-span-1">
+                        <div className="space-y-8">
                              <SettingsCard title={t.settingsBranding} subtitle={t.settingsHeroDescription}>
                                 <FormGroup label={t.logo} helperText={t.settingsLogoDescription}>
                                     <div className="flex items-center gap-4">
@@ -342,65 +351,6 @@ export const SettingsPage: React.FC = () => {
                                 </FormGroup>
                             </SettingsCard>
                         </div>
-                    </div>
-                )}
-
-                {activeTab === 'operations' && hasPermission('manage_settings_operations') && (
-                     <div className="grid grid-cols-1 xl:grid-cols-2 gap-8">
-                        <SettingsCard title={t.settingsOrdering} subtitle="Manage your order and operational settings.">
-                            <FormGroup label={t.whatsappNumberLabel} helperText={t.settingsWhatsappDescription}>
-                                <input type="text" name="whatsappNumber" value={localInfo.whatsappNumber || ''} onChange={handleNonLocalizedChange} className={formInputClasses} />
-                            </FormGroup>
-                            <hr className="border-slate-200 dark:border-slate-700"/>
-                            <FormGroup label={t.totalTables} helperText={t.settingsTablesDescription}>
-                                <input type="number" name="tableCount" value={localInfo.tableCount || 0} onChange={handleNonLocalizedChange} className={formInputClasses} min="0" />
-                            </FormGroup>
-                        </SettingsCard>
-                        <SettingsCard title={t.paymentInstructionsSettings} subtitle="Provide specific instructions for different payment methods.">
-                            <FormGroup label={t.codNotes} helperText={t.codNotesHelper}>
-                                <textarea name="codNotes.en" value={localInfo.codNotes?.en || ''} onChange={handleInfoChange} placeholder="English Notes" rows={3} className={formInputClasses + ' mb-2'}></textarea>
-                                <textarea name="codNotes.ar" value={localInfo.codNotes?.ar || ''} onChange={handleInfoChange} placeholder="Arabic Notes" rows={3} className={formInputClasses}></textarea>
-                            </FormGroup>
-                            <hr className="border-slate-200 dark:border-slate-700"/>
-                            <FormGroup label={t.onlinePaymentNotes} helperText={t.onlineNotesHelper}>
-                                <textarea name="onlinePaymentNotes.en" value={localInfo.onlinePaymentNotes?.en || ''} onChange={handleInfoChange} placeholder="English Notes" rows={3} className={formInputClasses + ' mb-2'}></textarea>
-                                <textarea name="onlinePaymentNotes.ar" value={localInfo.onlinePaymentNotes?.ar || ''} onChange={handleInfoChange} placeholder="Arabic Notes" rows={3} className={formInputClasses}></textarea>
-                            </FormGroup>
-                        </SettingsCard>
-                        <SettingsCard 
-                            title={t.onlinePaymentMethods} 
-                            subtitle="Manage your online payment options for delivery."
-                            actions={
-                                <button onClick={() => setEditingPaymentMethod('new')} className={btnPrimarySmClasses}>
-                                    <PlusIcon className="w-5 h-5" />
-                                    {t.addNewPaymentMethod}
-                                </button>
-                            }
-                        >
-                             <ul className="divide-y divide-gray-200 dark:divide-gray-700 -m-4 sm:-m-6">
-                                {(restaurantInfo.onlinePaymentMethods || []).length > 0 ? (restaurantInfo.onlinePaymentMethods || []).map(method => (
-                                    <li key={method.id} className="p-3 flex justify-between items-center gap-4 hover:bg-slate-50 dark:hover:bg-gray-700/50">
-                                        <div className="flex items-center gap-4 flex-grow">
-                                            <img src={method.icon} alt={`${method.name[language]} icon`} className="w-8 h-8 object-contain flex-shrink-0" />
-                                            <div className="flex-grow">
-                                                <div className="font-medium text-slate-800 dark:text-slate-200">{method.name[language]}</div>
-                                                <div className="text-sm text-slate-500 dark:text-slate-400 truncate max-w-[200px] sm:max-w-xs block">{method.details}</div>
-                                            </div>
-                                        </div>
-                                        <div className="flex items-center gap-2">
-                                            <label className="relative inline-flex items-center cursor-pointer" title={t.visibleOnPage}>
-                                                <input type="checkbox" checked={method.isVisible} onChange={() => handleToggleVisibility(method.id, 'payment')} className="sr-only peer" />
-                                                <div className="w-11 h-6 bg-slate-200 rounded-full peer dark:bg-slate-700 peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full after:content-[''] after:absolute after:top-0.5 after:start-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-green-600"></div>
-                                            </label>
-                                            <button onClick={() => setEditingPaymentMethod(method)} className={btnIconSecondaryClasses} title={t.editPaymentMethod}><PencilIcon className="w-5 h-5" /></button>
-                                            <button onClick={() => handleDeletePaymentMethod(method.id)} className={btnIconDangerClasses} title={t.cancel}><TrashIcon className="w-5 h-5" /></button>
-                                        </div>
-                                    </li>
-                                )) : (
-                                    <p className="p-6 text-center text-slate-500">No online payment methods added yet.</p>
-                                )}
-                            </ul>
-                        </SettingsCard>
                     </div>
                 )}
                 
@@ -470,6 +420,56 @@ export const SettingsPage: React.FC = () => {
                             ))}
                         </ul>
                     </SettingsCard>
+                )}
+
+                {activeTab === 'payments' && hasPermission('manage_settings_payments') && (
+                     <div className="grid grid-cols-1 xl:grid-cols-2 gap-8">
+                        <SettingsCard 
+                            title={t.onlinePaymentMethods} 
+                            subtitle="Manage your online payment options for delivery."
+                            actions={
+                                <button onClick={() => setEditingPaymentMethod('new')} className={btnPrimarySmClasses}>
+                                    <PlusIcon className="w-5 h-5" />
+                                    {t.addNewPaymentMethod}
+                                </button>
+                            }
+                        >
+                             <ul className="divide-y divide-gray-200 dark:divide-gray-700 -m-4 sm:-m-6">
+                                {(restaurantInfo.onlinePaymentMethods || []).length > 0 ? (restaurantInfo.onlinePaymentMethods || []).map(method => (
+                                    <li key={method.id} className="p-3 flex justify-between items-center gap-4 hover:bg-slate-50 dark:hover:bg-gray-700/50">
+                                        <div className="flex items-center gap-4 flex-grow">
+                                            <img src={method.icon} alt={`${method.name[language]} icon`} className="w-8 h-8 object-contain flex-shrink-0" />
+                                            <div className="flex-grow">
+                                                <div className="font-medium text-slate-800 dark:text-slate-200">{method.name[language]}</div>
+                                                <div className="text-sm text-slate-500 dark:text-slate-400 truncate max-w-[200px] sm:max-w-xs block">{method.details}</div>
+                                            </div>
+                                        </div>
+                                        <div className="flex items-center gap-2">
+                                            <label className="relative inline-flex items-center cursor-pointer" title={t.visibleOnPage}>
+                                                <input type="checkbox" checked={method.isVisible} onChange={() => handleToggleVisibility(method.id, 'payment')} className="sr-only peer" />
+                                                <div className="w-11 h-6 bg-slate-200 rounded-full peer dark:bg-slate-700 peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full after:content-[''] after:absolute after:top-0.5 after:start-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-green-600"></div>
+                                            </label>
+                                            <button onClick={() => setEditingPaymentMethod(method)} className={btnIconSecondaryClasses} title={t.editPaymentMethod}><PencilIcon className="w-5 h-5" /></button>
+                                            <button onClick={() => handleDeletePaymentMethod(method.id)} className={btnIconDangerClasses} title={t.cancel}><TrashIcon className="w-5 h-5" /></button>
+                                        </div>
+                                    </li>
+                                )) : (
+                                    <p className="p-6 text-center text-slate-500">No online payment methods added yet.</p>
+                                )}
+                            </ul>
+                        </SettingsCard>
+                        <SettingsCard title={t.paymentInstructionsSettings} subtitle="Provide specific instructions for different payment methods.">
+                            <FormGroup label={t.codNotes} helperText={t.codNotesHelper}>
+                                <textarea name="codNotes.en" value={localInfo.codNotes?.en || ''} onChange={handleInfoChange} placeholder="English Notes" rows={3} className={formInputClasses + ' mb-2'}></textarea>
+                                <textarea name="codNotes.ar" value={localInfo.codNotes?.ar || ''} onChange={handleInfoChange} placeholder="Arabic Notes" rows={3} className={formInputClasses}></textarea>
+                            </FormGroup>
+                            <hr className="border-slate-200 dark:border-slate-700"/>
+                            <FormGroup label={t.onlinePaymentNotes} helperText={t.onlineNotesHelper}>
+                                <textarea name="onlinePaymentNotes.en" value={localInfo.onlinePaymentNotes?.en || ''} onChange={handleInfoChange} placeholder="English Notes" rows={3} className={formInputClasses + ' mb-2'}></textarea>
+                                <textarea name="onlinePaymentNotes.ar" value={localInfo.onlinePaymentNotes?.ar || ''} onChange={handleInfoChange} placeholder="Arabic Notes" rows={3} className={formInputClasses}></textarea>
+                            </FormGroup>
+                        </SettingsCard>
+                    </div>
                 )}
                  {activeTab === 'activation' && hasPermission('manage_settings_activation') && (
                     <div className="grid grid-cols-1 xl:grid-cols-3 gap-8">

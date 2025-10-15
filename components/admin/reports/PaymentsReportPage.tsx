@@ -23,15 +23,40 @@ export const PaymentsReportPage: React.FC = () => {
 
     const columns = useMemo(() => {
         const getPaymentStatusText = (order: Order) => {
-            if (order.orderType === 'Delivery') {
-                return order.paymentMethod === 'cod' ? t.paymentStatusCod : t.paymentStatusPaidOnline;
+            if (order.paymentDetail) {
+                // If payment detail exists (e.g., "Cash", "Vodafone Cash"), it's considered paid.
+                return t.paymentStatusPaidOnline; 
             }
+            if (order.paymentMethod === 'cod') {
+                // If payment method is COD but no detail is recorded yet, it's Pay on Delivery.
+                return t.paymentStatusCod;
+            }
+            if (order.paymentMethod === 'online') {
+                // It was an online payment but maybe something went wrong (no receipt/detail)
+                return t.paymentStatusPaidOnline;
+            }
+            // Otherwise, it's unpaid.
             return t.paymentStatusUnpaid;
         };
         return [
             { Header: t.orderId, accessor: 'id' },
             { Header: t.date, accessor: 'timestamp', Cell: (row: Order) => formatDateTime(row.timestamp) },
-            { Header: t.paymentMethod, accessor: 'paymentMethod', Cell: (row: Order) => row.paymentMethod ? t[row.paymentMethod as 'cod' | 'online'] : 'N/A' },
+            { 
+                Header: t.paymentMethod, 
+                accessor: 'paymentMethod', 
+                Cell: (row: Order) => {
+                    if (row.paymentDetail) {
+                        return row.paymentDetail;
+                    }
+                    if (row.paymentMethod === 'cod') {
+                        return t.cashOnDelivery;
+                    }
+                    if (row.paymentMethod === 'online') {
+                        return t.onlinePayment;
+                    }
+                    return 'N/A';
+                }
+            },
             { Header: t.paymentStatus, accessor: 'status', Cell: getPaymentStatusText },
             { Header: t.total, accessor: 'total', Cell: (row: Order) => `${row.total.toFixed(2)} ${t.currency}` },
         ];

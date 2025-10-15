@@ -17,18 +17,20 @@ interface CategoryRowProps {
 
 const CategoryRow: React.FC<CategoryRowProps> = ({ category, level, onEditCategory, onDeleteCategory, canEdit, canDelete }) => {
     const { language } = useUI();
-    const indentStyle = { paddingLeft: `${level * 1.5}rem` };
+    const indentStyle = language === 'ar' ? { paddingRight: `${level * 1.5}rem` } : { paddingLeft: `${level * 1.5}rem` };
     
     return (
         <>
-            <li className="flex justify-between items-center hover:bg-slate-50 dark:hover:bg-slate-700/50">
-                <span className="font-medium text-slate-700 dark:text-slate-200 p-4" style={indentStyle}>
-                    {level > 0 && <span className="text-slate-400 dark:text-slate-500 me-2">└─</span>}
-                    {category.name[language]}
-                </span>
-                <div className="flex items-center gap-2 p-4">
-                    {canEdit && <button onClick={() => onEditCategory(category)} className="p-2 text-indigo-600 hover:bg-indigo-100 dark:hover:bg-indigo-900/50 rounded-full"><PencilIcon className="w-5 h-5" /></button>}
-                    {canDelete && <button onClick={() => onDeleteCategory(category.id)} className="p-2 text-red-600 hover:bg-red-100 dark:hover:bg-red-900/50 rounded-full"><TrashIcon className="w-5 h-5" /></button>}
+            <li className="group">
+                <div className={`flex justify-between items-center hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors ${level > 0 ? 'bg-slate-50/50 dark:bg-slate-800/20' : ''}`}>
+                    <span className="font-medium text-slate-700 dark:text-slate-200 p-3" style={indentStyle}>
+                        {level > 0 && <span className="text-slate-400 dark:text-slate-500 me-2">└─</span>}
+                        {category.name[language]}
+                    </span>
+                    <div className="flex items-center gap-1 p-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                        {canEdit && <button onClick={() => onEditCategory(category)} className="p-2 text-indigo-600 hover:bg-indigo-100 dark:hover:bg-indigo-900/50 rounded-full"><PencilIcon className="w-5 h-5" /></button>}
+                        {canDelete && <button onClick={() => onDeleteCategory(category.id)} className="p-2 text-red-600 hover:bg-red-100 dark:hover:bg-red-900/50 rounded-full"><TrashIcon className="w-5 h-5" /></button>}
+                    </div>
                 </div>
             </li>
             {category.children && category.children.map(child => (
@@ -82,22 +84,22 @@ export const ClassificationsPage: React.FC<ClassificationsPageProps> = (props) =
     };
 
     return (
-        <div>
+        <div className="animate-fade-in-up">
             <h2 className="text-2xl font-bold mb-6 text-slate-800 dark:text-slate-100">{t.classifications}</h2>
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                {/* Categories Section */}
-                <div>
-                    <div className="flex justify-between items-center mb-4">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
+                {/* Categories Card */}
+                <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-xl border border-slate-200 dark:border-slate-700">
+                    <div className="p-4 flex justify-between items-center border-b border-slate-200 dark:border-slate-700">
                         <h3 className="text-xl font-semibold text-slate-800 dark:text-slate-100">{t.manageCategories}</h3>
                         {canAddCategory && (
-                            <button onClick={onAddCategory} className="bg-green-500 text-white font-bold py-2 px-3 rounded-lg hover:bg-green-600 transition-colors flex items-center gap-2 text-sm">
+                            <button onClick={onAddCategory} className="bg-primary-500 text-white font-bold py-2 px-3 rounded-lg hover:bg-primary-600 transition-colors flex items-center gap-2 text-sm shadow-sm hover:shadow-md transform hover:-translate-y-px">
                                 <PlusIcon className="w-5 h-5" />
                                 {t.addNewCategory}
                             </button>
                         )}
                     </div>
-                    <div className="bg-white dark:bg-slate-800 rounded-lg shadow-md overflow-hidden">
-                        <ul className="divide-y divide-slate-200 dark:divide-slate-700">
+                    <div className="p-2">
+                         <ul className="divide-y divide-slate-100 dark:divide-slate-700">
                             {categories.map(category => (
                                 <CategoryRow 
                                     key={category.id} 
@@ -113,29 +115,31 @@ export const ClassificationsPage: React.FC<ClassificationsPageProps> = (props) =
                     </div>
                 </div>
 
-                {/* Tags Section */}
-                <div>
-                    <div className="flex justify-between items-center mb-4">
+                {/* Tags Card */}
+                <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-xl border border-slate-200 dark:border-slate-700">
+                    <div className="p-4 flex justify-between items-center border-b border-slate-200 dark:border-slate-700">
                         <h3 className="text-xl font-semibold text-slate-800 dark:text-slate-100">{t.manageTags}</h3>
                         {canAddTag && (
-                            <button onClick={onAddTag} className="bg-green-500 text-white font-bold py-2 px-3 rounded-lg hover:bg-green-600 transition-colors flex items-center gap-2 text-sm">
+                            <button onClick={onAddTag} className="bg-primary-500 text-white font-bold py-2 px-3 rounded-lg hover:bg-primary-600 transition-colors flex items-center gap-2 text-sm shadow-sm hover:shadow-md transform hover:-translate-y-px">
                                 <PlusIcon className="w-5 h-5" />
                                 {t.addNewTag}
                             </button>
                         )}
                     </div>
-                    <div className="bg-white dark:bg-slate-800 rounded-lg shadow-md">
-                         <ul className="divide-y divide-slate-200 dark:divide-slate-700">
+                    <div className="p-4">
+                         <div className="flex flex-wrap gap-3">
                             {tags.map(tag => (
-                                <li key={tag.id} className="p-4 flex justify-between items-center hover:bg-slate-50 dark:hover:bg-slate-700/50">
-                                    <span className="font-medium text-slate-700 dark:text-slate-200">{tag.name[language]}</span>
-                                    <div className="flex items-center gap-2">
-                                        {canEditTag && <button onClick={() => onEditTag(tag)} className="p-2 text-indigo-600 hover:bg-indigo-100 dark:hover:bg-indigo-900/50 rounded-full"><PencilIcon className="w-5 h-5" /></button>}
-                                        {canDeleteTag && <button onClick={() => handleDeleteTag(tag.id)} className="p-2 text-red-600 hover:bg-red-100 dark:hover:bg-red-900/50 rounded-full"><TrashIcon className="w-5 h-5" /></button>}
+                                <div key={tag.id} className="group relative">
+                                    <span className="inline-block px-4 py-2 rounded-full text-sm font-semibold border-2 border-slate-300 dark:border-slate-600 text-slate-600 dark:text-slate-300 transition-colors group-hover:border-primary-400 dark:group-hover:border-primary-500">
+                                        {tag.name[language]}
+                                    </span>
+                                    <div className="absolute inset-0 bg-black/60 rounded-full flex items-center justify-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                        {canEditTag && <button onClick={() => onEditTag(tag)} className="p-2 text-white hover:bg-white/20 rounded-full"><PencilIcon className="w-5 h-5" /></button>}
+                                        {canDeleteTag && <button onClick={() => handleDeleteTag(tag.id)} className="p-2 text-white hover:bg-white/20 rounded-full"><TrashIcon className="w-5 h-5" /></button>}
                                     </div>
-                                </li>
+                                </div>
                             ))}
-                        </ul>
+                        </div>
                     </div>
                 </div>
             </div>
