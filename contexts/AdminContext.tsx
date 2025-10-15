@@ -60,58 +60,58 @@ export const AdminProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     const [viewingOrder, setViewingOrder] = useState<Order | null>(null);
     const [refusingOrder, setRefusingOrder] = useState<Order | null>(null);
 
-    useEffect(() => {
-        const fetchData = async () => {
-            if (!currentUser) {
-                setOrders([]);
+    const fetchAdminData = useCallback(async () => {
+        if (!currentUser) {
+            setOrders([]);
+            setUsers([]);
+            return;
+        }
+
+        const isAdmin = hasPermission('view_orders_page');
+
+        try {
+            const cacheBuster = `?v=${Date.now()}`;
+            const ordersRes = await fetch(`${API_BASE_URL}get_orders.php${cacheBuster}`, { cache: 'no-cache' });
+            if (!ordersRes.ok) throw new Error('Failed to fetch orders');
+            const allOrders = (await ordersRes.json() || []).map((o: any) => ({ ...o, paymentReceiptUrl: resolveImageUrl(o.paymentReceiptUrl)}));
+
+            if (isAdmin) {
+                setOrders(allOrders);
+                const usersRes = await fetch(`${API_BASE_URL}get_users.php${cacheBuster}`, { cache: 'no-cache' });
+                if (usersRes.ok) {
+                    setUsers((await usersRes.json() || []).map((u: any) => ({ id: Number(u.id), name: u.name, mobile: u.mobile, password: '', role: String(u.role_id), profilePicture: resolveImageUrl(u.profile_picture) || `https://placehold.co/512x512/60a5fa/white?text=${u.name.charAt(0).toUpperCase()}` })));
+                }
+            } else {
+                setOrders(allOrders.filter((o: Order) => o.customer.userId === currentUser.id));
                 setUsers([]);
+            }
+        } catch (error) {
+            console.error("Failed to load admin data:", error);
+            showToast("Failed to load user data.");
+        }
+    }, [currentUser, hasPermission, showToast]);
+
+
+    useEffect(() => {
+        const fetchPermissions = async () => {
+            if (!currentUser) {
                 setRolePermissions({});
                 return;
             }
-
-            const isAdmin = hasPermission('view_orders_page');
-            
             try {
-                const cacheBuster = `?v=${Date.now()}`;
-                // All logged-in users need permissions for UI checks.
-                const permissionsRes = await fetch(`${API_BASE_URL}get_permissions.php${cacheBuster}`, { cache: 'no-cache' });
+                const permissionsRes = await fetch(`${API_BASE_URL}get_permissions.php?v=${Date.now()}`, { cache: 'no-cache' });
                 if (permissionsRes.ok) {
                     const permissions = await permissionsRes.json() || {};
                     setRolePermissions(permissions);
                     setAuthRolePermissions(permissions);
                 }
-
-                // All logged-in users need to fetch orders.
-                // NOTE: This leaks all order data to clients; a server-side filter would be better.
-                const ordersRes = await fetch(`${API_BASE_URL}get_orders.php${cacheBuster}`, { cache: 'no-cache' });
-                if (!ordersRes.ok) throw new Error('Failed to fetch orders');
-                const allOrders = (await ordersRes.json() || []).map((o: any) => ({ ...o, paymentReceiptUrl: resolveImageUrl(o.paymentReceiptUrl)}));
-
-                if (isAdmin) {
-                    // Admin: set all orders and fetch all users
-                    setOrders(allOrders);
-                    
-                    const usersRes = await fetch(`${API_BASE_URL}get_users.php${cacheBuster}`, { cache: 'no-cache' });
-                    if (usersRes.ok) {
-                        setUsers((await usersRes.json() || []).map((u: any) => ({ id: Number(u.id), name: u.name, mobile: u.mobile, password: '', role: String(u.role_id), profilePicture: resolveImageUrl(u.profile_picture) || `https://placehold.co/512x512/60a5fa/white?text=${u.name.charAt(0).toUpperCase()}` })));
-                    } else {
-                        setUsers([]);
-                    }
-                } else {
-                    // Customer: filter to their own orders and clear admin data
-                    const userOrders = allOrders.filter(o => o.customer.userId === currentUser.id);
-                    setOrders(userOrders);
-                    setUsers([]);
-                }
-            } catch (error) { 
-                console.error("Failed to load user or admin data:", error);
-                showToast("Failed to load user data."); 
-                setOrders([]);
-                setUsers([]);
+            } catch (error) {
+                console.error("Failed to load permissions:", error);
             }
         };
-        fetchData();
-    }, [currentUser, hasPermission, showToast, setAuthRolePermissions]);
+        fetchPermissions();
+        fetchAdminData();
+    }, [currentUser, setAuthRolePermissions, fetchAdminData]);
 
     const placeOrder = useCallback(async (order: Omit<Order, 'id' | 'timestamp'>): Promise<Order> => {
         setIsProcessing(true);
@@ -160,11 +160,14 @@ export const AdminProvider: React.FC<{ children: React.ReactNode }> = ({ childre
                 if (payload.items) payload.total = calculateTotal(payload.items);
                 const res = await fetch(`${API_BASE_URL}update_order.php`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ orderId, payload }) });
                 if (!res.ok || !(await res.json()).success) throw new Error('Failed to update order.');
-                setOrders(prev => prev.map(o => o.id === orderId ? { ...o, ...payload } : o));
+                
+                await fetchAdminData(); // Refetch data to ensure consistency
+
+                setViewingOrder(prev => (prev && prev.id === orderId) ? { ...prev, ...payload } : prev);
                 showToast('Order updated.');
             } catch (error: any) { showToast(error.message); } finally { setIsProcessing(false); }
         } else { showToast(t.permissionDenied); }
-    }, [orders, currentUser, hasPermission, showToast, t.permissionDenied, setIsProcessing]);
+    }, [orders, currentUser, hasPermission, showToast, t.permissionDenied, setIsProcessing, fetchAdminData, setViewingOrder]);
 
     const deleteOrder = useCallback(async (orderId: string) => {
         if (!hasPermission('delete_order') || !window.confirm(t.confirmDeleteOrder)) return;

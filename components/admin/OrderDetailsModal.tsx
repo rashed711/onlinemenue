@@ -40,13 +40,12 @@ export const OrderDetailsModal: React.FC<OrderDetailsModalProps> = ({ order, onC
     const canEditPayment = hasPermission('edit_recorded_payment');
 
     useEffect(() => {
-        // Automatically enter edit mode only if no payment is recorded AND the user has permission.
-        setIsEditingPayment(!order.paymentDetail && canEditPayment);
-        if (order.paymentDetail) {
-            setCodPaymentDetail(order.paymentDetail);
-        } else {
-            setCodPaymentDetail('');
-        }
+        // This effect synchronizes the local state with the order prop.
+        // It ensures that whenever the modal is opened or the order data changes,
+        // the view correctly reflects whether a payment has been recorded.
+        const shouldBeEditing = !order.paymentDetail && canEditPayment;
+        setIsEditingPayment(shouldBeEditing);
+        setCodPaymentDetail(order.paymentDetail || '');
     }, [order, canEditPayment]);
 
     const handleShare = async () => {
@@ -121,7 +120,6 @@ export const OrderDetailsModal: React.FC<OrderDetailsModalProps> = ({ order, onC
     const handleSaveCodPayment = async () => {
         if (codPaymentDetail) {
             await updateOrder(order.id, { paymentDetail: codPaymentDetail });
-            setIsEditingPayment(false);
         }
     }
 
