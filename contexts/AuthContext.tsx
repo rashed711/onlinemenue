@@ -71,56 +71,74 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }, [currentUser]);
 
      useEffect(() => {
+        // Don't set up the listener until roles are loaded, to correctly identify staff vs customer.
+        if (roles.length === 0) {
+            return;
+        }
+
         const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
             if (firebaseUser) {
-                // User is signed in to Firebase, see if we have them locally.
-                if (!currentUser) {
-                    setIsProcessing(true);
-                    try {
-                        const response = await fetch(`${API_BASE_URL}get_user_by_fid.php`, {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({ firebase_uid: firebaseUser.uid })
-                        });
-                        const result = await response.json();
+                // Firebase user is logged in. This is the source of truth for customers.
+                // Sync with our backend user data.
+                setIsProcessing(true);
+                try {
+                    const response = await fetch(`${API_BASE_URL}get_user_by_fid.php`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ firebase_uid: firebaseUser.uid })
+                    });
+                    const result = await response.json();
 
-                        if (result.success && result.user) {
-                            const dbUser = result.user;
-                            const profilePictureUrl = resolveImageUrl(dbUser.profile_picture) || `https://placehold.co/512x512/60a5fa/white?text=${(dbUser.name || 'U').charAt(0).toUpperCase()}`;
-                            setCurrentUser({ 
-                                id: Number(dbUser.id), 
-                                name: dbUser.name, 
-                                mobile: dbUser.mobile, 
-                                password: '', 
-                                role: String(dbUser.role_id), 
-                                profilePicture: profilePictureUrl 
-                            });
-                        } else {
-                            await signOut(auth);
-                        }
-                    } catch (error) {
-                        console.error("Failed to fetch user profile on auth state change:", error);
+                    if (result.success && result.user) {
+                        const dbUser = result.user;
+                        const profilePictureUrl = resolveImageUrl(dbUser.profile_picture) || `https://placehold.co/512x512/60a5fa/white?text=${(dbUser.name || 'U').charAt(0).toUpperCase()}`;
+                        setCurrentUser({ 
+                            id: Number(dbUser.id), 
+                            name: dbUser.name, 
+                            mobile: dbUser.mobile, 
+                            password: '', 
+                            role: String(dbUser.role_id), 
+                            profilePicture: profilePictureUrl 
+                        });
+                    } else {
+                        // User exists in Firebase but not our DB. This is an inconsistent state.
+                        // Log them out from Firebase to clean up.
                         await signOut(auth);
-                    } finally {
-                        setIsProcessing(false);
-                    }
-                }
-            } else {
-                // User is signed out from Firebase.
-                // We should only sign out the user if they are NOT an admin/staff.
-                // Staff login state is managed separately and doesn't depend on Firebase.
-                if (currentUser) {
-                    const role = roles.find(r => r.key === currentUser.role);
-                    const isStaff = role && role.name.en.toLowerCase() !== 'customer';
-                    if (!isStaff) {
                         setCurrentUser(null);
                     }
+                } catch (error) {
+                    console.error("Failed to fetch user profile on auth state change:", error);
+                    await signOut(auth);
+                    setCurrentUser(null);
+                } finally {
+                    setIsProcessing(false);
                 }
+            } else {
+                // No firebaseUser. This means the user is signed out from Firebase.
+                // We need to check if the user currently in our React state (from localStorage) is a customer.
+                // If so, we log them out. If they are staff, we do nothing, as their session is not managed by Firebase.
+                setCurrentUser(prevUser => {
+                    if (!prevUser) {
+                        return null; // No one was logged in anyway.
+                    }
+
+                    const role = roles.find(r => r.key === prevUser.role);
+                    // A user is considered a customer if their role name is 'customer'.
+                    const isCustomer = role && role.name.en.toLowerCase() === 'customer';
+
+                    if (isCustomer) {
+                        return null; // It's a customer, and Firebase says they are logged out, so clear them.
+                    } else {
+                        return prevUser; // It's a staff member, preserve their session.
+                    }
+                });
             }
         });
-        
+
         return () => unsubscribe();
-    }, [currentUser, roles]);
+    // This effect should only re-run when roles are loaded.
+    // Functions from contexts are stable.
+    }, [roles, setIsProcessing, setRolePermissions]);
 
     const userRoleDetails = useMemo(() => roles.find(r => r.key === currentUser?.role), [roles, currentUser]);
     

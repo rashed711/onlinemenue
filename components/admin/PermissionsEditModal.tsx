@@ -86,9 +86,38 @@ export const PermissionsEditModal: React.FC<PermissionsEditModalProps> = ({ role
 
   const role = useMemo(() => roles.find(r => r.key === roleId), [roles, roleId]);
   
-  const allPermissionGroups = useMemo(() => {
-    return Object.values(PERMISSION_GROUPS);
-  }, []);
+  const currentUserRoleDetails = useMemo(() => {
+    if (!currentUser) return null;
+    return roles.find(r => r.key === currentUser.role);
+  }, [currentUser, roles]);
+
+  const isCurrentUserSuperAdmin = useMemo(() => {
+    return currentUserRoleDetails?.name.en.toLowerCase() === 'superadmin';
+  }, [currentUserRoleDetails]);
+
+  const currentUserPermissions = useMemo(() => {
+    if (!currentUser || !rolePermissions) return [];
+    return rolePermissions[currentUser.role] || [];
+  }, [currentUser, rolePermissions]);
+  
+  const availablePermissionGroups = useMemo(() => {
+      if (isCurrentUserSuperAdmin) {
+          // Super admin sees all possible permissions defined in the system.
+          return Object.values(PERMISSION_GROUPS);
+      }
+      
+      // Other users only see the permissions they are granted.
+      return Object.values(PERMISSION_GROUPS).map(group => {
+          // Filter each group's permissions based on what the current user has.
+          const availablePermissions = group.permissions.filter(permission => 
+              currentUserPermissions.includes(permission.id)
+          );
+          
+          // Return the group but with the filtered permissions list.
+          return { ...group, permissions: availablePermissions };
+      }).filter(group => group.permissions.length > 0); // Hide groups that become empty after filtering.
+
+  }, [isCurrentUserSuperAdmin, currentUserPermissions]);
 
   const handleCheckboxChange = (permissionId: Permission, isChecked: boolean) => {
     if (isChecked) {
@@ -146,7 +175,7 @@ export const PermissionsEditModal: React.FC<PermissionsEditModalProps> = ({ role
           )}
           
           <div className="space-y-6">
-             {allPermissionGroups.map((group, index) => (
+             {availablePermissionGroups.map((group, index) => (
                 <PermissionCard 
                   key={index} 
                   group={group}
