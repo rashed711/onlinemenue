@@ -40,13 +40,14 @@ export const OrderDetailsModal: React.FC<OrderDetailsModalProps> = ({ order, onC
     const canEditPayment = hasPermission('edit_recorded_payment');
 
     useEffect(() => {
-        setIsEditingPayment(!order.paymentDetail);
+        // Automatically enter edit mode only if no payment is recorded AND the user has permission.
+        setIsEditingPayment(!order.paymentDetail && canEditPayment);
         if (order.paymentDetail) {
             setCodPaymentDetail(order.paymentDetail);
         } else {
             setCodPaymentDetail('');
         }
-    }, [order]);
+    }, [order, canEditPayment]);
 
     const handleShare = async () => {
         setIsProcessing(true);
