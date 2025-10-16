@@ -2,7 +2,7 @@ import React, { createContext, useState, useEffect, useCallback, useContext, use
 import type { User, Permission, UserRole, Role } from '../types';
 import { API_BASE_URL } from '../utils/config';
 import { useUI } from './UIContext';
-import { auth, RecaptchaVerifier, signInWithPhoneNumber, onAuthStateChanged, signOut } from '../firebase';
+import { auth, RecaptchaVerifier, signInWithPhoneNumber, onAuthStateChanged, signOut, getRedirectResult, GoogleAuthProvider } from '../firebase';
 import type { ConfirmationResult, User as FirebaseUser } from 'firebase/auth';
 
 interface AuthContextType {
@@ -49,6 +49,20 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const [confirmationResult, setConfirmationResult] = useState<ConfirmationResult | null>(null);
     const [isCompletingProfile, setIsCompletingProfile] = useState(false);
     const [newUserFirebaseData, setNewUserFirebaseData] = useState<{ uid: string; phoneNumber: string | null; email?: string | null, name?: string | null, photoURL?: string | null, providerId: string } | null>(null);
+
+    useEffect(() => {
+        // This effect specifically catches errors from the redirect flow.
+        // The onAuthStateChanged listener handles the success case.
+        getRedirectResult(auth)
+            .catch((error) => {
+                console.error("Google Sign-In Redirect Error", error);
+                if (error.code === 'auth/unauthorized-domain') {
+                    showToast("Google Sign-In Error: Unauthorized domain. Please check your Firebase & Google Cloud console configuration.");
+                } else {
+                    showToast(`Google Sign-In Error: ${error.message}`);
+                }
+            });
+    }, [showToast]);
 
     useEffect(() => {
         const fetchBaseAuthData = async () => {

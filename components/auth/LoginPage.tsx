@@ -1,8 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useUI } from '../../contexts/UIContext';
 import { useAuth } from '../../contexts/AuthContext';
-import { GoogleAuthProvider, signInWithPopup } from "firebase/auth";
-import { auth } from '../../firebase';
+import { auth, GoogleAuthProvider, signInWithRedirect } from '../../firebase';
 
 const GoogleIcon = () => (
     <svg className="w-5 h-5" viewBox="0 0 48 48">
@@ -58,11 +57,12 @@ export const LoginPage: React.FC = () => {
     const handleGoogleLogin = async () => {
         const provider = new GoogleAuthProvider();
         try {
-            // This will trigger the onAuthStateChanged listener in AuthContext, which handles the rest.
-            await signInWithPopup(auth, provider);
+            // This will navigate the user away and then back.
+            // The result is handled by onAuthStateChanged or getRedirectResult
+            await signInWithRedirect(auth, provider);
         } catch (error) {
             console.error("Google Sign-In Error", error);
-            setError("Failed to sign in with Google.");
+            setError("Failed to start sign in with Google.");
         }
     };
 
