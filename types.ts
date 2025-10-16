@@ -115,10 +115,14 @@ export interface User {
   id: number;
   name: string;
   mobile: string;
-  password: string; // In a real app, this should be a hash
+  email?: string | null;
+  password?: string; // Made optional
   role: UserRole;
   profilePicture?: string;
+  firebase_uid?: string;
+  google_id?: string;
 }
+
 
 export type OrderStatus = string;
 export type OrderType = 'Dine-in' | 'Delivery' | 'Takeaway';

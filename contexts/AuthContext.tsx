@@ -14,9 +14,10 @@ interface AuthContextType {
     logout: () => void;
     sendOtp: (phoneNumber: string) => Promise<{ success: boolean; error?: string }>;
     verifyOtp: (otp: string) => Promise<string | null>;
-    completeProfile: (name: string) => Promise<void>;
+    completeProfile: (details: { name: string, mobile: string }) => Promise<void>;
     confirmationResult: ConfirmationResult | null;
     isCompletingProfile: boolean;
+    newUserFirebaseData: { uid: string; phoneNumber: string | null; email?: string | null, name?: string | null, photoURL?: string | null, providerId: string } | null;
     updateUserProfile: (userId: number, updates: { name?: string; profilePicture?: string }) => Promise<void>;
     changeCurrentUserPassword: (currentPassword: string, newPassword: string) => Promise<string | null>;
     hasPermission: (permission: Permission) => boolean;
@@ -45,10 +46,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const [roles, setRoles] = useState<Role[]>([]);
     const [rolePermissions, setRolePermissions] = useState<Record<UserRole, Permission[]>>({});
     
-    // Firebase state
     const [confirmationResult, setConfirmationResult] = useState<ConfirmationResult | null>(null);
     const [isCompletingProfile, setIsCompletingProfile] = useState(false);
-    const [newUserFirebaseData, setNewUserFirebaseData] = useState<{ uid: string; phoneNumber: string | null } | null>(null);
+    const [newUserFirebaseData, setNewUserFirebaseData] = useState<{ uid: string; phoneNumber: string | null; email?: string | null, name?: string | null, photoURL?: string | null, providerId: string } | null>(null);
 
     useEffect(() => {
         const fetchBaseAuthData = async () => {
@@ -71,74 +71,83 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }, [currentUser]);
 
      useEffect(() => {
-        // Don't set up the listener until roles are loaded, to correctly identify staff vs customer.
-        if (roles.length === 0) {
-            return;
-        }
+        if (roles.length === 0) return;
 
         const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
             if (firebaseUser) {
-                // Firebase user is logged in. This is the source of truth for customers.
-                // Sync with our backend user data.
                 setIsProcessing(true);
                 try {
-                    const response = await fetch(`${API_BASE_URL}get_user_by_fid.php`, {
+                    // NOTE: You need to create `get_user_by_email.php` on your backend.
+                    const isGoogle = firebaseUser.providerData[0]?.providerId === 'google.com';
+                    const endpoint = isGoogle ? 'get_user_by_email.php' : 'get_user_by_fid.php';
+                    const body = isGoogle ? { email: firebaseUser.email } : { firebase_uid: firebaseUser.uid };
+
+                    const response = await fetch(`${API_BASE_URL}${endpoint}`, {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ firebase_uid: firebaseUser.uid })
+                        body: JSON.stringify(body)
                     });
-                    const result = await response.json();
-
-                    if (result.success && result.user) {
-                        const dbUser = result.user;
-                        const profilePictureUrl = resolveImageUrl(dbUser.profile_picture) || `https://placehold.co/512x512/60a5fa/white?text=${(dbUser.name || 'U').charAt(0).toUpperCase()}`;
-                        setCurrentUser({ 
-                            id: Number(dbUser.id), 
-                            name: dbUser.name, 
-                            mobile: dbUser.mobile, 
-                            password: '', 
-                            role: String(dbUser.role_id), 
-                            profilePicture: profilePictureUrl 
-                        });
+                    
+                    if (response.ok) {
+                        const result = await response.json();
+                        if (result.success && result.user) {
+                            const dbUser = result.user;
+                            const profilePictureUrl = resolveImageUrl(dbUser.profile_picture) || `https://placehold.co/512x512/60a5fa/white?text=${(dbUser.name || 'U').charAt(0).toUpperCase()}`;
+                            setCurrentUser({ 
+                                id: Number(dbUser.id), 
+                                name: dbUser.name, 
+                                mobile: dbUser.mobile, 
+                                email: dbUser.email,
+                                password: '', 
+                                role: String(dbUser.role_id), 
+                                profilePicture: profilePictureUrl 
+                            });
+                            setIsCompletingProfile(false);
+                            if (window.location.hash.startsWith('#/login')) {
+                               window.location.hash = '#/';
+                            }
+                        } else {
+                             // User exists in Firebase but not in our DB -> complete profile
+                            setNewUserFirebaseData({
+                                uid: firebaseUser.uid,
+                                phoneNumber: firebaseUser.phoneNumber,
+                                email: firebaseUser.email,
+                                name: firebaseUser.displayName,
+                                photoURL: firebaseUser.photoURL,
+                                providerId: firebaseUser.providerData[0]?.providerId
+                            });
+                            setIsCompletingProfile(true);
+                        }
                     } else {
-                        // User exists in Firebase but not our DB. This is an inconsistent state.
-                        // Log them out from Firebase to clean up.
-                        await signOut(auth);
-                        setCurrentUser(null);
+                         // User exists in Firebase but not in our DB -> complete profile
+                        setNewUserFirebaseData({
+                            uid: firebaseUser.uid,
+                            phoneNumber: firebaseUser.phoneNumber,
+                            email: firebaseUser.email,
+                            name: firebaseUser.displayName,
+                            photoURL: firebaseUser.photoURL,
+                            providerId: firebaseUser.providerData[0]?.providerId
+                        });
+                        setIsCompletingProfile(true);
                     }
                 } catch (error) {
-                    console.error("Failed to fetch user profile on auth state change:", error);
-                    await signOut(auth);
-                    setCurrentUser(null);
+                    console.error("Auth state change error:", error);
+                    await logout();
                 } finally {
                     setIsProcessing(false);
                 }
             } else {
-                // No firebaseUser. This means the user is signed out from Firebase.
-                // We need to check if the user currently in our React state (from localStorage) is a customer.
-                // If so, we log them out. If they are staff, we do nothing, as their session is not managed by Firebase.
-                setCurrentUser(prevUser => {
-                    if (!prevUser) {
-                        return null; // No one was logged in anyway.
-                    }
-
+                // User is signed out from Firebase, so clear customer sessions
+                 setCurrentUser(prevUser => {
+                    if (!prevUser) return null;
                     const role = roles.find(r => r.key === prevUser.role);
-                    // A user is considered a customer if their role name is 'customer'.
-                    const isCustomer = role && role.name.en.toLowerCase() === 'customer';
-
-                    if (isCustomer) {
-                        return null; // It's a customer, and Firebase says they are logged out, so clear them.
-                    } else {
-                        return prevUser; // It's a staff member, preserve their session.
-                    }
+                    const isCustomer = role?.name.en.toLowerCase() === 'customer';
+                    return isCustomer ? null : prevUser;
                 });
             }
         });
-
         return () => unsubscribe();
-    // This effect should only re-run when roles are loaded.
-    // Functions from contexts are stable.
-    }, [roles, setIsProcessing, setRolePermissions]);
+    }, [roles, setIsProcessing]);
 
     const userRoleDetails = useMemo(() => roles.find(r => r.key === currentUser?.role), [roles, currentUser]);
     
@@ -179,37 +188,25 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const register = useCallback(async (details: { name: string; mobile: string; password: string }): Promise<string | null> => {
         setIsProcessing(true);
         try {
-            const customerRole = roles.find(r => r.name.en.toLowerCase() === 'customer');
-            if (!customerRole) throw new Error("Customer role not found.");
-
-            const payload = {
-                name: details.name,
-                mobile: details.mobile,
-                password: details.password,
-                role: customerRole.key,
-            };
+            const payload = { ...details, role: 'Customer' };
             const response = await fetch(`${API_BASE_URL}add_user.php`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(payload)
             });
             const result = await response.json();
-            if (!result.success) {
-                throw new Error(result.error || 'Registration failed.');
-            }
-            // After successful registration, log the user in.
+            if (!result.success) throw new Error(result.error || 'Registration failed.');
+            
             const dbUser = result.user;
             const profilePictureUrl = resolveImageUrl(dbUser.profile_picture) || `https://placehold.co/512x512/60a5fa/white?text=${(dbUser.name || 'U').charAt(0).toUpperCase()}`;
-            setCurrentUser({ id: Number(dbUser.id), name: dbUser.name, mobile: dbUser.mobile, password: '', role: customerRole.key, profilePicture: profilePictureUrl });
-            
-            return null; // No error
+            setCurrentUser({ id: Number(dbUser.id), name: dbUser.name, mobile: dbUser.mobile, password: '', role: String(dbUser.role_id), profilePicture: profilePictureUrl });
+            return null;
         } catch (error: any) {
-            console.error("Registration error:", error);
-            return error.message || "An unknown error occurred during registration.";
+            return error.message || "An unknown error occurred.";
         } finally {
             setIsProcessing(false);
         }
-    }, [setIsProcessing, roles]);
+    }, [setIsProcessing]);
 
     const logout = useCallback(async () => {
         try {
@@ -278,31 +275,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }, [setConfirmationResult, setIsProcessing, t.language]);
 
     const verifyOtp = useCallback(async (otp: string): Promise<string | null> => {
-        if (!confirmationResult) return "No confirmation result found. Please try again.";
+        if (!confirmationResult) return "No confirmation result. Please try again.";
         setIsProcessing(true);
         try {
-            const result = await confirmationResult.confirm(otp);
-            const firebaseUser = result.user;
-
-            // Check if user exists in our SQL database
-            const checkResponse = await fetch(`${API_BASE_URL}get_user_by_fid.php`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ firebase_uid: firebaseUser.uid })
-            });
-            const checkResult = await checkResponse.json();
-            
-            if (checkResult.success && checkResult.user) {
-                // User exists, log them in
-                const dbUser = checkResult.user;
-                const profilePictureUrl = resolveImageUrl(dbUser.profile_picture) || `https://placehold.co/512x512/60a5fa/white?text=${(dbUser.name || 'U').charAt(0).toUpperCase()}`;
-                setCurrentUser({ id: Number(dbUser.id), name: dbUser.name, mobile: dbUser.mobile, password: '', role: String(dbUser.role_id), profilePicture: profilePictureUrl });
-                window.location.hash = '#/';
-            } else {
-                // New user, trigger profile completion
-                setNewUserFirebaseData({ uid: firebaseUser.uid, phoneNumber: firebaseUser.phoneNumber });
-                setIsCompletingProfile(true);
-            }
+            // This will trigger the onAuthStateChanged listener, which handles the rest.
+            await confirmationResult.confirm(otp);
             return null;
         } catch (error: any) {
             console.error("Firebase OTP verify error:", error);
@@ -312,39 +289,42 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         }
     }, [confirmationResult, setIsProcessing]);
 
-    const completeProfile = useCallback(async (name: string) => {
+    const completeProfile = useCallback(async (details: { name: string, mobile: string }) => {
         if (!newUserFirebaseData) return;
         setIsProcessing(true);
         try {
-            const customerRole = roles.find(r => r.name.en.toLowerCase() === 'customer');
-            const payload = {
-                name,
-                mobile: newUserFirebaseData.phoneNumber,
-                firebase_uid: newUserFirebaseData.uid,
-                role: customerRole?.key,
+            const payload: any = {
+                name: details.name,
+                mobile: details.mobile,
+                role: 'Customer'
             };
+
+            if (newUserFirebaseData.providerId === 'google.com') {
+                payload.google_id = newUserFirebaseData.uid;
+                payload.email = newUserFirebaseData.email;
+                payload.profile_picture = newUserFirebaseData.photoURL;
+            } else { // phone
+                payload.firebase_uid = newUserFirebaseData.uid;
+                // The mobile number is already part of `details` from the form
+            }
+            
             const response = await fetch(`${API_BASE_URL}add_user.php`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(payload)
+                method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload)
             });
             const result = await response.json();
             if (!result.success) throw new Error(result.error || 'Failed to create profile.');
-
-            const dbUser = result.user;
-            const profilePictureUrl = resolveImageUrl(dbUser.profile_picture) || `https://placehold.co/512x512/60a5fa/white?text=${(dbUser.name || 'U').charAt(0).toUpperCase()}`;
-            setCurrentUser({ id: Number(dbUser.id), name: dbUser.name, mobile: dbUser.mobile, password: '', role: customerRole?.key || '9', profilePicture: profilePictureUrl });
             
+            // The onAuthStateChanged listener will now find this user and log them in.
+            // We just need to hide the modal and clear the temp data.
             setIsCompletingProfile(false);
             setNewUserFirebaseData(null);
-            window.location.hash = '#/';
-
+            
         } catch (error: any) {
             showToast(error.message || 'Failed to save profile.');
         } finally {
             setIsProcessing(false);
         }
-    }, [newUserFirebaseData, setIsProcessing, showToast, roles]);
+    }, [newUserFirebaseData, setIsProcessing, showToast]);
 
     const updateUserProfile = useCallback(async (userId: number, updates: { name?: string; profilePicture?: string }) => {
         if (!currentUser || currentUser.id !== userId) return;
@@ -419,6 +399,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         completeProfile,
         confirmationResult,
         isCompletingProfile,
+        newUserFirebaseData,
         updateUserProfile,
         changeCurrentUserPassword,
         hasPermission,
