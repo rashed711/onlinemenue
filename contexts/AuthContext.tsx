@@ -51,27 +51,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const [newUserFirebaseData, setNewUserFirebaseData] = useState<{ uid: string; phoneNumber: string | null; email?: string | null, name?: string | null, photoURL?: string | null, providerId: string } | null>(null);
 
     useEffect(() => {
-        // This effect catches errors from the redirect flow and consumes the result.
-        getRedirectResult(auth)
-            .then((result) => {
-                if (result) {
-                    console.log('Google Sign-In redirect result processed.');
-                    // The onAuthStateChanged listener is the single source of truth,
-                    // so we don't need to do anything with the user here. This call
-                    // is mainly to "consume" the redirect result and prevent issues.
-                }
-            })
-            .catch((error) => {
-                console.error("Google Sign-In Redirect Error", error);
-                if (error.code === 'auth/unauthorized-domain') {
-                    showToast("Google Sign-In Error: Unauthorized domain. Please check your Firebase & Google Cloud console configuration.");
-                } else {
-                    showToast(`Google Sign-In Error: ${error.message}`);
-                }
-            });
-    }, [showToast]);
-
-    useEffect(() => {
         const fetchBaseAuthData = async () => {
              try {
                 const cacheBuster = `?v=${Date.now()}`;
@@ -91,10 +70,50 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       else localStorage.removeItem('restaurant_currentUser');
     }, [currentUser]);
 
+    const logout = useCallback(async () => {
+        try {
+            await signOut(auth);
+        } catch (error) {
+            console.error("Error signing out from Firebase:", error);
+        }
+        setConfirmationResult(null);
+        setCurrentUser(null);
+        window.location.hash = '#/';
+    }, []);
+
      useEffect(() => {
-        if (roles.length === 0) return;
+        // This combined effect handles all authentication states:
+        // 1. Checks for a redirect result from Google/Phone sign-in.
+        // 2. Sets up the primary listener for auth state changes (session persistence, logout).
+        
+        let isMounted = true;
+        // First, handle the redirect result. This is crucial to "consume" the login event.
+        getRedirectResult(auth)
+            .then(result => {
+                if (result) {
+                    // A redirect was successful. onAuthStateChanged will now fire with the user.
+                    // We set a processing state here to provide feedback while our backend is checked.
+                    if (isMounted) setIsProcessing(true);
+                }
+            })
+            .catch(error => {
+                console.error("Google Sign-In Redirect Error", error);
+                if (isMounted) {
+                    showToast(`Google Sign-In Error: ${error.message}`);
+                    setIsProcessing(false);
+                }
+            });
 
         const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
+            if (!isMounted) return;
+            
+            if (roles.length === 0 && firebaseUser) {
+                // Roles haven't loaded yet, but we have a Firebase user.
+                // Keep the loading state on until roles are loaded and this effect re-runs.
+                setIsProcessing(true);
+                return;
+            }
+
             if (firebaseUser) {
                 setIsProcessing(true);
                 try {
@@ -108,11 +127,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                         body: JSON.stringify(body)
                     });
                     
-                    if (response.ok) {
-                        const result = await response.json();
-                        if (result.success && result.user) {
-                            const dbUser = result.user;
-                            const profilePictureUrl = resolveImageUrl(dbUser.profile_picture) || `https://placehold.co/512x512/60a5fa/white?text=${(dbUser.name || 'U').charAt(0).toUpperCase()}`;
+                    if (!response.ok) {
+                        // Handle cases where the API returns an error but doesn't throw.
+                        throw new Error(`Backend check failed with status: ${response.status}`);
+                    }
+                    
+                    const result = await response.json();
+                    if (result.success && result.user) {
+                        const dbUser = result.user;
+                        const profilePictureUrl = resolveImageUrl(dbUser.profile_picture) || `https://placehold.co/512x512/60a5fa/white?text=${(dbUser.name || 'U').charAt(0).toUpperCase()}`;
+                        if(isMounted) {
                             setCurrentUser({ 
                                 id: Number(dbUser.id), 
                                 name: dbUser.name, 
@@ -128,8 +152,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                             if (window.location.hash.startsWith('#/login')) {
                                window.location.hash = '#/';
                             }
-                        } else {
-                             // User exists in Firebase but not in our DB -> complete profile
+                        }
+                    } else {
+                         // User exists in Firebase but not in our DB -> complete profile
+                        if (isMounted) {
                             setNewUserFirebaseData({
                                 uid: firebaseUser.uid,
                                 phoneNumber: firebaseUser.phoneNumber,
@@ -140,23 +166,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                             });
                             setIsCompletingProfile(true);
                         }
-                    } else {
-                         // User exists in Firebase but not in our DB -> complete profile
-                        setNewUserFirebaseData({
-                            uid: firebaseUser.uid,
-                            phoneNumber: firebaseUser.phoneNumber,
-                            email: firebaseUser.email,
-                            name: firebaseUser.displayName,
-                            photoURL: firebaseUser.photoURL,
-                            providerId: firebaseUser.providerData[0]?.providerId
-                        });
-                        setIsCompletingProfile(true);
                     }
                 } catch (error) {
                     console.error("Auth state change error:", error);
-                    await logout();
+                    if (isMounted) await logout(); // Use full logout to clean up state on error.
                 } finally {
-                    setIsProcessing(false);
+                    if (isMounted) setIsProcessing(false);
                 }
             } else {
                 // User is signed out from Firebase.
@@ -170,10 +185,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                     // Otherwise, they are a staff member who logged in with a password, so keep their session.
                     return prevUser;
                 });
+                if(isMounted) setIsProcessing(false); // Ensure loading indicator is turned off
             }
         });
-        return () => unsubscribe();
-    }, [roles, setIsProcessing]);
+
+        return () => {
+            isMounted = false;
+            unsubscribe();
+        };
+    }, [roles, setIsProcessing, showToast, logout]);
 
     const userRoleDetails = useMemo(() => roles.find(r => r.key === currentUser?.role), [roles, currentUser]);
     
@@ -233,17 +253,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             setIsProcessing(false);
         }
     }, [setIsProcessing]);
-
-    const logout = useCallback(async () => {
-        try {
-            await signOut(auth);
-        } catch (error) {
-            console.error("Error signing out from Firebase:", error);
-        }
-        setConfirmationResult(null);
-        setCurrentUser(null);
-        window.location.hash = '#/';
-    }, []);
     
     const sendOtp = useCallback(async (phoneNumber: string): Promise<{ success: boolean; error?: string }> => {
         setIsProcessing(true);
