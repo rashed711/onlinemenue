@@ -82,18 +82,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }, []);
 
      useEffect(() => {
-        // This combined effect handles all authentication states:
-        // 1. Checks for a redirect result from Google/Phone sign-in.
-        // 2. Sets up the primary listener for auth state changes (session persistence, logout).
-        
         let isMounted = true;
-        // First, handle the redirect result. This is crucial to "consume" the login event.
+        
         getRedirectResult(auth)
             .then(result => {
-                if (result) {
-                    // A redirect was successful. onAuthStateChanged will now fire with the user.
-                    // We set a processing state here to provide feedback while our backend is checked.
-                    if (isMounted) setIsProcessing(true);
+                if (result && isMounted) {
+                    setIsProcessing(true);
                 }
             })
             .catch(error => {
@@ -108,8 +102,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             if (!isMounted) return;
             
             if (roles.length === 0 && firebaseUser) {
-                // Roles haven't loaded yet, but we have a Firebase user.
-                // Keep the loading state on until roles are loaded and this effect re-runs.
                 setIsProcessing(true);
                 return;
             }
@@ -128,8 +120,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                     });
                     
                     if (!response.ok) {
-                        // Handle cases where the API returns an error but doesn't throw.
-                        throw new Error(`Backend check failed with status: ${response.status}`);
+                        throw new Error(`Server connection failed: ${response.status}`);
                     }
                     
                     const result = await response.json();
@@ -153,7 +144,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                                window.location.hash = '#/';
                             }
                         }
-                    } else {
+                    } else if (result.success === false && result.error.includes("not found")) {
                          // User exists in Firebase but not in our DB -> complete profile
                         if (isMounted) {
                             setNewUserFirebaseData({
@@ -166,26 +157,29 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                             });
                             setIsCompletingProfile(true);
                         }
+                    } else {
+                        // Other backend error
+                        throw new Error(result.error || "An unknown backend error occurred.");
                     }
                 } catch (error) {
                     console.error("Auth state change error:", error);
-                    if (isMounted) await logout(); // Use full logout to clean up state on error.
+                    // Instead of silent logout, show an error to the user.
+                    // This prevents the confusing login loop.
+                    showToast(t.language === 'ar' ? 'فشل التحقق من الحساب مع الخادم. يرجى المحاولة مرة أخرى.' : 'Could not verify account with server. Please try again.');
+                    if (isMounted) await logout();
                 } finally {
                     if (isMounted) setIsProcessing(false);
                 }
             } else {
                 // User is signed out from Firebase.
-                // We should only log out users who were authenticated via Firebase.
                 setCurrentUser(prevUser => {
                     if (!prevUser) return null;
-                    // If the user has a firebase_uid or google_id, they were a Firebase user.
                     if (prevUser.firebase_uid || prevUser.google_id) {
-                        return null; // Log them out
+                        return null; 
                     }
-                    // Otherwise, they are a staff member who logged in with a password, so keep their session.
                     return prevUser;
                 });
-                if(isMounted) setIsProcessing(false); // Ensure loading indicator is turned off
+                if(isMounted) setIsProcessing(false);
             }
         });
 
@@ -193,7 +187,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             isMounted = false;
             unsubscribe();
         };
-    }, [roles, setIsProcessing, showToast, logout]);
+    }, [roles, setIsProcessing, showToast, logout, t.language]);
 
     const userRoleDetails = useMemo(() => roles.find(r => r.key === currentUser?.role), [roles, currentUser]);
     
@@ -313,7 +307,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         if (!confirmationResult) return "No confirmation result. Please try again.";
         setIsProcessing(true);
         try {
-            // This will trigger the onAuthStateChanged listener, which handles the rest.
             await confirmationResult.confirm(otp);
             return null;
         } catch (error: any) {
@@ -340,7 +333,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 payload.profile_picture = newUserFirebaseData.photoURL;
             } else { // phone
                 payload.firebase_uid = newUserFirebaseData.uid;
-                // The mobile number is already part of `details` from the form
             }
             
             const response = await fetch(`${API_BASE_URL}add_user.php`, {
@@ -349,8 +341,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             const result = await response.json();
             if (!result.success) throw new Error(result.error || 'Failed to create profile.');
             
-            // The onAuthStateChanged listener will now find this user and log them in.
-            // We just need to hide the modal and clear the temp data.
             setIsCompletingProfile(false);
             setNewUserFirebaseData(null);
             

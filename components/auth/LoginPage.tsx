@@ -56,6 +56,11 @@ export const LoginPage: React.FC = () => {
     
     const handleGoogleLogin = async () => {
         const provider = new GoogleAuthProvider();
+        // Force account selection every time. This solves the issue where
+        // the user isn't prompted to choose an account.
+        provider.setCustomParameters({
+          prompt: 'select_account'
+        });
         try {
             // This will navigate the user away and then back.
             // The result is handled by onAuthStateChanged or getRedirectResult
