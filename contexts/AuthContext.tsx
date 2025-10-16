@@ -51,9 +51,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const [newUserFirebaseData, setNewUserFirebaseData] = useState<{ uid: string; phoneNumber: string | null; email?: string | null, name?: string | null, photoURL?: string | null, providerId: string } | null>(null);
 
     useEffect(() => {
-        // This effect specifically catches errors from the redirect flow.
-        // The onAuthStateChanged listener handles the success case.
+        // This effect catches errors from the redirect flow and consumes the result.
         getRedirectResult(auth)
+            .then((result) => {
+                if (result) {
+                    console.log('Google Sign-In redirect result processed.');
+                    // The onAuthStateChanged listener is the single source of truth,
+                    // so we don't need to do anything with the user here. This call
+                    // is mainly to "consume" the redirect result and prevent issues.
+                }
+            })
             .catch((error) => {
                 console.error("Google Sign-In Redirect Error", error);
                 if (error.code === 'auth/unauthorized-domain') {
@@ -91,7 +98,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             if (firebaseUser) {
                 setIsProcessing(true);
                 try {
-                    // NOTE: You need to create `get_user_by_email.php` on your backend.
                     const isGoogle = firebaseUser.providerData[0]?.providerId === 'google.com';
                     const endpoint = isGoogle ? 'get_user_by_email.php' : 'get_user_by_fid.php';
                     const body = isGoogle ? { email: firebaseUser.email } : { firebase_uid: firebaseUser.uid };
@@ -114,7 +120,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                                 email: dbUser.email,
                                 password: '', 
                                 role: String(dbUser.role_id), 
-                                profilePicture: profilePictureUrl 
+                                profilePicture: profilePictureUrl,
+                                firebase_uid: dbUser.firebase_uid,
+                                google_id: dbUser.google_id
                             });
                             setIsCompletingProfile(false);
                             if (window.location.hash.startsWith('#/login')) {
@@ -151,12 +159,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                     setIsProcessing(false);
                 }
             } else {
-                // User is signed out from Firebase, so clear customer sessions
-                 setCurrentUser(prevUser => {
+                // User is signed out from Firebase.
+                // We should only log out users who were authenticated via Firebase.
+                setCurrentUser(prevUser => {
                     if (!prevUser) return null;
-                    const role = roles.find(r => r.key === prevUser.role);
-                    const isCustomer = role?.name.en.toLowerCase() === 'customer';
-                    return isCustomer ? null : prevUser;
+                    // If the user has a firebase_uid or google_id, they were a Firebase user.
+                    if (prevUser.firebase_uid || prevUser.google_id) {
+                        return null; // Log them out
+                    }
+                    // Otherwise, they are a staff member who logged in with a password, so keep their session.
+                    return prevUser;
                 });
             }
         });
