@@ -141,7 +141,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                         body: JSON.stringify(body)
                     });
                     
-                    if (!response.ok) {
+                    if (!response.ok && response.status !== 404) {
                         throw new Error(`Server connection failed: ${response.status}`);
                     }
                     
@@ -166,7 +166,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                                window.location.hash = '#/';
                             }
                         }
-                    } else if (result.success === false && result.error.includes("not found")) {
+                    } else if (response.status === 404 && result.error.includes("not found")) {
                         if (isMounted) {
                             setNewUserFirebaseData({
                                 uid: firebaseUser.uid,
@@ -314,12 +314,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         if (!newUserFirebaseData) return;
         setIsProcessing(true);
         try {
+            const customerRole = roles.find(r => r.name.en.toLowerCase() === 'customer');
             const payload: any = {
                 name: details.name,
                 mobile: details.mobile,
-                role: 'Customer'
+                role: customerRole?.key || 'customer'
             };
-
+    
             if (newUserFirebaseData.providerId === 'google.com') {
                 payload.google_id = newUserFirebaseData.uid;
                 payload.email = newUserFirebaseData.email;
@@ -333,17 +334,39 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload)
             });
             const result = await response.json();
-            if (!result.success) throw new Error(result.error || 'Failed to create profile.');
+            if (!response.ok || !result.success) {
+                throw new Error(result.error || 'Failed to create profile.');
+            }
             
+            // Manually log the user in with the data returned from the backend
+            const dbUser = result.user;
+            const profilePictureUrl = resolveImageUrl(dbUser.profile_picture) || `https://placehold.co/512x512/60a5fa/white?text=${(dbUser.name || 'U').charAt(0).toUpperCase()}`;
+            setCurrentUser({ 
+                id: Number(dbUser.id), 
+                name: dbUser.name, 
+                mobile: dbUser.mobile, 
+                email: dbUser.email,
+                password: '', 
+                role: String(dbUser.role_id), 
+                profilePicture: profilePictureUrl,
+                firebase_uid: dbUser.firebase_uid,
+                google_id: dbUser.google_id
+            });
+    
             setIsCompletingProfile(false);
             setNewUserFirebaseData(null);
+    
+            // Redirect if they are on the login page
+            if (window.location.hash.startsWith('#/login')) {
+               window.location.hash = '#/';
+            }
             
         } catch (error: any) {
             showToast(error.message || 'Failed to save profile.');
         } finally {
             setIsProcessing(false);
         }
-    }, [newUserFirebaseData, setIsProcessing, showToast]);
+    }, [newUserFirebaseData, setIsProcessing, showToast, setCurrentUser, roles]);
 
     const updateUserProfile = useCallback(async (userId: number, updates: { name?: string; profilePicture?: string }) => {
         if (!currentUser || currentUser.id !== userId) return;
