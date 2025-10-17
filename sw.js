@@ -39,17 +39,26 @@ self.addEventListener('activate', event => {
 });
 
 self.addEventListener('fetch', event => {
+  const requestUrl = new URL(event.request.url);
+
+  // Bypass cache for API calls and non-GET requests.
+  // This is crucial to prevent issues with POST requests and to ensure fresh data from the API.
+  if (requestUrl.href.startsWith('https://fresco.enjaz.app/api/') || event.request.method !== 'GET') {
+    // Just fetch from the network.
+    event.respondWith(fetch(event.request));
+    return;
+  }
+
+  // For other GET requests (local assets), use a cache-first strategy.
   event.respondWith(
     caches.match(event.request)
       .then(response => {
-        if (response) {
-          return response;
-        }
-        return fetch(event.request);
-      }
-    )
+        // Return from cache if found, otherwise fetch from network.
+        return response || fetch(event.request);
+      })
   );
 });
+
 
 // Intelligent Push Notification Handler
 self.addEventListener('push', event => {

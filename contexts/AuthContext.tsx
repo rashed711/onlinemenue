@@ -2,20 +2,33 @@ import React, { createContext, useState, useEffect, useCallback, useContext, use
 import type { User, Permission, UserRole, Role } from '../types';
 import { API_BASE_URL } from '../utils/config';
 import { useUI } from './UIContext';
-import { auth, RecaptchaVerifier, signInWithPhoneNumber, onAuthStateChanged, signOut, getRedirectResult, GoogleAuthProvider } from '../firebase';
-import type { ConfirmationResult, User as FirebaseUser } from 'firebase/auth';
+import { 
+    auth, 
+    onAuthStateChanged, 
+    signOut, 
+    getRedirectResult, 
+    GoogleAuthProvider,
+    createUserWithEmailAndPassword,
+    signInWithEmailAndPassword,
+    sendEmailVerification,
+    updateProfile,
+    sendPasswordResetEmail
+} from '../firebase';
+import type { User as FirebaseUser } from 'firebase/auth';
 
 interface AuthContextType {
     currentUser: User | null;
     setCurrentUser: React.Dispatch<React.SetStateAction<User | null>>;
     setRolePermissions: React.Dispatch<React.SetStateAction<Record<UserRole, Permission[]>>>;
     staffLogin: (mobile: string, password: string) => Promise<string | null>;
-    register: (details: { name: string; mobile: string; password: string }) => Promise<string | null>;
     logout: () => void;
-    sendOtp: (phoneNumber: string) => Promise<{ success: boolean; error?: string }>;
-    verifyOtp: (otp: string) => Promise<string | null>;
+    
+    // New Email/Password methods
+    registerWithEmailPassword: (details: { name: string; email: string; password: string }) => Promise<string | null>;
+    loginWithEmailPassword: (email: string, password: string) => Promise<string | null>;
+    sendPasswordResetLink: (email: string) => Promise<string | null>;
+
     completeProfile: (details: { name: string, mobile: string }) => Promise<void>;
-    confirmationResult: ConfirmationResult | null;
     isCompletingProfile: boolean;
     newUserFirebaseData: { uid: string; phoneNumber: string | null; email?: string | null, name?: string | null, photoURL?: string | null, providerId: string } | null;
     updateUserProfile: (userId: number, updates: { name?: string; profilePicture?: string }) => Promise<void>;
@@ -46,7 +59,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const [roles, setRoles] = useState<Role[]>([]);
     const [rolePermissions, setRolePermissions] = useState<Record<UserRole, Permission[]>>({});
     
-    const [confirmationResult, setConfirmationResult] = useState<ConfirmationResult | null>(null);
     const [isCompletingProfile, setIsCompletingProfile] = useState(false);
     const [newUserFirebaseData, setNewUserFirebaseData] = useState<{ uid: string; phoneNumber: string | null; email?: string | null, name?: string | null, photoURL?: string | null, providerId: string } | null>(null);
 
@@ -76,7 +88,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         } catch (error) {
             console.error("Error signing out from Firebase:", error);
         }
-        setConfirmationResult(null);
         setCurrentUser(null);
         window.location.hash = '#/';
     }, []);
@@ -108,10 +119,21 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
             if (firebaseUser) {
                 setIsProcessing(true);
+
+                const isEmailPassProvider = firebaseUser.providerData.some(p => p.providerId === 'password');
+                if (isEmailPassProvider && !firebaseUser.emailVerified) {
+                    showToast(t.pleaseVerifyEmail);
+                    await logout();
+                    if(isMounted) setIsProcessing(false);
+                    return;
+                }
+
                 try {
-                    const isGoogle = firebaseUser.providerData[0]?.providerId === 'google.com';
-                    const endpoint = isGoogle ? 'get_user_by_email.php' : 'get_user_by_fid.php';
-                    const body = isGoogle ? { email: firebaseUser.email } : { firebase_uid: firebaseUser.uid };
+                    const providerId = firebaseUser.providerData[0]?.providerId;
+                    const isEmailBased = providerId === 'google.com' || providerId === 'password';
+                    
+                    const endpoint = isEmailBased ? 'get_user_by_email.php' : 'get_user_by_fid.php';
+                    const body = isEmailBased ? { email: firebaseUser.email } : { firebase_uid: firebaseUser.uid };
 
                     const response = await fetch(`${API_BASE_URL}${endpoint}`, {
                         method: 'POST',
@@ -145,7 +167,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                             }
                         }
                     } else if (result.success === false && result.error.includes("not found")) {
-                         // User exists in Firebase but not in our DB -> complete profile
                         if (isMounted) {
                             setNewUserFirebaseData({
                                 uid: firebaseUser.uid,
@@ -153,25 +174,21 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                                 email: firebaseUser.email,
                                 name: firebaseUser.displayName,
                                 photoURL: firebaseUser.photoURL,
-                                providerId: firebaseUser.providerData[0]?.providerId
+                                providerId: providerId
                             });
                             setIsCompletingProfile(true);
                         }
                     } else {
-                        // Other backend error
                         throw new Error(result.error || "An unknown backend error occurred.");
                     }
                 } catch (error) {
                     console.error("Auth state change error:", error);
-                    // Instead of silent logout, show an error to the user.
-                    // This prevents the confusing login loop.
                     showToast(t.language === 'ar' ? 'فشل التحقق من الحساب مع الخادم. يرجى المحاولة مرة أخرى.' : 'Could not verify account with server. Please try again.');
                     if (isMounted) await logout();
                 } finally {
                     if (isMounted) setIsProcessing(false);
                 }
             } else {
-                // User is signed out from Firebase.
                 setCurrentUser(prevUser => {
                     if (!prevUser) return null;
                     if (prevUser.firebase_uid || prevUser.google_id) {
@@ -187,7 +204,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             isMounted = false;
             unsubscribe();
         };
-    }, [roles, setIsProcessing, showToast, logout, t.language]);
+    }, [roles, setIsProcessing, showToast, logout, t.language, t.pleaseVerifyEmail]);
 
     const userRoleDetails = useMemo(() => roles.find(r => r.key === currentUser?.role), [roles, currentUser]);
     
@@ -225,97 +242,73 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         }
     }, [setIsProcessing, t.invalidCredentials]);
 
-    const register = useCallback(async (details: { name: string; mobile: string; password: string }): Promise<string | null> => {
+    const registerWithEmailPassword = useCallback(async (details: { name: string; email: string; password: string }): Promise<string | null> => {
         setIsProcessing(true);
         try {
-            const payload = { ...details, role: 'Customer' };
-            const response = await fetch(`${API_BASE_URL}add_user.php`, {
+            // Step 1: Create user in Firebase
+            const userCredential = await createUserWithEmailAndPassword(auth, details.email, details.password);
+            const firebaseUser = userCredential.user;
+            await updateProfile(firebaseUser, { displayName: details.name });
+
+            // Step 2: Create user in our backend database
+            const addUserPayload = {
+                name: details.name,
+                email: details.email,
+                firebase_uid: firebaseUser.uid,
+                role: 'customer' // Explicitly set role
+            };
+            const addUserResponse = await fetch(`${API_BASE_URL}add_user.php`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(payload)
+                body: JSON.stringify(addUserPayload),
             });
-            const result = await response.json();
-            if (!result.success) throw new Error(result.error || 'Registration failed.');
-            
-            const dbUser = result.user;
-            const profilePictureUrl = resolveImageUrl(dbUser.profile_picture) || `https://placehold.co/512x512/60a5fa/white?text=${(dbUser.name || 'U').charAt(0).toUpperCase()}`;
-            setCurrentUser({ id: Number(dbUser.id), name: dbUser.name, mobile: dbUser.mobile, password: '', role: String(dbUser.role_id), profilePicture: profilePictureUrl });
+            const addUserResult = await addUserResponse.json();
+            if (!addUserResponse.ok || !addUserResult.success) {
+                // If backend creation fails, we should ideally delete the Firebase user to prevent orphans.
+                // For now, we'll just throw the error.
+                await firebaseUser.delete(); // Attempt to clean up Firebase user
+                throw new Error(addUserResult.error || "Failed to create user profile in database.");
+            }
+
+            // Step 3: Send verification email and sign out
+            await sendEmailVerification(firebaseUser);
+            await signOut(auth); // Log out until they verify
+            showToast(t.emailVerificationSent);
             return null;
         } catch (error: any) {
-            return error.message || "An unknown error occurred.";
+            console.error("Email registration error:", error);
+            return error.message || "Registration failed.";
+        } finally {
+            setIsProcessing(false);
+        }
+    }, [setIsProcessing, showToast, t.emailVerificationSent]);
+    
+    const loginWithEmailPassword = useCallback(async (email: string, password: string): Promise<string | null> => {
+        setIsProcessing(true);
+        try {
+            await signInWithEmailAndPassword(auth, email, password);
+            return null; // onAuthStateChanged will handle the rest
+        } catch (error: any) {
+            console.error("Email login error:", error);
+            return error.message || "Login failed.";
         } finally {
             setIsProcessing(false);
         }
     }, [setIsProcessing]);
     
-    const sendOtp = useCallback(async (phoneNumber: string): Promise<{ success: boolean; error?: string }> => {
-        setIsProcessing(true);
-    
-        const timeoutPromise = new Promise<ConfirmationResult>((_, reject) =>
-          setTimeout(() => reject(new Error('Request timed out.')), 10000)
-        );
-    
-        try {
-            if ((window as any).recaptchaVerifier) {
-                (window as any).recaptchaVerifier.clear();
-                const recaptchaContainer = document.getElementById('recaptcha-container');
-                if (recaptchaContainer) {
-                    recaptchaContainer.innerHTML = '';
-                }
-            }
-    
-            const verifier = new RecaptchaVerifier(auth, 'recaptcha-container', {
-                'size': 'invisible'
-            });
-            (window as any).recaptchaVerifier = verifier;
-    
-            const confirmation = await Promise.race([
-                signInWithPhoneNumber(auth, phoneNumber, verifier),
-                timeoutPromise
-            ]);
-    
-            setConfirmationResult(confirmation);
-            return { success: true };
-        } catch (error: any) {
-            console.error("Firebase OTP send error:", error);
-            if ((window as any).recaptchaVerifier) {
-                (window as any).recaptchaVerifier.clear();
-            }
-    
-            let errorMessage = error.message;
-            if (error.message === 'Request timed out.') {
-                errorMessage = t.language === 'ar' 
-                    ? 'انتهت مهلة الطلب. قد تكون بيئة التشغيل تمنع التحقق (reCAPTCHA). جرب على موقعك المباشر.'
-                    : 'Request timed out. The environment may be blocking reCAPTCHA. Please try on your live site.';
-            } else if (error.code === 'auth/invalid-phone-number') {
-                errorMessage = t.language === 'ar' 
-                    ? 'رقم الهاتف غير صالح. يرجى التأكد من تضمين رمز البلد (مثال: +201012345678).' 
-                    : 'Invalid phone number format. Please ensure you include the country code (e.g., +201012345678).';
-            } else if (error.code === 'auth/internal-error') {
-                errorMessage = t.language === 'ar'
-                    ? 'حدث خطأ داخلي في Firebase. يرجى التأكد من تفعيل "تسجيل الدخول بالهاتف" في لوحة تحكم Firebase وأن نطاق الموقع مُصرح به.'
-                    : 'A Firebase internal error occurred. Please ensure Phone Number Sign-in is enabled in your Firebase console and the website domain is authorized.';
-            }
-            
-            return { success: false, error: errorMessage };
-        } finally {
-            setIsProcessing(false);
-        }
-    }, [setConfirmationResult, setIsProcessing, t.language]);
-
-    const verifyOtp = useCallback(async (otp: string): Promise<string | null> => {
-        if (!confirmationResult) return "No confirmation result. Please try again.";
+    const sendPasswordResetLink = useCallback(async (email: string): Promise<string | null> => {
         setIsProcessing(true);
         try {
-            await confirmationResult.confirm(otp);
+            await sendPasswordResetEmail(auth, email);
             return null;
         } catch (error: any) {
-            console.error("Firebase OTP verify error:", error);
-            return error.message || "Invalid OTP or request expired.";
+            console.error("Password reset error:", error);
+            return error.message || "Failed to send reset link.";
         } finally {
             setIsProcessing(false);
         }
-    }, [confirmationResult, setIsProcessing]);
+    }, [setIsProcessing]);
+
 
     const completeProfile = useCallback(async (details: { name: string, mobile: string }) => {
         if (!newUserFirebaseData) return;
@@ -331,8 +324,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 payload.google_id = newUserFirebaseData.uid;
                 payload.email = newUserFirebaseData.email;
                 payload.profile_picture = newUserFirebaseData.photoURL;
-            } else { // phone
+            } else { // phone or email
                 payload.firebase_uid = newUserFirebaseData.uid;
+                payload.email = newUserFirebaseData.email;
             }
             
             const response = await fetch(`${API_BASE_URL}add_user.php`, {
@@ -417,12 +411,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setCurrentUser,
         setRolePermissions,
         staffLogin,
-        register,
         logout,
-        sendOtp,
-        verifyOtp,
+        registerWithEmailPassword,
+        loginWithEmailPassword,
+        sendPasswordResetLink,
         completeProfile,
-        confirmationResult,
         isCompletingProfile,
         newUserFirebaseData,
         updateUserProfile,

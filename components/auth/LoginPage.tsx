@@ -15,9 +15,10 @@ const GoogleIcon = () => (
 
 export const LoginPage: React.FC = () => {
     const { language, t, isProcessing } = useUI();
-    const { staffLogin, sendOtp, verifyOtp, confirmationResult } = useAuth();
+    const { staffLogin, loginWithEmailPassword, registerWithEmailPassword } = useAuth();
 
     const [activeTab, setActiveTab] = useState<'customer' | 'staff'>('customer');
+    const [customerForm, setCustomerForm] = useState<'login' | 'register'>('login');
     const [error, setError] = useState('');
 
     // Staff state
@@ -25,18 +26,13 @@ export const LoginPage: React.FC = () => {
     const [staffPassword, setStaffPassword] = useState('');
 
     // Customer state
-    const [customerMobile, setCustomerMobile] = useState('');
-    const [showOtp, setShowOtp] = useState(false);
-    const [otp, setOtp] = useState(new Array(6).fill(""));
-    const otpInputs = useRef<(HTMLInputElement | null)[]>([]);
+    const [name, setName] = useState('');
+    const [email, setEmail] = useState('');
+    const [password, setPassword] = useState('');
 
     useEffect(() => {
         setError('');
-        if (confirmationResult === null) {
-            setShowOtp(false);
-            setOtp(new Array(6).fill(""));
-        }
-    }, [activeTab, confirmationResult]);
+    }, [activeTab, customerForm]);
 
     const handleNav = (e: React.MouseEvent<HTMLAnchorElement>, path: string) => {
         e.preventDefault();
@@ -56,14 +52,8 @@ export const LoginPage: React.FC = () => {
     
     const handleGoogleLogin = async () => {
         const provider = new GoogleAuthProvider();
-        // Force account selection every time. This solves the issue where
-        // the user isn't prompted to choose an account.
-        provider.setCustomParameters({
-          prompt: 'select_account'
-        });
+        provider.setCustomParameters({ prompt: 'select_account' });
         try {
-            // This will navigate the user away and then back.
-            // The result is handled by onAuthStateChanged or getRedirectResult
             await signInWithRedirect(auth, provider);
         } catch (error) {
             console.error("Google Sign-In Error", error);
@@ -71,53 +61,30 @@ export const LoginPage: React.FC = () => {
         }
     };
 
-
-    const handleSendOtp = async (e: React.FormEvent) => {
+    const handleCustomerLogin = async (e: React.FormEvent) => {
         e.preventDefault();
         setError('');
-        let phoneNumber = customerMobile.replace(/\D/g, '');
-
-        if (phoneNumber.startsWith('0')) {
-            phoneNumber = '20' + phoneNumber.substring(1);
-        }
-        
-        const result = await sendOtp(`+${phoneNumber}`);
-        if (result.success) {
-            setShowOtp(true);
-        } else {
-            setError(result.error || 'Failed to send OTP.');
-        }
+        const errorMessage = await loginWithEmailPassword(email, password);
+        if (errorMessage) setError(errorMessage);
+        // On success, onAuthStateChanged will handle the rest
     };
 
-    const handleVerifyOtp = async (e: React.FormEvent) => {
+    const handleCustomerRegister = async (e: React.FormEvent) => {
         e.preventDefault();
         setError('');
-        const code = otp.join('');
-        if (code.length !== 6) {
-            setError('Please enter the 6-digit code.');
-            return;
-        }
-        const errorMessage = await verifyOtp(code);
+        const errorMessage = await registerWithEmailPassword({ name, email, password });
         if (errorMessage) {
             setError(errorMessage);
-        }
-    };
-    
-    const handleOtpChange = (element: HTMLInputElement, index: number) => {
-        if (isNaN(Number(element.value))) return;
-
-        setOtp([...otp.map((d, idx) => (idx === index ? element.value : d))]);
-
-        if (element.nextSibling && element.value) {
-            (element.nextSibling as HTMLInputElement).focus();
+        } else {
+            // Success toast is shown from AuthContext.
+            // Switch to login form for a better UX.
+            setCustomerForm('login');
+            setName('');
+            setEmail('');
+            setPassword('');
         }
     };
 
-    const handleOtpKeyDown = (e: React.KeyboardEvent<HTMLInputElement>, index: number) => {
-        if (e.key === "Backspace" && !otp[index] && e.currentTarget.previousSibling) {
-            (e.currentTarget.previousSibling as HTMLInputElement).focus();
-        }
-    };
 
     const TabButton: React.FC<{ tabId: 'customer' | 'staff'; label: string }> = ({ tabId, label }) => (
         <button
@@ -144,9 +111,7 @@ export const LoginPage: React.FC = () => {
                 <div className="p-8 space-y-6 bg-white dark:bg-slate-800 rounded-b-2xl shadow-xl border-x border-b border-slate-200 dark:border-slate-700">
                     {activeTab === 'customer' ? (
                         <div>
-                            <h1 className="text-2xl font-bold text-center text-primary-600 dark:text-primary-400 mb-2">{language === 'ar' ? 'أهلاً بك' : 'Welcome!'}</h1>
-                            <p className="text-center text-slate-500 text-sm mb-6">{language === 'ar' ? 'اختر طريقة تسجيل الدخول' : 'Choose a way to sign in'}</p>
-                            
+                            <h1 className="text-2xl font-bold text-center text-primary-600 dark:text-primary-400 mb-6">{customerForm === 'login' ? t.login : t.createAccount}</h1>
                              <button
                                 type="button"
                                 onClick={handleGoogleLogin}
@@ -159,51 +124,44 @@ export const LoginPage: React.FC = () => {
 
                              <div className="my-6 flex items-center">
                                 <div className="flex-grow border-t border-slate-300 dark:border-slate-600"></div>
-                                <span className="flex-shrink mx-4 text-xs font-semibold text-slate-400">OR</span>
+                                <span className="flex-shrink mx-4 text-xs font-semibold text-slate-400">{t.or.toUpperCase()}</span>
                                 <div className="flex-grow border-t border-slate-300 dark:border-slate-600"></div>
                             </div>
-
-                            {!showOtp ? (
-                                <form className="space-y-6" onSubmit={handleSendOtp}>
+                            
+                            <form className="space-y-4" onSubmit={customerForm === 'login' ? handleCustomerLogin : handleCustomerRegister}>
+                                {customerForm === 'register' && (
                                     <div>
-                                        <label htmlFor="customer-mobile" className="sr-only">{t.mobileNumber}</label>
-                                        <input
-                                            type="tel"
-                                            id="customer-mobile"
-                                            value={customerMobile}
-                                            onChange={(e) => setCustomerMobile(e.target.value.replace(/\D/g, ''))}
-                                            className="w-full p-3 text-center tracking-wider text-slate-900 bg-slate-50 dark:bg-slate-700 dark:text-white border-2 border-slate-200 dark:border-slate-600 rounded-lg focus:ring-primary-500 focus:border-primary-500 transition"
-                                            placeholder={language === 'ar' ? 'المتابعة باستخدام رقم الهاتف' : 'Continue with Phone Number'}
-                                            required
-                                        />
+                                        <label htmlFor="name" className="block mb-2 text-sm font-medium text-slate-800 dark:text-slate-300">{t.name}</label>
+                                        <input type="text" id="name" value={name} onChange={(e) => setName(e.target.value)} className="w-full p-3 text-slate-900 bg-slate-50 dark:bg-slate-700 dark:text-white border-2 border-slate-200 dark:border-slate-600 rounded-lg focus:ring-primary-500 focus:border-primary-500 transition" required />
                                     </div>
-                                    <button type="submit" disabled={isProcessing || !customerMobile} className="w-full px-5 py-3 font-medium text-white bg-primary-600 rounded-lg hover:bg-primary-700 disabled:bg-primary-400">
-                                        {isProcessing ? (language === 'ar' ? 'جار الإرسال...' : 'Sending...') : (language === 'ar' ? 'إرسال الرمز' : 'Send Code')}
-                                    </button>
-                                </form>
-                            ) : (
-                                <form className="space-y-6" onSubmit={handleVerifyOtp}>
-                                    <p className="text-center text-sm">{language === 'ar' ? `أدخل الرمز المكون من 6 أرقام المرسل إلى +${customerMobile}` : `Enter the 6-digit code sent to +${customerMobile}`}</p>
-                                    <div className="flex justify-center gap-2" dir="ltr">
-                                        {otp.map((data, index) => (
-                                            <input
-                                                key={index}
-                                                type="text"
-                                                maxLength={1}
-                                                value={data}
-                                                onChange={e => handleOtpChange(e.target, index)}
-                                                onKeyDown={e => handleOtpKeyDown(e, index)}
-                                                onFocus={e => e.target.select()}
-                                                ref={el => { otpInputs.current[index] = el }}
-                                                className="w-12 h-14 text-center text-2xl font-bold border-2 rounded-lg bg-slate-50 dark:bg-slate-700 dark:text-slate-100 focus:border-primary-500 focus:ring-primary-500"
-                                            />
-                                        ))}
-                                    </div>
-                                    <button type="submit" disabled={isProcessing} className="w-full px-5 py-3 font-medium text-white bg-green-600 rounded-lg hover:bg-green-700 disabled:bg-green-400">
-                                        {isProcessing ? (language === 'ar' ? 'جار التحقق...' : 'Verifying...') : (language === 'ar' ? 'تحقق من الرمز' : 'Verify Code')}
-                                    </button>
-                                </form>
-                            )}
+                                )}
+                                <div>
+                                    <label htmlFor="email" className="block mb-2 text-sm font-medium text-slate-800 dark:text-slate-300">{t.email}</label>
+                                    <input type="email" id="email" value={email} onChange={(e) => setEmail(e.target.value)} className="w-full p-3 text-slate-900 bg-slate-50 dark:bg-slate-700 dark:text-white border-2 border-slate-200 dark:border-slate-600 rounded-lg focus:ring-primary-500 focus:border-primary-500 transition" required />
+                                </div>
+                                <div>
+                                    <label htmlFor="password" className="block mb-2 text-sm font-medium text-slate-800 dark:text-slate-300">{t.password}</label>
+                                    <input type="password" id="password" value={password} onChange={(e) => setPassword(e.target.value)} className="w-full p-3 text-slate-900 bg-slate-50 dark:bg-slate-700 dark:text-white border-2 border-slate-200 dark:border-slate-600 rounded-lg focus:ring-primary-500 focus:border-primary-500 transition" required />
+                                </div>
+
+                                <button type="submit" disabled={isProcessing} className="w-full px-5 py-3 font-medium text-white bg-primary-600 rounded-lg hover:bg-primary-700 disabled:bg-primary-400">
+                                    {isProcessing ? '...' : (customerForm === 'login' ? t.login : t.createAccount)}
+                                </button>
+                            </form>
+                            
+                            <div className="text-sm text-center mt-4">
+                                {customerForm === 'login' ? (
+                                    <>
+                                        <span className="text-slate-600 dark:text-slate-400">{t.dontHaveAccount} </span>
+                                        <button onClick={() => setCustomerForm('register')} className="font-medium text-primary-600 hover:underline dark:text-primary-500">{t.createAccount}</button>
+                                    </>
+                                ) : (
+                                    <>
+                                        <span className="text-slate-600 dark:text-slate-400">{t.alreadyHaveAccount} </span>
+                                        <button onClick={() => setCustomerForm('login')} className="font-medium text-primary-600 hover:underline dark:text-primary-500">{t.login}</button>
+                                    </>
+                                )}
+                            </div>
                         </div>
                     ) : (
                         <div>

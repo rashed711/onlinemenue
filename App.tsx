@@ -111,7 +111,7 @@ const AppContent: React.FC = () => {
         return <AdminPage activeSubRoute={adminSubRoute} reportSubRoute={reportSubRoute} />;
     }
     if (baseRoute.startsWith('#/login')) return <LoginPage />;
-    if (baseRoute.startsWith('#/forgot-password')) return <ForgotPasswordPage language={language} users={users} onPasswordReset={resetUserPassword} />;
+    if (baseRoute.startsWith('#/forgot-password')) return <ForgotPasswordPage />;
     if (baseRoute.startsWith('#/profile')) return <ProfilePage />;
     if (baseRoute.startsWith('#/checkout')) return <CheckoutPage />;
     if (baseRoute.startsWith('#/social')) return <SocialPage />;
