@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useCallback, useRef, useEffect } from 'react';
-import type { Language, Category, Tag } from '../types';
+import type { Language, Category, Tag, LocalizedString } from '../types';
 import { useTranslations } from '../i18n/translations';
 import { SearchIcon, FilterIcon, ChevronRightIcon } from './icons/Icons';
 import { formatNumber } from '../utils/helpers';
@@ -32,6 +32,27 @@ export const SearchAndFilter: React.FC<SearchAndFilterProps> = ({
   const [openDropdown, setOpenDropdown] = useState<number | null>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
+  const sortedCategories = useMemo(() => {
+    // A generic sorter for localized names
+    const sorter = (a: { name: LocalizedString }, b: { name: LocalizedString }) => 
+        a.name[language].localeCompare(b.name[language], language);
+
+    // Deep copy to avoid mutating the original data from context
+    const categoriesCopy: Category[] = JSON.parse(JSON.stringify(categories));
+
+    // Sort children of each category
+    categoriesCopy.forEach(cat => {
+        if (cat.children && cat.children.length > 0) {
+            cat.children.sort(sorter);
+        }
+    });
+
+    // Sort top-level categories
+    categoriesCopy.sort(sorter);
+
+    return categoriesCopy;
+  }, [categories, language]);
+
   // Close dropdown on outside click
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -63,7 +84,7 @@ export const SearchAndFilter: React.FC<SearchAndFilterProps> = ({
   }, [selectedCategory]);
 
   return (
-    <div id="menu" className="mb-12 p-4 sm:p-6 bg-white dark:bg-slate-900/50 rounded-2xl shadow-xl border border-slate-200/50 dark:border-slate-800/50 space-y-4">
+    <div id="menu" className="-mb-56 p-4 sm:p-6 bg-white dark:bg-slate-900/50 rounded-2xl shadow-xl border border-slate-200/50 dark:border-slate-800/50 space-y-4">
       {/* Top row: Search and Filter Toggle */}
       <div className="flex flex-row gap-2 items-center">
         <div className="relative w-full flex-grow">
@@ -114,23 +135,23 @@ export const SearchAndFilter: React.FC<SearchAndFilterProps> = ({
       
       {/* Categories */}
       <div className="pt-4 border-t border-slate-200 dark:border-slate-700">
-        <div className="flex flex-wrap items-start gap-2">
+        <div className="flex items-start gap-2 overflow-x-auto scrollbar-hide py-2 pb-56 pointer-events-none">
             <button
                 onClick={() => setSelectedCategory(null)}
-                className={`px-5 py-2 rounded-full text-sm font-bold transition-all duration-300 whitespace-nowrap ${selectedCategory === null ? 'bg-primary-600 text-white shadow-lg' : 'bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-300 dark:hover:bg-slate-600'}`}
+                className={`px-5 py-2 rounded-full text-sm font-bold transition-all duration-300 whitespace-nowrap pointer-events-auto ${selectedCategory === null ? 'bg-primary-600 text-white shadow-lg' : 'bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-300 dark:hover:bg-slate-600'}`}
             >
                 {t.allCategories}
             </button>
-            {categories.map(category => {
+            {sortedCategories.map(category => {
                 const hasChildren = category.children && category.children.length > 0;
                 const isActive = isCategoryOrChildSelected(category);
 
                 if (hasChildren) {
                     return (
-                        <div key={category.id} className="relative" ref={openDropdown === category.id ? dropdownRef : null}>
+                        <div key={category.id} className="relative pointer-events-auto" ref={openDropdown === category.id ? dropdownRef : null}>
                             <button
                                 onClick={() => {
-                                    setOpenDropdown(openDropdown === category.id ? null : category.id)
+                                    setOpenDropdown(openDropdown === category.id ? null : category.id);
                                 }}
                                 className={`px-4 py-2 rounded-full text-sm font-bold transition-all duration-300 whitespace-nowrap flex items-center gap-2 ${isActive ? 'bg-primary-600 text-white shadow-lg' : 'bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-300 dark:hover:bg-slate-600'}`}
                             >
@@ -138,7 +159,7 @@ export const SearchAndFilter: React.FC<SearchAndFilterProps> = ({
                                 <ChevronRightIcon className={`w-4 h-4 transition-transform ${language === 'ar' ? 'transform -scale-x-100' : ''} ${openDropdown === category.id ? 'rotate-90' : ''}`} />
                             </button>
                             {openDropdown === category.id && (
-                                <div className="absolute top-full mt-2 z-20 min-w-full bg-white dark:bg-slate-800 rounded-lg shadow-xl border border-slate-200 dark:border-slate-700 overflow-hidden animate-fade-in py-1">
+                                <div className="absolute top-full mt-2 z-[60] min-w-full bg-white dark:bg-slate-800 rounded-lg shadow-xl border border-slate-200 dark:border-slate-700 animate-fade-in py-1 max-h-60 overflow-y-auto">
                                     <button
                                         onClick={(e) => {
                                             e.stopPropagation();
@@ -173,7 +194,7 @@ export const SearchAndFilter: React.FC<SearchAndFilterProps> = ({
                     <button
                         key={category.id}
                         onClick={() => setSelectedCategory(category.id)}
-                        className={`px-4 py-2 rounded-full text-sm font-bold transition-all duration-300 whitespace-nowrap ${selectedCategory === category.id ? 'bg-primary-600 text-white shadow-lg' : 'bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-300 dark:hover:bg-slate-600'}`}
+                        className={`px-4 py-2 rounded-full text-sm font-bold transition-all duration-300 whitespace-nowrap pointer-events-auto ${selectedCategory === category.id ? 'bg-primary-600 text-white shadow-lg' : 'bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-300 dark:hover:bg-slate-600'}`}
                     >
                         {category.name[language]}
                     </button>

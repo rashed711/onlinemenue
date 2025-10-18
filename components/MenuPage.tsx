@@ -174,14 +174,16 @@ export const MenuPage: React.FC = () => {
                         setSelectedTags={setSelectedTags}
                     />
 
-                    <ProductList 
-                        titleKey="fullMenu"
-                        products={filteredProducts} 
-                        language={language} 
-                        onProductClick={setSelectedProduct} 
-                        addToCart={handleAddToCartWithoutOpeningCart}
-                        slider={false}
-                    />
+                    <div className="relative z-10">
+                        <ProductList 
+                            titleKey="fullMenu"
+                            products={filteredProducts} 
+                            language={language} 
+                            onProductClick={setSelectedProduct} 
+                            addToCart={handleAddToCartWithoutOpeningCart}
+                            slider={false}
+                        />
+                    </div>
                 </main>
             </div>
 

@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useCallback, useEffect, useRef } from 'react';
-import type { User, Product, Category, CartItem, Order, RestaurantInfo, OrderType, Tag } from '../../types';
+import type { User, Product, Category, CartItem, Order, RestaurantInfo, OrderType, Tag, LocalizedString } from '../../types';
 import { calculateTotal, formatNumber, calculateItemUnitPrice, calculateItemTotal } from '../../utils/helpers';
 import { ProductModal } from '../ProductModal';
 import { MinusIcon, PlusIcon, TrashIcon, CloseIcon, CartIcon, SearchIcon, FilterIcon, ChevronUpIcon, ChevronDownIcon, ChevronRightIcon } from '../icons/Icons';
@@ -286,6 +286,27 @@ export const CashierPage: React.FC = () => {
     const [customerMobile, setCustomerMobile] = useState('');
     const [customerAddress, setCustomerAddress] = useState('');
 
+    const sortedCategories = useMemo(() => {
+        // A generic sorter for localized names
+        const sorter = (a: { name: LocalizedString }, b: { name: LocalizedString }) => 
+            a.name[language].localeCompare(b.name[language], language);
+
+        // Deep copy to avoid mutating the original data from context
+        const categoriesCopy: Category[] = JSON.parse(JSON.stringify(allCategories));
+
+        // Sort children of each category
+        categoriesCopy.forEach(cat => {
+            if (cat.children && cat.children.length > 0) {
+                cat.children.sort(sorter);
+            }
+        });
+
+        // Sort top-level categories
+        categoriesCopy.sort(sorter);
+
+        return categoriesCopy;
+    }, [allCategories, language]);
+
      useEffect(() => {
         const handleClickOutside = (event: MouseEvent) => {
             if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
@@ -496,7 +517,7 @@ export const CashierPage: React.FC = () => {
         <>
             <div className="flex flex-col md:flex-row md:h-[calc(100vh-5rem)] md:overflow-hidden">
                 <div className="flex-1 flex flex-col bg-slate-100/50 dark:bg-slate-900/50 md:pb-0">
-                    <div className="p-3 border-b border-slate-200 dark:border-slate-700 shrink-0 space-y-3 z-10">
+                    <div className="p-3 border-b border-slate-200 dark:border-slate-700 shrink-0 space-y-3 -mb-56">
                         <div className="flex flex-row gap-2 items-center">
                             <div className="relative w-full flex-grow">
                                 <input
@@ -540,34 +561,36 @@ export const CashierPage: React.FC = () => {
                             ))}
                             </div>
                         </div>
-                        <div className="relative">
-                            <div className="flex items-start gap-2 overflow-x-auto scrollbar-hide py-1">
+                        <div>
+                            <div className="flex items-start gap-2 overflow-x-auto scrollbar-hide py-2 pb-56 pointer-events-none">
                                 <button
                                     onClick={() => setSelectedCategory(null)}
-                                    className={`px-4 py-1.5 rounded-full text-sm font-bold transition-all duration-300 whitespace-nowrap ${selectedCategory === null ? 'bg-primary-600 text-white shadow-lg' : 'bg-white dark:bg-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-600'}`}
+                                    className={`px-4 py-1.5 rounded-full text-sm font-bold transition-all duration-300 whitespace-nowrap pointer-events-auto ${selectedCategory === null ? 'bg-primary-600 text-white shadow-lg' : 'bg-white dark:bg-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-600'}`}
                                 >
                                     {t.allCategories}
                                 </button>
-                                {allCategories.map(category => {
+                                {sortedCategories.map(category => {
                                     const hasChildren = category.children && category.children.length > 0;
                                     const isActive = isCategoryOrChildSelected(category);
                                     
                                     const activeClasses = 'bg-primary-600 text-white shadow-lg';
                                     const inactiveClasses = 'bg-white dark:bg-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-600';
-                                    const buttonClasses = `px-4 py-1.5 rounded-full text-sm font-bold transition-all duration-300 whitespace-nowrap flex items-center gap-2 ${isActive ? activeClasses : inactiveClasses}`;
+                                    const buttonClasses = `px-4 py-1.5 rounded-full text-sm font-bold transition-all duration-300 whitespace-nowrap flex items-center gap-2 pointer-events-auto ${isActive ? activeClasses : inactiveClasses}`;
 
                                     if (hasChildren) {
                                         return (
-                                            <div key={category.id} className="relative" ref={openDropdown === category.id ? dropdownRef : null}>
+                                            <div key={category.id} className="relative pointer-events-auto" ref={openDropdown === category.id ? dropdownRef : null}>
                                                 <button
-                                                    onClick={() => setOpenDropdown(openDropdown === category.id ? null : category.id)}
+                                                    onClick={() => {
+                                                        setOpenDropdown(openDropdown === category.id ? null : category.id);
+                                                    }}
                                                     className={buttonClasses}
                                                 >
                                                     <span>{category.name[language]}</span>
                                                     <ChevronRightIcon className={`w-4 h-4 transition-transform ${language === 'ar' ? 'transform -scale-x-100' : ''} ${openDropdown === category.id ? 'rotate-90' : ''}`} />
                                                 </button>
                                                 {openDropdown === category.id && (
-                                                    <div className="absolute top-full mt-2 z-20 min-w-max bg-white dark:bg-slate-800 rounded-lg shadow-xl border border-slate-200 dark:border-slate-700 overflow-hidden animate-fade-in py-1">
+                                                    <div className="absolute top-full mt-2 z-[60] min-w-max bg-white dark:bg-slate-800 rounded-lg shadow-xl border border-slate-200 dark:border-slate-700 animate-fade-in py-1 max-h-60 overflow-y-auto">
                                                         <button
                                                             onClick={(e) => { e.stopPropagation(); setSelectedCategory(category.id); setOpenDropdown(null); }}
                                                             className={`block w-full text-start px-4 py-2 text-sm transition-colors ${selectedCategory === category.id && (!category.children || !category.children.some(c => c.id === selectedCategory)) ? 'font-bold text-primary-600 bg-primary-50 dark:bg-primary-900/40' : 'text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700'}`}
@@ -593,7 +616,7 @@ export const CashierPage: React.FC = () => {
                                         <button
                                             key={category.id}
                                             onClick={() => setSelectedCategory(category.id)}
-                                            className={`px-4 py-1.5 rounded-full text-sm font-bold transition-all duration-300 whitespace-nowrap ${selectedCategory === category.id ? activeClasses : inactiveClasses}`}
+                                            className={`px-4 py-1.5 rounded-full text-sm font-bold transition-all duration-300 whitespace-nowrap pointer-events-auto ${selectedCategory === category.id ? activeClasses : inactiveClasses}`}
                                         >
                                             {category.name[language]}
                                         </button>
@@ -602,7 +625,7 @@ export const CashierPage: React.FC = () => {
                             </div>
                         </div>
                     </div>
-                    <div className="overflow-y-auto p-4 flex-grow">
+                    <div className="overflow-y-auto p-4 flex-grow relative z-10">
                         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
                             {filteredProducts.map(product => (
                                 <div key={product.id} onClick={() => handleProductClick(product)} className="bg-white dark:bg-slate-800 rounded-lg shadow-md hover:shadow-xl hover:scale-105 transition-all duration-200 cursor-pointer text-center flex flex-col">
