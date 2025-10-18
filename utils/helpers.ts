@@ -11,7 +11,7 @@ export const formatNumber = (num: number): string => {
   }
 };
 
-export const calculateItemTotal = (item: CartItem): number => {
+export const calculateItemUnitPrice = (item: CartItem): number => {
     let itemPrice = item.product.price;
     if (item.options && item.product.options) {
         Object.entries(item.options).forEach(([optionKey, valueKey]) => {
@@ -22,7 +22,11 @@ export const calculateItemTotal = (item: CartItem): number => {
             }
         });
     }
-    return itemPrice * item.quantity;
+    return itemPrice;
+};
+
+export const calculateItemTotal = (item: CartItem): number => {
+    return calculateItemUnitPrice(item) * item.quantity;
 };
 
 

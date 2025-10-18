@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import type { Order } from '../../types';
+import type { Order, RestaurantInfo } from '../../types';
 import { useTranslations } from '../../i18n/translations';
-import { DocumentTextIcon, PencilIcon, ShareIcon, PrintIcon, TrashIcon, CloseIcon } from '../icons/Icons';
+// FIX: Added CheckIcon to imports
+import { DocumentTextIcon, PencilIcon, ShareIcon, PrintIcon, TrashIcon, CloseIcon, StarIcon, UserIcon, ClockIcon, HomeIcon, TakeawayIcon, TruckIcon, UserCircleIcon, CreditCardIcon, CheckIcon } from '../icons/Icons';
 import { StarRating } from '../StarRating';
 import { formatDateTime, formatNumber, generateReceiptImage } from '../../utils/helpers';
 import { Modal } from '../Modal';
@@ -20,10 +21,21 @@ interface OrderDetailsModalProps {
     creatorName?: string;
 }
 
-const getStatusChipColor = (status: string, restaurantInfo: any) => {
+const getStatusChipColor = (status: string, restaurantInfo: RestaurantInfo) => {
     const color = restaurantInfo.orderStatusColumns.find((s: any) => s.id === status)?.color || 'slate';
     return `bg-${color}-100 text-${color}-800 dark:bg-${color}-900/50 dark:text-${color}-300 border-${color}-200 dark:border-${color}-500/30`;
 };
+
+const InfoItem: React.FC<{ label: string; icon: React.ReactNode; children: React.ReactNode; className?: string }> = ({ label, icon, children, className }) => (
+    <div className={className}>
+        <p className="flex items-center gap-2 text-xs font-semibold text-slate-500 dark:text-slate-400 mb-1">
+            {icon}
+            <span>{label}</span>
+        </p>
+        <div className="ps-6 font-medium text-slate-800 dark:text-slate-100 text-sm">{children}</div>
+    </div>
+);
+
 
 export const OrderDetailsModal: React.FC<OrderDetailsModalProps> = ({ order, onClose, canEdit, onEdit, canDelete, onDelete, creatorName }) => {
     const { language } = useUI();
@@ -40,9 +52,6 @@ export const OrderDetailsModal: React.FC<OrderDetailsModalProps> = ({ order, onC
     const canEditPayment = hasPermission('edit_recorded_payment');
 
     useEffect(() => {
-        // This effect synchronizes the local state with the order prop.
-        // It ensures that whenever the modal is opened or the order data changes,
-        // the view correctly reflects whether a payment has been recorded.
         const shouldBeEditing = !order.paymentDetail && canEditPayment;
         setIsEditingPayment(shouldBeEditing);
         setCodPaymentDetail(order.paymentDetail || '');
@@ -122,6 +131,15 @@ export const OrderDetailsModal: React.FC<OrderDetailsModalProps> = ({ order, onC
             await updateOrder(order.id, { paymentDetail: codPaymentDetail });
         }
     }
+    
+    const OrderTypeIcon: React.FC<{ type: Order['orderType'] }> = ({ type }) => {
+        switch (type) {
+            case 'Dine-in': return <HomeIcon className="w-4 h-4" />;
+            case 'Takeaway': return <TakeawayIcon className="w-4 h-4" />;
+            case 'Delivery': return <TruckIcon className="w-4 h-4" />;
+            default: return null;
+        }
+    };
 
     if (!restaurantInfo) return null;
     const statusDetails = restaurantInfo.orderStatusColumns.find(s => s.id === order.status);
@@ -129,162 +147,138 @@ export const OrderDetailsModal: React.FC<OrderDetailsModalProps> = ({ order, onC
 
     return (
         <>
-            <Modal title={`${t.orderDetails} - ${order.id}`} onClose={onClose} size="xl">
+            <Modal title={`${t.orderDetails} - #${order.id.substring(order.id.length - 6)}`} onClose={onClose} size="3xl">
                 <div className="flex flex-col overflow-hidden h-full">
-                    <div className="p-5 space-y-4 overflow-y-auto flex-grow">
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
-                             <div className="sm:col-span-2">
-                                <p className="font-semibold text-slate-500 dark:text-slate-400 mb-1">{t.customerInfo}</p>
-                                <p className="font-bold truncate">{order.customer.name || 'Guest'}</p>
-                                <p className="text-xs text-slate-600 dark:text-slate-300">{order.customer.mobile}</p>
+                    <div className="p-4 sm:p-5 overflow-y-auto flex-grow grid grid-cols-1 lg:grid-cols-3 gap-6 bg-slate-50 dark:bg-slate-900/50">
+                        {/* Main Content */}
+                        <div className="lg:col-span-2 space-y-6">
+                            {/* Customer Info */}
+                             <div className="bg-white dark:bg-slate-800 p-4 rounded-xl border dark:border-slate-700">
+                                <h3 className="font-bold text-lg mb-3 text-slate-800 dark:text-slate-100 flex items-center gap-2">
+                                    <UserIcon className="w-5 h-5 text-slate-500" />
+                                    {t.customerInfo}
+                                </h3>
+                                <p className="font-semibold text-slate-800 dark:text-slate-100">{order.customer.name || 'Guest'}</p>
+                                <p className="text-sm text-slate-600 dark:text-slate-300">{order.customer.mobile}</p>
                                 {order.customer.address && (
-                                    <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 whitespace-pre-wrap">{order.customer.address}</p>
+                                    <p className="text-sm text-slate-500 dark:text-slate-400 mt-1 whitespace-pre-wrap">{order.customer.address}</p>
                                 )}
                             </div>
+                            
+                            {/* Items */}
                             <div>
-                                <p className="font-semibold text-slate-500 dark:text-slate-400 mb-1">{t.date}</p>
-                                <p>{formatDateTime(order.timestamp)}</p>
-                            </div>
-                            <div>
-                                <p className="font-semibold text-slate-500 dark:text-slate-400 mb-1">{t.orderType}</p>
-                                <div className="flex items-baseline gap-2">
-                                    <p className="font-bold">{t[order.orderType === 'Dine-in' ? 'dineIn' : 'delivery']}</p>
-                                    {order.tableNumber && <p className="text-xs text-slate-500 dark:text-slate-400">({t.table} {formatNumber(parseInt(order.tableNumber, 10))})</p>}
+                                 <div className="flex justify-between items-center mb-3">
+                                    <h3 className="font-bold text-lg text-slate-800 dark:text-slate-100">{t.orderItems}</h3>
+                                    <span className="text-sm font-semibold bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300 px-2.5 py-1 rounded-full">
+                                        {formatNumber(order.items.reduce((acc, i) => acc + i.quantity, 0))} {t.items}
+                                    </span>
+                                </div>
+                                <div className="space-y-3 bg-white dark:bg-slate-800 p-4 rounded-xl border dark:border-slate-700 max-h-80 overflow-y-auto">
+                                    {order.items.map((item, index) => (
+                                        <div key={`${item.product.id}-${index}`} className="flex items-start gap-4 py-3 border-b dark:border-slate-700 last:border-b-0">
+                                            <img src={item.product.image} alt={item.product.name[language]} className="w-16 h-16 rounded-lg object-cover" />
+                                            <div className="flex-grow">
+                                                <p className="font-semibold text-slate-800 dark:text-slate-300">{item.product.name[language]}</p>
+                                                <p className="text-sm text-slate-500 dark:text-slate-400">{t.quantity}: {formatNumber(item.quantity)}</p>
+                                                {item.options && (
+                                                    <div className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                                                        {Object.entries(item.options).map(([optionKey, valueKey]) => {
+                                                            const option = item.product.options?.find(o => o.name.en === optionKey);
+                                                            const value = option?.values.find(v => v.name.en === valueKey);
+                                                            if (option && value) return <div key={optionKey}>+ {value.name[language]}</div>
+                                                            return null;
+                                                        })}
+                                                    </div>
+                                                )}
+                                            </div>
+                                            <div className="text-end shrink-0">
+                                                <p className="font-semibold text-slate-700 dark:text-slate-200">{(item.product.price * item.quantity).toFixed(2)} {t.currency}</p>
+                                            </div>
+                                        </div>
+                                    ))}
                                 </div>
                             </div>
-                            <div className="sm:col-span-2">
-                                <p className="font-semibold text-slate-500 dark:text-slate-400 mb-1">{t.paymentMethod}</p>
-                                <p className="font-bold">{order.paymentMethod === 'cod' ? t.cashOnDelivery : t.onlinePayment || "N/A"}</p>
-                                
-                                {!isEditingPayment && order.paymentDetail ? (
-                                    <div className="flex items-center gap-2 mt-1">
+                            
+                            {/* Notes, Refusal, Feedback */}
+                            {order.notes && (
+                                <div className="bg-blue-50 dark:bg-blue-900/40 p-4 rounded-lg border border-blue-200 dark:border-blue-500/30">
+                                    <h3 className="font-bold text-base mb-2 text-blue-800 dark:text-blue-200 flex items-center gap-2"><DocumentTextIcon className="w-5 h-5" />{t.orderNotes}</h3>
+                                    <p className="text-sm text-blue-700 dark:text-blue-200 whitespace-pre-wrap">{order.notes}</p>
+                                </div>
+                            )}
+                            {order.refusalReason && (
+                                <div className="bg-red-50 dark:bg-red-900/40 p-4 rounded-lg border border-red-200 dark:border-red-500/30">
+                                    <h3 className="font-bold text-base mb-2 text-red-800 dark:text-red-200">{t.refusalInfo}</h3>
+                                    <p className="text-sm text-red-700 dark:text-red-200">{order.refusalReason}</p>
+                                </div>
+                            )}
+                            {order.customerFeedback && (
+                                 <div className="bg-green-50 dark:bg-green-900/40 p-4 rounded-lg border border-green-200 dark:border-green-500/30">
+                                    <h3 className="font-bold text-base mb-2 text-green-800 dark:text-green-200">{t.customerFeedback}</h3>
+                                    <div className="flex items-center mb-2"><StarRating rating={order.customerFeedback.rating} /></div>
+                                    <p className="text-sm text-green-700 dark:text-green-200 italic">"{order.customerFeedback.comment}"</p>
+                                </div>
+                            )}
+                        </div>
+
+                        {/* Sidebar */}
+                        <div className="lg:col-span-1 space-y-5">
+                             <div className="bg-white dark:bg-slate-800 p-4 rounded-xl border dark:border-slate-700 space-y-4">
+                                <InfoItem label={t.status} icon={<CheckIcon className="w-4 h-4" />}>
+                                     <span className={`inline-block px-2.5 py-0.5 text-xs font-bold rounded-full border ${getStatusChipColor(order.status, restaurantInfo)}`}>
+                                        {statusDetails?.name[language] || order.status}
+                                    </span>
+                                </InfoItem>
+                                {creatorName && (
+                                    <InfoItem label={t.creator} icon={<UserCircleIcon className="w-4 h-4" />}>
+                                        {creatorName}
+                                    </InfoItem>
+                                )}
+                            </div>
+
+                             <div className="bg-white dark:bg-slate-800 p-4 rounded-xl border dark:border-slate-700 space-y-4">
+                                <InfoItem label={t.orderType} icon={<OrderTypeIcon type={order.orderType}/>}>
+                                    {t[order.orderType.toLowerCase() as keyof typeof t]} {order.tableNumber && `(${t.table} ${order.tableNumber})`}
+                                </InfoItem>
+                                <InfoItem label={t.date} icon={<ClockIcon className="w-4 h-4" />}>
+                                    {formatDateTime(order.timestamp)}
+                                </InfoItem>
+                            </div>
+                            
+                            <div className="bg-white dark:bg-slate-800 p-4 rounded-xl border dark:border-slate-700 space-y-4">
+                                <InfoItem label={t.paymentMethod} icon={<CreditCardIcon className="w-4 h-4" />}>
+                                     {order.paymentMethod === 'cod' ? t.cashOnDelivery : t.onlinePayment || "N/A"}
+                                </InfoItem>
+                                {isEditingPayment ? (
+                                    <div className="p-3 bg-blue-50 dark:bg-blue-900/30 rounded-lg border border-blue-200 dark:border-blue-700/50">
+                                        <label className="block text-xs font-semibold mb-2 text-blue-800 dark:text-blue-200">{order.paymentDetail ? t.edit : t.recordPayment}</label>
+                                        <div className="flex items-center gap-2">
+                                            <select value={codPaymentDetail} onChange={(e) => setCodPaymentDetail(e.target.value)} className="w-full p-2 text-sm border rounded-md dark:bg-slate-700 dark:border-slate-600">
+                                                <option value="">{t.selectMethod}</option><option value={t.cash}>{t.cash}</option>
+                                                {availableOnlineMethods.map(method => <option key={method.id} value={method.name[language]}>{method.name[language]}</option>)}
+                                            </select>
+                                            <button onClick={handleSaveCodPayment} disabled={!codPaymentDetail || isProcessing} className="bg-blue-500 text-white font-bold p-2 rounded-lg hover:bg-blue-600 disabled:bg-blue-300"><CheckIcon className="w-5 h-5"/></button>
+                                            {order.paymentDetail && <button type="button" onClick={() => setIsEditingPayment(false)} className="bg-slate-200 text-slate-800 p-2 rounded-lg hover:bg-slate-300"><CloseIcon className="w-5 h-5"/></button>}
+                                        </div>
+                                    </div>
+                                ) : order.paymentDetail ? (
+                                    <div className="flex items-center gap-2">
                                         <p className="text-sm text-slate-500 dark:text-slate-400">{t.paymentCollectedVia} <span className="font-medium text-slate-700 dark:text-slate-200">{order.paymentDetail}</span></p>
-                                        {canEditPayment && (
-                                            <button onClick={() => setIsEditingPayment(true)} className="text-sm text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-1">
-                                                <PencilIcon className="w-4 h-4" /> {t.edit}
-                                            </button>
-                                        )}
+                                        {canEditPayment && <button onClick={() => setIsEditingPayment(true)} className="text-xs text-blue-600 dark:text-blue-400 hover:underline"><PencilIcon className="w-3 h-3" /></button>}
                                     </div>
                                 ) : null}
-
-                                {order.paymentMethod === 'online' && order.paymentReceiptUrl && (
-                                     <button onClick={() => setIsReceiptViewerOpen(true)} className="mt-1 text-sm font-semibold text-blue-600 hover:underline dark:text-blue-400">
-                                        {t.viewReceipt}
-                                    </button>
-                                )}
-                            </div>
-                            <div>
-                                <p className="font-semibold text-slate-500 dark:text-slate-400 mb-1">{t.status}</p>
-                                 <span className={`px-3 py-1 text-xs font-semibold rounded-full border ${getStatusChipColor(order.status, restaurantInfo)}`}>
-                                    {statusDetails?.name[language] || order.status}
-                                </span>
+                                {order.paymentMethod === 'online' && order.paymentReceiptUrl && <button onClick={() => setIsReceiptViewerOpen(true)} className="text-sm font-semibold text-blue-600 hover:underline dark:text-blue-400">{t.viewReceipt}</button>}
                             </div>
                         </div>
 
-                        {isEditingPayment && (
-                            <div className="p-4 bg-blue-50 dark:bg-blue-900/30 rounded-lg border border-blue-200 dark:border-blue-700/50">
-                                <label className="block text-sm font-semibold mb-2 text-blue-800 dark:text-blue-200">{order.paymentDetail ? t.edit : t.recordPayment}</label>
-                                <div className="flex items-center gap-2">
-                                    <select
-                                        value={codPaymentDetail}
-                                        onChange={(e) => setCodPaymentDetail(e.target.value)}
-                                        className="w-full p-2 border rounded-md dark:bg-slate-700 dark:border-slate-600"
-                                    >
-                                        <option value="">{t.selectMethod}</option>
-                                        <option value={t.cash}>{t.cash}</option>
-                                        {availableOnlineMethods.map(method => (
-                                            <option key={method.id} value={method.name[language]}>{method.name[language]}</option>
-                                        ))}
-                                    </select>
-                                    <button 
-                                        onClick={handleSaveCodPayment} 
-                                        disabled={!codPaymentDetail || isProcessing}
-                                        className="bg-blue-500 text-white font-bold py-2 px-3 rounded-lg hover:bg-blue-600 disabled:bg-blue-300 transition-colors"
-                                    >
-                                        {t.savePayment}
-                                    </button>
-                                    {order.paymentDetail && (
-                                        <button 
-                                            type="button"
-                                            onClick={() => setIsEditingPayment(false)}
-                                            className="bg-slate-200 text-slate-800 font-bold py-2 px-3 rounded-lg hover:bg-slate-300 transition-colors"
-                                        >
-                                            {t.cancel}
-                                        </button>
-                                    )}
-                                </div>
-                            </div>
-                        )}
-                        
-                        {order.notes && (
-                            <div className="bg-blue-50 dark:bg-blue-900/40 p-4 rounded-lg border border-blue-200 dark:border-blue-500/30">
-                                <h3 className="font-bold text-lg mb-2 text-blue-800 dark:text-blue-200 flex items-center gap-2">
-                                    <DocumentTextIcon className="w-5 h-5" />
-                                    {t.orderNotes}
-                                </h3>
-                                <p className="text-sm text-blue-700 dark:text-blue-200 whitespace-pre-wrap">{order.notes}</p>
-                            </div>
-                        )}
-
-                        {order.refusalReason && (
-                            <div className="bg-red-50 dark:bg-red-900/40 p-4 rounded-lg border border-red-200 dark:border-red-500/30">
-                                <h3 className="font-bold text-lg mb-2 text-red-800 dark:text-red-200">{t.refusalInfo}</h3>
-                                <p className="text-sm text-red-700 dark:text-red-200">{order.refusalReason}</p>
-                            </div>
-                        )}
-                        
-                        {order.customerFeedback && (
-                             <div className="bg-green-50 dark:bg-green-900/40 p-4 rounded-lg border border-green-200 dark:border-green-500/30">
-                                <h3 className="font-bold text-lg mb-2 text-green-800 dark:text-green-200">{t.customerFeedback}</h3>
-                                <div className="flex items-center mb-2">
-                                    <StarRating rating={order.customerFeedback.rating} />
-                                </div>
-                                <p className="text-sm text-green-700 dark:text-green-200 italic">"{order.customerFeedback.comment}"</p>
-                            </div>
-                        )}
-
-                        <div className="space-y-2 pt-4 border-t dark:border-slate-700">
-                            <div className="flex justify-between items-center">
-                                <h3 className="font-bold text-lg text-slate-800 dark:text-slate-100">{t.orderItems}</h3>
-                                <span className="text-sm font-semibold bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 px-2.5 py-1 rounded-full">
-                                    {formatNumber(order.items.length)} {language === 'ar' ? 'أصناف' : 'Items'}
-                                </span>
-                            </div>
-                            <div className="max-h-64 overflow-y-auto pr-2 space-y-3 -mr-2">
-                                {order.items.map((item, index) => (
-                                    <div key={`${item.product.id}-${index}`} className="flex items-start gap-4 py-3 border-b dark:border-slate-700 last:border-b-0">
-                                        <img src={item.product.image} alt={item.product.name[language]} className="w-16 h-16 rounded-lg object-cover" />
-                                        <div className="flex-grow">
-                                            <p className="font-semibold text-slate-800 dark:text-slate-300">{item.product.name[language]}</p>
-                                            <p className="text-sm text-slate-500 dark:text-slate-400">{t.quantity}: {formatNumber(item.quantity)}</p>
-                                            {item.options && (
-                                                <div className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-                                                    {Object.entries(item.options).map(([optionKey, valueKey]) => {
-                                                        const option = item.product.options?.find(o => o.name.en === optionKey);
-                                                        const value = option?.values.find(v => v.name.en === valueKey);
-                                                        if (option && value) {
-                                                            return <div key={optionKey}>+ {value.name[language]}</div>
-                                                        }
-                                                        return null;
-                                                    })}
-                                                </div>
-                                            )}
-                                        </div>
-                                        <div className="text-end shrink-0">
-                                            <p className="font-semibold text-slate-700 dark:text-slate-200">{(item.product.price * item.quantity).toFixed(2)} {t.currency}</p>
-                                        </div>
-                                    </div>
-                                ))}
-                            </div>
-                        </div>
                     </div>
-                    <div className="p-4 border-t dark:border-slate-700 shrink-0 bg-slate-50 dark:bg-slate-800/50 rounded-b-2xl">
+                    <div className="p-4 border-t dark:border-slate-700 shrink-0 bg-slate-50/50 dark:bg-slate-800/50 rounded-b-2xl">
                         <div className="sm:flex justify-between items-center">
                             <div className="flex items-center gap-2">
-                                {canEdit && <button onClick={() => onEdit(order)} className="p-2 rounded-lg text-blue-600 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-900/50 transition-colors font-semibold flex items-center gap-2"><PencilIcon className="w-5 h-5" />{t.editOrder}</button>}
-                                {canDelete && <button onClick={() => onDelete(order.id)} className="p-2 rounded-lg text-red-600 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/50 transition-colors font-semibold flex items-center gap-2"><TrashIcon className="w-5 h-5" />{t.deleteOrder}</button>}
-                                <button onClick={handleShare} disabled={isProcessing} className="p-2 rounded-lg text-green-600 dark:text-green-400 hover:bg-green-100 dark:hover:bg-green-900/50 transition-colors font-semibold flex items-center gap-2 disabled:opacity-50"><ShareIcon className="w-5 h-5" />{t.share}</button>
-                                <button onClick={handlePrint} disabled={isProcessing} className="p-2 rounded-lg text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors font-semibold flex items-center gap-2 disabled:opacity-50"><PrintIcon className="w-5 h-5" />{t.print}</button>
+                                {canEdit && <button onClick={() => onEdit(order)} title={t.editOrder} className="p-2 rounded-full text-blue-600 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-900/50 transition-colors"><PencilIcon className="w-5 h-5" /></button>}
+                                {canDelete && <button onClick={() => onDelete(order.id)} title={t.deleteOrder} className="p-2 rounded-full text-red-600 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/50 transition-colors"><TrashIcon className="w-5 h-5" /></button>}
+                                <button onClick={handleShare} disabled={isProcessing} title={t.share} className="p-2 rounded-full text-green-600 dark:text-green-400 hover:bg-green-100 dark:hover:bg-green-900/50 transition-colors disabled:opacity-50"><ShareIcon className="w-5 h-5" /></button>
+                                <button onClick={handlePrint} disabled={isProcessing} title={t.print} className="p-2 rounded-full text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors disabled:opacity-50"><PrintIcon className="w-5 h-5" /></button>
                             </div>
                             <div className="text-end mt-4 sm:mt-0">
                                 <p className="font-semibold text-slate-500 dark:text-slate-400 text-sm">{t.total}</p>

@@ -59,9 +59,9 @@ export const TrashIcon: React.FC<IconProps> = ({ className }) => (
     </svg>
 );
 
-export const CloseIcon: React.FC<IconProps> = ({ className }) => (
+export const CloseIcon: React.FC<IconProps & { strokeWidth?: number }> = ({ className, strokeWidth = 2 }) => (
     <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={strokeWidth} d="M6 18L18 6M6 6l12 12" />
     </svg>
 );
 
@@ -290,9 +290,9 @@ export const CopyIcon: React.FC<IconProps> = ({ className }) => (
   </svg>
 );
 
-export const CheckIcon: React.FC<IconProps> = ({ className }) => (
+export const CheckIcon: React.FC<IconProps & { strokeWidth?: number }> = ({ className, strokeWidth = 2 }) => (
   <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor">
-    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={strokeWidth} d="M5 13l4 4L19 7" />
   </svg>
 );
 
@@ -349,4 +349,22 @@ export const LoginIcon: React.FC<IconProps> = ({ className }) => (
   <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
     <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0013.5 3h-6a2.25 2.25 0 00-2.25 2.25v13.5A2.25 2.25 0 007.5 21h6a2.25 2.25 0 002.25-2.25V15M12 9l-3 3m0 0l3 3m-3-3h12" />
   </svg>
+);
+
+export const DevicePhoneMobileIcon: React.FC<IconProps> = ({ className }) => (
+  <svg className={className} fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+    <path strokeLinecap="round" strokeLinejoin="round" d="M10.5 1.5H5.25A2.25 2.25 0 0 0 3 3.75v16.5a2.25 2.25 0 0 0 2.25 2.25h7.5A2.25 2.25 0 0 0 15 20.25V3.75a2.25 2.25 0 0 0-2.25-2.25H10.5m-3 3.75h.008v.008h-.008v-.008ZM10.5 15a.75.75 0 1 1-1.5 0 .75.75 0 0 1 1.5 0Z" />
+  </svg>
+);
+
+export const EnvelopeIcon: React.FC<IconProps> = ({ className }) => (
+  <svg className={className} fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+    <path strokeLinecap="round" strokeLinejoin="round" d="M21.75 6.75v10.5a2.25 2.25 0 0 1-2.25 2.25h-15a2.25 2.25 0 0 1-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0 0 19.5 4.5h-15a2.25 2.25 0 0 0-2.25 2.25m19.5 0v.243a2.25 2.25 0 0 1-1.07 1.916l-7.5 4.615a2.25 2.25 0 0 1-2.36 0L3.32 8.91a2.25 2.25 0 0 1-1.07-1.916V6.75" />
+  </svg>
+);
+
+export const CreditCardIcon: React.FC<IconProps> = ({ className }) => (
+    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
+    </svg>
 );

@@ -1,6 +1,6 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useRef, useCallback } from 'react';
 import type { Language, Product, RestaurantInfo, Order, OrderStatus, User, UserRole, Promotion, Permission, Category, Tag, CartItem, SocialLink, LocalizedString, OrderStatusColumn, OrderType, Role } from '../../types';
-import { MenuAlt2Icon, PlusIcon, PencilIcon, TrashIcon, ShieldCheckIcon, SearchIcon, FilterIcon, ChevronUpIcon, ChevronDownIcon } from '../icons/Icons';
+import { MenuAlt2Icon, PlusIcon, PencilIcon, TrashIcon, ShieldCheckIcon, SearchIcon, FilterIcon, ChevronUpIcon, ChevronDownIcon, ChevronRightIcon } from '../icons/Icons';
 import { OrderDetailsModal } from './OrderDetailsModal';
 import { ProductEditModal } from './ProductEditModal';
 import { PromotionEditModal } from './PromotionEditModal';
@@ -132,9 +132,11 @@ export const AdminPage: React.FC<AdminPageProps> = ({ activeSubRoute, reportSubR
 
     // Product Filters
     const [productSearchTerm, setProductSearchTerm] = useState('');
-    const [productFilterCategory, setProductFilterCategory] = useState('all');
-    const [productFilterTag, setProductFilterTag] = useState('all');
+    const [productFilterCategory, setProductFilterCategory] = useState<number | null>(null);
+    const [productFilterTags, setProductFilterTags] = useState<string[]>([]);
     const [isProductFilterExpanded, setIsProductFilterExpanded] = useState(false);
+    const [openCategoryDropdown, setOpenCategoryDropdown] = useState<number | null>(null);
+    const categoryDropdownRef = useRef<HTMLDivElement>(null);
     
     // User Filters
     const [userSearchTerm, setUserSearchTerm] = useState('');
@@ -143,6 +145,18 @@ export const AdminPage: React.FC<AdminPageProps> = ({ activeSubRoute, reportSubR
 
     const [transitionStage, setTransitionStage] = useState<'in' | 'out'>('in');
     const [displayedTab, setDisplayedTab] = useState(activeTab);
+
+     useEffect(() => {
+        const handleClickOutside = (event: MouseEvent) => {
+          if (categoryDropdownRef.current && !categoryDropdownRef.current.contains(event.target as Node)) {
+            setOpenCategoryDropdown(null);
+          }
+        };
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => {
+          document.removeEventListener('mousedown', handleClickOutside);
+        };
+    }, []);
 
     useEffect(() => {
         setActiveTab(activeSubRoute as AdminTab);
@@ -153,27 +167,12 @@ export const AdminPage: React.FC<AdminPageProps> = ({ activeSubRoute, reportSubR
     };
 
     const onChangePasswordClick = () => setIsChangePasswordModalOpen(true);
-
-    const renderCategoryFilterOptions = (categories: Category[], level: number): React.ReactElement[] => {
-        let options: React.ReactElement[] = [];
-        const prefix = '\u00A0\u00A0'.repeat(level * 2);
-        for (const category of categories) {
-            options.push(
-                <option 
-                    key={category.id} 
-                    value={category.id} 
-                    className={level > 0 ? 'bg-slate-100 dark:bg-slate-700' : 'font-bold'}
-                >
-                    {prefix}{category.name[language]}
-                </option>
-            );
-            if (category.children && category.children.length > 0) {
-                options = options.concat(renderCategoryFilterOptions(category.children, level + 1));
-            }
-        }
-        return options;
-    };
-
+    
+    const isCategoryOrChildSelected = useCallback((category: Category): boolean => {
+        if (productFilterCategory === null) return false;
+        const categoryIdsToMatch = getDescendantCategoryIds(category.id, categories);
+        return categoryIdsToMatch.includes(productFilterCategory);
+    }, [productFilterCategory, categories]);
 
     useEffect(() => {
         const currentTabInfo = NAV_ITEMS_WITH_PERMS.find(item => item.id === activeTab);
@@ -304,19 +303,26 @@ export const AdminPage: React.FC<AdminPageProps> = ({ activeSubRoute, reportSubR
             const matchesSearch = nameEn.includes(lowercasedTerm) || nameAr.includes(lowercasedTerm) || code.includes(lowercasedTerm);
             
             let matchesCategory = true;
-            if (productFilterCategory !== 'all') {
-                const categoryIdsToMatch = getDescendantCategoryIds(parseInt(productFilterCategory, 10), categories);
+            if (productFilterCategory !== null) {
+                const categoryIdsToMatch = getDescendantCategoryIds(productFilterCategory, categories);
                 matchesCategory = categoryIdsToMatch.includes(product.categoryId);
             }
 
-            const matchesTag = productFilterTag === 'all' || product.tags.includes(productFilterTag);
+            const matchesTags = productFilterTags.length === 0 || productFilterTags.every(tag => product.tags.includes(tag));
             
-            return matchesSearch && matchesCategory && matchesTag;
+            return matchesSearch && matchesCategory && matchesTags;
         });
 
         return filtered.sort((a, b) => a.name[language].localeCompare(b.name[language], language));
-    }, [allProducts, productSearchTerm, productFilterCategory, productFilterTag, language, categories]);
+    }, [allProducts, productSearchTerm, productFilterCategory, productFilterTags, language, categories]);
 
+    const handleProductTagChange = (tagId: string) => {
+        setProductFilterTags(prev => 
+            prev.includes(tagId) 
+            ? prev.filter(t => t !== tagId) 
+            : [...prev, tagId]
+        );
+    };
 
     const usersToDisplay = useMemo(() => {
         if (!currentUser) return [];
@@ -502,7 +508,7 @@ export const AdminPage: React.FC<AdminPageProps> = ({ activeSubRoute, reportSubR
                             {hasPermission('add_product') && <button onClick={() => setEditingProduct('new')} className="bg-green-500 text-white font-bold py-2 px-4 rounded-lg hover:bg-green-600 transition-colors flex items-center gap-2"><PlusIcon className="w-5 h-5" />{t.addNewProduct}</button>}
                         </div>
 
-                        <div className="bg-white dark:bg-slate-800 rounded-xl shadow-lg mb-6 border border-slate-200 dark:border-slate-700">
+                        <div className="relative z-10 bg-white dark:bg-slate-800 rounded-xl shadow-lg mb-6 border border-slate-200 dark:border-slate-700">
                             <div className="p-4 flex justify-between items-center cursor-pointer select-none" onClick={() => setIsProductFilterExpanded(!isProductFilterExpanded)}>
                                 <div className="flex items-center gap-2">
                                     <FilterIcon className="w-5 h-5 text-slate-500 dark:text-slate-400" />
@@ -512,29 +518,91 @@ export const AdminPage: React.FC<AdminPageProps> = ({ activeSubRoute, reportSubR
                                     {isProductFilterExpanded ? <ChevronUpIcon className="w-6 h-6 text-slate-600 dark:text-slate-300" /> : <ChevronDownIcon className="w-6 h-6 text-slate-600 dark:text-slate-300" />}
                                 </button>
                             </div>
-                            <div className={`transition-all duration-300 ease-in-out overflow-hidden ${isProductFilterExpanded ? 'max-h-[500px] opacity-100' : 'max-h-0 opacity-0'}`}>
-                                <div className="p-4 border-t border-slate-200 dark:border-slate-700">
-                                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
-                                        <div className="md:col-span-3">
-                                            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">{t.search}</label>
-                                            <div className="relative">
-                                                <input type="text" placeholder={`${t.productNameEn}, ${t.code}...`} value={productSearchTerm} onChange={(e) => setProductSearchTerm(e.target.value)} className="w-full p-2 ps-10 rounded-lg border-slate-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 sm:text-sm dark:bg-slate-700 dark:border-slate-600 dark:text-white dark:placeholder:text-slate-400"/>
-                                                <div className="absolute top-1/2 -translate-y-1/2 start-3 text-slate-400"><SearchIcon className="w-5 h-5" /></div>
-                                            </div>
+                            <div className={`transition-all duration-300 ease-in-out ${isProductFilterExpanded ? 'max-h-[500px] opacity-100' : 'max-h-0 opacity-0'}`}>
+                                <div className="p-4 border-t border-slate-200 dark:border-slate-700 space-y-4">
+                                    <div>
+                                        <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">{t.search}</label>
+                                        <div className="relative">
+                                            <input type="text" placeholder={`${t.productNameEn}, ${t.code}...`} value={productSearchTerm} onChange={(e) => setProductSearchTerm(e.target.value)} className="w-full p-2 ps-10 rounded-lg border-slate-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 sm:text-sm dark:bg-slate-700 dark:border-slate-600 dark:text-white dark:placeholder:text-slate-400"/>
+                                            <div className="absolute top-1/2 -translate-y-1/2 start-3 text-slate-400"><SearchIcon className="w-5 h-5" /></div>
                                         </div>
-                                        <div>
-                                            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">{t.category}</label>
-                                            <select value={productFilterCategory} onChange={(e) => setProductFilterCategory(e.target.value)} className="w-full p-2 rounded-lg border-slate-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 sm:text-sm dark:bg-slate-700 dark:border-slate-600 dark:text-white">
-                                                <option value="all">{t.allCategories}</option>
-                                                {renderCategoryFilterOptions(categories, 0)}
-                                            </select>
+                                    </div>
+                                    
+                                    <div>
+                                        <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">{t.category}</label>
+                                        <div className="flex flex-wrap items-start gap-2">
+                                            <button
+                                                onClick={() => setProductFilterCategory(null)}
+                                                className={`px-4 py-1.5 rounded-full text-sm font-semibold transition-all duration-300 whitespace-nowrap ${productFilterCategory === null ? 'bg-primary-600 text-white shadow' : 'bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-300 dark:hover:bg-slate-600'}`}
+                                            >
+                                                {t.allCategories}
+                                            </button>
+                                            {categories.map(category => {
+                                                const hasChildren = category.children && category.children.length > 0;
+                                                const isActive = isCategoryOrChildSelected(category);
+
+                                                if (hasChildren) {
+                                                    return (
+                                                        <div key={category.id} className="relative" ref={openCategoryDropdown === category.id ? categoryDropdownRef : null}>
+                                                            <button
+                                                                onClick={() => setOpenCategoryDropdown(openCategoryDropdown === category.id ? null : category.id)}
+                                                                className={`px-3 py-1.5 rounded-full text-sm font-semibold transition-all duration-300 whitespace-nowrap flex items-center gap-2 ${isActive ? 'bg-primary-600 text-white shadow' : 'bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-300 dark:hover:bg-slate-600'}`}
+                                                            >
+                                                                <span>{category.name[language]}</span>
+                                                                <ChevronRightIcon className={`w-4 h-4 transition-transform ${language === 'ar' ? 'transform -scale-x-100' : ''} ${openCategoryDropdown === category.id ? 'rotate-90' : ''}`} />
+                                                            </button>
+                                                            {openCategoryDropdown === category.id && (
+                                                                <div className="absolute top-full mt-2 z-20 min-w-full bg-white dark:bg-slate-800 rounded-lg shadow-xl border border-slate-200 dark:border-slate-700 overflow-hidden animate-fade-in py-1">
+                                                                    <button
+                                                                        onClick={(e) => { e.stopPropagation(); setProductFilterCategory(category.id); setOpenCategoryDropdown(null); }}
+                                                                        className={`block w-full text-start px-4 py-2 text-sm transition-colors ${productFilterCategory === category.id && (!category.children || !category.children.some(c => c.id === productFilterCategory)) ? 'font-bold text-primary-600 bg-primary-50 dark:bg-primary-900/40' : 'text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700'}`}
+                                                                    >
+                                                                        {t.all} {category.name[language]}
+                                                                    </button>
+                                                                    {category.children!.map(child => (
+                                                                        <button
+                                                                            key={child.id}
+                                                                            onClick={(e) => { e.stopPropagation(); setProductFilterCategory(child.id); setOpenCategoryDropdown(null); }}
+                                                                            className={`block w-full text-start px-4 py-2 text-sm transition-colors ${productFilterCategory === child.id ? 'font-bold text-primary-600 bg-primary-50 dark:bg-primary-900/40' : 'text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700'}`}
+                                                                        >
+                                                                            {child.name[language]}
+                                                                        </button>
+                                                                    ))}
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                    );
+                                                }
+
+                                                return (
+                                                    <button
+                                                        key={category.id}
+                                                        onClick={() => setProductFilterCategory(category.id)}
+                                                        className={`px-4 py-1.5 rounded-full text-sm font-semibold transition-all duration-300 whitespace-nowrap ${productFilterCategory === category.id ? 'bg-primary-600 text-white shadow' : 'bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-300 dark:hover:bg-slate-600'}`}
+                                                    >
+                                                        {category.name[language]}
+                                                    </button>
+                                                );
+                                            })}
                                         </div>
-                                        <div>
-                                            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">{t.tags}</label>
-                                            <select value={productFilterTag} onChange={(e) => setProductFilterTag(e.target.value)} className="w-full p-2 rounded-lg border-slate-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 sm:text-sm dark:bg-slate-700 dark:border-slate-600 dark:text-white">
-                                                <option value="all">{t.all} {t.tags}</option>
-                                                {tags.map(tag => <option key={tag.id} value={tag.id}>{tag.name[language]}</option>)}
-                                            </select>
+                                    </div>
+                                    
+                                    <div>
+                                        <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">{t.tags}</label>
+                                        <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
+                                            {tags.map(tag => (
+                                                <label key={tag.id} className="flex items-center gap-2 cursor-pointer">
+                                                    <input
+                                                        type="checkbox"
+                                                        checked={productFilterTags.includes(tag.id)}
+                                                        onChange={() => handleProductTagChange(tag.id)}
+                                                        className="sr-only peer"
+                                                    />
+                                                    <span className="px-3 py-1.5 rounded-full text-xs font-semibold border-2 border-slate-300 dark:border-slate-600 text-slate-600 dark:text-slate-300 peer-checked:bg-primary-100 dark:peer-checked:bg-primary-900/50 peer-checked:border-primary-500 peer-checked:text-primary-700 dark:peer-checked:text-primary-300 transition-colors">
+                                                        {tag.name[language]}
+                                                    </span>
+                                                </label>
+                                            ))}
                                         </div>
                                     </div>
                                 </div>
@@ -791,7 +859,7 @@ export const AdminPage: React.FC<AdminPageProps> = ({ activeSubRoute, reportSubR
                     <div className="px-4 h-20 flex justify-between items-center"><div className="flex items-center gap-3"><button className="p-2 md:hidden rounded-full hover:bg-slate-200/60 dark:hover:bg-slate-700/60 transition-colors" onClick={() => setSidebarOpen(true)}><MenuAlt2Icon className="w-6 h-6 text-slate-600 dark:text-slate-300" /></button><h1 className="text-xl font-bold text-slate-800 dark:text-slate-100">{t.adminPanel}</h1></div></div>
                 </header>
                 <main className="container mx-auto max-w-full px-4 sm:px-6 lg:px-8 py-8 flex-1">
-                    <div className={`transition-all duration-300 ease-in-out ${transitionStage === 'out' ? 'opacity-0 -translate-y-5' : 'opacity-100 translate-y-0'}`}>{renderContent()}</div>
+                    <div className={`transition-opacity duration-300 ease-in-out ${transitionStage === 'out' ? 'opacity-0' : 'opacity-100'}`}>{renderContent()}</div>
                 </main>
             </div>
             

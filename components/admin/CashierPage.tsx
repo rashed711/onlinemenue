@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import type { User, Product, Category, CartItem, Order, RestaurantInfo, OrderType, Tag } from '../../types';
-import { calculateTotal, formatNumber } from '../../utils/helpers';
+import { calculateTotal, formatNumber, calculateItemUnitPrice, calculateItemTotal } from '../../utils/helpers';
 import { ProductModal } from '../ProductModal';
 import { MinusIcon, PlusIcon, TrashIcon, CloseIcon, CartIcon, SearchIcon, FilterIcon, ChevronUpIcon, ChevronDownIcon, ChevronRightIcon } from '../icons/Icons';
 import { TableSelector } from '../TableSelector';
@@ -39,6 +39,226 @@ const getDescendantCategoryIds = (categoryId: number, categories: Category[]): n
     return ids;
 };
 
+interface CashierCartPanelProps {
+    isMobile: boolean;
+    onClose?: () => void;
+    cartItems: CartItem[];
+    updateCartQuantity: (index: number, quantity: number) => void;
+    clearCart: () => void;
+    notes: string;
+    setNotes: (notes: string) => void;
+    orderType: OrderType;
+    handleOrderTypeChange: (type: OrderType) => void;
+    tableNumber: string;
+    setTableNumber: (table: string) => void;
+    customerName: string;
+    setCustomerName: (name: string) => void;
+    customerMobile: string;
+    setCustomerMobile: (mobile: string) => void;
+    customerAddress: string;
+    setCustomerAddress: (address: string) => void;
+    handlePlaceOrder: () => void;
+    total: number;
+    isPlaceOrderDisabled: boolean;
+    mobileStep: 'info' | 'cart';
+    setMobileStep: (step: 'info' | 'cart') => void;
+    canProceedFromInfo: boolean;
+}
+
+const CashierCartPanel: React.FC<CashierCartPanelProps> = ({
+    isMobile,
+    onClose,
+    cartItems,
+    updateCartQuantity,
+    clearCart,
+    notes,
+    setNotes,
+    orderType,
+    handleOrderTypeChange,
+    tableNumber,
+    setTableNumber,
+    customerName,
+    setCustomerName,
+    customerMobile,
+    setCustomerMobile,
+    customerAddress,
+    setCustomerAddress,
+    handlePlaceOrder,
+    total,
+    isPlaceOrderDisabled,
+    mobileStep,
+    setMobileStep,
+    canProceedFromInfo
+}) => {
+    const { t, language } = useUI();
+    const { restaurantInfo } = useData();
+
+    if (!restaurantInfo) return null;
+
+    const orderTypeClasses = "w-full py-2.5 text-sm font-bold transition-colors duration-200 rounded-md";
+    const activeOrderTypeClasses = "bg-primary-600 text-white shadow";
+    const inactiveOrderTypeClasses = "text-slate-700 dark:text-slate-200";
+
+    return (
+        <>
+            <div className="p-4 border-b dark:border-slate-700 flex justify-between items-center shrink-0">
+                <h3 className="text-xl font-bold text-slate-800 dark:text-slate-100">{t.newOrder}</h3>
+                {isMobile && onClose && (
+                    <button onClick={onClose} className="p-2 rounded-full hover:bg-slate-100 dark:hover:bg-slate-700">
+                        <CloseIcon className="w-6 h-6" />
+                    </button>
+                )}
+            </div>
+
+            <div className="flex-1 overflow-y-auto">
+                 <div className={!isMobile || mobileStep === 'info' ? 'block' : 'hidden'}>
+                     <div className="p-4 border-b dark:border-slate-700 space-y-4">
+                        <div className="flex items-center p-1 rounded-lg bg-slate-100 dark:bg-slate-900">
+                            <button onClick={() => handleOrderTypeChange('Dine-in')} className={`${orderTypeClasses} ${orderType === 'Dine-in' ? activeOrderTypeClasses : inactiveOrderTypeClasses}`}>{t.dineIn}</button>
+                            <button onClick={() => handleOrderTypeChange('Takeaway')} className={`${orderTypeClasses} ${orderType === 'Takeaway' ? activeOrderTypeClasses : inactiveOrderTypeClasses}`}>{t.takeaway}</button>
+                            <button onClick={() => handleOrderTypeChange('Delivery')} className={`${orderTypeClasses} ${orderType === 'Delivery' ? activeOrderTypeClasses : inactiveOrderTypeClasses}`}>{t.delivery}</button>
+                        </div>
+                        {orderType === 'Dine-in' && (
+                            <div>
+                                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">{t.tableNumber}</label>
+                                <TableSelector
+                                    tableCount={restaurantInfo.tableCount || 0}
+                                    selectedTable={tableNumber}
+                                    onSelectTable={setTableNumber}
+                                />
+                            </div>
+                        )}
+                        {orderType === 'Takeaway' && (
+                            <div className="space-y-3">
+                                <input type="text" value={customerName} onChange={e => setCustomerName(e.target.value)} placeholder={t.customer + ' ' + t.name} className="w-full p-2 border rounded-md dark:bg-slate-700 dark:border-slate-600 dark:text-white" required />
+                                <input type="tel" value={customerMobile} onChange={e => setCustomerMobile(e.target.value)} placeholder={t.mobileNumber + ` (${t.yourComment})`} className="w-full p-2 border rounded-md dark:bg-slate-700 dark:border-slate-600 dark:text-white" />
+                            </div>
+                        )}
+                        {orderType === 'Delivery' && (
+                            <div className="space-y-3">
+                                <input type="text" value={customerName} onChange={e => setCustomerName(e.target.value)} placeholder={t.customer + ' ' + t.name} className="w-full p-2 border rounded-md dark:bg-slate-700 dark:border-slate-600 dark:text-white" required />
+                                <input type="tel" value={customerMobile} onChange={e => setCustomerMobile(e.target.value)} placeholder={t.mobileNumber} className="w-full p-2 border rounded-md dark:bg-slate-700 dark:border-slate-600 dark:text-white" required />
+                                <textarea value={customerAddress} onChange={e => setCustomerAddress(e.target.value)} placeholder={t.address} rows={2} className="w-full p-2 border rounded-md dark:bg-slate-700 dark:border-slate-600 dark:text-white" required />
+                            </div>
+                        )}
+                    </div>
+                </div>
+
+                <div className={!isMobile || mobileStep === 'cart' ? 'block' : 'hidden'}>
+                    <div className="p-4 space-y-3">
+                        {cartItems.length === 0 ? (
+                            <p className="text-center text-slate-500 py-10">{t.emptyCart}</p>
+                        ) : (
+                            cartItems.map((item, index) => (
+                                <div key={index} className="flex items-start gap-3 p-3 bg-slate-100 dark:bg-slate-900/50 rounded-lg">
+                                    <div className="flex-grow">
+                                        <p className="font-semibold text-sm text-slate-800 dark:text-slate-200">{item.product.name[language]}</p>
+                                        {item.options && Object.keys(item.options).length > 0 && (
+                                            <div className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                                                {Object.entries(item.options).map(([optionKey, valueKey]) => {
+                                                    const option = item.product.options?.find(o => o.name.en === optionKey);
+                                                    const value = option?.values.find(v => v.name.en === valueKey);
+                                                    if (option && value) {
+                                                        const priceModifierText = value.priceModifier > 0
+                                                            ? ` (+${value.priceModifier.toFixed(2)} ${t.currency})`
+                                                            : '';
+                                                        return <div key={optionKey}>+ {value.name[language]}{priceModifierText}</div>;
+                                                    }
+                                                    return null;
+                                                })}
+                                            </div>
+                                        )}
+                                        <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                                            @ {calculateItemUnitPrice(item).toFixed(2)} {t.currency}
+                                        </p>
+                                    </div>
+                                    <div className="flex flex-col items-end gap-2 flex-shrink-0">
+                                        <div className="flex items-center gap-2">
+                                            <button onClick={() => updateCartQuantity(index, item.quantity - 1)} className="p-1 rounded-full bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 dark:hover:bg-slate-600">
+                                                {item.quantity === 1 ? <TrashIcon className="w-4 h-4 text-red-500" /> : <MinusIcon className="w-4 h-4" />}
+                                            </button>
+                                            <span className="font-bold w-6 text-center text-slate-800 dark:text-slate-200">{formatNumber(item.quantity)}</span>
+                                            <button onClick={() => updateCartQuantity(index, item.quantity + 1)} className="p-1 rounded-full bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 dark:hover:bg-slate-600">
+                                                <PlusIcon className="w-4 h-4" />
+                                            </button>
+                                        </div>
+                                        <p className="font-bold text-sm text-slate-800 dark:text-slate-200">
+                                            {calculateItemTotal(item).toFixed(2)} {t.currency}
+                                        </p>
+                                    </div>
+                                </div>
+                            ))
+                        )}
+                         {cartItems.length > 0 && !isMobile && (
+                            <div className="pt-2">
+                                <textarea value={notes} onChange={e => setNotes(e.target.value)} placeholder={t.orderNotes} rows={1} className="w-full p-2 border rounded-md dark:bg-slate-700 dark:text-white dark:border-slate-600 focus:ring-primary-500 focus:border-primary-500"></textarea>
+                            </div>
+                         )}
+                    </div>
+                </div>
+            </div>
+
+            <div className="p-3 border-t dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50 mt-auto shrink-0">
+                {isMobile ? (
+                    <div className="space-y-3">
+                        {mobileStep === 'info' ? (
+                            <>
+                                <div className="flex justify-between font-bold text-xl text-slate-800 dark:text-slate-100">
+                                    <span>{t.total}</span>
+                                    <span>{total.toFixed(2)} {t.currency}</span>
+                                </div>
+                                <button
+                                    onClick={() => setMobileStep('cart')}
+                                    disabled={!canProceedFromInfo}
+                                    className="w-full bg-primary-600 text-white p-2.5 rounded-lg font-bold hover:bg-primary-700 disabled:bg-slate-400"
+                                >
+                                    {t.nextStep}
+                                </button>
+                            </>
+                        ) : (
+                            <>
+                                <div className="flex justify-between font-bold text-xl text-slate-800 dark:text-slate-100">
+                                    <span>{t.total}</span>
+                                    <span>{total.toFixed(2)} {t.currency}</span>
+                                </div>
+                                <div className="flex gap-2">
+                                    <button onClick={() => setMobileStep('info')} className="w-1/3 bg-slate-200 text-slate-800 p-2.5 rounded-lg font-bold hover:bg-slate-300">
+                                        {t.previousStep}
+                                    </button>
+                                    <button
+                                        onClick={handlePlaceOrder}
+                                        className="w-2/3 bg-green-500 text-white p-2.5 rounded-lg font-bold hover:bg-green-600 disabled:bg-gray-400 disabled:cursor-not-allowed"
+                                        disabled={isPlaceOrderDisabled}
+                                    >
+                                        {t.placeOrder}
+                                    </button>
+                                </div>
+                            </>
+                        )}
+                    </div>
+                ) : (
+                     <div className="space-y-3">
+                        <div className="flex justify-between font-bold text-xl text-slate-800 dark:text-slate-100">
+                            <span>{t.total}</span>
+                            <span>{total.toFixed(2)} {t.currency}</span>
+                        </div>
+                        <div className="flex gap-2">
+                            <button onClick={clearCart} className="bg-red-500 text-white p-2.5 rounded-lg font-bold hover:bg-red-600 flex items-center justify-center px-4"><TrashIcon className="w-5 h-5"/></button>
+                            <button
+                                onClick={handlePlaceOrder}
+                                className="flex-grow bg-green-500 text-white p-2.5 rounded-lg font-bold hover:bg-green-600 disabled:bg-gray-400 disabled:cursor-not-allowed"
+                                disabled={isPlaceOrderDisabled}
+                            >
+                                {t.placeOrder}
+                            </button>
+                        </div>
+                    </div>
+                )}
+            </div>
+        </>
+    );
+};
+
 
 export const CashierPage: React.FC = () => {
     const { language, t, showToast } = useUI();
@@ -50,7 +270,7 @@ export const CashierPage: React.FC = () => {
     const [notes, setNotes] = useState('');
     const [selectedCategory, setSelectedCategory] = useState<number | null>(null);
     const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
-    const [isCartExpanded, setIsCartExpanded] = useState(false);
+    const [isCartOpen, setIsCartOpen] = useState(false);
     
     const [searchTerm, setSearchTerm] = useState('');
     const [selectedTags, setSelectedTags] = useState<string[]>([]);
@@ -82,6 +302,7 @@ export const CashierPage: React.FC = () => {
     useEffect(() => {
         if (cartItems.length === 0) {
             setMobileStep('info');
+            setIsCartOpen(false);
         }
     }, [cartItems.length]);
 
@@ -110,10 +331,6 @@ export const CashierPage: React.FC = () => {
         setCartItems(prevItems => {
             const itemVariantId = product.id + JSON.stringify(options || {});
             const existingItem = prevItems.find(item => (item.product.id + JSON.stringify(item.options || {})) === itemVariantId);
-            
-            if (prevItems.length === 0) {
-                setIsCartExpanded(true);
-            }
 
             if (existingItem) {
                 return prevItems.map(item =>
@@ -224,7 +441,7 @@ export const CashierPage: React.FC = () => {
             await placeOrder(orderData);
             showToast(t.orderSentToKitchen);
             clearCart();
-            setIsCartExpanded(false);
+            setIsCartOpen(false);
         } catch (error) {
             console.error("Failed to place order from cashier:", error);
         }
@@ -251,14 +468,34 @@ export const CashierPage: React.FC = () => {
         return null;
     }
 
-    const orderTypeClasses = "w-full py-2.5 text-sm font-bold transition-colors duration-200 rounded-md";
-    const activeOrderTypeClasses = "bg-primary-600 text-white shadow";
-    const inactiveOrderTypeClasses = "text-slate-700 dark:text-slate-200";
+    const cartPanelProps = {
+        cartItems,
+        updateCartQuantity,
+        clearCart,
+        notes,
+        setNotes,
+        orderType,
+        handleOrderTypeChange,
+        tableNumber,
+        setTableNumber,
+        customerName,
+        setCustomerName,
+        customerMobile,
+        setCustomerMobile,
+        customerAddress,
+        setCustomerAddress,
+        handlePlaceOrder,
+        total,
+        isPlaceOrderDisabled,
+        mobileStep,
+        setMobileStep,
+        canProceedFromInfo,
+    };
 
     return (
         <>
-            <div className="flex flex-col md:flex-row h-[calc(100vh-5rem)] overflow-hidden">
-                <div className="flex-1 flex flex-col bg-slate-100/50 dark:bg-slate-900/50">
+            <div className="flex flex-col md:flex-row md:h-[calc(100vh-5rem)] md:overflow-hidden">
+                <div className="flex-1 flex flex-col bg-slate-100/50 dark:bg-slate-900/50 md:pb-0">
                     <div className="p-3 border-b border-slate-200 dark:border-slate-700 shrink-0 space-y-3 z-10">
                         <div className="flex flex-row gap-2 items-center">
                             <div className="relative w-full flex-grow">
@@ -303,66 +540,69 @@ export const CashierPage: React.FC = () => {
                             ))}
                             </div>
                         </div>
+                        <div className="relative">
+                            <div className="flex items-start gap-2 overflow-x-auto scrollbar-hide py-1">
+                                <button
+                                    onClick={() => setSelectedCategory(null)}
+                                    className={`px-4 py-1.5 rounded-full text-sm font-bold transition-all duration-300 whitespace-nowrap ${selectedCategory === null ? 'bg-primary-600 text-white shadow-lg' : 'bg-white dark:bg-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-600'}`}
+                                >
+                                    {t.allCategories}
+                                </button>
+                                {allCategories.map(category => {
+                                    const hasChildren = category.children && category.children.length > 0;
+                                    const isActive = isCategoryOrChildSelected(category);
+                                    
+                                    const activeClasses = 'bg-primary-600 text-white shadow-lg';
+                                    const inactiveClasses = 'bg-white dark:bg-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-600';
+                                    const buttonClasses = `px-4 py-1.5 rounded-full text-sm font-bold transition-all duration-300 whitespace-nowrap flex items-center gap-2 ${isActive ? activeClasses : inactiveClasses}`;
 
-                        <div className="flex flex-wrap items-start gap-2">
-                             <button
-                                onClick={() => setSelectedCategory(null)}
-                                className={`px-4 py-1.5 rounded-full text-sm font-bold transition-all duration-300 whitespace-nowrap ${selectedCategory === null ? 'bg-primary-600 text-white shadow-lg' : 'bg-white dark:bg-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-600'}`}
-                            >
-                                {t.allCategories}
-                            </button>
-                            {allCategories.map(category => {
-                                const hasChildren = category.children && category.children.length > 0;
-                                const isActive = isCategoryOrChildSelected(category);
-                                
-                                const buttonClasses = `px-4 py-1.5 rounded-full text-sm font-bold transition-all duration-300 whitespace-nowrap flex items-center gap-2 ${isActive ? 'bg-primary-600 text-white shadow-lg' : 'bg-white dark:bg-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-600'}`;
-
-                                if (hasChildren) {
-                                    return (
-                                        <div key={category.id} className="relative" ref={openDropdown === category.id ? dropdownRef : null}>
-                                            <button
-                                                onClick={() => setOpenDropdown(openDropdown === category.id ? null : category.id)}
-                                                className={buttonClasses}
-                                            >
-                                                <span>{category.name[language]}</span>
-                                                <ChevronRightIcon className={`w-4 h-4 transition-transform ${language === 'ar' ? 'transform -scale-x-100' : ''} ${openDropdown === category.id ? 'rotate-90' : ''}`} />
-                                            </button>
-                                            {openDropdown === category.id && (
-                                                <div className="absolute top-full mt-2 z-20 min-w-max bg-white dark:bg-slate-800 rounded-lg shadow-xl border border-slate-200 dark:border-slate-700 overflow-hidden animate-fade-in py-1">
-                                                    <button
-                                                        onClick={(e) => { e.stopPropagation(); setSelectedCategory(category.id); setOpenDropdown(null); }}
-                                                        className={`block w-full text-start px-4 py-2 text-sm transition-colors ${selectedCategory === category.id && (!category.children || !category.children.some(c => c.id === selectedCategory)) ? 'font-bold text-primary-600 bg-primary-50 dark:bg-primary-900/40' : 'text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700'}`}
-                                                    >
-                                                        {t.all} {category.name[language]}
-                                                    </button>
-                                                    {category.children!.map(child => (
+                                    if (hasChildren) {
+                                        return (
+                                            <div key={category.id} className="relative" ref={openDropdown === category.id ? dropdownRef : null}>
+                                                <button
+                                                    onClick={() => setOpenDropdown(openDropdown === category.id ? null : category.id)}
+                                                    className={buttonClasses}
+                                                >
+                                                    <span>{category.name[language]}</span>
+                                                    <ChevronRightIcon className={`w-4 h-4 transition-transform ${language === 'ar' ? 'transform -scale-x-100' : ''} ${openDropdown === category.id ? 'rotate-90' : ''}`} />
+                                                </button>
+                                                {openDropdown === category.id && (
+                                                    <div className="absolute top-full mt-2 z-20 min-w-max bg-white dark:bg-slate-800 rounded-lg shadow-xl border border-slate-200 dark:border-slate-700 overflow-hidden animate-fade-in py-1">
                                                         <button
-                                                            key={child.id}
-                                                            onClick={(e) => { e.stopPropagation(); setSelectedCategory(child.id); setOpenDropdown(null); }}
-                                                            className={`block w-full text-start px-4 py-2 text-sm transition-colors ${selectedCategory === child.id ? 'font-bold text-primary-600 bg-primary-50 dark:bg-primary-900/40' : 'text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700'}`}
+                                                            onClick={(e) => { e.stopPropagation(); setSelectedCategory(category.id); setOpenDropdown(null); }}
+                                                            className={`block w-full text-start px-4 py-2 text-sm transition-colors ${selectedCategory === category.id && (!category.children || !category.children.some(c => c.id === selectedCategory)) ? 'font-bold text-primary-600 bg-primary-50 dark:bg-primary-900/40' : 'text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700'}`}
                                                         >
-                                                            {child.name[language]}
+                                                            {t.all} {category.name[language]}
                                                         </button>
-                                                    ))}
-                                                </div>
-                                            )}
-                                        </div>
-                                    );
-                                }
+                                                        {category.children!.map(child => (
+                                                            <button
+                                                                key={child.id}
+                                                                onClick={(e) => { e.stopPropagation(); setSelectedCategory(child.id); setOpenDropdown(null); }}
+                                                                className={`block w-full text-start px-4 py-2 text-sm transition-colors ${selectedCategory === child.id ? 'font-bold text-primary-600 bg-primary-50 dark:bg-primary-900/40' : 'text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700'}`}
+                                                            >
+                                                                {child.name[language]}
+                                                            </button>
+                                                        ))}
+                                                    </div>
+                                                )}
+                                            </div>
+                                        );
+                                    }
 
-                                return (
-                                    <button
-                                        key={category.id}
-                                        onClick={() => setSelectedCategory(category.id)}
-                                        className={buttonClasses}
-                                    >
-                                        {category.name[language]}
-                                    </button>
-                                );
-                            })}
+                                    return (
+                                        <button
+                                            key={category.id}
+                                            onClick={() => setSelectedCategory(category.id)}
+                                            className={`px-4 py-1.5 rounded-full text-sm font-bold transition-all duration-300 whitespace-nowrap ${selectedCategory === category.id ? activeClasses : inactiveClasses}`}
+                                        >
+                                            {category.name[language]}
+                                        </button>
+                                    );
+                                })}
+                            </div>
                         </div>
                     </div>
-                    <div className="overflow-y-auto p-4">
+                    <div className="overflow-y-auto p-4 flex-grow">
                         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
                             {filteredProducts.map(product => (
                                 <div key={product.id} onClick={() => handleProductClick(product)} className="bg-white dark:bg-slate-800 rounded-lg shadow-md hover:shadow-xl hover:scale-105 transition-all duration-200 cursor-pointer text-center flex flex-col">
@@ -377,154 +617,38 @@ export const CashierPage: React.FC = () => {
                     </div>
                 </div>
 
-                {/* Cart/Order Panel */}
-                <div className="md:w-[400px] md:flex-shrink-0 bg-white dark:bg-slate-800 flex flex-col shadow-lg border-t md:border-t-0 md:border-l border-slate-200 dark:border-slate-700">
-                    <div
-                        onClick={() => setIsCartExpanded(!isCartExpanded)}
-                        className="p-4 border-b dark:border-slate-700 flex justify-between items-center shrink-0 cursor-pointer md:cursor-default"
-                    >
-                        <h3 className="text-xl font-bold text-slate-800 dark:text-slate-100">{t.newOrder}</h3>
-                        <button className="p-2 rounded-full hover:bg-slate-100 dark:hover:bg-slate-700 md:hidden pointer-events-none">
-                            {isCartExpanded ? <ChevronDownIcon className="w-6 h-6" /> : <ChevronUpIcon className="w-6 h-6" />}
-                        </button>
-                    </div>
-                    
-                    <div className={`flex-1 overflow-y-auto transition-all duration-500 ease-in-out ${isCartExpanded ? 'max-h-[40vh]' : 'max-h-0'} md:max-h-none`}>
-                         <div className={`md:block ${mobileStep === 'info' ? '' : 'hidden'}`}>
-                             <div className="p-4 border-b dark:border-slate-700 space-y-4">
-                                <div className="flex items-center p-1 rounded-lg bg-slate-100 dark:bg-slate-900">
-                                    <button onClick={() => handleOrderTypeChange('Dine-in')} className={`${orderTypeClasses} ${orderType === 'Dine-in' ? activeOrderTypeClasses : inactiveOrderTypeClasses}`}>{t.dineIn}</button>
-                                    <button onClick={() => handleOrderTypeChange('Takeaway')} className={`${orderTypeClasses} ${orderType === 'Takeaway' ? activeOrderTypeClasses : inactiveOrderTypeClasses}`}>{t.takeaway}</button>
-                                    <button onClick={() => handleOrderTypeChange('Delivery')} className={`${orderTypeClasses} ${orderType === 'Delivery' ? activeOrderTypeClasses : inactiveOrderTypeClasses}`}>{t.delivery}</button>
-                                </div>
-                                {orderType === 'Dine-in' && (
-                                    <div>
-                                        <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">{t.tableNumber}</label>
-                                        <TableSelector
-                                            tableCount={restaurantInfo.tableCount || 0}
-                                            selectedTable={tableNumber}
-                                            onSelectTable={setTableNumber}
-                                        />
-                                    </div>
-                                )}
-                                {orderType === 'Takeaway' && (
-                                    <div className="space-y-3">
-                                        <input type="text" value={customerName} onChange={e => setCustomerName(e.target.value)} placeholder={t.customer + ' ' + t.name} className="w-full p-2 border rounded-md dark:bg-slate-700 dark:border-slate-600 dark:text-white" required />
-                                        <input type="tel" value={customerMobile} onChange={e => setCustomerMobile(e.target.value)} placeholder={t.mobileNumber + ` (${t.yourComment})`} className="w-full p-2 border rounded-md dark:bg-slate-700 dark:border-slate-600 dark:text-white" />
-                                    </div>
-                                )}
-                                {orderType === 'Delivery' && (
-                                    <div className="space-y-3">
-                                         <input type="text" value={customerName} onChange={e => setCustomerName(e.target.value)} placeholder={t.customer + ' ' + t.name} className="w-full p-2 border rounded-md dark:bg-slate-700 dark:border-slate-600 dark:text-white" required />
-                                         <input type="tel" value={customerMobile} onChange={e => setCustomerMobile(e.target.value)} placeholder={t.mobileNumber} className="w-full p-2 border rounded-md dark:bg-slate-700 dark:border-slate-600 dark:text-white" required />
-                                         <textarea value={customerAddress} onChange={e => setCustomerAddress(e.target.value)} placeholder={t.address} rows={2} className="w-full p-2 border rounded-md dark:bg-slate-700 dark:border-slate-600 dark:text-white" required />
-                                    </div>
-                                )}
-                            </div>
-                        </div>
-
-                        <div className={`md:block ${mobileStep === 'cart' ? '' : 'hidden'}`}>
-                            <div className="p-4 space-y-3">
-                                {cartItems.length === 0 ? (
-                                    <p className="text-center text-slate-500 py-10">{t.emptyCart}</p>
-                                ) : (
-                                    cartItems.map((item, index) => (
-                                        <div key={index} className="flex items-start gap-3">
-                                            <div className="flex-grow">
-                                                <p className="font-semibold text-sm text-slate-800 dark:text-slate-300">{item.product.name[language]}</p>
-                                                {item.options && (
-                                                    <div className="text-xs text-slate-500 dark:text-slate-400 mt-1 pl-2">
-                                                        {Object.entries(item.options).map(([optionKey, valueKey]) => {
-                                                            const option = item.product.options?.find(o => o.name.en === optionKey);
-                                                            const value = option?.values.find(v => v.name.en === valueKey);
-                                                            if (option && value) {
-                                                                return <div key={optionKey}>- {value.name[language]}</div>
-                                                            }
-                                                            return null;
-                                                        })}
-                                                    </div>
-                                                )}
-                                                <p className="text-xs text-slate-500 mt-1">{calculateTotal([item]).toFixed(2)} {t.currency}</p>
-                                            </div>
-                                            <div className="flex items-center gap-2">
-                                                <button onClick={() => updateCartQuantity(index, item.quantity - 1)} className="p-1 rounded-full bg-slate-200 dark:bg-slate-700"><MinusIcon className="w-4 h-4" /></button>
-                                                <span className="font-bold w-6 text-center text-slate-800 dark:text-slate-300">{formatNumber(item.quantity)}</span>
-                                                <button onClick={() => updateCartQuantity(index, item.quantity + 1)} className="p-1 rounded-full bg-slate-200 dark:bg-slate-700"><PlusIcon className="w-4 h-4" /></button>
-                                            </div>
-                                        </div>
-                                    ))
-                                )}
-                                 {cartItems.length > 0 && (
-                                    <div className="pt-2">
-                                        <textarea value={notes} onChange={e => setNotes(e.target.value)} placeholder={t.orderNotes} rows={1} className="w-full p-2 border rounded-md dark:bg-slate-700 dark:text-white dark:border-slate-600 focus:ring-primary-500 focus:border-primary-500"></textarea>
-                                    </div>
-                                 )}
-                            </div>
-                        </div>
-                    </div>
-
-                    <div className="p-3 border-t dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50 mt-auto shrink-0">
-                        {/* Mobile Footer */}
-                        <div className="md:hidden space-y-3">
-                            {mobileStep === 'info' ? (
-                                <>
-                                    <div className="flex justify-between font-bold text-xl text-slate-800 dark:text-slate-100">
-                                        <span>{t.total}</span>
-                                        <span>{total.toFixed(2)} {t.currency}</span>
-                                    </div>
-                                    <button
-                                        onClick={() => setMobileStep('cart')}
-                                        disabled={!canProceedFromInfo}
-                                        className="w-full bg-primary-600 text-white p-2.5 rounded-lg font-bold hover:bg-primary-700 disabled:bg-slate-400"
-                                    >
-                                        {t.nextStep}
-                                    </button>
-                                </>
-                            ) : (
-                                <>
-                                    <div className="flex justify-between font-bold text-xl text-slate-800 dark:text-slate-100">
-                                        <span>{t.total}</span>
-                                        <span>{total.toFixed(2)} {t.currency}</span>
-                                    </div>
-                                    <div className="flex gap-2">
-                                        <button onClick={() => setMobileStep('info')} className="w-1/3 bg-slate-200 text-slate-800 p-2.5 rounded-lg font-bold hover:bg-slate-300">
-                                            {t.previousStep}
-                                        </button>
-                                        <button 
-                                            onClick={handlePlaceOrder} 
-                                            className="w-2/3 bg-green-500 text-white p-2.5 rounded-lg font-bold hover:bg-green-600 disabled:bg-gray-400 disabled:cursor-not-allowed"
-                                            disabled={isPlaceOrderDisabled}
-                                        >
-                                            {t.placeOrder}
-                                        </button>
-                                    </div>
-                                </>
-                            )}
-                        </div>
-
-                        {/* Desktop Footer */}
-                        <div className="hidden md:block space-y-3">
-                            <div>
-                                <textarea value={notes} onChange={e => setNotes(e.target.value)} placeholder={t.orderNotes} rows={1} className="w-full p-2 border rounded-md dark:bg-slate-700 dark:text-white dark:border-slate-600 focus:ring-primary-500 focus:border-primary-500"></textarea>
-                            </div>
-                            <div className="flex justify-between font-bold text-xl text-slate-800 dark:text-slate-100">
-                                <span>{t.total}</span>
-                                <span>{total.toFixed(2)} {t.currency}</span>
-                            </div>
-                            <div className="flex gap-2">
-                                <button onClick={clearCart} className="bg-red-500 text-white p-2.5 rounded-lg font-bold hover:bg-red-600 flex items-center justify-center px-4"><TrashIcon className="w-5 h-5"/></button>
-                                <button 
-                                    onClick={handlePlaceOrder} 
-                                    className="flex-grow bg-green-500 text-white p-2.5 rounded-lg font-bold hover:bg-green-600 disabled:bg-gray-400 disabled:cursor-not-allowed"
-                                    disabled={isPlaceOrderDisabled}
-                                >
-                                    {t.placeOrder}
-                                </button>
-                            </div>
-                        </div>
-                    </div>
+                {/* Desktop Cart/Order Panel */}
+                <div className="hidden md:flex md:w-[400px] md:flex-shrink-0 bg-white dark:bg-slate-800 flex-col shadow-lg border-l border-slate-200 dark:border-slate-700">
+                    <CashierCartPanel {...cartPanelProps} isMobile={false} />
                 </div>
             </div>
+
+            {/* Mobile Cart Summary Bar */}
+            <div className="md:hidden fixed bottom-0 inset-x-0 bg-white dark:bg-slate-800 border-t dark:border-slate-700 p-3 shadow-[0_-5px_15px_-5px_rgba(0,0,0,0.1)] z-20">
+                <button 
+                    onClick={() => setIsCartOpen(true)}
+                    className="w-full bg-primary-600 text-white p-3 rounded-lg font-bold flex justify-between items-center text-lg disabled:bg-slate-400 disabled:cursor-not-allowed"
+                    disabled={cartItems.length === 0}
+                >
+                    <span className="flex items-center gap-2"><CartIcon className="w-6 h-6" /> {cartItems.length} {t.items}</span>
+                    <span>{t.viewOrder}</span>
+                    <span>{total.toFixed(2)} {t.currency}</span>
+                </button>
+            </div>
+
+
+            {/* Mobile Cart Bottom Sheet */}
+            {isCartOpen && (
+                <div className="md:hidden fixed inset-0 bg-black/50 z-40" onClick={() => setIsCartOpen(false)}>
+                    <div
+                        className="fixed bottom-0 left-0 right-0 bg-white dark:bg-slate-800 rounded-t-2xl max-h-[90vh] flex flex-col animate-slide-up"
+                        onClick={e => e.stopPropagation()}
+                    >
+                        <CashierCartPanel {...cartPanelProps} isMobile={true} onClose={() => setIsCartOpen(false)} />
+                    </div>
+                </div>
+            )}
+
 
              {selectedProduct && (
                 <ProductModal
