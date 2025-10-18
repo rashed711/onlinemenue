@@ -5,9 +5,10 @@ import { useAuth } from '../../contexts/AuthContext';
 
 export const RegisterPage: React.FC = () => {
     const { t } = useUI();
-    const { register } = useAuth();
+    const { registerWithEmailPassword } = useAuth();
     const [name, setName] = useState('');
     const [mobile, setMobile] = useState('');
+    const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [error, setError] = useState('');
 
@@ -19,15 +20,15 @@ export const RegisterPage: React.FC = () => {
     const handleRegister = async (e: React.FormEvent) => {
         e.preventDefault();
         setError('');
-        if (!name || !mobile || !password) {
+        if (!name || !email || !password || !mobile) {
             setError('Please fill all fields');
             return;
         }
-        const errorMessage = await register({ name, mobile, password });
+        const errorMessage = await registerWithEmailPassword({ name, mobile, email, password });
         if (errorMessage) {
             setError(errorMessage);
         } else {
-            window.location.hash = '#/profile';
+            window.location.hash = '#/login';
         }
     };
 
@@ -54,7 +55,7 @@ export const RegisterPage: React.FC = () => {
                             {t.mobileNumber}
                         </label>
                         <input
-                            type="text"
+                            type="tel"
                             id="mobile"
                             value={mobile}
                             onChange={(e) => setMobile(e.target.value)}
@@ -62,7 +63,20 @@ export const RegisterPage: React.FC = () => {
                             required
                         />
                     </div>
-                    <div>
+                     <div>
+                        <label htmlFor="email" className="block mb-2 text-sm font-medium text-slate-800 dark:text-slate-300">
+                            {t.email}
+                        </label>
+                        <input
+                            type="email"
+                            id="email"
+                            value={email}
+                            onChange={(e) => setEmail(e.target.value)}
+                            className="w-full p-3 text-slate-900 bg-slate-50 dark:bg-slate-700 dark:text-white border-2 border-slate-200 dark:border-slate-600 rounded-lg focus:ring-primary-500 focus:border-primary-500 transition"
+                            required
+                        />
+                    </div>
+                     <div>
                         <label htmlFor="password" className="block mb-2 text-sm font-medium text-slate-800 dark:text-slate-300">
                             {t.password}
                         </label>
@@ -76,22 +90,14 @@ export const RegisterPage: React.FC = () => {
                         />
                     </div>
                     {error && <p className="text-sm text-red-500 text-center">{error}</p>}
-                    <button
-                        type="submit"
-                        className="w-full px-5 py-3 text-base font-medium text-center text-white bg-primary-600 rounded-lg hover:bg-primary-700 focus:ring-4 focus:ring-primary-300 dark:focus:ring-primary-800 transition shadow-md hover:shadow-lg transform hover:scale-105"
-                    >
+                    <button type="submit" className="w-full px-5 py-3 text-base font-medium text-center text-white bg-primary-600 rounded-lg hover:bg-primary-700 focus:ring-4 focus:ring-primary-300 dark:focus:ring-primary-800 transition shadow-md">
                         {t.createAccount}
                     </button>
                 </form>
-                <div className="text-center text-sm">
-                     <span className="text-slate-600 dark:text-slate-400">{t.alreadyHaveAccount} </span>
-                    <a href="#/login" onClick={(e) => handleNav(e, '/login')} className="font-medium text-primary-600 hover:underline dark:text-primary-500">
+                <div className="text-center border-t border-slate-200 dark:border-slate-700 pt-4">
+                    <span className="text-sm text-slate-600 dark:text-slate-400">{t.alreadyHaveAccount} </span>
+                    <a href="#/login" onClick={(e) => handleNav(e, '/login')} className="text-sm font-medium text-primary-600 hover:underline dark:text-primary-500">
                         {t.login}
-                    </a>
-                </div>
-                 <div className="text-center border-t border-slate-200 dark:border-slate-700 pt-4">
-                    <a href="#/" onClick={(e) => handleNav(e, '/')} className="text-sm text-primary-600 hover:underline dark:text-primary-500">
-                        {t.backToMenu}
                     </a>
                 </div>
             </div>

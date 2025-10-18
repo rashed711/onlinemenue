@@ -52,19 +52,14 @@ export const CashierPage: React.FC = () => {
     const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
     const [isCartExpanded, setIsCartExpanded] = useState(false);
     
-    // New state for search and filtering
     const [searchTerm, setSearchTerm] = useState('');
     const [selectedTags, setSelectedTags] = useState<string[]>([]);
     const [isFilterOpen, setIsFilterOpen] = useState(false);
     const [openDropdown, setOpenDropdown] = useState<number | null>(null);
     const dropdownRef = useRef<HTMLDivElement>(null);
 
-
-    // New state for mobile multi-step UI
     const [mobileStep, setMobileStep] = useState<'info' | 'cart'>('info');
 
-
-    // Order Type and Customer Info State
     const [orderType, setOrderType] = useState<OrderType>('Dine-in');
     const [tableNumber, setTableNumber] = useState('');
     const [customerName, setCustomerName] = useState('');
@@ -85,12 +80,10 @@ export const CashierPage: React.FC = () => {
     }, []);
 
     useEffect(() => {
-        // When cart becomes empty, always go back to the info step on mobile
         if (cartItems.length === 0) {
             setMobileStep('info');
         }
     }, [cartItems.length]);
-
 
     const visibleProducts = useMemo(() => allProducts.filter(p => p.isVisible), [allProducts]);
     
@@ -119,7 +112,7 @@ export const CashierPage: React.FC = () => {
             const existingItem = prevItems.find(item => (item.product.id + JSON.stringify(item.options || {})) === itemVariantId);
             
             if (prevItems.length === 0) {
-                setIsCartExpanded(true); // Auto-expand cart on mobile when first item is added
+                setIsCartExpanded(true);
             }
 
             if (existingItem) {
@@ -233,7 +226,6 @@ export const CashierPage: React.FC = () => {
             clearCart();
             setIsCartExpanded(false);
         } catch (error) {
-            // Error is handled and shown by the placeOrder function in App.tsx
             console.error("Failed to place order from cashier:", error);
         }
     };
@@ -256,7 +248,7 @@ export const CashierPage: React.FC = () => {
     }, [selectedCategory]);
     
     if (!restaurantInfo) {
-        return null; // or a loading spinner
+        return null;
     }
 
     const orderTypeClasses = "w-full py-2.5 text-sm font-bold transition-colors duration-200 rounded-md";
@@ -266,9 +258,8 @@ export const CashierPage: React.FC = () => {
     return (
         <>
             <div className="flex flex-col md:flex-row h-[calc(100vh-5rem)] overflow-hidden">
-                {/* Product Selection Panel */}
-                <div className="flex-1 flex flex-col bg-slate-100/50 dark:bg-slate-900/50 overflow-y-hidden">
-                    <div className="p-3 border-b border-slate-200 dark:border-slate-700 shrink-0 space-y-3">
+                <div className="flex-1 flex flex-col bg-slate-100/50 dark:bg-slate-900/50">
+                    <div className="p-3 border-b border-slate-200 dark:border-slate-700 shrink-0 space-y-3 z-10">
                         <div className="flex flex-row gap-2 items-center">
                             <div className="relative w-full flex-grow">
                                 <input
@@ -313,7 +304,7 @@ export const CashierPage: React.FC = () => {
                             </div>
                         </div>
 
-                        <div className="flex flex-wrap gap-2 pb-2">
+                        <div className="flex flex-wrap items-start gap-2">
                              <button
                                 onClick={() => setSelectedCategory(null)}
                                 className={`px-4 py-1.5 rounded-full text-sm font-bold transition-all duration-300 whitespace-nowrap ${selectedCategory === null ? 'bg-primary-600 text-white shadow-lg' : 'bg-white dark:bg-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-600'}`}
@@ -339,15 +330,15 @@ export const CashierPage: React.FC = () => {
                                             {openDropdown === category.id && (
                                                 <div className="absolute top-full mt-2 z-20 min-w-max bg-white dark:bg-slate-800 rounded-lg shadow-xl border border-slate-200 dark:border-slate-700 overflow-hidden animate-fade-in py-1">
                                                     <button
-                                                        onClick={() => { setSelectedCategory(category.id); setOpenDropdown(null); }}
-                                                        className={`block w-full text-start px-4 py-2 text-sm transition-colors ${selectedCategory === category.id ? 'font-bold text-primary-600 bg-primary-50 dark:bg-primary-900/40' : 'text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700'}`}
+                                                        onClick={(e) => { e.stopPropagation(); setSelectedCategory(category.id); setOpenDropdown(null); }}
+                                                        className={`block w-full text-start px-4 py-2 text-sm transition-colors ${selectedCategory === category.id && (!category.children || !category.children.some(c => c.id === selectedCategory)) ? 'font-bold text-primary-600 bg-primary-50 dark:bg-primary-900/40' : 'text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700'}`}
                                                     >
                                                         {t.all} {category.name[language]}
                                                     </button>
                                                     {category.children!.map(child => (
                                                         <button
                                                             key={child.id}
-                                                            onClick={() => { setSelectedCategory(child.id); setOpenDropdown(null); }}
+                                                            onClick={(e) => { e.stopPropagation(); setSelectedCategory(child.id); setOpenDropdown(null); }}
                                                             className={`block w-full text-start px-4 py-2 text-sm transition-colors ${selectedCategory === child.id ? 'font-bold text-primary-600 bg-primary-50 dark:bg-primary-900/40' : 'text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700'}`}
                                                         >
                                                             {child.name[language]}
@@ -363,7 +354,7 @@ export const CashierPage: React.FC = () => {
                                     <button
                                         key={category.id}
                                         onClick={() => setSelectedCategory(category.id)}
-                                        className={`px-4 py-1.5 rounded-full text-sm font-bold transition-all duration-300 whitespace-nowrap ${selectedCategory === category.id ? 'bg-primary-600 text-white shadow-lg' : 'bg-white dark:bg-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-600'}`}
+                                        className={buttonClasses}
                                     >
                                         {category.name[language]}
                                     </button>
@@ -401,7 +392,7 @@ export const CashierPage: React.FC = () => {
                     <div className={`flex-1 overflow-y-auto transition-all duration-500 ease-in-out ${isCartExpanded ? 'max-h-[40vh]' : 'max-h-0'} md:max-h-none`}>
                          <div className={`md:block ${mobileStep === 'info' ? '' : 'hidden'}`}>
                              <div className="p-4 border-b dark:border-slate-700 space-y-4">
-                                <div className="flex items-center p-1 rounded-lg bg-slate-200 dark:bg-slate-900">
+                                <div className="flex items-center p-1 rounded-lg bg-slate-100 dark:bg-slate-900">
                                     <button onClick={() => handleOrderTypeChange('Dine-in')} className={`${orderTypeClasses} ${orderType === 'Dine-in' ? activeOrderTypeClasses : inactiveOrderTypeClasses}`}>{t.dineIn}</button>
                                     <button onClick={() => handleOrderTypeChange('Takeaway')} className={`${orderTypeClasses} ${orderType === 'Takeaway' ? activeOrderTypeClasses : inactiveOrderTypeClasses}`}>{t.takeaway}</button>
                                     <button onClick={() => handleOrderTypeChange('Delivery')} className={`${orderTypeClasses} ${orderType === 'Delivery' ? activeOrderTypeClasses : inactiveOrderTypeClasses}`}>{t.delivery}</button>

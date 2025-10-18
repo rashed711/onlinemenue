@@ -31,6 +31,7 @@ interface AdminPageProps {
 
 type AdminTab = 'orders' | 'cashier' | 'reports' | 'productList' | 'classifications' | 'promotions' | 'notifications' | 'users' | 'roles' | 'settings';
 type DateFilter = 'today' | 'yesterday' | 'week' | 'month' | 'custom';
+type UserTab = 'customers' | 'staff';
 
 const NAV_ITEMS_WITH_PERMS = [
     { id: 'orders', permission: 'view_orders_page' },
@@ -137,6 +138,7 @@ export const AdminPage: React.FC<AdminPageProps> = ({ activeSubRoute, reportSubR
     
     // User Filters
     const [userSearchTerm, setUserSearchTerm] = useState('');
+    const [userTab, setUserTab] = useState<UserTab>('customers');
 
 
     const [transitionStage, setTransitionStage] = useState<'in' | 'out'>('in');
@@ -319,22 +321,33 @@ export const AdminPage: React.FC<AdminPageProps> = ({ activeSubRoute, reportSubR
     const usersToDisplay = useMemo(() => {
         if (!currentUser) return [];
         const superAdminRole = roles.find(r => r.name.en.toLowerCase() === 'superadmin');
+        const customerRole = roles.find(r => r.name.en.toLowerCase() === 'customer');
+        
         const currentUserIsSuperAdmin = currentUser.role === superAdminRole?.key;
+        const customerRoleKey = customerRole ? customerRole.key : '___non_existent_key___';
 
         let baseUsers = currentUserIsSuperAdmin
             ? allUsers
             : allUsers.filter(user => user.role !== superAdminRole?.key);
 
+        // Tab filtering
+        if (userTab === 'customers') {
+            baseUsers = baseUsers.filter(user => user.role === customerRoleKey);
+        } else { // staff
+            baseUsers = baseUsers.filter(user => user.role !== customerRoleKey);
+        }
+
         const lowercasedTerm = userSearchTerm.toLowerCase();
         if (lowercasedTerm) {
             baseUsers = baseUsers.filter(user =>
                 user.name.toLowerCase().includes(lowercasedTerm) ||
-                user.mobile.toLowerCase().includes(lowercasedTerm)
+                user.mobile.toLowerCase().includes(lowercasedTerm) ||
+                (user.email && user.email.toLowerCase().includes(lowercasedTerm))
             );
         }
         
         return baseUsers.sort((a, b) => a.name.localeCompare(b.name, language));
-    }, [allUsers, currentUser, roles, userSearchTerm, language]);
+    }, [allUsers, currentUser, roles, userSearchTerm, language, userTab]);
 
     const viewingOrderCreatorName = useMemo(() => {
         if (!viewingOrder || !viewingOrder.createdBy) return undefined;
@@ -636,11 +649,29 @@ export const AdminPage: React.FC<AdminPageProps> = ({ activeSubRoute, reportSubR
                 return (
                     <div>
                         <div className="flex justify-between items-center mb-6"><h2 className="text-2xl font-bold text-slate-800 dark:text-slate-100">{t.manageUsers}</h2>{hasPermission('add_user') && <button onClick={() => setEditingUser('new')} className="bg-green-500 text-white font-bold py-2 px-4 rounded-lg hover:bg-green-600 transition-colors flex items-center gap-2"><PlusIcon className="w-5 h-5" />{t.addNewUser}</button>}</div>
+                        
+                        <div className="mb-6 border-b border-slate-200 dark:border-slate-700">
+                            <nav className="-mb-px flex space-x-6 rtl:space-x-reverse" aria-label="Tabs">
+                                <button
+                                    onClick={() => setUserTab('customers')}
+                                    className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition-colors ${userTab === 'customers' ? 'border-primary-500 text-primary-600 dark:text-primary-400' : 'border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300 dark:text-slate-400 dark:hover:text-slate-200 dark:hover:border-slate-600'}`}
+                                >
+                                    {t.customers}
+                                </button>
+                                <button
+                                    onClick={() => setUserTab('staff')}
+                                    className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition-colors ${userTab === 'staff' ? 'border-primary-500 text-primary-600 dark:text-primary-400' : 'border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300 dark:text-slate-400 dark:hover:text-slate-200 dark:hover:border-slate-600'}`}
+                                >
+                                    {t.staff}
+                                </button>
+                            </nav>
+                        </div>
+
                         <div className="mb-6">
                             <div className="relative">
                                 <input
                                     type="text"
-                                    placeholder={`${t.search} ${t.name}, ${t.mobileNumber}...`}
+                                    placeholder={`${t.search} ${t.name}, ${t.mobileNumber}, ${t.email}...`}
                                     value={userSearchTerm}
                                     onChange={(e) => setUserSearchTerm(e.target.value)}
                                     className="w-full p-2 ps-10 rounded-lg border-slate-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 sm:text-sm dark:bg-slate-700 dark:border-slate-600 dark:text-white dark:placeholder:text-slate-400"
@@ -651,13 +682,22 @@ export const AdminPage: React.FC<AdminPageProps> = ({ activeSubRoute, reportSubR
                         {/* Desktop Table */}
                         <div className="hidden md:block bg-white dark:bg-slate-800 rounded-lg shadow-md overflow-x-auto border border-slate-200 dark:border-slate-700">
                            <table className="min-w-full divide-y divide-slate-200 dark:divide-slate-700">
-                               <thead className="bg-slate-50 dark:bg-slate-700/50"><tr><th className="px-6 py-4 text-start text-xs font-medium text-slate-500 dark:text-slate-300 uppercase tracking-wider">{t.user}</th><th className="px-6 py-4 text-start text-xs font-medium text-slate-500 dark:text-slate-300 uppercase tracking-wider hidden sm:table-cell">{t.mobileNumber}</th><th className="px-6 py-4 text-start text-xs font-medium text-slate-500 dark:text-slate-300 uppercase tracking-wider">{t.role}</th>{(hasPermission('edit_user') || hasPermission('delete_user')) && <th className="px-6 py-4 text-start text-xs font-medium text-slate-500 dark:text-slate-300 uppercase tracking-wider">{t.actions}</th>}</tr></thead>
+                               <thead className="bg-slate-50 dark:bg-slate-700/50">
+                                <tr>
+                                    <th className="px-6 py-4 text-start text-xs font-medium text-slate-500 dark:text-slate-300 uppercase tracking-wider">{t.user}</th>
+                                    <th className="px-6 py-4 text-start text-xs font-medium text-slate-500 dark:text-slate-300 uppercase tracking-wider hidden sm:table-cell">{t.mobileNumber}</th>
+                                    {userTab === 'customers' && <th className="px-6 py-4 text-start text-xs font-medium text-slate-500 dark:text-slate-300 uppercase tracking-wider hidden sm:table-cell">{t.email}</th>}
+                                    <th className="px-6 py-4 text-start text-xs font-medium text-slate-500 dark:text-slate-300 uppercase tracking-wider">{t.role}</th>
+                                    {(hasPermission('edit_user') || hasPermission('delete_user')) && <th className="px-6 py-4 text-start text-xs font-medium text-slate-500 dark:text-slate-300 uppercase tracking-wider">{t.actions}</th>}
+                                </tr>
+                               </thead>
                                 <tbody className="divide-y divide-slate-200 dark:divide-slate-700">{usersToDisplay.map((user) => {
                                     const userRole = roles.find(r => r.key === user.role);
                                     return (
                                     <tr key={user.id} className="odd:bg-white even:bg-slate-50 dark:odd:bg-slate-800 dark:even:bg-slate-800/50 hover:bg-slate-100 dark:hover:bg-slate-700/50 transition-colors">
                                         <td className="px-6 py-4 whitespace-nowrap text-sm font-semibold text-slate-900 dark:text-slate-100">{user.name}</td>
                                         <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-600 dark:text-slate-300 hidden sm:table-cell">{user.mobile}</td>
+                                        {userTab === 'customers' && <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-600 dark:text-slate-300 hidden sm:table-cell">{user.email || 'N/A'}</td>}
                                         <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-slate-600 dark:text-slate-300">{userRole?.name[language] || user.role}</td>
                                         {(hasPermission('edit_user') || hasPermission('delete_user')) && <td className="px-6 py-4 whitespace-nowrap text-sm font-medium"><div className="flex items-center gap-4">{hasPermission('edit_user') && <button onClick={() => setEditingUser(user)} className="text-indigo-600 hover:text-indigo-900 dark:text-indigo-400 dark:hover:text-indigo-200 flex items-center gap-1"><PencilIcon className="w-4 h-4" /> {t.edit}</button>}{hasPermission('delete_user') && <button onClick={() => deleteUser(user.id)} className="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-200 flex items-center gap-1"><TrashIcon className="w-4 h-4" /> {t.delete}</button>}</div></td>}</tr>
                                 )})}</tbody>
@@ -673,6 +713,9 @@ export const AdminPage: React.FC<AdminPageProps> = ({ activeSubRoute, reportSubR
                                         <div>
                                             <p className="font-bold text-slate-900 dark:text-slate-100">{user.name}</p>
                                             <p className="text-sm text-slate-500 dark:text-slate-400">{user.mobile}</p>
+                                            {userTab === 'customers' && user.email && (
+                                                <p className="text-xs text-slate-500 dark:text-slate-400 truncate">{user.email}</p>
+                                            )}
                                         </div>
                                         <span className="text-xs font-semibold bg-primary-100 text-primary-800 px-2 py-1 rounded-full dark:bg-primary-900/50 dark:text-primary-300">{userRole?.name[language] || user.role}</span>
                                     </div>

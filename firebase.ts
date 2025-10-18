@@ -13,7 +13,11 @@ import {
   signInWithEmailAndPassword,
   sendEmailVerification,
   updateProfile,
-  sendPasswordResetEmail
+  sendPasswordResetEmail,
+  reauthenticateWithCredential,
+  EmailAuthProvider,
+  updatePassword,
+  type User
 } from "firebase/auth";
 
 // Your web app's Firebase configuration
@@ -48,5 +52,9 @@ export {
     signInWithEmailAndPassword,
     sendEmailVerification,
     updateProfile,
-    sendPasswordResetEmail
+    sendPasswordResetEmail,
+    reauthenticateWithCredential,
+    EmailAuthProvider,
+    updatePassword,
+    type User as FirebaseUser
 };

@@ -27,8 +27,11 @@ export const LoginPage: React.FC = () => {
 
     // Customer state
     const [name, setName] = useState('');
+    const [mobile, setMobile] = useState('');
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
+    const [confirmPassword, setConfirmPassword] = useState('');
+
 
     useEffect(() => {
         setError('');
@@ -49,17 +52,6 @@ export const LoginPage: React.FC = () => {
             window.location.hash = '#/admin';
         }
     };
-    
-    const handleGoogleLogin = async () => {
-        const provider = new GoogleAuthProvider();
-        provider.setCustomParameters({ prompt: 'select_account' });
-        try {
-            await signInWithRedirect(auth, provider);
-        } catch (error) {
-            console.error("Google Sign-In Error", error);
-            setError("Failed to start sign in with Google.");
-        }
-    };
 
     const handleCustomerLogin = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -72,7 +64,11 @@ export const LoginPage: React.FC = () => {
     const handleCustomerRegister = async (e: React.FormEvent) => {
         e.preventDefault();
         setError('');
-        const errorMessage = await registerWithEmailPassword({ name, email, password });
+        if (password !== confirmPassword) {
+            setError(t.passwordsDoNotMatch);
+            return;
+        }
+        const errorMessage = await registerWithEmailPassword({ name, mobile, email, password });
         if (errorMessage) {
             setError(errorMessage);
         } else {
@@ -80,8 +76,10 @@ export const LoginPage: React.FC = () => {
             // Switch to login form for a better UX.
             setCustomerForm('login');
             setName('');
+            setMobile('');
             setEmail('');
             setPassword('');
+            setConfirmPassword('');
         }
     };
 
@@ -112,28 +110,19 @@ export const LoginPage: React.FC = () => {
                     {activeTab === 'customer' ? (
                         <div>
                             <h1 className="text-2xl font-bold text-center text-primary-600 dark:text-primary-400 mb-6">{customerForm === 'login' ? t.login : t.createAccount}</h1>
-                             <button
-                                type="button"
-                                onClick={handleGoogleLogin}
-                                disabled={isProcessing}
-                                className="w-full flex items-center justify-center gap-3 px-5 py-3 font-medium text-slate-700 dark:text-slate-200 bg-white dark:bg-slate-700 border-2 border-slate-200 dark:border-slate-600 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-600 disabled:opacity-50"
-                            >
-                                <GoogleIcon />
-                                {language === 'ar' ? 'المتابعة باستخدام جوجل' : 'Continue with Google'}
-                            </button>
-
-                             <div className="my-6 flex items-center">
-                                <div className="flex-grow border-t border-slate-300 dark:border-slate-600"></div>
-                                <span className="flex-shrink mx-4 text-xs font-semibold text-slate-400">{t.or.toUpperCase()}</span>
-                                <div className="flex-grow border-t border-slate-300 dark:border-slate-600"></div>
-                            </div>
                             
                             <form className="space-y-4" onSubmit={customerForm === 'login' ? handleCustomerLogin : handleCustomerRegister}>
                                 {customerForm === 'register' && (
-                                    <div>
-                                        <label htmlFor="name" className="block mb-2 text-sm font-medium text-slate-800 dark:text-slate-300">{t.name}</label>
-                                        <input type="text" id="name" value={name} onChange={(e) => setName(e.target.value)} className="w-full p-3 text-slate-900 bg-slate-50 dark:bg-slate-700 dark:text-white border-2 border-slate-200 dark:border-slate-600 rounded-lg focus:ring-primary-500 focus:border-primary-500 transition" required />
-                                    </div>
+                                    <>
+                                        <div>
+                                            <label htmlFor="name" className="block mb-2 text-sm font-medium text-slate-800 dark:text-slate-300">{t.name}</label>
+                                            <input type="text" id="name" value={name} onChange={(e) => setName(e.target.value)} className="w-full p-3 text-slate-900 bg-slate-50 dark:bg-slate-700 dark:text-white border-2 border-slate-200 dark:border-slate-600 rounded-lg focus:ring-primary-500 focus:border-primary-500 transition" required />
+                                        </div>
+                                        <div>
+                                            <label htmlFor="mobile" className="block mb-2 text-sm font-medium text-slate-800 dark:text-slate-300">{t.mobileNumber}</label>
+                                            <input type="tel" id="mobile" value={mobile} onChange={(e) => setMobile(e.target.value)} className="w-full p-3 text-slate-900 bg-slate-50 dark:bg-slate-700 dark:text-white border-2 border-slate-200 dark:border-slate-600 rounded-lg focus:ring-primary-500 focus:border-primary-500 transition" required />
+                                        </div>
+                                    </>
                                 )}
                                 <div>
                                     <label htmlFor="email" className="block mb-2 text-sm font-medium text-slate-800 dark:text-slate-300">{t.email}</label>
@@ -143,6 +132,12 @@ export const LoginPage: React.FC = () => {
                                     <label htmlFor="password" className="block mb-2 text-sm font-medium text-slate-800 dark:text-slate-300">{t.password}</label>
                                     <input type="password" id="password" value={password} onChange={(e) => setPassword(e.target.value)} className="w-full p-3 text-slate-900 bg-slate-50 dark:bg-slate-700 dark:text-white border-2 border-slate-200 dark:border-slate-600 rounded-lg focus:ring-primary-500 focus:border-primary-500 transition" required />
                                 </div>
+                                {customerForm === 'register' && (
+                                    <div>
+                                        <label htmlFor="confirmPassword" className="block mb-2 text-sm font-medium text-slate-800 dark:text-slate-300">{t.confirmNewPassword}</label>
+                                        <input type="password" id="confirmPassword" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} className="w-full p-3 text-slate-900 bg-slate-50 dark:bg-slate-700 dark:text-white border-2 border-slate-200 dark:border-slate-600 rounded-lg focus:ring-primary-500 focus:border-primary-500 transition" required />
+                                    </div>
+                                )}
 
                                 <button type="submit" disabled={isProcessing} className="w-full px-5 py-3 font-medium text-white bg-primary-600 rounded-lg hover:bg-primary-700 disabled:bg-primary-400">
                                     {isProcessing ? '...' : (customerForm === 'login' ? t.login : t.createAccount)}

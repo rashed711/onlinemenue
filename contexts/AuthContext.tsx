@@ -12,9 +12,13 @@ import {
     signInWithEmailAndPassword,
     sendEmailVerification,
     updateProfile,
-    sendPasswordResetEmail
+    sendPasswordResetEmail,
+    reauthenticateWithCredential,
+    EmailAuthProvider,
+    updatePassword,
+    type FirebaseUser
 } from '../firebase';
-import type { User as FirebaseUser } from 'firebase/auth';
+
 
 interface AuthContextType {
     currentUser: User | null;
@@ -24,7 +28,7 @@ interface AuthContextType {
     logout: () => void;
     
     // New Email/Password methods
-    registerWithEmailPassword: (details: { name: string; email: string; password: string }) => Promise<string | null>;
+    registerWithEmailPassword: (details: { name: string; mobile: string; email: string; password: string }) => Promise<string | null>;
     loginWithEmailPassword: (email: string, password: string) => Promise<string | null>;
     sendPasswordResetLink: (email: string) => Promise<string | null>;
 
@@ -226,7 +230,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         try {
             const response = await fetch(`${API_BASE_URL}login.php`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ mobile, password }) });
             const result = await response.json();
-            if (!response.ok || !result.success) return result.error || t.invalidCredentials;
+            if (!response.ok || !result.success) {
+                if (result.error && result.error.toLowerCase().includes('invalid credentials')) {
+                    return t.invalidCredentials;
+                }
+                return result.error || t.invalidCredentials;
+            }
 
             const dbUser = result.user;
             const roleFromApi = String(dbUser.role_id || '9');
@@ -242,7 +251,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         }
     }, [setIsProcessing, t.invalidCredentials]);
 
-    const registerWithEmailPassword = useCallback(async (details: { name: string; email: string; password: string }): Promise<string | null> => {
+    const registerWithEmailPassword = useCallback(async (details: { name: string; mobile: string; email: string; password: string }): Promise<string | null> => {
         setIsProcessing(true);
         try {
             // Step 1: Create user in Firebase
@@ -253,6 +262,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             // Step 2: Create user in our backend database
             const addUserPayload = {
                 name: details.name,
+                mobile: details.mobile,
                 email: details.email,
                 firebase_uid: firebaseUser.uid,
                 role: 'customer' // Explicitly set role
@@ -290,11 +300,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             return null; // onAuthStateChanged will handle the rest
         } catch (error: any) {
             console.error("Email login error:", error);
+            if (error.code === 'auth/invalid-credential') {
+                return t.invalidCredentials;
+            }
             return error.message || "Login failed.";
         } finally {
             setIsProcessing(false);
         }
-    }, [setIsProcessing]);
+    }, [setIsProcessing, t.invalidCredentials]);
     
     const sendPasswordResetLink = useCallback(async (email: string): Promise<string | null> => {
         setIsProcessing(true);
@@ -412,22 +425,62 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }, [currentUser, showToast, t.profileUpdatedSuccess, setIsProcessing]);
 
     const changeCurrentUserPassword = useCallback(async (currentPassword: string, newPassword: string): Promise<string | null> => {
-      if (!currentUser) return 'No user logged in.';
-      setIsProcessing(true);
-      try {
-        const verifyResponse = await fetch(`${API_BASE_URL}login.php`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ mobile: currentUser.mobile, password: currentPassword }) });
-        if (!verifyResponse.ok) return t.incorrectCurrentPassword;
-        const updateResponse = await fetch(`${API_BASE_URL}update_user.php`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: currentUser.id, password: newPassword }) });
-        const result = await updateResponse.json();
-        if (!updateResponse.ok || !result.success) throw new Error(result.error || 'Failed to change password.');
-        showToast(t.passwordChangedSuccess);
-        return null;
-      } catch (error: any) {
-          return error.message || 'Failed to change password.';
-      } finally {
-          setIsProcessing(false);
-      }
-    }, [currentUser, showToast, t.incorrectCurrentPassword, t.passwordChangedSuccess, setIsProcessing]);
+        if (!currentUser) return 'No user logged in.';
+        setIsProcessing(true);
+
+        const firebaseUser: FirebaseUser | null = auth.currentUser;
+
+        // Check if it's a customer (Firebase user with an email provider)
+        if (firebaseUser && firebaseUser.email && (currentUser.firebase_uid || currentUser.google_id)) {
+            try {
+                const credential = EmailAuthProvider.credential(firebaseUser.email, currentPassword);
+                await reauthenticateWithCredential(firebaseUser, credential);
+                await updatePassword(firebaseUser, newPassword);
+                showToast(t.passwordChangedSuccess);
+                return null;
+            } catch (error: any) {
+                console.error("Firebase password change error:", error);
+                if (error.code === 'auth/wrong-password') {
+                    return t.incorrectCurrentPassword;
+                }
+                return error.message || 'Failed to change password.';
+            } finally {
+                setIsProcessing(false);
+            }
+        } else {
+            // Staff flow (local database)
+            try {
+                const verifyResponse = await fetch(`${API_BASE_URL}login.php`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ mobile: currentUser.mobile, password: currentPassword })
+                });
+
+                const verifyResult = await verifyResponse.json();
+                if (!verifyResponse.ok || !verifyResult.success) {
+                    return t.incorrectCurrentPassword;
+                }
+
+                const updateResponse = await fetch(`${API_BASE_URL}update_user.php`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ id: currentUser.id, password: newPassword })
+                });
+                
+                const updateResult = await updateResponse.json();
+                if (!updateResponse.ok || !updateResult.success) {
+                    throw new Error(updateResult.error || 'Failed to change password.');
+                }
+                
+                showToast(t.passwordChangedSuccess);
+                return null;
+            } catch (error: any) {
+                return error.message || 'Failed to change password.';
+            } finally {
+                setIsProcessing(false);
+            }
+        }
+    }, [currentUser, setIsProcessing, showToast, t.passwordChangedSuccess, t.incorrectCurrentPassword]);
 
     const value: AuthContextType = {
         currentUser,

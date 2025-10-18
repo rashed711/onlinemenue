@@ -18,6 +18,7 @@ import { ForgotPasswordPage } from './components/auth/ForgotPasswordPage';
 import { ChangePasswordModal } from './components/profile/ChangePasswordModal';
 import { LoadingOverlay } from './components/LoadingOverlay';
 import { DeactivatedScreen } from './components/DeactivatedScreen';
+import { ActionHandlerPage } from './components/auth/ActionHandlerPage';
 
 // Subscribes to the browser's hashchange event.
 function subscribe(callback: () => void) {
@@ -115,6 +116,7 @@ const AppContent: React.FC = () => {
     if (baseRoute.startsWith('#/profile')) return <ProfilePage />;
     if (baseRoute.startsWith('#/checkout')) return <CheckoutPage />;
     if (baseRoute.startsWith('#/social')) return <SocialPage />;
+    if (baseRoute.startsWith('#/action')) return <ActionHandlerPage />;
     
     // Fallback to menu page
     return <MenuPage />;

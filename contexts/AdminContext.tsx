@@ -79,7 +79,15 @@ export const AdminProvider: React.FC<{ children: React.ReactNode }> = ({ childre
                 setOrders(allOrders);
                 const usersRes = await fetch(`${API_BASE_URL}get_users.php${cacheBuster}`, { cache: 'no-cache' });
                 if (usersRes.ok) {
-                    setUsers((await usersRes.json() || []).map((u: any) => ({ id: Number(u.id), name: u.name, mobile: u.mobile, password: '', role: String(u.role_id), profilePicture: resolveImageUrl(u.profile_picture) || `https://placehold.co/512x512/60a5fa/white?text=${u.name.charAt(0).toUpperCase()}` })));
+                    setUsers((await usersRes.json() || []).map((u: any) => ({ 
+                        id: Number(u.id), 
+                        name: u.name, 
+                        mobile: u.mobile, 
+                        email: u.email,
+                        password: '', 
+                        role: String(u.role_id), 
+                        profilePicture: resolveImageUrl(u.profile_picture) || `https://placehold.co/512x512/60a5fa/white?text=${u.name.charAt(0).toUpperCase()}` 
+                    })));
                 }
             } else {
                 setOrders(allOrders.filter((o: Order) => o.customer.userId === currentUser.id));
