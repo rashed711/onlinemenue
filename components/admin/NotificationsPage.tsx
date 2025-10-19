@@ -1,41 +1,70 @@
-import React, { useState } from 'react';
+import React, { useState, useCallback, DragEvent } from 'react';
 import { useUI } from '../../contexts/UIContext';
 import { useAdmin } from '../../contexts/AdminContext';
 import { useAuth } from '../../contexts/AuthContext';
 import { API_BASE_URL } from '../../utils/config';
 import { optimizeImage } from '../../utils/imageOptimizer';
-import { UploadIcon } from '../icons/Icons';
+import { PhotoIcon, TrashIcon } from '../icons/Icons';
 
 export const NotificationsPage: React.FC = () => {
-    const { t, isProcessing, setIsProcessing, showToast } = useUI();
+    const { t, language, isProcessing, setIsProcessing, showToast } = useUI();
     const { roles } = useAdmin();
     const { hasPermission } = useAuth();
 
     const [message, setMessage] = useState('');
-    const [imageUrl, setImageUrl] = useState('');
     const [imageFile, setImageFile] = useState<File | null>(null);
     const [imagePreview, setImagePreview] = useState('');
     const [targetRole, setTargetRole] = useState('all');
     const [withSound, setWithSound] = useState(true);
+    const [isDragging, setIsDragging] = useState(false);
 
     const canSend = hasPermission('send_broadcast_notifications');
+    const MAX_MESSAGE_LENGTH = 500;
 
-    const handleImageFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-        const file = e.target.files?.[0];
-        if (file) {
-            setIsProcessing(true);
-            try {
-                const optimizedFile = await optimizeImage(file, 512, 512);
-                setImageFile(optimizedFile);
-                setImagePreview(URL.createObjectURL(optimizedFile));
-                setImageUrl(''); // Clear manual URL if file is chosen
-            } catch (error) {
-                console.error("Notification image optimization failed:", error);
-                showToast("Image processing failed.");
-            } finally {
-                setIsProcessing(false);
-            }
+    const handleFileSelect = useCallback(async (file: File) => {
+        if (!file.type.startsWith('image/')) {
+            showToast('Please select an image file.');
+            return;
         }
+        setIsProcessing(true);
+        try {
+            const optimizedFile = await optimizeImage(file, 512, 512, 0.9);
+            setImageFile(optimizedFile);
+            setImagePreview(URL.createObjectURL(optimizedFile));
+        } catch (error) {
+            console.error("Notification image optimization failed:", error);
+            showToast("Image processing failed.");
+        } finally {
+            setIsProcessing(false);
+        }
+    }, [showToast, setIsProcessing]);
+
+    const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (file) handleFileSelect(file);
+    };
+
+    const handleDrop = (e: DragEvent<HTMLDivElement>) => {
+        e.preventDefault();
+        e.stopPropagation();
+        setIsDragging(false);
+        const file = e.dataTransfer.files?.[0];
+        if (file) handleFileSelect(file);
+    };
+
+    const handleDragEvents = (e: DragEvent<HTMLDivElement>) => {
+        e.preventDefault();
+        e.stopPropagation();
+        if (e.type === 'dragenter' || e.type === 'dragover') {
+            setIsDragging(true);
+        } else if (e.type === 'dragleave') {
+            setIsDragging(false);
+        }
+    };
+
+    const removeImage = () => {
+        setImageFile(null);
+        setImagePreview('');
     };
 
     const handleSubmit = async (e: React.FormEvent) => {
@@ -44,21 +73,24 @@ export const NotificationsPage: React.FC = () => {
 
         setIsProcessing(true);
         try {
-            let finalImageUrl = imageUrl;
+            let finalImageUrl = null;
             if (imageFile) {
                 const formData = new FormData();
                 formData.append('image', imageFile);
-                formData.append('type', 'notifications');
+                formData.append('type', 'branding');
                 const uploadRes = await fetch(`${API_BASE_URL}upload_image.php`, { method: 'POST', body: formData });
-                const result = await uploadRes.json();
-                if (!uploadRes.ok || !result.success) throw new Error(result.error || 'Image upload failed');
-                finalImageUrl = new URL(result.url, new URL(API_BASE_URL).origin).href;
+                
+                const uploadResult = await uploadRes.json();
+                if (!uploadRes.ok || !uploadResult.success) {
+                    throw new Error(uploadResult.error || 'Image upload failed');
+                }
+                finalImageUrl = uploadResult.url.split('?v=')[0]; // Use relative path
             }
 
             const payload = {
                 message,
-                image_url: finalImageUrl || null,
-                target_role: targetRole,
+                image_url: finalImageUrl,
+                role: targetRole === 'all' ? null : targetRole,
                 with_sound: withSound,
             };
             
@@ -68,18 +100,28 @@ export const NotificationsPage: React.FC = () => {
                 body: JSON.stringify(payload),
             });
 
+            if (!response.ok) {
+                const errorText = await response.text();
+                console.error("Notification Error Response Body:", errorText);
+                try {
+                    const errorJson = JSON.parse(errorText);
+                    throw new Error(errorJson.error || `Notification request failed: ${response.status}`);
+                } catch (e) {
+                    throw new Error(errorText || `Notification request failed with status ${response.status}`);
+                }
+            }
+            
             const result = await response.json();
-
-            if (!response.ok || !result.success) {
+            if (!result.success) {
                 throw new Error(result.error || 'Failed to send notification.');
             }
 
-            showToast(t.notificationSentSuccess.replace('{count}', result.sent));
+            showToast(t.notificationSentSuccess.replace('{count}', result.sent_count || result.sent));
             setMessage('');
-            setImageUrl('');
             setImageFile(null);
             setImagePreview('');
             setTargetRole('all');
+            setWithSound(true);
         } catch (error) {
             console.error('Failed to send notification:', error);
             showToast((error as Error).message || t.notificationSendFailed);
@@ -88,108 +130,116 @@ export const NotificationsPage: React.FC = () => {
         }
     };
 
-    return (
-        <div className="max-w-3xl mx-auto">
-            <h2 className="text-2xl font-bold mb-6 text-slate-800 dark:text-slate-100">{t.sendNotifications}</h2>
+    const formInputClasses = "w-full p-2.5 border border-slate-300 rounded-lg bg-slate-50 dark:bg-slate-700/50 dark:border-slate-600 focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-colors duration-200 text-slate-900 dark:text-slate-100";
 
-            <div className="bg-white dark:bg-slate-800 rounded-xl shadow-lg border border-slate-200 dark:border-slate-700">
-                <form onSubmit={handleSubmit}>
-                    <div className="p-6 space-y-5">
-                        <div>
-                            <label htmlFor="message" className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
-                                {t.notificationMessage}
-                            </label>
+    return (
+        <div className="max-w-3xl mx-auto animate-fade-in-up">
+            <h2 className="text-3xl font-bold mb-6 text-slate-800 dark:text-slate-100">{t.sendNotifications}</h2>
+
+            <form onSubmit={handleSubmit} className="bg-white dark:bg-slate-800 rounded-2xl shadow-xl border border-slate-200 dark:border-slate-700">
+                <div className="p-6 space-y-6">
+                    <div>
+                        <label htmlFor="message" className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
+                            {t.notificationMessage}
+                        </label>
+                        <div className="relative">
                             <textarea
                                 id="message"
                                 value={message}
                                 onChange={(e) => setMessage(e.target.value)}
-                                rows={5}
-                                className="w-full p-2 border rounded-md dark:bg-slate-700 dark:border-slate-600 dark:text-slate-100 focus:ring-primary-500 focus:border-primary-500"
-                                placeholder={t.language === 'ar' ? 'اكتب رسالتك هنا...' : 'Write your message here...'}
+                                rows={6}
+                                className={formInputClasses}
+                                placeholder={language === 'ar' ? 'اكتب رسالتك هنا...' : 'Write your message here...'}
+                                maxLength={MAX_MESSAGE_LENGTH}
                                 required
                                 disabled={!canSend}
                             />
+                            <span className="absolute bottom-2 end-3 text-xs text-slate-400 dark:text-slate-500">{message.length} / {MAX_MESSAGE_LENGTH}</span>
                         </div>
+                    </div>
 
-                        <div>
-                            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">{t.imageOptional}</label>
-                            <div className="flex flex-col sm:flex-row gap-4 items-start">
-                                <div className="flex-1 w-full">
-                                    <input
-                                        type="text"
-                                        value={imageUrl}
-                                        onChange={(e) => { setImageUrl(e.target.value); setImageFile(null); setImagePreview(''); }}
-                                        className="w-full p-2 border rounded-md dark:bg-slate-700 dark:border-slate-600 dark:text-slate-100"
-                                        placeholder="Or paste an image URL"
-                                        disabled={!canSend}
-                                    />
-                                </div>
-                                <div className="text-center text-sm text-slate-500 font-semibold my-1 sm:my-0">{t.or.toUpperCase()}</div>
-                                <div className="flex-1 w-full">
-                                    <label htmlFor="image-upload" className={`w-full flex items-center justify-center gap-2 px-4 py-2 border-2 border-dashed rounded-lg cursor-pointer ${canSend ? 'hover:border-primary-500' : ''}`}>
-                                        <UploadIcon className="w-5 h-5" />
-                                        <span>{t.language === 'ar' ? 'رفع صورة' : 'Upload Image'}</span>
-                                    </label>
-                                    <input id="image-upload" type="file" accept="image/*" onChange={handleImageFileChange} className="sr-only" disabled={!canSend} />
-                                </div>
+                    <div>
+                        <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1.5">{t.imageOptional}</label>
+                        {!imagePreview ? (
+                             <div 
+                                onDragEnter={handleDragEvents} 
+                                onDragLeave={handleDragEvents} 
+                                onDragOver={handleDragEvents}
+                                onDrop={handleDrop}
+                                className={`relative block w-full border-2 border-dashed rounded-lg p-8 text-center cursor-pointer transition-colors ${
+                                    isDragging ? 'border-primary-500 bg-primary-50 dark:bg-primary-900/20' : 'border-slate-300 dark:border-slate-600 hover:border-primary-400'
+                                }`}
+                            >
+                                <input id="image-upload" type="file" accept="image/*" onChange={handleFileChange} className="sr-only" disabled={!canSend} />
+                                <label htmlFor="image-upload" className="cursor-pointer">
+                                    <PhotoIcon className="mx-auto h-12 w-12 text-slate-400" />
+                                    <span className="mt-2 block text-sm font-semibold text-slate-600 dark:text-slate-300">
+                                        {language === 'ar' ? 'اسحب وأفلت أو انقر للرفع' : 'Drag & drop or click to upload'}
+                                    </span>
+                                    <span className="mt-1 block text-xs text-slate-500">{language === 'ar' ? 'PNG, JPG, WEBP حتى 1 ميجا' : 'PNG, JPG, WEBP up to 1MB'}</span>
+                                </label>
                             </div>
-                            {(imagePreview || imageUrl) && (
-                                <div className="mt-4">
-                                    <img src={imagePreview || imageUrl} alt="Preview" className="max-h-40 rounded-lg mx-auto shadow-md" />
-                                </div>
-                            )}
-                        </div>
+                        ) : (
+                            <div className="relative w-40 h-40">
+                                <img src={imagePreview} alt="Preview" className="w-full h-full object-cover rounded-lg shadow-md" />
+                                <button type="button" onClick={removeImage} className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1.5 shadow-lg hover:bg-red-600 transition-transform hover:scale-110">
+                                    <TrashIcon className="w-5 h-5"/>
+                                </button>
+                            </div>
+                        )}
+                    </div>
 
-
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-5 pt-4 border-t border-slate-200 dark:border-slate-700">
                         <div>
-                            <label htmlFor="targetRole" className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
-                                {t.targetAudience}
-                            </label>
+                            <label htmlFor="targetRole" className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1.5">{t.targetAudience}</label>
                             <select
                                 id="targetRole"
                                 value={targetRole}
                                 onChange={(e) => setTargetRole(e.target.value)}
-                                className="w-full p-2 border rounded-md dark:bg-slate-700 dark:border-slate-600 dark:text-slate-100 focus:ring-primary-500 focus:border-primary-500"
+                                className={formInputClasses}
                                 disabled={!canSend}
                             >
                                 <option value="all">{t.allUsers}</option>
                                 {roles.map(role => (
-                                    <option key={role.key} value={role.key}>{role.name[t.language]}</option>
+                                    <option key={role.key} value={role.name.en}>{role.name[language]}</option>
                                 ))}
                             </select>
                         </div>
-                        
-                        <div className="flex items-center">
-                            <input
-                                id="withSound"
-                                type="checkbox"
-                                checked={withSound}
-                                onChange={(e) => setWithSound(e.target.checked)}
-                                className="w-5 h-5 rounded text-primary-600 focus:ring-primary-500"
-                                disabled={!canSend}
-                            />
-                            <label htmlFor="withSound" className="ms-3 text-sm font-medium text-slate-700 dark:text-slate-300">
-                                {t.withSound}
+                        <div className="flex items-end pb-1.5">
+                             <label className="flex items-center gap-3 cursor-pointer">
+                                <input
+                                    id="withSound"
+                                    type="checkbox"
+                                    checked={withSound}
+                                    onChange={(e) => setWithSound(e.target.checked)}
+                                    className="w-5 h-5 rounded text-primary-600 focus:ring-primary-500 dark:bg-slate-900 dark:border-slate-600"
+                                    disabled={!canSend}
+                                />
+                                <span className="text-sm font-semibold text-slate-700 dark:text-slate-300">{t.withSound}</span>
                             </label>
                         </div>
-
                     </div>
-                    <div className="p-4 bg-slate-50 dark:bg-slate-800/50 border-t border-slate-200 dark:border-slate-700 rounded-b-xl text-right">
-                        <button
-                            type="submit"
-                            disabled={!canSend || isProcessing || !message.trim()}
-                            className="bg-primary-600 text-white font-bold py-2.5 px-6 rounded-lg hover:bg-primary-700 transition-colors disabled:bg-slate-400 disabled:cursor-not-allowed"
-                        >
-                            {isProcessing ? (t.language === 'ar' ? 'جار الإرسال...' : 'Sending...') : t.send}
-                        </button>
-                    </div>
-                </form>
-                 {!canSend && (
-                    <div className="p-4 text-center text-sm bg-yellow-100 dark:bg-yellow-900/50 text-yellow-800 dark:text-yellow-200 rounded-b-xl">
-                        {t.permissionDenied}
-                    </div>
-                )}
-            </div>
+                </div>
+                <div className="p-4 bg-slate-50 dark:bg-slate-900/50 border-t border-slate-200 dark:border-slate-700 rounded-b-xl">
+                    <button
+                        type="submit"
+                        disabled={!canSend || isProcessing || !message.trim()}
+                        className="w-full bg-primary-600 text-white font-bold py-3 px-6 rounded-lg hover:bg-primary-700 transition-colors disabled:bg-slate-400 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                    >
+                        {isProcessing ? (
+                            <>
+                                <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
+                                <span>{language === 'ar' ? 'جار الإرسال...' : 'Sending...'}</span>
+                            </>
+                        ) : t.send}
+                    </button>
+                </div>
+            </form>
+             {!canSend && (
+                <div className="p-4 mt-4 text-center text-sm bg-yellow-100 dark:bg-yellow-900/50 text-yellow-800 dark:text-yellow-200 rounded-xl">
+                    {t.permissionDenied}
+                </div>
+            )}
         </div>
     );
 };
