@@ -48,14 +48,13 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 progressInterval = window.setInterval(() => setProgress(p => Math.min(p + 20, 90)), 80);
             }
 
-            const fetchOptions = { cache: 'no-cache' as RequestCache };
-            const cacheBuster = `?v=${Date.now()}`;
+            const fetchOptions = { method: 'GET' };
 
             const [settingsRes, classificationsRes, promotionsRes, productsRes] = await Promise.all([
-                fetch(`${API_BASE_URL}get_settings.php${cacheBuster}`, fetchOptions),
-                fetch(`${API_BASE_URL}get_classifications.php${cacheBuster}`, fetchOptions),
-                fetch(`${API_BASE_URL}get_promotions.php${cacheBuster}`, fetchOptions),
-                fetch(`${API_BASE_URL}get_products.php${cacheBuster}`, fetchOptions),
+                fetch(`${API_BASE_URL}get_settings.php`, fetchOptions),
+                fetch(`${API_BASE_URL}get_classifications.php`, fetchOptions),
+                fetch(`${API_BASE_URL}get_promotions.php`, fetchOptions),
+                fetch(`${API_BASE_URL}get_products.php`, fetchOptions),
             ]);
 
             if (progressInterval) clearInterval(progressInterval);

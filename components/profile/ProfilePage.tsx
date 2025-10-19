@@ -8,9 +8,10 @@ import { useData } from '../../contexts/DataContext';
 import { useAdmin } from '../../contexts/AdminContext';
 import { OrderHistory } from './OrderHistory';
 import { Header } from '../Header'; // Import the main header
+import { optimizeImage } from '../../utils/imageOptimizer';
 
 export const ProfilePage: React.FC = () => {
-    const { language, t, setIsChangePasswordModalOpen } = useUI();
+    const { language, t, setIsChangePasswordModalOpen, setIsProcessing, showToast } = useUI();
     const { currentUser, logout, updateUserProfile } = useAuth();
     const { restaurantInfo } = useData();
     const { orders, updateOrder } = useAdmin();
@@ -47,14 +48,22 @@ export const ProfilePage: React.FC = () => {
         setIsEditingMobile(false);
     };
 
-    const handlePictureChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const handlePictureChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         if (file && currentUser) {
-            const reader = new FileReader();
-            reader.onloadend = () => {
-                updateUserProfile(currentUser.id, { profilePicture: reader.result as string });
-            };
-            reader.readAsDataURL(file);
+            setIsProcessing(true);
+            try {
+                const optimizedFile = await optimizeImage(file, 256, 256, 0.9);
+                const reader = new FileReader();
+                reader.onloadend = () => {
+                    updateUserProfile(currentUser.id, { profilePicture: reader.result as string });
+                };
+                reader.readAsDataURL(optimizedFile);
+            } catch (error) {
+                console.error("Profile picture optimization failed:", error);
+                showToast("Failed to process image. Please try another one.");
+                setIsProcessing(false);
+            }
         }
     };
 

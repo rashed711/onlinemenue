@@ -19,6 +19,7 @@ export const ProductModal: React.FC<ProductModalProps> = ({
   const { t, language } = useUI();
   const [quantity, setQuantity] = useState(1);
   const [selectedOptions, setSelectedOptions] = useState<{ [key: string]: string }>({});
+  const [isImageLoaded, setIsImageLoaded] = useState(false);
 
   useEffect(() => {
     const defaultOptions: { [key: string]: string } = {};
@@ -29,6 +30,7 @@ export const ProductModal: React.FC<ProductModalProps> = ({
     });
     setSelectedOptions(defaultOptions);
     setQuantity(1);
+    setIsImageLoaded(false); // Reset on product change
   }, [product]);
 
   const handleAddToCart = () => {
@@ -57,7 +59,18 @@ export const ProductModal: React.FC<ProductModalProps> = ({
       <div className="overflow-y-auto p-4 sm:p-5 flex-grow">
         <div className="grid grid-cols-1 md:grid-cols-5 gap-4 md:gap-6">
           <div className="md:col-span-2 flex items-start justify-center">
-            <img src={product.image} alt={product.name[language]} className="w-full h-auto max-h-[75vh] rounded-xl object-cover shadow-lg" />
+            <div className="relative w-full">
+              {!isImageLoaded && (
+                <div className="aspect-[4/3] w-full rounded-xl bg-slate-200 dark:bg-slate-700 animate-pulse" />
+              )}
+              <img 
+                src={product.image} 
+                alt={product.name[language]} 
+                className={`w-full h-auto max-h-[75vh] rounded-xl object-cover shadow-lg transition-opacity duration-300 ${isImageLoaded ? 'opacity-100' : 'opacity-0'}`}
+                style={{ display: isImageLoaded ? 'block' : 'none' }}
+                onLoad={() => setIsImageLoaded(true)}
+              />
+            </div>
           </div>
           <div className="md:col-span-3 flex flex-col">
             <div className="flex items-center my-2 gap-3">

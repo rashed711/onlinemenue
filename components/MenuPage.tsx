@@ -74,6 +74,10 @@ export const MenuPage: React.FC = () => {
     const [selectedCategory, setSelectedCategory] = useState<number | null>(null);
     const [selectedTags, setSelectedTags] = useState<string[]>([]);
 
+    const handleCartClick = useCallback(() => setIsCartOpen(true), []);
+    const handleProductClick = useCallback((product: Product) => setSelectedProduct(product), []);
+    const handleCloseProductModal = useCallback(() => setSelectedProduct(null), []);
+
     const visibleProducts = useMemo(() => products.filter(p => p.isVisible), [products]);
 
     const filteredProducts = useMemo(() => {
@@ -137,19 +141,19 @@ export const MenuPage: React.FC = () => {
 
     return (
         <>
-            <Header onCartClick={() => setIsCartOpen(true)} />
+            <Header onCartClick={handleCartClick} />
             
             <HeroSection language={language} restaurantInfo={restaurantInfo} />
 
             <div className="container mx-auto max-w-7xl px-4">
                 <main>
-                    <PromotionSection promotions={promotions} products={visibleProducts} onProductClick={setSelectedProduct} />
+                    <PromotionSection promotions={promotions} products={visibleProducts} onProductClick={handleProductClick} />
 
                     <ProductList 
                         titleKey="mostPopular" 
                         products={popularProducts} 
                         language={language} 
-                        onProductClick={setSelectedProduct} 
+                        onProductClick={handleProductClick} 
                         addToCart={handleAddToCartWithoutOpeningCart}
                         slider={true}
                     />
@@ -158,7 +162,7 @@ export const MenuPage: React.FC = () => {
                         titleKey="newItems"
                         products={newProducts} 
                         language={language} 
-                        onProductClick={setSelectedProduct} 
+                        onProductClick={handleProductClick} 
                         addToCart={handleAddToCartWithoutOpeningCart}
                     />
                     
@@ -179,7 +183,7 @@ export const MenuPage: React.FC = () => {
                             titleKey="fullMenu"
                             products={filteredProducts} 
                             language={language} 
-                            onProductClick={setSelectedProduct} 
+                            onProductClick={handleProductClick} 
                             addToCart={handleAddToCartWithoutOpeningCart}
                             slider={false}
                         />
@@ -202,7 +206,7 @@ export const MenuPage: React.FC = () => {
             {selectedProduct && (
                 <ProductModal
                 product={selectedProduct}
-                onClose={() => setSelectedProduct(null)}
+                onClose={handleCloseProductModal}
                 addToCart={handleAddToCartWithoutOpeningCart}
                 />
             )}

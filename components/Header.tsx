@@ -11,7 +11,7 @@ interface HeaderProps {
   onCartClick: () => void;
 }
 
-export const Header: React.FC<HeaderProps> = ({ onCartClick }) => {
+export const Header: React.FC<HeaderProps> = React.memo(({ onCartClick }) => {
   const { language, theme, toggleLanguage, toggleTheme, t } = useUI();
   const { currentUser, logout, isAdmin } = useAuth();
   const { restaurantInfo } = useData();
@@ -188,4 +188,4 @@ export const Header: React.FC<HeaderProps> = ({ onCartClick }) => {
       </div>
     </header>
   );
-};
+});

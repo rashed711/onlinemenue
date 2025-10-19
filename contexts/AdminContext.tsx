@@ -52,7 +52,7 @@ const resolveImageUrl = (path: string | undefined): string => {
 export const AdminProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     const { setIsProcessing, showToast, t } = useUI();
     const { currentUser, hasPermission, roles: authRoles, setCurrentUser, setRolePermissions: setAuthRolePermissions } = useAuth();
-    const { restaurantInfo, setProducts, setPromotions, fetchAllData } = useData();
+    const { restaurantInfo, products, setProducts, promotions, setPromotions, categories, setCategories, tags, setTags, fetchAllData } = useData();
 
     const [orders, setOrders] = useState<Order[]>([]);
     const [users, setUsers] = useState<User[]>([]);
@@ -70,14 +70,14 @@ export const AdminProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         const isAdmin = hasPermission('view_orders_page');
 
         try {
-            const cacheBuster = `?v=${Date.now()}`;
-            const ordersRes = await fetch(`${API_BASE_URL}get_orders.php${cacheBuster}`, { cache: 'no-cache' });
+            const fetchOptions = { method: 'GET' };
+            const ordersRes = await fetch(`${API_BASE_URL}get_orders.php`, fetchOptions);
             if (!ordersRes.ok) throw new Error('Failed to fetch orders');
             const allOrders = (await ordersRes.json() || []).map((o: any) => ({ ...o, paymentReceiptUrl: resolveImageUrl(o.paymentReceiptUrl)}));
 
             if (isAdmin) {
                 setOrders(allOrders);
-                const usersRes = await fetch(`${API_BASE_URL}get_users.php${cacheBuster}`, { cache: 'no-cache' });
+                const usersRes = await fetch(`${API_BASE_URL}get_users.php`, fetchOptions);
                 if (usersRes.ok) {
                     setUsers((await usersRes.json() || []).map((u: any) => ({ 
                         id: Number(u.id), 
@@ -107,7 +107,8 @@ export const AdminProvider: React.FC<{ children: React.ReactNode }> = ({ childre
                 return;
             }
             try {
-                const permissionsRes = await fetch(`${API_BASE_URL}get_permissions.php?v=${Date.now()}`, { cache: 'no-cache' });
+                const fetchOptions = { method: 'GET' };
+                const permissionsRes = await fetch(`${API_BASE_URL}get_permissions.php`, fetchOptions);
                 if (permissionsRes.ok) {
                     const permissions = await permissionsRes.json() || {};
                     setRolePermissions(permissions);
@@ -155,6 +156,7 @@ export const AdminProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     }, [currentUser, restaurantInfo, setIsProcessing, showToast]);
 
     const updateOrder = useCallback(async (orderId: string, payload: Partial<Omit<Order, 'id' | 'timestamp' | 'customer'>>) => {
+        const originalOrders = orders;
         const order = orders.find(o => o.id === orderId);
         if (!order) return;
         
@@ -163,50 +165,46 @@ export const AdminProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         if (payload.customerFeedback) canUpdate = currentUser?.id === order.customer.userId && order.status === 'completed';
 
         if (canUpdate) {
+            // Optimistic update
+            const updatedOrder = { ...order, ...payload, total: payload.items ? calculateTotal(payload.items) : order.total };
+            setOrders(prev => prev.map(o => o.id === orderId ? updatedOrder : o));
+            setViewingOrder(prev => (prev && prev.id === orderId) ? updatedOrder : prev);
+
             setIsProcessing(true);
             try {
-                if (payload.items) payload.total = calculateTotal(payload.items);
-                const res = await fetch(`${API_BASE_URL}update_order.php`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ orderId, payload }) });
-                if (!res.ok || !(await res.json()).success) throw new Error('Failed to update order.');
+                let dbPayload = { ...payload };
+                if (dbPayload.items) dbPayload.total = calculateTotal(dbPayload.items);
                 
-                await fetchAdminData(); // Refetch data to ensure consistency
-
-                setViewingOrder(prev => (prev && prev.id === orderId) ? { ...prev, ...payload } : prev);
+                const res = await fetch(`${API_BASE_URL}update_order.php`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ orderId, payload: dbPayload }) });
+                if (!res.ok || !(await res.json()).success) throw new Error('Failed to update order.');
                 showToast(t.orderUpdatedSuccess);
-            } catch (error: any) { showToast(error.message); } finally { setIsProcessing(false); }
+            } catch (error: any) { 
+                showToast(error.message);
+                // Revert on failure
+                setOrders(originalOrders);
+                setViewingOrder(prev => (prev && prev.id === orderId) ? order : prev);
+            } finally { 
+                setIsProcessing(false); 
+            }
         } else { showToast(t.permissionDenied); }
-    }, [orders, currentUser, hasPermission, showToast, t.permissionDenied, setIsProcessing, fetchAdminData, setViewingOrder, t.orderUpdatedSuccess]);
+    }, [orders, currentUser, hasPermission, showToast, t.permissionDenied, setIsProcessing, setViewingOrder, t.orderUpdatedSuccess]);
 
     const deleteOrder = useCallback(async (orderId: string) => {
         if (!hasPermission('delete_order') || !window.confirm(t.confirmDeleteOrder)) return;
+        
+        const originalOrders = orders;
+        setOrders(prev => prev.filter(o => o.id !== orderId)); // Optimistic delete
+        
         setIsProcessing(true);
         try {
             const res = await fetch(`${API_BASE_URL}delete_order.php`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: orderId }) });
             if (!res.ok || !(await res.json()).success) throw new Error(t.orderDeleteFailed);
-            setOrders(prev => prev.filter(o => o.id !== orderId));
             showToast(t.orderDeletedSuccess);
-        } catch (error: any) { showToast(error.message); } finally { setIsProcessing(false); }
-    }, [hasPermission, showToast, t, setIsProcessing]);
-    
-    const apiCall = useCallback(async <T,>(endpoint: string, payload: any, successMessage: string, failureMessage: string): Promise<T | null> => {
-        setIsProcessing(true);
-        try {
-            const response = await fetch(`${API_BASE_URL}${endpoint}`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(payload),
-            });
-            const result = await response.json();
-            if (!response.ok || !result.success) throw new Error(result.error || failureMessage);
-            showToast(successMessage);
-            return result;
-        } catch (error: any) {
-            showToast(error.message || failureMessage);
-            return null;
-        } finally {
-            setIsProcessing(false);
-        }
-    }, [setIsProcessing, showToast]);
+        } catch (error: any) { 
+            showToast(error.message);
+            setOrders(originalOrders); // Revert on failure
+        } finally { setIsProcessing(false); }
+    }, [hasPermission, showToast, t, setIsProcessing, orders]);
     
     const addProduct = useCallback(async (productData: Omit<Product, 'id' | 'rating'>, imageFile?: File | null) => {
         if (!hasPermission('add_product')) { showToast(t.permissionDenied); return; }
@@ -221,7 +219,7 @@ export const AdminProvider: React.FC<{ children: React.ReactNode }> = ({ childre
                 const result = await uploadRes.json();
                 if (!uploadRes.ok || !result.success) throw new Error(result.error || 'Image upload failed');
                 
-                finalProductData.image = result.url.split('?v=')[0]; // Save clean URL to DB
+                finalProductData.image = result.url.split('?v=')[0];
             }
 
             const response = await fetch(`${API_BASE_URL}add_product.php`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(finalProductData) });
@@ -229,7 +227,7 @@ export const AdminProvider: React.FC<{ children: React.ReactNode }> = ({ childre
             if (!response.ok || !result.success) throw new Error(result.error || t.productAddFailed);
             
             const newProduct = { ...result.product, image: resolveImageUrl(result.product.image) };
-            setProducts(prev => [newProduct, ...prev]);
+            setProducts(prev => [newProduct, ...prev].sort((a,b) => a.name[t.language as 'en'|'ar'].localeCompare(b.name[t.language as 'en'|'ar'])));
             showToast(t.productAddedSuccess);
         } catch (error: any) { showToast(error.message || t.productAddFailed); }
         finally { setIsProcessing(false); }
@@ -237,6 +235,11 @@ export const AdminProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     
     const updateProduct = useCallback(async (updatedProduct: Product, imageFile?: File | null) => {
         if (!hasPermission('edit_product')) { showToast(t.permissionDenied); return; }
+        
+        const originalProducts = products;
+        const resolvedImageForOptimisticUpdate = imageFile ? URL.createObjectURL(imageFile) : updatedProduct.image;
+        setProducts(prev => prev.map(p => p.id === updatedProduct.id ? { ...updatedProduct, image: resolvedImageForOptimisticUpdate } : p));
+        
         setIsProcessing(true);
         try {
             let finalProductData = { ...updatedProduct };
@@ -251,8 +254,8 @@ export const AdminProvider: React.FC<{ children: React.ReactNode }> = ({ childre
                 const result = await uploadRes.json();
                 if (!uploadRes.ok || !result.success) throw new Error(result.error || 'Image upload failed');
                 
-                serverImageUrl = result.url; // This URL might have a cache buster
-                finalProductData.image = serverImageUrl.split('?v=')[0]; // Save clean URL to DB
+                serverImageUrl = result.url;
+                finalProductData.image = serverImageUrl.split('?v=')[0];
             } else {
                  const domain = new URL(API_BASE_URL).origin + '/';
                  finalProductData.image = updatedProduct.image ? updatedProduct.image.split('?v=')[0].replace(domain, '') : '';
@@ -262,197 +265,312 @@ export const AdminProvider: React.FC<{ children: React.ReactNode }> = ({ childre
             const result = await response.json();
             if (!response.ok || !result.success) throw new Error(result.error || t.productUpdateFailed);
 
-            // Use the URL from the server if a new image was uploaded, otherwise use the existing (cleaned) one
             const resolvedImageUrl = serverImageUrl ? resolveImageUrl(serverImageUrl) : resolveImageUrl(finalProductData.image);
-            const resolvedProduct = { ...finalProductData, image: resolvedImageUrl };
-
-            setProducts(prev => prev.map(p => p.id === resolvedProduct.id ? resolvedProduct : p));
+            setProducts(prev => prev.map(p => p.id === updatedProduct.id ? { ...updatedProduct, image: resolvedImageUrl } : p));
             showToast(t.productUpdatedSuccess);
-        } catch (error: any) { showToast(error.message || t.productUpdateFailed); }
+        } catch (error: any) { 
+            showToast(error.message || t.productUpdateFailed);
+            setProducts(originalProducts); // Revert on failure
+        }
         finally { setIsProcessing(false); }
-    }, [hasPermission, t, setProducts, showToast, setIsProcessing]);
+    }, [hasPermission, t, products, setProducts, showToast, setIsProcessing]);
 
     const deleteProduct = useCallback(async (productId: number) => {
         if (!hasPermission('delete_product') || !window.confirm(t.confirmDelete)) return;
-        const result = await apiCall('delete_product.php', { id: productId }, t.productDeletedSuccess, t.productDeleteFailed);
-        if (result) {
-            setProducts(prev => prev.filter(p => p.id !== productId));
+        
+        const originalProducts = products;
+        setProducts(prev => prev.filter(p => p.id !== productId));
+        
+        setIsProcessing(true);
+        try {
+            const response = await fetch(`${API_BASE_URL}delete_product.php`, { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ id: productId }) });
+            const result = await response.json();
+            if (!response.ok || !result.success) throw new Error(result.error || t.productDeleteFailed);
+            showToast(t.productDeletedSuccess);
+        } catch (error: any) {
+            showToast(error.message || t.productDeleteFailed);
+            setProducts(originalProducts);
+        } finally {
+            setIsProcessing(false);
         }
-    }, [hasPermission, t, apiCall, setProducts]);
+    }, [hasPermission, t, products, setProducts, setIsProcessing, showToast]);
     
     const addPromotion = useCallback(async (promotionData: Omit<Promotion, 'id'>) => {
         if (!hasPermission('add_promotion')) { showToast(t.permissionDenied); return; }
-        const result = await apiCall<{ promotion: Promotion }>('add_promotion.php', promotionData, t.promotionAddedSuccess, t.promotionAddFailed);
-        if (result?.promotion) setPromotions(prev => [...prev, result.promotion]);
-    }, [hasPermission, t, apiCall, setPromotions]);
+        setIsProcessing(true);
+        try {
+            const response = await fetch(`${API_BASE_URL}add_promotion.php`, { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(promotionData) });
+            const result = await response.json();
+            if (!response.ok || !result.success) throw new Error(result.error || t.promotionAddFailed);
+            setPromotions(prev => [...prev, result.promotion]);
+            showToast(t.promotionAddedSuccess);
+        } catch (error: any) {
+            showToast(error.message || t.promotionAddFailed);
+        } finally {
+            setIsProcessing(false);
+        }
+    }, [hasPermission, t, setPromotions, showToast, setIsProcessing]);
 
     const updatePromotion = useCallback(async (updatedPromotion: Promotion) => {
         if (!hasPermission('edit_promotion')) { showToast(t.permissionDenied); return; }
-        const result = await apiCall('update_promotion.php', updatedPromotion, t.promotionUpdatedSuccess, t.promotionUpdateFailed);
-        if (result) setPromotions(prev => prev.map(p => p.id === updatedPromotion.id ? updatedPromotion : p));
-    }, [hasPermission, t, apiCall, setPromotions]);
+        const originalPromotions = promotions;
+        setPromotions(prev => prev.map(p => p.id === updatedPromotion.id ? updatedPromotion : p));
+        
+        setIsProcessing(true);
+        try {
+            const response = await fetch(`${API_BASE_URL}update_promotion.php`, { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(updatedPromotion) });
+            if (!response.ok || !(await response.json()).success) throw new Error(t.promotionUpdateFailed);
+            showToast(t.promotionUpdatedSuccess);
+        } catch(error: any) {
+            showToast(error.message || t.promotionUpdateFailed);
+            setPromotions(originalPromotions);
+        } finally {
+            setIsProcessing(false);
+        }
+    }, [hasPermission, t, promotions, setPromotions, showToast, setIsProcessing]);
 
     const deletePromotion = useCallback(async (promotionId: number) => {
         if (!hasPermission('delete_promotion') || !window.confirm(t.confirmDeletePromotion)) return;
-        const result = await apiCall('delete_promotion.php', { id: promotionId }, t.promotionDeletedSuccess, t.promotionDeleteFailed);
-        if (result) setPromotions(prev => prev.filter(p => p.id !== promotionId));
-    }, [hasPermission, t, apiCall, setPromotions]);
+        const originalPromotions = promotions;
+        setPromotions(prev => prev.filter(p => p.id !== promotionId));
+
+        setIsProcessing(true);
+        try {
+            const response = await fetch(`${API_BASE_URL}delete_promotion.php`, { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ id: promotionId }) });
+            if (!response.ok || !(await response.json()).success) throw new Error(t.promotionDeleteFailed);
+            showToast(t.promotionDeletedSuccess);
+        } catch (error: any) {
+            showToast(error.message || t.promotionDeleteFailed);
+            setPromotions(originalPromotions);
+        } finally {
+            setIsProcessing(false);
+        }
+    }, [hasPermission, t, promotions, setPromotions, showToast, setIsProcessing]);
 
     const addUser = useCallback(async (userData: Omit<User, 'id'>) => {
         if (!hasPermission('add_user')) { showToast(t.permissionDenied); return; }
         const roleName = authRoles.find(r => r.key === userData.role)?.name.en;
-        if (!roleName) {
-            showToast("Invalid role selected.");
-            return;
-        }
-        const payload = {
-            name: userData.name,
-            mobile: userData.mobile,
-            password: userData.password,
-            role: roleName,
-        };
-        const result = await apiCall<{ user: any }>(
-            'add_user.php',
-            payload,
-            t.userAddedSuccess,
-            t.userAddFailed
-        );
-        if (result?.user) {
+        if (!roleName) { showToast("Invalid role selected."); return; }
+
+        setIsProcessing(true);
+        try {
+            const payload = { name: userData.name, mobile: userData.mobile, password: userData.password, role: roleName };
+            const response = await fetch(`${API_BASE_URL}add_user.php`, { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(payload) });
+            const result = await response.json();
+            if (!response.ok || !result.success) throw new Error(result.error || t.userAddFailed);
+            
             const roleDetails = authRoles.find(r => r.name.en === result.user.role);
-            const newUser: User = {
-                id: Number(result.user.id),
-                name: result.user.name,
-                mobile: result.user.mobile,
-                password: '',
-                role: roleDetails ? roleDetails.key : '',
-                profilePicture: resolveImageUrl(result.user.profilePicture) || `https://placehold.co/512x512/60a5fa/white?text=${result.user.name.charAt(0).toUpperCase()}`
-            };
+            const newUser: User = { id: Number(result.user.id), name: result.user.name, mobile: result.user.mobile, password: '', role: roleDetails ? roleDetails.key : '', profilePicture: resolveImageUrl(result.user.profilePicture) || `https://placehold.co/512x512/60a5fa/white?text=${result.user.name.charAt(0).toUpperCase()}` };
             setUsers(prev => [...prev, newUser]);
+            showToast(t.userAddedSuccess);
+        } catch (error: any) {
+            showToast(error.message || t.userAddFailed);
+        } finally {
+            setIsProcessing(false);
         }
-    }, [hasPermission, t, apiCall, setUsers, authRoles, showToast]);
+    }, [hasPermission, t, authRoles, showToast, setIsProcessing]);
 
     const updateUser = useCallback(async (updatedUser: User) => {
         if (!hasPermission('edit_user')) { showToast(t.permissionDenied); return; }
-        
         const roleName = authRoles.find(r => r.key === updatedUser.role)?.name.en;
-        if (!roleName) {
-            showToast("Invalid role selected.");
-            return;
+        if (!roleName) { showToast("Invalid role selected."); return; }
+
+        const originalUsers = users;
+        const updatedUserInState = { ...updatedUser, password: '' };
+        setUsers(prev => prev.map(u => u.id === updatedUser.id ? updatedUserInState : u));
+        if (currentUser?.id === updatedUser.id) {
+            setCurrentUser(prev => prev ? { ...prev, ...updatedUserInState } : null);
         }
 
-        const payload: any = {
-            id: updatedUser.id,
-            name: updatedUser.name,
-            mobile: updatedUser.mobile,
-            role: roleName,
-        };
-
-        if (updatedUser.password) {
-            payload.password = updatedUser.password;
-        }
-        
-        const result = await apiCall(
-            'update_user.php',
-            payload,
-            t.userUpdatedSuccess,
-            t.userUpdateFailed
-        );
-        if (result) {
-            const updatedUserInState = { ...updatedUser, password: '' };
-            setUsers(prev => prev.map(u => u.id === updatedUser.id ? updatedUserInState : u));
+        setIsProcessing(true);
+        try {
+            const payload: any = { id: updatedUser.id, name: updatedUser.name, mobile: updatedUser.mobile, role: roleName };
+            if (updatedUser.password) payload.password = updatedUser.password;
+            
+            const response = await fetch(`${API_BASE_URL}update_user.php`, { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(payload) });
+            if (!response.ok || !(await response.json()).success) throw new Error(t.userUpdateFailed);
+            showToast(t.userUpdatedSuccess);
+        } catch (error: any) {
+            showToast(error.message || t.userUpdateFailed);
+            setUsers(originalUsers); // Revert
             if (currentUser?.id === updatedUser.id) {
-                setCurrentUser(prev => prev ? { ...prev, ...updatedUserInState } : null);
+                const originalSelf = originalUsers.find(u => u.id === currentUser.id);
+                setCurrentUser(prev => prev ? { ...prev, ...originalSelf } : null);
             }
+        } finally {
+            setIsProcessing(false);
         }
-    }, [hasPermission, t, apiCall, currentUser, setCurrentUser, setUsers, authRoles, showToast]);
+    }, [hasPermission, t, currentUser, setCurrentUser, users, authRoles, showToast, setIsProcessing]);
 
     const deleteUser = useCallback(async (userId: number) => {
         if (currentUser?.id === userId) { showToast(t.deleteUserError); return; }
         if (!hasPermission('delete_user') || !window.confirm(t.confirmDeleteUser)) return;
-        const result = await apiCall('delete_user.php', { id: userId }, t.userDeletedSuccess, t.userDeleteFailed);
-        if (result) setUsers(prev => prev.filter(u => u.id !== userId));
-    }, [hasPermission, t, apiCall, currentUser, setUsers]);
+
+        const originalUsers = users;
+        setUsers(prev => prev.filter(u => u.id !== userId));
+
+        setIsProcessing(true);
+        try {
+            const response = await fetch(`${API_BASE_URL}delete_user.php`, { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ id: userId }) });
+            if (!response.ok || !(await response.json()).success) throw new Error(t.userDeleteFailed);
+            showToast(t.userDeletedSuccess);
+        } catch(error: any) {
+            showToast(error.message || t.userDeleteFailed);
+            setUsers(originalUsers);
+        } finally {
+            setIsProcessing(false);
+        }
+    }, [hasPermission, t, currentUser, users, showToast, setIsProcessing]);
     
     const resetUserPassword = useCallback(async (user: User, newPassword: string): Promise<boolean> => {
-        const result = await apiCall('update_user.php', { id: user.id, password: newPassword }, t.passwordResetSuccess, t.passwordResetFailed);
-        return !!result;
-    }, [apiCall, t.passwordResetSuccess, t.passwordResetFailed]);
+        setIsProcessing(true);
+        try {
+            const response = await fetch(`${API_BASE_URL}update_user.php`, { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ id: user.id, password: newPassword }) });
+            if (!response.ok || !(await response.json()).success) throw new Error(t.passwordResetFailed);
+            showToast(t.passwordResetSuccess);
+            return true;
+        } catch (error: any) {
+            showToast(error.message || t.passwordResetFailed);
+            return false;
+        } finally {
+            setIsProcessing(false);
+        }
+    }, [setIsProcessing, showToast, t]);
     
     const updateRolePermissions = useCallback(async (roleKey: string, permissions: Permission[]) => {
         if (!hasPermission('manage_permissions')) { showToast(t.permissionDenied); return; }
-        const result = await apiCall('update_permissions.php', { roleName: roleKey, permissions }, t.permissionsUpdatedSuccess, t.permissionsUpdateFailed);
-        if (result) {
-            const newPermissions = { ...rolePermissions, [roleKey]: permissions };
-            setRolePermissions(newPermissions);
-            setAuthRolePermissions(newPermissions);
+        
+        const originalPermissions = { ...rolePermissions };
+        const newPermissions = { ...rolePermissions, [roleKey]: permissions };
+        setRolePermissions(newPermissions);
+        setAuthRolePermissions(newPermissions);
+
+        setIsProcessing(true);
+        try {
+            const response = await fetch(`${API_BASE_URL}update_permissions.php`, { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ roleName: roleKey, permissions }) });
+            if (!response.ok || !(await response.json()).success) throw new Error(t.permissionsUpdateFailed);
+            showToast(t.permissionsUpdatedSuccess);
+        } catch(error: any) {
+            showToast(error.message || t.permissionsUpdateFailed);
+            setRolePermissions(originalPermissions);
+            setAuthRolePermissions(originalPermissions);
+        } finally {
+            setIsProcessing(false);
         }
-    }, [hasPermission, t, apiCall, rolePermissions, setAuthRolePermissions]);
+    }, [hasPermission, t, rolePermissions, setAuthRolePermissions, showToast, setIsProcessing]);
 
     const addCategory = useCallback(async (categoryData: Omit<Category, 'id'>) => {
         if (!hasPermission('add_category')) { showToast(t.permissionDenied); return; }
-        const result = await apiCall<{ category: Category }>('add_category.php', categoryData, t.categoryAddedSuccess, t.categoryAddFailed);
-        if (result?.category) await fetchAllData(); // Refetch all to rebuild tree
-    }, [hasPermission, t, apiCall, fetchAllData]);
+        setIsProcessing(true);
+        try {
+            const response = await fetch(`${API_BASE_URL}add_category.php`, { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(categoryData) });
+            const result = await response.json();
+            if (!response.ok || !result.success) throw new Error(result.error || t.categoryAddFailed);
+            await fetchAllData(); // Refetch all to rebuild tree
+            showToast(t.categoryAddedSuccess);
+        } catch(error: any) {
+            showToast(error.message || t.categoryAddFailed);
+        } finally {
+            setIsProcessing(false);
+        }
+    }, [hasPermission, t, fetchAllData, showToast, setIsProcessing]);
     
     const updateCategory = useCallback(async (categoryData: Category) => {
         if (!hasPermission('edit_category')) { showToast(t.permissionDenied); return; }
-        const result = await apiCall('update_category.php', categoryData, t.categoryUpdatedSuccess, t.categoryUpdateFailed);
-        if (result) await fetchAllData(); // Refetch all to rebuild tree
-    }, [hasPermission, t, apiCall, fetchAllData]);
+        const originalCategories = categories;
+        // Local update requires complex tree manipulation. Refetching is simpler here.
+        setIsProcessing(true);
+        try {
+            const response = await fetch(`${API_BASE_URL}update_category.php`, { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(categoryData) });
+            if (!response.ok || !(await response.json()).success) throw new Error(t.categoryUpdateFailed);
+            await fetchAllData();
+            showToast(t.categoryUpdatedSuccess);
+        } catch (error: any) {
+            showToast(error.message || t.categoryUpdateFailed);
+            setCategories(originalCategories);
+        } finally {
+            setIsProcessing(false);
+        }
+    }, [hasPermission, t, categories, setCategories, fetchAllData, showToast, setIsProcessing]);
 
     const deleteCategory = useCallback(async (categoryId: number) => {
-        if (!hasPermission('delete_category')) { showToast(t.permissionDenied); return; }
+        if (!hasPermission('delete_category') || !window.confirm(t.confirmDeleteCategory)) { return; }
+        const originalCategories = categories;
+        
         setIsProcessing(true);
         try {
             const response = await fetch(`${API_BASE_URL}delete_category.php`, { method: 'POST', body: JSON.stringify({ id: categoryId }) });
             const result = await response.json();
             if (!response.ok || !result.success) {
-                if (result.errorKey && t[result.errorKey as keyof typeof t]) {
-                    throw new Error(t[result.errorKey as keyof typeof t]);
-                }
+                if (result.errorKey && t[result.errorKey as keyof typeof t]) throw new Error(t[result.errorKey as keyof typeof t]);
                 throw new Error(result.error || t.categoryDeleteFailed);
             }
-            showToast(t.categoryDeletedSuccess);
+            // Optimistic update would be complex for tree, refetch is better
             await fetchAllData();
+            showToast(t.categoryDeletedSuccess);
         } catch (error: any) {
             showToast(error.message || t.categoryDeleteFailed);
+            setCategories(originalCategories);
         } finally {
             setIsProcessing(false);
         }
-    }, [hasPermission, t, setIsProcessing, showToast, fetchAllData]);
+    }, [hasPermission, t, categories, setCategories, setIsProcessing, showToast, fetchAllData]);
 
     const addTag = useCallback(async (tagData: Omit<Tag, 'id'> & { id: string }) => {
         if (!hasPermission('add_tag')) { showToast(t.permissionDenied); return; }
-        const result = await apiCall<{ tag: Tag }>('add_tag.php', tagData, t.tagAddedSuccess, t.tagAddFailed);
-        if (result?.tag) await fetchAllData();
-    }, [hasPermission, t, apiCall, fetchAllData]);
+        setIsProcessing(true);
+        try {
+            const response = await fetch(`${API_BASE_URL}add_tag.php`, { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(tagData) });
+            const result = await response.json();
+            if (!response.ok || !result.success) throw new Error(result.error || t.tagAddFailed);
+            setTags(prev => [...prev, result.tag]);
+            showToast(t.tagAddedSuccess);
+        } catch (error: any) {
+            showToast(error.message || t.tagAddFailed);
+        } finally {
+            setIsProcessing(false);
+        }
+    }, [hasPermission, t, setTags, showToast, setIsProcessing]);
     
     const updateTag = useCallback(async (tagData: Tag) => {
         if (!hasPermission('edit_tag')) { showToast(t.permissionDenied); return; }
-        const result = await apiCall('update_tag.php', tagData, t.tagUpdatedSuccess, t.tagUpdateFailed);
-        if (result) await fetchAllData();
-    }, [hasPermission, t, apiCall, fetchAllData]);
+        const originalTags = tags;
+        setTags(prev => prev.map(tag => tag.id === tagData.id ? tagData : tag));
+        
+        setIsProcessing(true);
+        try {
+            const response = await fetch(`${API_BASE_URL}update_tag.php`, { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(tagData) });
+            if (!response.ok || !(await response.json()).success) throw new Error(t.tagUpdateFailed);
+            showToast(t.tagUpdatedSuccess);
+        } catch (error: any) {
+            showToast(error.message || t.tagUpdateFailed);
+            setTags(originalTags);
+        } finally {
+            setIsProcessing(false);
+        }
+    }, [hasPermission, t, tags, setTags, showToast, setIsProcessing]);
 
     const deleteTag = useCallback(async (tagId: string) => {
-        if (!hasPermission('delete_tag')) { showToast(t.permissionDenied); return; }
+        if (!hasPermission('delete_tag') || !window.confirm(t.confirmDeleteTag)) { return; }
+        const originalTags = tags;
+        setTags(prev => prev.filter(tag => tag.id !== tagId));
+        
         setIsProcessing(true);
         try {
             const response = await fetch(`${API_BASE_URL}delete_tag.php`, { method: 'POST', body: JSON.stringify({ id: tagId }) });
             const result = await response.json();
             if (!response.ok || !result.success) {
-                if (result.errorKey && t[result.errorKey as keyof typeof t]) {
-                    throw new Error(t[result.errorKey as keyof typeof t]);
-                }
+                if (result.errorKey && t[result.errorKey as keyof typeof t]) throw new Error(t[result.errorKey as keyof typeof t]);
                 throw new Error(result.error || t.tagDeleteFailed);
             }
             showToast(t.tagDeletedSuccess);
-            await fetchAllData();
         } catch (error: any) {
             showToast(error.message || t.tagDeleteFailed);
+            setTags(originalTags);
         } finally {
             setIsProcessing(false);
         }
-    }, [hasPermission, t, setIsProcessing, showToast, fetchAllData]);
+    }, [hasPermission, t, tags, setTags, setIsProcessing, showToast]);
     
     const addRole = async (roleData: Omit<Role, 'isSystem' | 'key'>) => {
         // This should probably trigger a full auth data refresh

@@ -17,8 +17,8 @@ import {
   reauthenticateWithCredential,
   EmailAuthProvider,
   updatePassword,
-  type User
 } from "firebase/auth";
+import type { User } from "firebase/auth";
 
 // Your web app's Firebase configuration
 // This is where you pasted your configuration code
@@ -56,5 +56,6 @@ export {
     reauthenticateWithCredential,
     EmailAuthProvider,
     updatePassword,
-    type User as FirebaseUser
 };
+// @FIX: Explicitly re-export the User type as FirebaseUser to resolve module error.
+export type { User as FirebaseUser };

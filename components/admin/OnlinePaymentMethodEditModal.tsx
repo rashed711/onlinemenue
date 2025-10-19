@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import type { OnlinePaymentMethod, Language, LocalizedString } from '../../types';
 import { useUI } from '../../contexts/UIContext';
 import { Modal } from '../Modal';
+import { optimizeImage } from '../../utils/imageOptimizer';
 
 interface OnlinePaymentMethodEditModalProps {
     method: OnlinePaymentMethod | null;
@@ -19,7 +20,7 @@ const emptyMethod: Omit<OnlinePaymentMethod, 'id'> = {
 };
 
 export const OnlinePaymentMethodEditModal: React.FC<OnlinePaymentMethodEditModalProps> = ({ method, onClose, onSave }) => {
-    const { t } = useUI();
+    const { t, setIsProcessing, showToast } = useUI();
     const [formData, setFormData] = useState<Omit<OnlinePaymentMethod, 'id'>>(emptyMethod);
 
     useEffect(() => {
@@ -46,14 +47,23 @@ export const OnlinePaymentMethodEditModal: React.FC<OnlinePaymentMethodEditModal
         }
     };
     
-    const handleIconChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const handleIconChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         if (file) {
-            const reader = new FileReader();
-            reader.onloadend = () => {
-                setFormData(prev => ({ ...prev, icon: reader.result as string }));
-            };
-            reader.readAsDataURL(file);
+            setIsProcessing(true);
+            try {
+                const optimizedFile = await optimizeImage(file, 64, 64, 0.9);
+                const reader = new FileReader();
+                reader.onloadend = () => {
+                    setFormData(prev => ({ ...prev, icon: reader.result as string }));
+                };
+                reader.readAsDataURL(optimizedFile);
+            } catch (error) {
+                console.error("Icon optimization failed:", error);
+                showToast("Failed to process icon. Please try another file.");
+            } finally {
+                setIsProcessing(false);
+            }
         }
     };
 

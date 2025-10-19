@@ -1,24 +1,28 @@
-import React, { useSyncExternalStore, useMemo, useEffect } from 'react';
+import React, { useSyncExternalStore, useMemo, useEffect, lazy, Suspense } from 'react';
 import { UIProvider, useUI } from './contexts/UIContext';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { DataProvider, useData } from './contexts/DataContext';
 import { CartProvider } from './contexts/CartContext';
 import { AdminProvider, useAdmin } from './contexts/AdminContext';
 
-import { MenuPage } from './components/MenuPage';
-import { LoginPage } from './components/auth/LoginPage';
+// Lazy load page components for better performance
+const MenuPage = lazy(() => import('./components/MenuPage').then(module => ({ default: module.MenuPage })));
+const LoginPage = lazy(() => import('./components/auth/LoginPage').then(module => ({ default: module.LoginPage })));
+const ProfilePage = lazy(() => import('./components/profile/ProfilePage').then(module => ({ default: module.ProfilePage })));
+const AdminPage = lazy(() => import('./components/admin/AdminPage').then(module => ({ default: module.AdminPage })));
+const SocialPage = lazy(() => import('./components/SocialPage').then(module => ({ default: module.SocialPage })));
+const CheckoutPage = lazy(() => import('./components/checkout/CheckoutPage').then(module => ({ default: module.CheckoutPage })));
+const ForgotPasswordPage = lazy(() => import('./components/auth/ForgotPasswordPage').then(module => ({ default: module.ForgotPasswordPage })));
+const ActionHandlerPage = lazy(() => import('./components/auth/ActionHandlerPage').then(module => ({ default: module.ActionHandlerPage })));
+
+// Non-page components can be imported directly
 import { CompleteProfileModal } from './components/auth/CompleteProfileModal';
-import { ProfilePage } from './components/profile/ProfilePage';
-import { AdminPage } from './components/admin/AdminPage';
-import { SocialPage } from './components/SocialPage';
-import { CheckoutPage } from './components/checkout/CheckoutPage';
 import { ToastNotification } from './components/ToastNotification';
 import { TopProgressBar } from './components/TopProgressBar';
-import { ForgotPasswordPage } from './components/auth/ForgotPasswordPage';
 import { ChangePasswordModal } from './components/profile/ChangePasswordModal';
 import { LoadingOverlay } from './components/LoadingOverlay';
 import { DeactivatedScreen } from './components/DeactivatedScreen';
-import { ActionHandlerPage } from './components/auth/ActionHandlerPage';
+
 
 // Subscribes to the browser's hashchange event.
 function subscribe(callback: () => void) {
@@ -126,7 +130,9 @@ const AppContent: React.FC = () => {
      <>
       <TopProgressBar progress={progress} show={showProgress} />
       <div className={`transition-opacity duration-300 ${transitionStage === 'in' ? 'opacity-100' : 'opacity-0'}`}>
-        {renderPage()}
+        <Suspense fallback={<LoadingOverlay isVisible={true} />}>
+          {renderPage()}
+        </Suspense>
       </div>
       <ToastNotification message={toast.message} isVisible={toast.isVisible} />
       <LoadingOverlay isVisible={isProcessing && !isLoading} />

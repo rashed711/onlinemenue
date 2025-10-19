@@ -1,6 +1,4 @@
-
-
-import React from 'react';
+import React, { useState } from 'react';
 import type { Language, RestaurantInfo } from '../types';
 // @FIX: Replaced non-existent `useTranslations` hook with direct access to the `translations` object.
 import { translations } from '../i18n/translations';
@@ -13,6 +11,7 @@ interface HeroSectionProps {
 export const HeroSection: React.FC<HeroSectionProps> = ({ language, restaurantInfo }) => {
   // @FIX: Replaced non-existent `useTranslations` hook with direct access to the `translations` object.
   const t = translations[language];
+  const [isImageLoaded, setIsImageLoaded] = useState(false);
 
   const handleScrollToMenu = (e: React.MouseEvent<HTMLAnchorElement>) => {
     e.preventDefault();
@@ -28,12 +27,15 @@ export const HeroSection: React.FC<HeroSectionProps> = ({ language, restaurantIn
   };
 
   return (
-    <section className="relative h-[60vh] min-h-[400px] max-h-[600px] flex items-center justify-center text-white text-center">
+    <section className="relative h-[60vh] min-h-[400px] max-h-[600px] flex items-center justify-center text-white text-center bg-slate-800">
       <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/40 to-black/10 z-10"></div>
+      
+      {!isImageLoaded && <div className="absolute inset-0 w-full h-full bg-slate-700 animate-pulse"></div>}
       <img 
         src={restaurantInfo.heroImage} 
         alt="Delicious food spread" 
-        className="absolute inset-0 w-full h-full object-cover"
+        className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-500 ${isImageLoaded ? 'opacity-100' : 'opacity-0'}`}
+        onLoad={() => setIsImageLoaded(true)}
       />
       <div className="relative z-20 p-4 animate-fade-in-up">
         <h1 className="text-4xl md:text-6xl font-extrabold tracking-tight mb-4" style={{ textShadow: '2px 2px 8px rgba(0,0,0,0.8)' }}>

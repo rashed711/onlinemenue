@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import type { SocialLink } from '../../types';
 import { useUI } from '../../contexts/UIContext';
 import { Modal } from '../Modal';
+import { optimizeImage } from '../../utils/imageOptimizer';
 
 interface SocialLinkEditModalProps {
     link: SocialLink | null;
@@ -17,7 +18,7 @@ const emptyLink: Omit<SocialLink, 'id'> = {
 };
 
 export const SocialLinkEditModal: React.FC<SocialLinkEditModalProps> = ({ link, onClose, onSave }) => {
-    const { t } = useUI();
+    const { t, setIsProcessing, showToast } = useUI();
     const [formData, setFormData] = useState<Omit<SocialLink, 'id'>>(emptyLink);
 
     useEffect(() => {
@@ -38,14 +39,23 @@ export const SocialLinkEditModal: React.FC<SocialLinkEditModalProps> = ({ link, 
         }
     };
     
-    const handleIconChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const handleIconChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         if (file) {
-            const reader = new FileReader();
-            reader.onloadend = () => {
-                setFormData(prev => ({ ...prev, icon: reader.result as string }));
-            };
-            reader.readAsDataURL(file);
+            setIsProcessing(true);
+            try {
+                const optimizedFile = await optimizeImage(file, 64, 64, 0.9);
+                const reader = new FileReader();
+                reader.onloadend = () => {
+                    setFormData(prev => ({ ...prev, icon: reader.result as string }));
+                };
+                reader.readAsDataURL(optimizedFile);
+            } catch (error) {
+                 console.error("Icon optimization failed:", error);
+                showToast("Failed to process icon. Please try another file.");
+            } finally {
+                setIsProcessing(false);
+            }
         }
     };
 

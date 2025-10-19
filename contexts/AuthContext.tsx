@@ -16,6 +16,7 @@ import {
     reauthenticateWithCredential,
     EmailAuthProvider,
     updatePassword,
+    // @FIX: Corrected import syntax for the FirebaseUser type to resolve a module declaration error.
     type FirebaseUser
 } from '../firebase';
 
@@ -69,10 +70,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     useEffect(() => {
         const fetchBaseAuthData = async () => {
              try {
-                const cacheBuster = `?v=${Date.now()}`;
+                const fetchOptions = { method: 'GET' };
                 const [rolesResponse, permissionsResponse] = await Promise.all([
-                    fetch(`${API_BASE_URL}get_roles.php${cacheBuster}`, { cache: 'no-cache' }),
-                    fetch(`${API_BASE_URL}get_permissions.php${cacheBuster}`, { cache: 'no-cache' })
+                    fetch(`${API_BASE_URL}get_roles.php`, fetchOptions),
+                    fetch(`${API_BASE_URL}get_permissions.php`, fetchOptions)
                 ]);
                 if (rolesResponse.ok) setRoles(await rolesResponse.json() || []);
                 if (permissionsResponse.ok) setRolePermissions(await permissionsResponse.json() || {});
@@ -345,29 +346,32 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             const payload: any = {
                 name: details.name,
                 mobile: details.mobile,
-                role: customerRole?.key || 'customer'
+                role: 'customer'
             };
-    
+
             if (newUserFirebaseData.providerId === 'google.com') {
                 payload.google_id = newUserFirebaseData.uid;
                 payload.email = newUserFirebaseData.email;
-                payload.profile_picture = newUserFirebaseData.photoURL;
-            } else { // phone or email
+                payload.profilePicture = newUserFirebaseData.photoURL;
+            } else {
                 payload.firebase_uid = newUserFirebaseData.uid;
-                payload.email = newUserFirebaseData.email;
+                if (newUserFirebaseData.email) payload.email = newUserFirebaseData.email;
             }
-            
+
             const response = await fetch(`${API_BASE_URL}add_user.php`, {
-                method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload)
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload),
             });
             const result = await response.json();
+
             if (!response.ok || !result.success) {
-                throw new Error(result.error || 'Failed to create profile.');
+                throw new Error(result.error || 'Failed to complete profile.');
             }
-            
-            // Manually log the user in with the data returned from the backend
+
             const dbUser = result.user;
             const profilePictureUrl = resolveImageUrl(dbUser.profile_picture) || `https://placehold.co/512x512/60a5fa/white?text=${(dbUser.name || 'U').charAt(0).toUpperCase()}`;
+
             setCurrentUser({ 
                 id: Number(dbUser.id), 
                 name: dbUser.name, 
@@ -379,125 +383,105 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 firebase_uid: dbUser.firebase_uid,
                 google_id: dbUser.google_id
             });
-    
             setIsCompletingProfile(false);
             setNewUserFirebaseData(null);
-    
-            // Redirect if they are on the login page
-            if (window.location.hash.startsWith('#/login')) {
-               window.location.hash = '#/';
-            }
             
         } catch (error: any) {
+            console.error("Complete profile error:", error);
             showToast(error.message || t.profileSaveFailed);
         } finally {
             setIsProcessing(false);
         }
-    }, [newUserFirebaseData, setIsProcessing, showToast, setCurrentUser, roles, t.profileSaveFailed]);
+    }, [newUserFirebaseData, roles, setIsProcessing, showToast, t.profileSaveFailed]);
 
-    const updateUserProfile = useCallback(async (userId: number, updates: { name?: string; profilePicture?: string }) => {
+     const updateUserProfile = useCallback(async (userId: number, updates: { name?: string; profilePicture?: string }) => {
         if (!currentUser || currentUser.id !== userId) return;
+
+        const originalUser = { ...currentUser };
+        
+        let optimisticUpdates: Partial<User> = {};
+        if (updates.name) optimisticUpdates.name = updates.name;
+        if (updates.profilePicture && updates.profilePicture.startsWith('data:')) {
+            optimisticUpdates.profilePicture = updates.profilePicture;
+        }
+
+        setCurrentUser(prev => prev ? { ...prev, ...optimisticUpdates } : null);
+
         setIsProcessing(true);
         try {
-            let dbPayload: any = { id: userId };
-            let uiUpdates: Partial<User> = {};
+            const payload: any = { id: userId, ...updates };
 
             if (updates.profilePicture && updates.profilePicture.startsWith('data:image')) {
-                const response = await fetch(updates.profilePicture);
-                const blob = await response.blob();
+                const res = await fetch(updates.profilePicture);
+                const blob = await res.blob();
                 const formData = new FormData();
                 formData.append('image', blob, 'profile.png');
-                formData.append('type', 'users');
-                formData.append('userId', userId.toString());
+                formData.append('type', 'profile');
                 const uploadRes = await fetch(`${API_BASE_URL}upload_image.php`, { method: 'POST', body: formData });
-                if (!uploadRes.ok) throw new Error(`Image upload failed: ${await uploadRes.text()}`);
                 const result = await uploadRes.json();
                 if (result.success && result.url) {
-                    dbPayload.profile_picture = result.url.split('?v=')[0];
-                    uiUpdates.profilePicture = resolveImageUrl(result.url);
-                } else throw new Error(result.error || 'Failed to get URL');
+                    payload.profilePicture = result.url.split('?v=')[0];
+                } else {
+                    throw new Error(result.error || 'Image upload failed');
+                }
             }
 
-            if (updates.name && updates.name !== currentUser.name) {
-                dbPayload.name = updates.name;
-                uiUpdates.name = updates.name;
+            const response = await fetch(`${API_BASE_URL}update_user.php`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+            const result = await response.json();
+            if (!response.ok || !result.success) {
+                throw new Error(result.error || t.profileUpdateFailed);
             }
+            
+            setCurrentUser(prev => prev ? { ...prev, ...result.user, profilePicture: resolveImageUrl(result.user.profilePicture) } : null);
 
-            if (Object.keys(dbPayload).length > 1) {
-                const updateResponse = await fetch(`${API_BASE_URL}update_user.php`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(dbPayload) });
-                if (!updateResponse.ok) throw new Error('Failed to update user profile.');
-            }
-
-            setCurrentUser(prev => prev ? { ...prev, ...uiUpdates } : null);
             showToast(t.profileUpdatedSuccess);
-        } catch (error) {
-            console.error("Error updating profile:", error);
-            showToast(t.profileUpdateFailed);
+        } catch (error: any) {
+            console.error("Update profile error:", error);
+            setCurrentUser(originalUser); // Revert on failure
+            showToast(error.message || t.profileUpdateFailed);
         } finally {
             setIsProcessing(false);
         }
-    }, [currentUser, showToast, t.profileUpdatedSuccess, t.profileUpdateFailed, setIsProcessing]);
-
+    }, [currentUser, setIsProcessing, showToast, t.profileUpdatedSuccess, t.profileUpdateFailed]);
+    
     const changeCurrentUserPassword = useCallback(async (currentPassword: string, newPassword: string): Promise<string | null> => {
-        if (!currentUser) return 'No user logged in.';
         setIsProcessing(true);
-
-        const firebaseUser: FirebaseUser | null = auth.currentUser;
-
-        // Check if it's a customer (Firebase user with an email provider)
-        if (firebaseUser && firebaseUser.email && (currentUser.firebase_uid || currentUser.google_id)) {
-            try {
-                const credential = EmailAuthProvider.credential(firebaseUser.email, currentPassword);
-                await reauthenticateWithCredential(firebaseUser, credential);
-                await updatePassword(firebaseUser, newPassword);
-                showToast(t.passwordChangedSuccess);
-                return null;
-            } catch (error: any) {
-                console.error("Firebase password change error:", error);
-                 if (error.code === 'auth/network-request-failed') {
-                    return t.networkRequestFailed;
-                }
-                if (error.code === 'auth/wrong-password') {
-                    return t.incorrectCurrentPassword;
-                }
-                return error.message || 'Failed to change password.';
-            } finally {
-                setIsProcessing(false);
-            }
-        } else {
-            // Staff flow (local database)
-            try {
-                const verifyResponse = await fetch(`${API_BASE_URL}login.php`, {
+        try {
+            if (!auth.currentUser?.email) {
+                 const response = await fetch(`${API_BASE_URL}update_user.php`, {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ mobile: currentUser.mobile, password: currentPassword })
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ id: currentUser?.id, password: newPassword, old_password: currentPassword })
                 });
-
-                const verifyResult = await verifyResponse.json();
-                if (!verifyResponse.ok || !verifyResult.success) {
-                    return t.incorrectCurrentPassword;
-                }
-
-                const updateResponse = await fetch(`${API_BASE_URL}update_user.php`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ id: currentUser.id, password: newPassword })
-                });
-                
-                const updateResult = await updateResponse.json();
-                if (!updateResponse.ok || !updateResult.success) {
-                    throw new Error(updateResult.error || 'Failed to change password.');
-                }
-                
-                showToast(t.passwordChangedSuccess);
-                return null;
-            } catch (error: any) {
-                return error.message || 'Failed to change password.';
-            } finally {
-                setIsProcessing(false);
+                 const result = await response.json();
+                 if (!response.ok || !result.success) {
+                    if (result.error && result.error.includes("Incorrect current password")) {
+                         return t.incorrectCurrentPassword;
+                    }
+                    throw new Error(result.error || "Failed to update password");
+                 }
+            } else {
+                const credential = EmailAuthProvider.credential(auth.currentUser.email, currentPassword);
+                await reauthenticateWithCredential(auth.currentUser, credential);
+                await updatePassword(auth.currentUser, newPassword);
             }
+
+            showToast(t.passwordChangedSuccess);
+            return null;
+        } catch (error: any) {
+            console.error("Change password error:", error);
+            if (error.code === 'auth/wrong-password' || error.code === 'auth/invalid-credential') {
+                return t.incorrectCurrentPassword;
+            }
+            return error.message || "Failed to change password.";
+        } finally {
+            setIsProcessing(false);
         }
-    }, [currentUser, setIsProcessing, showToast, t.passwordChangedSuccess, t.incorrectCurrentPassword, t.networkRequestFailed]);
+    }, [setIsProcessing, showToast, t.passwordChangedSuccess, t.incorrectCurrentPassword, currentUser]);
 
     const value: AuthContextType = {
         currentUser,

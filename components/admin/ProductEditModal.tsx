@@ -4,6 +4,7 @@ import { PlusIcon, TrashIcon } from '../icons/Icons';
 import { Modal } from '../Modal';
 import { useUI } from '../../contexts/UIContext';
 import { useData } from '../../contexts/DataContext';
+import { optimizeImage } from '../../utils/imageOptimizer';
 
 interface ProductEditModalProps {
     product: Product | null;
@@ -13,7 +14,7 @@ interface ProductEditModalProps {
 
 export const ProductEditModal: React.FC<ProductEditModalProps> = ({ product, onClose, onSave }) => {
     // @FIX: Refactored to get translations `t` directly from the `useUI` hook.
-    const { language, t } = useUI();
+    const { language, t, setIsProcessing, showToast } = useUI();
     const { categories, tags: allTags } = useData();
     
     const emptyProduct: Omit<Product, 'id' | 'rating'> = {
@@ -81,13 +82,26 @@ export const ProductEditModal: React.FC<ProductEditModalProps> = ({ product, onC
         });
     };
     
-    const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         if (file) {
-            setImageFile(file);
-            setImagePreview(URL.createObjectURL(file));
+            setIsProcessing(true);
+            try {
+                const optimizedFile = await optimizeImage(file, 800, 800);
+                setImageFile(optimizedFile);
+                setImagePreview(URL.createObjectURL(optimizedFile));
+            } catch (error) {
+                console.error("Image optimization failed:", error);
+                showToast("Image optimization failed. Please try a different image.");
+                // Fallback to original file if optimization fails
+                setImageFile(file);
+                setImagePreview(URL.createObjectURL(file));
+            } finally {
+                setIsProcessing(false);
+            }
         }
     };
+
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();

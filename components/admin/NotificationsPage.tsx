@@ -3,6 +3,8 @@ import { useUI } from '../../contexts/UIContext';
 import { useAdmin } from '../../contexts/AdminContext';
 import { useAuth } from '../../contexts/AuthContext';
 import { API_BASE_URL } from '../../utils/config';
+import { optimizeImage } from '../../utils/imageOptimizer';
+import { UploadIcon } from '../icons/Icons';
 
 export const NotificationsPage: React.FC = () => {
     const { t, isProcessing, setIsProcessing, showToast } = useUI();
@@ -11,10 +13,30 @@ export const NotificationsPage: React.FC = () => {
 
     const [message, setMessage] = useState('');
     const [imageUrl, setImageUrl] = useState('');
+    const [imageFile, setImageFile] = useState<File | null>(null);
+    const [imagePreview, setImagePreview] = useState('');
     const [targetRole, setTargetRole] = useState('all');
     const [withSound, setWithSound] = useState(true);
 
     const canSend = hasPermission('send_broadcast_notifications');
+
+    const handleImageFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (file) {
+            setIsProcessing(true);
+            try {
+                const optimizedFile = await optimizeImage(file, 512, 512);
+                setImageFile(optimizedFile);
+                setImagePreview(URL.createObjectURL(optimizedFile));
+                setImageUrl(''); // Clear manual URL if file is chosen
+            } catch (error) {
+                console.error("Notification image optimization failed:", error);
+                showToast("Image processing failed.");
+            } finally {
+                setIsProcessing(false);
+            }
+        }
+    };
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -22,9 +44,20 @@ export const NotificationsPage: React.FC = () => {
 
         setIsProcessing(true);
         try {
+            let finalImageUrl = imageUrl;
+            if (imageFile) {
+                const formData = new FormData();
+                formData.append('image', imageFile);
+                formData.append('type', 'notifications');
+                const uploadRes = await fetch(`${API_BASE_URL}upload_image.php`, { method: 'POST', body: formData });
+                const result = await uploadRes.json();
+                if (!uploadRes.ok || !result.success) throw new Error(result.error || 'Image upload failed');
+                finalImageUrl = new URL(result.url, new URL(API_BASE_URL).origin).href;
+            }
+
             const payload = {
                 message,
-                image_url: imageUrl || null,
+                image_url: finalImageUrl || null,
                 target_role: targetRole,
                 with_sound: withSound,
             };
@@ -44,6 +77,8 @@ export const NotificationsPage: React.FC = () => {
             showToast(t.notificationSentSuccess.replace('{count}', result.sent));
             setMessage('');
             setImageUrl('');
+            setImageFile(null);
+            setImagePreview('');
             setTargetRole('all');
         } catch (error) {
             console.error('Failed to send notification:', error);
@@ -77,19 +112,34 @@ export const NotificationsPage: React.FC = () => {
                         </div>
 
                         <div>
-                            <label htmlFor="imageUrl" className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
-                                {t.imageOptional}
-                            </label>
-                            <input
-                                type="text"
-                                id="imageUrl"
-                                value={imageUrl}
-                                onChange={(e) => setImageUrl(e.target.value)}
-                                className="w-full p-2 border rounded-md dark:bg-slate-700 dark:border-slate-600 dark:text-slate-100 focus:ring-primary-500 focus:border-primary-500"
-                                placeholder="https://example.com/image.png"
-                                disabled={!canSend}
-                            />
+                            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">{t.imageOptional}</label>
+                            <div className="flex flex-col sm:flex-row gap-4 items-start">
+                                <div className="flex-1 w-full">
+                                    <input
+                                        type="text"
+                                        value={imageUrl}
+                                        onChange={(e) => { setImageUrl(e.target.value); setImageFile(null); setImagePreview(''); }}
+                                        className="w-full p-2 border rounded-md dark:bg-slate-700 dark:border-slate-600 dark:text-slate-100"
+                                        placeholder="Or paste an image URL"
+                                        disabled={!canSend}
+                                    />
+                                </div>
+                                <div className="text-center text-sm text-slate-500 font-semibold my-1 sm:my-0">{t.or.toUpperCase()}</div>
+                                <div className="flex-1 w-full">
+                                    <label htmlFor="image-upload" className={`w-full flex items-center justify-center gap-2 px-4 py-2 border-2 border-dashed rounded-lg cursor-pointer ${canSend ? 'hover:border-primary-500' : ''}`}>
+                                        <UploadIcon className="w-5 h-5" />
+                                        <span>{t.language === 'ar' ? 'رفع صورة' : 'Upload Image'}</span>
+                                    </label>
+                                    <input id="image-upload" type="file" accept="image/*" onChange={handleImageFileChange} className="sr-only" disabled={!canSend} />
+                                </div>
+                            </div>
+                            {(imagePreview || imageUrl) && (
+                                <div className="mt-4">
+                                    <img src={imagePreview || imageUrl} alt="Preview" className="max-h-40 rounded-lg mx-auto shadow-md" />
+                                </div>
+                            )}
                         </div>
+
 
                         <div>
                             <label htmlFor="targetRole" className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">

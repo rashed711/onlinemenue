@@ -56,6 +56,13 @@ export const formatDateTime = (isoString: string): string => {
 
 const loadImage = (src: string): Promise<HTMLImageElement> => {
     return new Promise((resolve, reject) => {
+        if (!src) {
+            // Immediately resolve with a placeholder if src is empty
+            const placeholder = new Image();
+            placeholder.src = 'data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=';
+            placeholder.onload = () => resolve(placeholder);
+            return;
+        }
         const img = new Image();
         img.crossOrigin = 'anonymous';
         img.onload = () => resolve(img);

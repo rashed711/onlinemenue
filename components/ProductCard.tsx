@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import type { Product, Language } from '../types';
 // @FIX: Replaced non-existent `useTranslations` hook with direct access to the `translations` object.
 import { translations } from '../i18n/translations';
@@ -12,9 +12,11 @@ interface ProductCardProps {
   addToCart: (product: Product, quantity: number, options?: { [key: string]: string }) => void;
 }
 
-export const ProductCard: React.FC<ProductCardProps> = ({ product, language, onProductClick, addToCart }) => {
+export const ProductCard: React.FC<ProductCardProps> = React.memo(({ product, language, onProductClick, addToCart }) => {
   // @FIX: Replaced non-existent `useTranslations` hook with direct access to the `translations` object.
   const t = translations[language];
+  const [isImageLoaded, setIsImageLoaded] = useState(false);
+
   const handleAddToCart = (e: React.MouseEvent) => {
     e.stopPropagation();
     if (product.options && product.options.length > 0) {
@@ -40,11 +42,20 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product, language, onP
         aria-label={`View details for ${product.name[language]}`}
         className="bg-white dark:bg-slate-800 rounded-2xl shadow-lg overflow-hidden group transform hover:shadow-2xl hover:-translate-y-1 transition-all duration-300 cursor-pointer flex flex-col border border-slate-200 dark:border-slate-700/50 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 dark:focus:ring-offset-slate-950"
     >
-      <div className="relative">
-        <img src={product.image} alt={product.name[language]} className="w-full h-40 sm:h-48 object-cover" loading="lazy" />
+      <div className="relative h-40 sm:h-48">
+        {!isImageLoaded && (
+          <div className="absolute inset-0 bg-slate-200 dark:bg-slate-700 animate-pulse" />
+        )}
+        <img 
+          src={product.image} 
+          alt={product.name[language]} 
+          className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-500 ${isImageLoaded ? 'opacity-100' : 'opacity-0'}`}
+          loading="lazy"
+          onLoad={() => setIsImageLoaded(true)}
+        />
         {product.isNew && <div className="absolute top-3 end-3 bg-green-500 text-white text-xs font-bold px-3 py-1 rounded-full shadow-md">{t.newItem}</div>}
         {product.isPopular && !product.isNew && <div className="absolute top-3 end-3 bg-primary-500 text-white text-xs font-bold px-3 py-1 rounded-full shadow-md">{t.mostPopular}</div>}
-         <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent"></div>
+        <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent"></div>
       </div>
       <div className="p-3 sm:p-4 flex flex-col flex-grow">
         <h3 className="text-sm sm:text-base font-bold text-slate-800 dark:text-slate-100 h-10 sm:h-12 line-clamp-2">{product.name[language]}</h3>
@@ -72,4 +83,4 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product, language, onP
       </div>
     </div>
   );
-};
+});
