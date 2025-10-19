@@ -36,7 +36,8 @@ interface AuthContextType {
     completeProfile: (details: { name: string, mobile: string }) => Promise<void>;
     isCompletingProfile: boolean;
     newUserFirebaseData: { uid: string; phoneNumber: string | null; email?: string | null, name?: string | null, photoURL?: string | null, providerId: string } | null;
-    updateUserProfile: (userId: number, updates: { name?: string; profilePicture?: string }) => Promise<void>;
+    // FIX: Allow updating mobile number in user profile.
+    updateUserProfile: (userId: number, updates: { name?: string; mobile?: string; profilePicture?: string }) => Promise<void>;
     changeCurrentUserPassword: (currentPassword: string, newPassword: string) => Promise<string | null>;
     hasPermission: (permission: Permission) => boolean;
     isAdmin: boolean;
@@ -394,13 +395,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         }
     }, [newUserFirebaseData, roles, setIsProcessing, showToast, t.profileSaveFailed]);
 
-     const updateUserProfile = useCallback(async (userId: number, updates: { name?: string; profilePicture?: string }) => {
+     const updateUserProfile = useCallback(async (userId: number, updates: { name?: string; mobile?: string; profilePicture?: string }) => {
         if (!currentUser || currentUser.id !== userId) return;
 
         const originalUser = { ...currentUser };
         
         let optimisticUpdates: Partial<User> = {};
         if (updates.name) optimisticUpdates.name = updates.name;
+        if (updates.mobile) optimisticUpdates.mobile = updates.mobile;
         if (updates.profilePicture && updates.profilePicture.startsWith('data:')) {
             optimisticUpdates.profilePicture = updates.profilePicture;
         }

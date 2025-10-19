@@ -515,9 +515,9 @@ export const CashierPage: React.FC = () => {
 
     return (
         <>
-            <div className="flex flex-col md:flex-row md:h-[calc(100vh-5rem)] md:overflow-hidden">
+            <div className="flex flex-col md:flex-row md:h-[calc(100vh-5rem)] md:overflow-hidden -mx-4 sm:-mx-6 lg:-mx-8">
                 <div className="flex-1 flex flex-col bg-slate-100/50 dark:bg-slate-900/50 md:pb-0">
-                    <div className="p-3 border-b border-slate-200 dark:border-slate-700 shrink-0 space-y-3 -mb-56">
+                    <div className="relative z-20 p-3 border-b border-slate-200 dark:border-slate-700 shrink-0 space-y-3 -mb-72">
                         <div className="flex flex-row gap-2 items-center">
                             <div className="relative w-full flex-grow">
                                 <input
@@ -561,8 +561,8 @@ export const CashierPage: React.FC = () => {
                             ))}
                             </div>
                         </div>
-                        <div>
-                            <div className="flex items-start gap-2 overflow-x-auto scrollbar-hide py-2 pb-56 pointer-events-none">
+                        <div className="relative z-20">
+                            <div className="flex items-start gap-2 overflow-x-auto scrollbar-hide py-2 pb-72 pointer-events-none">
                                 <button
                                     onClick={() => setSelectedCategory(null)}
                                     className={`px-4 py-1.5 rounded-full text-sm font-bold transition-all duration-300 whitespace-nowrap pointer-events-auto ${selectedCategory === null ? 'bg-primary-600 text-white shadow-lg' : 'bg-white dark:bg-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-600'}`}

@@ -529,7 +529,7 @@ export const AdminPage: React.FC<AdminPageProps> = ({ activeSubRoute, reportSubR
                             {hasPermission('add_product') && <button onClick={() => setEditingProduct('new')} className="bg-green-500 text-white font-bold py-2 px-4 rounded-lg hover:bg-green-600 transition-colors flex items-center gap-2"><PlusIcon className="w-5 h-5" />{t.addNewProduct}</button>}
                         </div>
 
-                        <div className="relative bg-white dark:bg-slate-800 rounded-xl shadow-lg -mb-56 border border-slate-200 dark:border-slate-700">
+                        <div className="relative bg-white dark:bg-slate-800 rounded-xl shadow-lg mb-6 border border-slate-200 dark:border-slate-700">
                             <div className="p-4 flex justify-between items-center cursor-pointer select-none" onClick={() => setIsProductFilterExpanded(!isProductFilterExpanded)}>
                                 <div className="flex items-center gap-2">
                                     <FilterIcon className="w-5 h-5 text-slate-500 dark:text-slate-400" />
@@ -551,10 +551,10 @@ export const AdminPage: React.FC<AdminPageProps> = ({ activeSubRoute, reportSubR
                                     
                                     <div>
                                         <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">{t.category}</label>
-                                        <div className="flex items-start gap-2 overflow-x-auto scrollbar-hide py-2 pb-56 pointer-events-none">
+                                        <div className="flex items-start gap-2 overflow-x-auto scrollbar-hide py-2">
                                             <button
                                                 onClick={() => setProductFilterCategory(null)}
-                                                className={`px-4 py-1.5 rounded-full text-sm font-semibold transition-all duration-300 whitespace-nowrap pointer-events-auto ${productFilterCategory === null ? 'bg-primary-600 text-white shadow' : 'bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-300 dark:hover:bg-slate-600'}`}
+                                                className={`px-4 py-1.5 rounded-full text-sm font-semibold transition-all duration-300 whitespace-nowrap ${productFilterCategory === null ? 'bg-primary-600 text-white shadow' : 'bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-300 dark:hover:bg-slate-600'}`}
                                             >
                                                 {t.allCategories}
                                             </button>
@@ -564,7 +564,7 @@ export const AdminPage: React.FC<AdminPageProps> = ({ activeSubRoute, reportSubR
 
                                                 if (hasChildren) {
                                                     return (
-                                                        <div key={category.id} className="relative pointer-events-auto" ref={openCategoryDropdown === category.id ? categoryDropdownRef : null}>
+                                                        <div key={category.id} className="relative" ref={openCategoryDropdown === category.id ? categoryDropdownRef : null}>
                                                             <button
                                                                 onClick={() => {
                                                                     setOpenCategoryDropdown(openCategoryDropdown === category.id ? null : category.id);
@@ -601,7 +601,7 @@ export const AdminPage: React.FC<AdminPageProps> = ({ activeSubRoute, reportSubR
                                                     <button
                                                         key={category.id}
                                                         onClick={() => setProductFilterCategory(category.id)}
-                                                        className={`px-4 py-1.5 rounded-full text-sm font-semibold transition-all duration-300 whitespace-nowrap pointer-events-auto ${productFilterCategory === category.id ? 'bg-primary-600 text-white shadow' : 'bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-300 dark:hover:bg-slate-600'}`}
+                                                        className={`px-4 py-1.5 rounded-full text-sm font-semibold transition-all duration-300 whitespace-nowrap ${productFilterCategory === category.id ? 'bg-primary-600 text-white shadow' : 'bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-300 dark:hover:bg-slate-600'}`}
                                                     >
                                                         {category.name[language]}
                                                     </button>
@@ -632,7 +632,7 @@ export const AdminPage: React.FC<AdminPageProps> = ({ activeSubRoute, reportSubR
                             </div>
                         </div>
 
-                        <div className="relative z-10">
+                        <div>
                             {/* Desktop Table */}
                             <div className="hidden md:block bg-white dark:bg-slate-800 rounded-lg shadow-md overflow-hidden border border-slate-200 dark:border-slate-700">
                                 <table className="min-w-full divide-y divide-slate-200 dark:divide-slate-700">
@@ -883,7 +883,7 @@ export const AdminPage: React.FC<AdminPageProps> = ({ activeSubRoute, reportSubR
                 <header className="bg-white/80 dark:bg-slate-900/80 backdrop-blur-lg shadow-sm sticky top-0 z-20 border-b border-slate-200 dark:border-slate-700" id="admin-header">
                     <div className="px-4 h-20 flex justify-between items-center"><div className="flex items-center gap-3"><button className="p-2 md:hidden rounded-full hover:bg-slate-200/60 dark:hover:bg-slate-700/60 transition-colors" onClick={() => setSidebarOpen(true)}><MenuAlt2Icon className="w-6 h-6 text-slate-600 dark:text-slate-300" /></button><h1 className="text-xl font-bold text-slate-800 dark:text-slate-100">{t.adminPanel}</h1></div></div>
                 </header>
-                <main className="container mx-auto max-w-full px-4 sm:px-6 lg:px-8 pt-28 pb-8 flex-1">
+                <main className="container mx-auto max-w-full px-4 sm:px-6 lg:px-8 pt-[100px] pb-8 flex-1">
                     <div className={`transition-opacity duration-300 ease-in-out ${transitionStage === 'out' ? 'opacity-0' : 'opacity-100'}`}>{renderContent()}</div>
                 </main>
             </div>
