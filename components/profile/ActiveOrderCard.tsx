@@ -20,10 +20,10 @@ const OrderStatusTracker: React.FC<{ order: Order }> = ({ order }) => {
         return null;
     }
 
-    // Filter out the 'cancelled' status using its unique string ID to prevent it from appearing in the active tracker.
-    // This is more robust and aligns with the data structure in restaurantInfo.
+    // [FIXED] Filter out terminal/inactive statuses (like 'cancelled') by their color property
+    // instead of a hardcoded ID, which is more robust.
     const orderStages = restaurantInfo.orderStatusColumns.filter(
-        s => s.id.trim().toLowerCase() !== 'cancelled'
+        s => s.color !== 'slate'
     );
     
     const currentStageIndex = orderStages.findIndex(s => s.id === order.status);

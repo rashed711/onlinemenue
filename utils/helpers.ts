@@ -1,5 +1,7 @@
 import type { CartItem, Order, RestaurantInfo, Language, Product } from '../types';
 import { translations } from '../i18n/translations';
+// @FIX: Import API_BASE_URL to resolve 'Cannot find name' error.
+import { API_BASE_URL } from './config';
 
 export const formatNumber = (num: number): string => {
   try {
@@ -76,6 +78,16 @@ const loadImage = (src: string): Promise<HTMLImageElement> => {
         img.src = src;
     });
 };
+
+export const resolveImageUrl = (path: string | undefined): string => {
+  if (!path || path.startsWith('http') || path.startsWith('data:')) {
+    return path || '';
+  }
+  const domain = new URL(API_BASE_URL).origin;
+  const cleanPath = path.startsWith('/') ? path.substring(1) : path;
+  return `${domain}/${cleanPath}`;
+};
+
 
 export const generateReceiptImage = async (
   order: Order,

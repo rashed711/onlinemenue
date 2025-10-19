@@ -1,3 +1,4 @@
+
 import React, { useState, useCallback, DragEvent } from 'react';
 import { useUI } from '../../contexts/UIContext';
 import { useAdmin } from '../../contexts/AdminContext';
@@ -5,11 +6,12 @@ import { useAuth } from '../../contexts/AuthContext';
 import { API_BASE_URL } from '../../utils/config';
 import { optimizeImage } from '../../utils/imageOptimizer';
 import { PhotoIcon, TrashIcon } from '../icons/Icons';
+import { resolveImageUrl } from '../../utils/helpers';
 
 export const NotificationsPage: React.FC = () => {
     const { t, language, isProcessing, setIsProcessing, showToast } = useUI();
     const { roles } = useAdmin();
-    const { hasPermission } = useAuth();
+    const { hasPermission, currentUser } = useAuth();
 
     const [message, setMessage] = useState('');
     const [imageFile, setImageFile] = useState<File | null>(null);
@@ -84,14 +86,16 @@ export const NotificationsPage: React.FC = () => {
                 if (!uploadRes.ok || !uploadResult.success) {
                     throw new Error(uploadResult.error || 'Image upload failed');
                 }
-                finalImageUrl = uploadResult.url.split('?v=')[0]; // Use relative path
+                // Construct the full, absolute URL required by push notification services.
+                finalImageUrl = resolveImageUrl(uploadResult.url.split('?v=')[0]);
             }
 
             const payload = {
                 message,
                 image_url: finalImageUrl,
-                role: targetRole === 'all' ? null : targetRole,
-                with_sound: withSound,
+                target_role: targetRole === 'all' ? null : targetRole,
+                with_sound: withSound ? 1 : 0,
+                created_by: currentUser?.id,
             };
             
             const response = await fetch(`${API_BASE_URL}send_notification.php`, {
@@ -201,7 +205,7 @@ export const NotificationsPage: React.FC = () => {
                             >
                                 <option value="all">{t.allUsers}</option>
                                 {roles.map(role => (
-                                    <option key={role.key} value={role.name.en}>{role.name[language]}</option>
+                                    <option key={role.key} value={role.key}>{role.name[language]}</option>
                                 ))}
                             </select>
                         </div>
