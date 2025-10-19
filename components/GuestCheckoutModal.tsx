@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import type { User } from '../types';
-import { useTranslations } from '../i18n/translations';
 import { useUI } from '../contexts/UIContext';
 import { useAuth } from '../contexts/AuthContext';
 import { Modal } from './Modal';
@@ -12,9 +11,9 @@ interface DeliveryDetailsModalProps {
 }
 
 export const DeliveryDetailsModal: React.FC<DeliveryDetailsModalProps> = ({ isOpen, onClose, onConfirm }) => {
-    const { language } = useUI();
+    // @FIX: Refactored to get translations `t` directly from the `useUI` hook.
+    const { language, t } = useUI();
     const { currentUser } = useAuth();
-    const t = useTranslations(language);
     const [mobile, setMobile] = useState('');
     const [address, setAddress] = useState('');
 

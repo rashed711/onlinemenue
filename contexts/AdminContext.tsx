@@ -141,7 +141,7 @@ export const AdminProvider: React.FC<{ children: React.ReactNode }> = ({ childre
                 }
             }
             const statusId = restaurantInfo?.orderStatusColumns?.[0]?.id || 'pending';
-            const payload = { ...orderForDb, id: `ORD-${Date.now().toString().slice(-6)}-${Math.random().toString(36).substring(2, 5)}`, status: statusId, createdBy: currentUser?.id };
+            const payload = { ...orderForDb, id: `ORD-${Math.floor(Math.random() * 900000) + 100000}`, status: statusId, createdBy: currentUser?.id };
             const response = await fetch(`${API_BASE_URL}add_order.php`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
             const result = await response.json();
             if (!result.success) throw new Error(result.error || 'Failed to place order.');
@@ -172,10 +172,10 @@ export const AdminProvider: React.FC<{ children: React.ReactNode }> = ({ childre
                 await fetchAdminData(); // Refetch data to ensure consistency
 
                 setViewingOrder(prev => (prev && prev.id === orderId) ? { ...prev, ...payload } : prev);
-                showToast('Order updated.');
+                showToast(t.orderUpdatedSuccess);
             } catch (error: any) { showToast(error.message); } finally { setIsProcessing(false); }
         } else { showToast(t.permissionDenied); }
-    }, [orders, currentUser, hasPermission, showToast, t.permissionDenied, setIsProcessing, fetchAdminData, setViewingOrder]);
+    }, [orders, currentUser, hasPermission, showToast, t.permissionDenied, setIsProcessing, fetchAdminData, setViewingOrder, t.orderUpdatedSuccess]);
 
     const deleteOrder = useCallback(async (orderId: string) => {
         if (!hasPermission('delete_order') || !window.confirm(t.confirmDeleteOrder)) return;
@@ -311,7 +311,12 @@ export const AdminProvider: React.FC<{ children: React.ReactNode }> = ({ childre
             password: userData.password,
             role: roleName,
         };
-        const result = await apiCall<{ user: any }>('add_user.php', payload, 'User added successfully.', 'Failed to add user.');
+        const result = await apiCall<{ user: any }>(
+            'add_user.php',
+            payload,
+            t.userAddedSuccess,
+            t.userAddFailed
+        );
         if (result?.user) {
             const roleDetails = authRoles.find(r => r.name.en === result.user.role);
             const newUser: User = {
@@ -346,7 +351,12 @@ export const AdminProvider: React.FC<{ children: React.ReactNode }> = ({ childre
             payload.password = updatedUser.password;
         }
         
-        const result = await apiCall('update_user.php', payload, 'User updated.', 'Failed to update user.');
+        const result = await apiCall(
+            'update_user.php',
+            payload,
+            t.userUpdatedSuccess,
+            t.userUpdateFailed
+        );
         if (result) {
             const updatedUserInState = { ...updatedUser, password: '' };
             setUsers(prev => prev.map(u => u.id === updatedUser.id ? updatedUserInState : u));
@@ -359,18 +369,18 @@ export const AdminProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     const deleteUser = useCallback(async (userId: number) => {
         if (currentUser?.id === userId) { showToast(t.deleteUserError); return; }
         if (!hasPermission('delete_user') || !window.confirm(t.confirmDeleteUser)) return;
-        const result = await apiCall('delete_user.php', { id: userId }, 'User deleted.', 'Failed to delete user.');
+        const result = await apiCall('delete_user.php', { id: userId }, t.userDeletedSuccess, t.userDeleteFailed);
         if (result) setUsers(prev => prev.filter(u => u.id !== userId));
     }, [hasPermission, t, apiCall, currentUser, setUsers]);
     
     const resetUserPassword = useCallback(async (user: User, newPassword: string): Promise<boolean> => {
-        const result = await apiCall('update_user.php', { id: user.id, password: newPassword }, t.passwordResetSuccess, 'Failed to reset password.');
+        const result = await apiCall('update_user.php', { id: user.id, password: newPassword }, t.passwordResetSuccess, t.passwordResetFailed);
         return !!result;
-    }, [apiCall, t.passwordResetSuccess]);
+    }, [apiCall, t.passwordResetSuccess, t.passwordResetFailed]);
     
     const updateRolePermissions = useCallback(async (roleKey: string, permissions: Permission[]) => {
         if (!hasPermission('manage_permissions')) { showToast(t.permissionDenied); return; }
-        const result = await apiCall('update_permissions.php', { roleName: roleKey, permissions }, t.permissionsUpdatedSuccess, 'Failed to update permissions.');
+        const result = await apiCall('update_permissions.php', { roleName: roleKey, permissions }, t.permissionsUpdatedSuccess, t.permissionsUpdateFailed);
         if (result) {
             const newPermissions = { ...rolePermissions, [roleKey]: permissions };
             setRolePermissions(newPermissions);

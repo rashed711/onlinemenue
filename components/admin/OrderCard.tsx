@@ -1,6 +1,6 @@
 import React from 'react';
 import type { Order, User, RestaurantInfo, Language, Permission, OrderStatus, OrderType } from '../../types';
-import { HomeIcon, TakeawayIcon, TruckIcon, ClockIcon, UserCircleIcon, EyeIcon } from '../icons/Icons';
+import { HomeIcon, TakeawayIcon, TruckIcon, ClockIcon, UserCircleIcon, EyeIcon, ChevronDownIcon } from '../icons/Icons';
 import { useTimeAgo } from '../../hooks/useTimeAgo';
 import { useUI } from '../../contexts/UIContext';
 import { useAdmin } from '../../contexts/AdminContext';
@@ -25,18 +25,8 @@ export const OrderCard: React.FC<OrderCardProps> = ({ order, style, className })
     const timeAgo = useTimeAgo(order.timestamp, language);
 
     const currentStatusDetails = restaurantInfo?.orderStatusColumns.find(s => s.id === order.status);
-    const creator = order.createdBy ? allUsers.find(u => u.id === order.createdBy) : null;
     const totalItems = order.items.reduce((sum, item) => sum + item.quantity, 0);
     
-    const OrderTypeIcon: React.FC<{ type: OrderType }> = ({ type }) => {
-        switch (type) {
-            case 'Dine-in': return <HomeIcon className="w-5 h-5 flex-shrink-0" />;
-            case 'Takeaway': return <TakeawayIcon className="w-5 h-5 flex-shrink-0" />;
-            case 'Delivery': return <TruckIcon className="w-5 h-5 flex-shrink-0" />;
-            default: return null;
-        }
-    };
-
     const renderActions = () => {
         if (!restaurantInfo) return null;
         if (isDriver && order.status === 'out_for_delivery') {
@@ -49,25 +39,29 @@ export const OrderCard: React.FC<OrderCardProps> = ({ order, style, className })
         }
         if (canManage) {
             return (
-                <select
-                    value={order.status}
-                    onChange={(e) => {
-                        e.stopPropagation();
-                        const newStatus = e.target.value as OrderStatus;
-                        // When marking refused from dropdown, also show modal
-                        if (newStatus === 'refused' && order.status !== 'refused') {
-                            setRefusingOrder(order);
-                        } else {
-                            updateOrder(order.id, { status: newStatus });
-                        }
-                    }}
-                    onClick={(e) => e.stopPropagation()} // Prevent card click
-                    className="text-sm rounded-full border-slate-300 dark:bg-slate-700 dark:border-slate-600 focus:ring-primary-500 focus:border-primary-500 px-3 py-1 font-semibold bg-slate-100 hover:bg-slate-200"
-                >
-                   {restaurantInfo.orderStatusColumns.map(status => (
-                        <option key={status.id} value={status.id}>{status.name[language]}</option>
-                   ))}
-                </select>
+                 <div className="relative">
+                    <select
+                        value={order.status}
+                        onChange={(e) => {
+                            e.stopPropagation();
+                            const newStatus = e.target.value as OrderStatus;
+                            if (newStatus === 'refused' && order.status !== 'refused') {
+                                setRefusingOrder(order);
+                            } else {
+                                updateOrder(order.id, { status: newStatus });
+                            }
+                        }}
+                        onClick={(e) => e.stopPropagation()}
+                        className="appearance-none text-sm rounded-full border-transparent focus:ring-2 focus:ring-primary-500 ps-3 pe-8 py-1 font-semibold bg-slate-100 dark:bg-slate-700 text-slate-800 dark:text-slate-100"
+                    >
+                    {restaurantInfo.orderStatusColumns.map(status => (
+                            <option key={status.id} value={status.id}>{status.name[language]}</option>
+                    ))}
+                    </select>
+                    <div className="pointer-events-none absolute inset-y-0 end-0 flex items-center px-2 text-slate-700 dark:text-slate-200">
+                        <ChevronDownIcon className="w-4 h-4" />
+                    </div>
+                </div>
             );
         }
         return null;
@@ -77,7 +71,6 @@ export const OrderCard: React.FC<OrderCardProps> = ({ order, style, className })
     const statusColor = currentStatusDetails?.color || 'slate';
     const borderColorClass = `border-${statusColor}-500`;
     
-    // Dynamically set background color based on order type
     const getOrderTypeColorClasses = (orderType: OrderType): string => {
         switch (orderType) {
             case 'Dine-in':
@@ -91,57 +84,60 @@ export const OrderCard: React.FC<OrderCardProps> = ({ order, style, className })
         }
     };
     
+    const customerName = order.orderType === 'Dine-in' && order.tableNumber ? (
+        `${t.table}: ${formatNumber(parseInt(order.tableNumber, 10))}`
+    ) : (
+        order.customer.name || 'Guest'
+    );
+    
     return (
         <div 
             onClick={() => setViewingOrder(order)} 
             style={style} 
-            className={`rounded-lg shadow-md p-3.5 flex flex-col cursor-pointer transition-all hover:shadow-lg hover:-translate-y-0.5 border-s-4 ${borderColorClass} ${getOrderTypeColorClasses(order.orderType)} ${className || ''}`}
+            className={`rounded-lg shadow-md p-3 cursor-pointer transition-all hover:shadow-lg hover:-translate-y-0.5 border-s-4 ${borderColorClass} ${getOrderTypeColorClasses(order.orderType)} ${className || ''}`}
         >
-            {/* Header */}
-            <div className="flex justify-between items-start mb-2">
-                <p className="font-bold font-mono text-slate-500 dark:text-slate-400 text-sm">{order.id}</p>
-                <div className="text-end">
-                    <p className="font-extrabold text-lg text-slate-800 dark:text-slate-100 leading-tight">{order.total.toFixed(2)}</p>
-                    <p className="text-xs text-slate-500 dark:text-slate-400 -mt-1">{t.currency}</p>
+            <div className="space-y-2.5">
+                {/* Top Row: Price and Order ID */}
+                <div className={`flex justify-between items-center ${language === 'ar' ? 'flex-row-reverse' : ''}`}>
+                    <p className="font-extrabold text-xl text-slate-800 dark:text-slate-100">
+                        {order.total.toFixed(2)}
+                        <span className="text-sm font-semibold text-slate-500 dark:text-slate-400 ms-1">{t.currency}</span>
+                    </p>
+                    <p className="font-mono text-xs text-slate-500 dark:text-slate-400">{order.id}</p>
                 </div>
-            </div>
 
-            {/* Body */}
-            <div className="space-y-3 flex-grow my-2">
-                <div className="flex items-center gap-2 font-bold text-base text-slate-700 dark:text-slate-200">
-                    <OrderTypeIcon type={order.orderType} />
-                    <span className="truncate" title={order.customer.name}>
-                         {order.orderType === 'Dine-in' && order.tableNumber ? (
-                            `${t.table}: ${formatNumber(parseInt(order.tableNumber, 10))}`
-                        ) : (
-                            order.customer.name || 'Guest'
-                        )}
-                    </span>
-                </div>
-                <div className="text-xs text-slate-500 dark:text-slate-400 space-y-1.5 pl-1">
-                     <div className="flex items-center gap-2">
-                        <ClockIcon className="w-4 h-4 flex-shrink-0" />
+                {/* Middle Row: Time and Customer */}
+                <div className={`flex justify-between items-center ${language === 'ar' ? 'flex-row-reverse' : ''}`}>
+                    <div className="flex items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400">
+                        <ClockIcon className="w-4 h-4" />
                         <span>{timeAgo}</span>
-                     </div>
-                     {creator && (
-                         <div className="flex items-center gap-2">
-                            <UserCircleIcon className="w-4 h-4 flex-shrink-0" />
-                            <span className="truncate">{creator.name}</span>
-                         </div>
-                     )}
+                    </div>
+                    <div className="flex items-center gap-1.5 font-bold text-base text-slate-700 dark:text-slate-200">
+                        {language === 'ar' ? (
+                            <>
+                                <UserCircleIcon className="w-5 h-5 text-slate-500 dark:text-slate-400" />
+                                <span className="truncate" title={customerName}>{customerName}</span>
+                            </>
+                        ) : (
+                            <>
+                                <span className="truncate" title={customerName}>{customerName}</span>
+                                <UserCircleIcon className="w-5 h-5 text-slate-500 dark:text-slate-400" />
+                            </>
+                        )}
+                    </div>
                 </div>
-            </div>
-            
-            {/* Footer */}
-            <div className="flex justify-between items-center pt-3 mt-auto border-t border-slate-200/80 dark:border-slate-700/80">
-                <span className="text-xs font-semibold bg-slate-200 dark:bg-slate-700 px-2 py-0.5 rounded-full">
-                    {totalItems} {t.items}
-                </span>
-                <div className="flex items-center gap-1 sm:gap-2">
-                     {renderActions()}
-                     <button onClick={(e) => { e.stopPropagation(); setViewingOrder(order); }} className="p-1.5 text-slate-500 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-full" title={t.viewOrderDetails}>
-                        <EyeIcon className="w-5 h-5" />
-                    </button>
+
+                {/* Bottom Row: Actions and Item Count */}
+                <div className={`flex justify-between items-center pt-2 border-t border-slate-200/80 dark:border-slate-700/80 ${language === 'ar' ? 'flex-row-reverse' : ''}`}>
+                    <div className="flex items-center gap-1">
+                        <button onClick={(e) => { e.stopPropagation(); setViewingOrder(order); }} className="p-1.5 text-slate-500 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-full" title={t.viewOrderDetails}>
+                            <EyeIcon className="w-5 h-5" />
+                        </button>
+                        {renderActions()}
+                    </div>
+                    <span className="text-xs font-semibold bg-slate-200 dark:bg-slate-700 px-2.5 py-1 rounded-full text-slate-700 dark:text-slate-200">
+                        {totalItems} {t.items}
+                    </span>
                 </div>
             </div>
         </div>

@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import { useUI } from '../contexts/UIContext';
-import { useTranslations } from '../i18n/translations';
 import { DownloadIcon } from './icons/Icons';
 import { useCart } from '../contexts/CartContext';
 import { useData } from '../contexts/DataContext';
@@ -13,10 +12,10 @@ interface ReceiptModalProps {
 }
 
 export const ReceiptModal: React.FC<ReceiptModalProps> = ({ isOpen, onClose, receiptImageUrl }) => {
-    const { language } = useUI();
+    // @FIX: Refactored to get translations `t` directly from the `useUI` hook.
+    const { language, t } = useUI();
     const { restaurantInfo } = useData();
     const { clearCart } = useCart();
-    const t = useTranslations(language);
     const [canShare, setCanShare] = useState(false);
     const [isSharing, setIsSharing] = useState(false);
 

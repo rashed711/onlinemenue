@@ -883,7 +883,7 @@ export const AdminPage: React.FC<AdminPageProps> = ({ activeSubRoute, reportSubR
                 <header className="bg-white/80 dark:bg-slate-900/80 backdrop-blur-lg shadow-sm sticky top-0 z-20 border-b border-slate-200 dark:border-slate-700" id="admin-header">
                     <div className="px-4 h-20 flex justify-between items-center"><div className="flex items-center gap-3"><button className="p-2 md:hidden rounded-full hover:bg-slate-200/60 dark:hover:bg-slate-700/60 transition-colors" onClick={() => setSidebarOpen(true)}><MenuAlt2Icon className="w-6 h-6 text-slate-600 dark:text-slate-300" /></button><h1 className="text-xl font-bold text-slate-800 dark:text-slate-100">{t.adminPanel}</h1></div></div>
                 </header>
-                <main className="container mx-auto max-w-full px-4 sm:px-6 lg:px-8 pt-24 pb-8 flex-1">
+                <main className="container mx-auto max-w-full px-4 sm:px-6 lg:px-8 pt-28 pb-8 flex-1">
                     <div className={`transition-opacity duration-300 ease-in-out ${transitionStage === 'out' ? 'opacity-0' : 'opacity-100'}`}>{renderContent()}</div>
                 </main>
             </div>

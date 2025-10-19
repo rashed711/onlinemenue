@@ -43,6 +43,14 @@ const CopiedButton: React.FC<{ textToCopy: string, children: React.ReactNode }> 
     );
 };
 
+const getOrderTypeFromUrl = (): OrderType => {
+    const params = new URLSearchParams(window.location.hash.split('?')[1]);
+    const type = params.get('orderType');
+    if (type === 'Delivery' || type === 'Takeaway') {
+        return type;
+    }
+    return 'Delivery'; // Default if not specified or invalid
+};
 
 export const CheckoutPage: React.FC = () => {
     const { language, t, isProcessing, setIsProcessing } = useUI();
@@ -55,13 +63,21 @@ export const CheckoutPage: React.FC = () => {
     const [name, setName] = useState('');
     const [mobile, setMobile] = useState('');
     const [address, setAddress] = useState('');
-    const [orderType, setOrderType] = useState<OrderType>('Delivery');
+    const [orderType, setOrderType] = useState<OrderType>(getOrderTypeFromUrl);
     const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('cod');
     const [selectedOnlineMethod, setSelectedOnlineMethod] = useState<OnlinePaymentMethod | null>(null);
     const [receiptFile, setReceiptFile] = useState<File | null>(null);
     const [receiptPreview, setReceiptPreview] = useState<string | null>(null);
     const [isReceiptModalOpen, setIsReceiptModalOpen] = useState(false);
     const [receiptImageUrl, setReceiptImageUrl] = useState('');
+
+    useEffect(() => {
+        const handleHashChange = () => {
+            setOrderType(getOrderTypeFromUrl());
+        };
+        window.addEventListener('hashchange', handleHashChange);
+        return () => window.removeEventListener('hashchange', handleHashChange);
+    }, []);
 
     useEffect(() => {
         if (currentUser) {

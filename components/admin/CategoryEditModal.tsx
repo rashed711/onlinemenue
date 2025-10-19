@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import type { Category, Language, LocalizedString } from '../../types';
-import { useTranslations } from '../../i18n/translations';
 import { Modal } from '../Modal';
 import { useUI } from '../../contexts/UIContext';
 
@@ -32,8 +31,8 @@ const getDescendantIds = (categoryId: number, allCategories: Category[]): number
 
 
 export const CategoryEditModal: React.FC<CategoryEditModalProps> = ({ category, categories, onClose, onSave }) => {
-    const { language } = useUI();
-    const t = useTranslations(language);
+    // @FIX: Refactored to get translations `t` directly from the `useUI` hook.
+    const { language, t } = useUI();
     const [formData, setFormData] = useState<Omit<Category, 'id'>>(emptyCategory);
 
     useEffect(() => {

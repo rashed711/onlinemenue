@@ -1,6 +1,7 @@
 import React, { useState, useMemo, useCallback, useRef, useEffect } from 'react';
 import type { Language, Category, Tag, LocalizedString } from '../types';
-import { useTranslations } from '../i18n/translations';
+// @FIX: Replaced non-existent `useTranslations` hook with direct access to the `translations` object.
+import { translations } from '../i18n/translations';
 import { SearchIcon, FilterIcon, ChevronRightIcon } from './icons/Icons';
 import { formatNumber } from '../utils/helpers';
 
@@ -27,7 +28,8 @@ export const SearchAndFilter: React.FC<SearchAndFilterProps> = ({
   selectedTags,
   setSelectedTags,
 }) => {
-  const t = useTranslations(language);
+  // @FIX: Replaced non-existent `useTranslations` hook with direct access to the `translations` object.
+  const t = translations[language];
   const [isFilterOpen, setIsFilterOpen] = useState(false);
   const [openDropdown, setOpenDropdown] = useState<number | null>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);

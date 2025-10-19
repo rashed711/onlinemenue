@@ -1,6 +1,5 @@
 import React, { useState, useMemo } from 'react';
 import type { Order, Language, CartItem, Product } from '../../types';
-import { useTranslations } from '../../i18n/translations';
 import { PlusIcon, TrashIcon, MinusIcon } from '../icons/Icons';
 import { ProductModal } from '../ProductModal';
 import { Modal } from '../Modal';
@@ -15,9 +14,9 @@ interface OrderEditModalProps {
 }
 
 export const OrderEditModal: React.FC<OrderEditModalProps> = ({ order, onClose, onSave }) => {
-    const { language } = useUI();
+    // @FIX: Refactored to get translations `t` directly from the `useUI` hook.
+    const { language, t } = useUI();
     const { products: allProducts } = useData();
-    const t = useTranslations(language);
     
     const [editedItems, setEditedItems] = useState<CartItem[]>(() => JSON.parse(JSON.stringify(order.items)));
     const [notes, setNotes] = useState(order.notes || '');

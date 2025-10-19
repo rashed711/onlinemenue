@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import type { Tag, Language, LocalizedString } from '../../types';
-import { useTranslations } from '../../i18n/translations';
 import { Modal } from '../Modal';
 import { useUI } from '../../contexts/UIContext';
 
@@ -15,8 +14,8 @@ const emptyTag: Omit<Tag, 'id'> = {
 };
 
 export const TagEditModal: React.FC<TagEditModalProps> = ({ tag, onClose, onSave }) => {
-    const { language } = useUI();
-    const t = useTranslations(language);
+    // @FIX: Refactored to get translations `t` directly from the `useUI` hook.
+    const { language, t } = useUI();
     const [formData, setFormData] = useState<Omit<Tag, 'id'>>(emptyTag);
 
     useEffect(() => {

@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import type { Role } from '../../types';
-import { useTranslations } from '../../i18n/translations';
 import { Modal } from '../Modal';
 import { useUI } from '../../contexts/UIContext';
 import { useAdmin } from '../../contexts/AdminContext';
@@ -16,9 +15,9 @@ const emptyRole: Omit<Role, 'key' | 'isSystem'> = {
 };
 
 export const RoleEditModal: React.FC<RoleEditModalProps> = ({ role, onClose, onSave }) => {
-    const { language } = useUI();
+    // @FIX: Refactored to get translations `t` directly from the `useUI` hook.
+    const { language, t } = useUI();
     const { roles: existingRoles } = useAdmin();
-    const t = useTranslations(language);
     const [formData, setFormData] = useState(emptyRole);
     const [error, setError] = useState('');
 

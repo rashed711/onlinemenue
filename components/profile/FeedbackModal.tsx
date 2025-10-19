@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
 import type { Order } from '../../types';
-import { useTranslations } from '../../i18n/translations';
 import { StarRating } from '../StarRating';
 import { useUI } from '../../contexts/UIContext';
 import { Modal } from '../Modal';
@@ -12,8 +11,8 @@ interface FeedbackModalProps {
 }
 
 export const FeedbackModal: React.FC<FeedbackModalProps> = ({ order, onClose, onSave }) => {
-    const { language } = useUI();
-    const t = useTranslations(language);
+    // @FIX: Refactored to get translations `t` directly from the `useUI` hook.
+    const { language, t } = useUI();
     const [rating, setRating] = useState(5);
     const [comment, setComment] = useState('');
 

@@ -1,11 +1,13 @@
 import React, { useRef, useCallback, useEffect } from 'react';
 import type { Product, Language, CartItem } from '../types';
 import { ProductCard } from './ProductCard';
-import { useTranslations } from '../i18n/translations';
+// @FIX: Replaced non-existent `useTranslations` hook with direct access to the `translations` object.
+import { translations } from '../i18n/translations';
 import { ChevronLeftIcon, ChevronRightIcon } from './icons/Icons';
 
 interface ProductListProps {
-  titleKey: keyof ReturnType<typeof useTranslations>;
+  // @FIX: Corrected type for titleKey to use the imported translations object instead of a non-existent hook.
+  titleKey: keyof typeof translations['en'];
   products: Product[];
   language: Language;
   onProductClick: (product: Product) => void;
@@ -14,7 +16,8 @@ interface ProductListProps {
 }
 
 export const ProductList: React.FC<ProductListProps> = ({ titleKey, products, language, onProductClick, addToCart, slider = false }) => {
-  const t = useTranslations(language);
+  // @FIX: Replaced non-existent `useTranslations` hook with direct access to the `translations` object.
+  const t = translations[language];
   const sliderRef = useRef<HTMLDivElement>(null);
   const isRtl = language === 'ar';
 

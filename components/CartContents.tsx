@@ -1,7 +1,7 @@
 import React, { useMemo } from 'react';
 import type { CartItem, Language, OrderType, RestaurantInfo } from '../types';
-import { PlusIcon, MinusIcon, CloseIcon } from './icons/Icons';
-import { calculateTotal, formatNumber } from '../utils/helpers';
+import { PlusIcon, MinusIcon, CloseIcon, TrashIcon } from './icons/Icons';
+import { calculateTotal, formatNumber, calculateItemUnitPrice, calculateItemTotal } from '../utils/helpers';
 import { TableSelector } from './TableSelector';
 import { useCart } from '../contexts/CartContext';
 import { useUI } from '../contexts/UIContext';
@@ -34,7 +34,7 @@ export const CartContents: React.FC<CartContentsProps> = ({
 
   const handleCheckout = () => {
       if (onClose) onClose();
-      window.location.hash = '#/checkout';
+      window.location.hash = `#/checkout?orderType=${orderType}`;
   }
 
   const handlePlaceOrderClick = () => {
@@ -83,31 +83,55 @@ export const CartContents: React.FC<CartContentsProps> = ({
           </div>
         </div>
       ) : (
-        <div className="overflow-y-auto p-4 space-y-4 flex-grow">
+        <div className="overflow-y-auto p-4 space-y-3 flex-grow">
           {cartItems.map(item => (
-            <div key={getItemVariantId(item)} className="flex items-start gap-4">
-              <img src={item.product.image} alt={item.product.name[language]} className="w-20 h-20 rounded-lg object-cover" loading="lazy" />
-              <div className="flex-grow">
-                <h3 className="font-semibold text-slate-800 dark:text-slate-100">{item.product.name[language]}</h3>
-                {item.options && (
-                    <div className="text-xs text-slate-500 dark:text-slate-400">
-                        {Object.entries(item.options).map(([optionKey, valueKey]) => {
-                            const option = item.product.options?.find(o => o.name.en === optionKey);
-                            const value = option?.values.find(v => v.name.en === valueKey);
-                            if (option && value) return <div key={optionKey}>{option.name[language]}: {value.name[language]}</div>
-                            return null;
-                        })}
-                    </div>
-                )}
-                <p className="font-bold text-primary-500 mt-1">{(item.product.price).toFixed(2)} {t.currency}</p>
-              </div>
-              <div className="flex flex-col items-end gap-2">
-                <div className="flex items-center border border-slate-200 dark:border-slate-700 rounded-full">
-                  <button onClick={() => updateCartQuantity(item.product.id, item.options, item.quantity - 1)} className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-l-full" aria-label="Decrease quantity"><MinusIcon className="w-4 h-4 text-slate-700 dark:text-slate-300" /></button>
-                  <span className="px-2 font-semibold text-sm text-slate-800 dark:text-slate-100" aria-live="polite">{formatNumber(item.quantity)}</span>
-                  <button onClick={() => updateCartQuantity(item.product.id, item.options, item.quantity + 1)} className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-r-full" aria-label="Increase quantity"><PlusIcon className="w-4 h-4 text-slate-700 dark:text-slate-300" /></button>
+            <div key={getItemVariantId(item)} className="flex items-start gap-3 p-3 bg-slate-100 dark:bg-slate-900/50 rounded-lg">
+                <img src={item.product.image} alt={item.product.name[language]} className="w-16 h-16 rounded-lg object-cover flex-shrink-0" loading="lazy" />
+                <div className="flex-grow">
+                    <p className="font-semibold text-sm text-slate-800 dark:text-slate-200">{item.product.name[language]}</p>
+                    {item.options && Object.keys(item.options).length > 0 && (
+                        <div className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                            {Object.entries(item.options).map(([optionKey, valueKey]) => {
+                                const option = item.product.options?.find(o => o.name.en === optionKey);
+                                const value = option?.values.find(v => v.name.en === valueKey);
+                                if (option && value) {
+                                    const priceModifierText = value.priceModifier > 0
+                                        ? ` (+${value.priceModifier.toFixed(2)})`
+                                        : '';
+                                    return <div key={optionKey}>+ {value.name[language]}{priceModifierText}</div>;
+                                }
+                                return null;
+                            })}
+                        </div>
+                    )}
+                    {item.quantity > 1 && (
+                      <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                          @ {calculateItemUnitPrice(item).toFixed(2)} {t.currency}
+                      </p>
+                    )}
                 </div>
-              </div>
+                <div className="flex flex-col items-end gap-2 flex-shrink-0">
+                    <div className="flex items-center gap-2">
+                        <button
+                            onClick={() => updateCartQuantity(item.product.id, item.options, item.quantity - 1)}
+                            className="p-1.5 rounded-full bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 dark:hover:bg-slate-600"
+                            aria-label="Decrease quantity"
+                        >
+                            {item.quantity === 1 ? <TrashIcon className="w-4 h-4 text-red-500" /> : <MinusIcon className="w-4 h-4 text-slate-700 dark:text-slate-300" />}
+                        </button>
+                        <span className="font-bold w-6 text-center text-slate-800 dark:text-slate-200">{formatNumber(item.quantity)}</span>
+                        <button
+                            onClick={() => updateCartQuantity(item.product.id, item.options, item.quantity + 1)}
+                            className="p-1.5 rounded-full bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 dark:hover:bg-slate-600"
+                            aria-label="Increase quantity"
+                        >
+                            <PlusIcon className="w-4 h-4 text-slate-700 dark:text-slate-300" />
+                        </button>
+                    </div>
+                    <p className="font-bold text-sm text-slate-800 dark:text-slate-200">
+                        {calculateItemTotal(item).toFixed(2)} {t.currency}
+                    </p>
+                </div>
             </div>
           ))}
         </div>

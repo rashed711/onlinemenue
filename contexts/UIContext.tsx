@@ -1,7 +1,8 @@
 import React, { createContext, useState, useEffect, useCallback, useContext, useMemo } from 'react';
 import type { Language, Theme } from '../types';
 import { usePersistentState } from '../hooks/usePersistentState';
-import { useTranslations, translations } from '../i18n/translations';
+// @FIX: Replaced non-existent `useTranslations` hook with direct access to the `translations` object.
+import { translations } from '../i18n/translations';
 
 interface UIContextType {
     language: Language;
@@ -36,7 +37,8 @@ export const UIProvider: React.FC<{ children: React.ReactNode }> = ({ children }
     const [isProcessing, setIsProcessing] = useState(false);
     
     // Translation hook
-    const t = useTranslations(language);
+    // @FIX: Replaced non-existent `useTranslations` hook with direct access to the `translations` object.
+    const t = translations[language];
 
     // Progress Bar State
     const [progress, setProgress] = useState(100);

@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import type { Product, Language, LocalizedString, Category, ProductOption, ProductOptionValue, Tag } from '../../types';
-import { useTranslations } from '../../i18n/translations';
 import { PlusIcon, TrashIcon } from '../icons/Icons';
 import { Modal } from '../Modal';
 import { useUI } from '../../contexts/UIContext';
@@ -13,9 +12,9 @@ interface ProductEditModalProps {
 }
 
 export const ProductEditModal: React.FC<ProductEditModalProps> = ({ product, onClose, onSave }) => {
-    const { language } = useUI();
+    // @FIX: Refactored to get translations `t` directly from the `useUI` hook.
+    const { language, t } = useUI();
     const { categories, tags: allTags } = useData();
-    const t = useTranslations(language);
     
     const emptyProduct: Omit<Product, 'id' | 'rating'> = {
         code: '',

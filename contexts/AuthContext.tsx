@@ -167,7 +167,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                             });
                             setIsCompletingProfile(false);
                             if (window.location.hash.startsWith('#/login')) {
-                               window.location.hash = '#/';
+                               const customerRole = roles.find(r => r.name.en.toLowerCase() === 'customer');
+                               if (customerRole && String(dbUser.role_id) === customerRole.key) {
+                                   window.location.hash = '#/profile';
+                               } else {
+                                   window.location.hash = '#/admin';
+                               }
                             }
                         }
                     } else if (response.status === 404 && result.error.includes("not found")) {
@@ -187,7 +192,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                     }
                 } catch (error) {
                     console.error("Auth state change error:", error);
-                    showToast(t.language === 'ar' ? 'فشل التحقق من الحساب مع الخادم. يرجى المحاولة مرة أخرى.' : 'Could not verify account with server. Please try again.');
+                    showToast(t.accountVerificationFailed);
                     if (isMounted) await logout();
                 } finally {
                     if (isMounted) setIsProcessing(false);
@@ -208,7 +213,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             isMounted = false;
             unsubscribe();
         };
-    }, [roles, setIsProcessing, showToast, logout, t.language, t.pleaseVerifyEmail]);
+    }, [roles, setIsProcessing, showToast, logout, t.pleaseVerifyEmail, t.accountVerificationFailed]);
 
     const userRoleDetails = useMemo(() => roles.find(r => r.key === currentUser?.role), [roles, currentUser]);
     
@@ -287,11 +292,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             return null;
         } catch (error: any) {
             console.error("Email registration error:", error);
+            if (error.code === 'auth/network-request-failed') {
+                return t.networkRequestFailed;
+            }
             return error.message || "Registration failed.";
         } finally {
             setIsProcessing(false);
         }
-    }, [setIsProcessing, showToast, t.emailVerificationSent]);
+    }, [setIsProcessing, showToast, t.emailVerificationSent, t.networkRequestFailed]);
     
     const loginWithEmailPassword = useCallback(async (email: string, password: string): Promise<string | null> => {
         setIsProcessing(true);
@@ -300,6 +308,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             return null; // onAuthStateChanged will handle the rest
         } catch (error: any) {
             console.error("Email login error:", error);
+            if (error.code === 'auth/network-request-failed') {
+                return t.networkRequestFailed;
+            }
             if (error.code === 'auth/invalid-credential') {
                 return t.invalidCredentials;
             }
@@ -307,7 +318,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         } finally {
             setIsProcessing(false);
         }
-    }, [setIsProcessing, t.invalidCredentials]);
+    }, [setIsProcessing, t.invalidCredentials, t.networkRequestFailed]);
     
     const sendPasswordResetLink = useCallback(async (email: string): Promise<string | null> => {
         setIsProcessing(true);
@@ -316,11 +327,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             return null;
         } catch (error: any) {
             console.error("Password reset error:", error);
+            if (error.code === 'auth/network-request-failed') {
+                return t.networkRequestFailed;
+            }
             return error.message || "Failed to send reset link.";
         } finally {
             setIsProcessing(false);
         }
-    }, [setIsProcessing]);
+    }, [setIsProcessing, t.networkRequestFailed]);
 
 
     const completeProfile = useCallback(async (details: { name: string, mobile: string }) => {
@@ -375,11 +389,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             }
             
         } catch (error: any) {
-            showToast(error.message || 'Failed to save profile.');
+            showToast(error.message || t.profileSaveFailed);
         } finally {
             setIsProcessing(false);
         }
-    }, [newUserFirebaseData, setIsProcessing, showToast, setCurrentUser, roles]);
+    }, [newUserFirebaseData, setIsProcessing, showToast, setCurrentUser, roles, t.profileSaveFailed]);
 
     const updateUserProfile = useCallback(async (userId: number, updates: { name?: string; profilePicture?: string }) => {
         if (!currentUser || currentUser.id !== userId) return;
@@ -418,11 +432,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             showToast(t.profileUpdatedSuccess);
         } catch (error) {
             console.error("Error updating profile:", error);
-            showToast('Failed to update profile.');
+            showToast(t.profileUpdateFailed);
         } finally {
             setIsProcessing(false);
         }
-    }, [currentUser, showToast, t.profileUpdatedSuccess, setIsProcessing]);
+    }, [currentUser, showToast, t.profileUpdatedSuccess, t.profileUpdateFailed, setIsProcessing]);
 
     const changeCurrentUserPassword = useCallback(async (currentPassword: string, newPassword: string): Promise<string | null> => {
         if (!currentUser) return 'No user logged in.';
@@ -440,6 +454,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 return null;
             } catch (error: any) {
                 console.error("Firebase password change error:", error);
+                 if (error.code === 'auth/network-request-failed') {
+                    return t.networkRequestFailed;
+                }
                 if (error.code === 'auth/wrong-password') {
                     return t.incorrectCurrentPassword;
                 }
@@ -480,7 +497,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 setIsProcessing(false);
             }
         }
-    }, [currentUser, setIsProcessing, showToast, t.passwordChangedSuccess, t.incorrectCurrentPassword]);
+    }, [currentUser, setIsProcessing, showToast, t.passwordChangedSuccess, t.incorrectCurrentPassword, t.networkRequestFailed]);
 
     const value: AuthContextType = {
         currentUser,

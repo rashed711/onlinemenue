@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import type { Order, RestaurantInfo } from '../../types';
-import { useTranslations } from '../../i18n/translations';
+import type { Order, RestaurantInfo, OrderType } from '../../types';
 import { DocumentTextIcon, PencilIcon, ShareIcon, PrintIcon, TrashIcon, CloseIcon, StarIcon, UserIcon, ClockIcon, HomeIcon, TakeawayIcon, TruckIcon, UserCircleIcon, CreditCardIcon, CheckIcon } from '../icons/Icons';
 import { StarRating } from '../StarRating';
 import { formatDateTime, formatNumber, generateReceiptImage } from '../../utils/helpers';
@@ -25,33 +24,38 @@ const getStatusChipColor = (status: string, restaurantInfo: RestaurantInfo) => {
     return `bg-${color}-100 text-${color}-800 dark:bg-${color}-900/50 dark:text-${color}-300 border-${color}-200 dark:border-${color}-500/30`;
 };
 
+const InfoCard: React.FC<{ children: React.ReactNode }> = ({ children }) => (
+    <div className="bg-white dark:bg-slate-800 p-4 rounded-xl border border-slate-200 dark:border-slate-700 space-y-4">
+        {children}
+    </div>
+);
+
+
 const InfoItem: React.FC<{ label: string; icon: React.ReactNode; children: React.ReactNode; className?: string }> = ({ label, icon, children, className }) => (
     <div className={className}>
-        <p className="flex items-center gap-2 text-xs font-semibold text-slate-500 dark:text-slate-400 mb-1">
+        <p className="flex items-center gap-2 text-sm font-semibold text-slate-500 dark:text-slate-400 mb-1">
             {icon}
             <span>{label}</span>
         </p>
-        <div className="ps-6 font-medium text-slate-800 dark:text-slate-100 text-sm">{children}</div>
+        <div className="ps-7 font-medium text-slate-800 dark:text-slate-100 text-sm">{children}</div>
     </div>
 );
 
 
 export const OrderDetailsModal: React.FC<OrderDetailsModalProps> = ({ order, onClose, canEdit, onEdit, canDelete, onDelete, creatorName }) => {
-    const { language } = useUI();
+    // @FIX: Refactored to get translations `t` directly from the `useUI` hook.
+    const { language, t, isProcessing, setIsProcessing } = useUI();
     const { restaurantInfo } = useData();
     const { updateOrder } = useAdmin();
     const { hasPermission } = useAuth();
-    const t = useTranslations(language);
     
     const [isReceiptViewerOpen, setIsReceiptViewerOpen] = useState(false);
-    const { isProcessing, setIsProcessing } = useUI();
     const [codPaymentDetail, setCodPaymentDetail] = useState('');
     const [isEditingPayment, setIsEditingPayment] = useState(false);
 
     const canEditPayment = hasPermission('edit_recorded_payment');
 
     useEffect(() => {
-        // Only trigger editing for non-online payments
         const shouldBeEditing = !order.paymentDetail && canEditPayment && order.paymentMethod !== 'online';
         setIsEditingPayment(shouldBeEditing);
         setCodPaymentDetail(order.paymentDetail || '');
@@ -97,10 +101,7 @@ export const OrderDetailsModal: React.FC<OrderDetailsModalProps> = ({ order, onC
                         <head>
                             <title>Print Order ${order.id}</title>
                             <style>
-                                @media print {
-                                    @page { size: 80mm auto; margin: 0; }
-                                    body { margin: 0; padding: 10px; }
-                                }
+                                @media print { @page { size: 80mm auto; margin: 0; } body { margin: 0; padding: 10px; } }
                                 body { margin: 0; display: flex; justify-content: center; }
                                 img { max-width: 100%; }
                             </style>
@@ -108,10 +109,7 @@ export const OrderDetailsModal: React.FC<OrderDetailsModalProps> = ({ order, onC
                         <body>
                             <img src="${imageUrl}" />
                             <script>
-                                window.onload = function() {
-                                    window.print();
-                                    window.close();
-                                }
+                                window.onload = function() { window.print(); window.close(); }
                             </script>
                         </body>
                     </html>
@@ -134,9 +132,9 @@ export const OrderDetailsModal: React.FC<OrderDetailsModalProps> = ({ order, onC
     
     const OrderTypeIcon: React.FC<{ type: Order['orderType'] }> = ({ type }) => {
         switch (type) {
-            case 'Dine-in': return <HomeIcon className="w-4 h-4" />;
-            case 'Takeaway': return <TakeawayIcon className="w-4 h-4" />;
-            case 'Delivery': return <TruckIcon className="w-4 h-4" />;
+            case 'Dine-in': return <HomeIcon className="w-5 h-5 text-slate-500" />;
+            case 'Takeaway': return <TakeawayIcon className="w-5 h-5 text-slate-500" />;
+            case 'Delivery': return <TruckIcon className="w-5 h-5 text-slate-500" />;
             default: return null;
         }
     };
@@ -147,111 +145,32 @@ export const OrderDetailsModal: React.FC<OrderDetailsModalProps> = ({ order, onC
 
     return (
         <>
-            <Modal title={`${t.orderDetails} - #${order.id.substring(order.id.length - 6)}`} onClose={onClose} size="3xl">
+            <Modal title={`${t.orderDetails} - #${order.id.substring(order.id.length - 6)}`} onClose={onClose} size="4xl">
                 <div className="flex flex-col overflow-hidden h-full">
-                    <div className="p-4 sm:p-5 overflow-y-auto flex-grow grid grid-cols-1 lg:grid-cols-3 gap-6 bg-slate-50 dark:bg-slate-900/50">
-                        {/* Main Content */}
-                        <div className="lg:col-span-2 space-y-6">
-                            {/* Customer Info */}
-                             <div className="bg-white dark:bg-slate-800 p-4 rounded-xl border dark:border-slate-700">
-                                <h3 className="font-bold text-lg mb-3 text-slate-800 dark:text-slate-100 flex items-center gap-2">
-                                    <UserIcon className="w-5 h-5 text-slate-500" />
-                                    {t.customerInfo}
-                                </h3>
-                                <p className="font-semibold text-slate-800 dark:text-slate-100">{order.customer.name || 'Guest'}</p>
-                                <p className="text-sm text-slate-600 dark:text-slate-300">{order.customer.mobile}</p>
-                                {order.customer.address && (
-                                    <p className="text-sm text-slate-500 dark:text-slate-400 mt-1 whitespace-pre-wrap">{order.customer.address}</p>
-                                )}
-                            </div>
-                            
-                            {/* Items */}
-                            <div>
-                                 <div className="flex justify-between items-center mb-3">
-                                    <h3 className="font-bold text-lg text-slate-800 dark:text-slate-100">{t.orderItems}</h3>
-                                    <span className="text-sm font-semibold bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300 px-2.5 py-1 rounded-full">
-                                        {formatNumber(order.items.reduce((acc, i) => acc + i.quantity, 0))} {t.items}
-                                    </span>
-                                </div>
-                                <div className="space-y-3 bg-white dark:bg-slate-800 p-4 rounded-xl border dark:border-slate-700 max-h-80 overflow-y-auto">
-                                    {order.items.map((item, index) => (
-                                        <div key={`${item.product.id}-${index}`} className="flex items-start gap-4 py-3 border-b dark:border-slate-700 last:border-b-0">
-                                            <img src={item.product.image} alt={item.product.name[language]} className="w-16 h-16 rounded-lg object-cover" />
-                                            <div className="flex-grow">
-                                                <p className="font-semibold text-slate-800 dark:text-slate-300">{item.product.name[language]}</p>
-                                                <p className="text-sm text-slate-500 dark:text-slate-400">{t.quantity}: {formatNumber(item.quantity)}</p>
-                                                {item.options && (
-                                                    <div className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-                                                        {Object.entries(item.options).map(([optionKey, valueKey]) => {
-                                                            const option = item.product.options?.find(o => o.name.en === optionKey);
-                                                            const value = option?.values.find(v => v.name.en === valueKey);
-                                                            if (option && value) return <div key={optionKey}>+ {value.name[language]}</div>
-                                                            return null;
-                                                        })}
-                                                    </div>
-                                                )}
-                                            </div>
-                                            <div className="text-end shrink-0">
-                                                <p className="font-semibold text-slate-700 dark:text-slate-200">{(item.product.price * item.quantity).toFixed(2)} {t.currency}</p>
-                                            </div>
-                                        </div>
-                                    ))}
-                                </div>
-                            </div>
-                            
-                            {/* Notes, Refusal, Feedback */}
-                            {order.notes && (
-                                <div className="bg-blue-50 dark:bg-blue-900/40 p-4 rounded-lg border border-blue-200 dark:border-blue-500/30">
-                                    <h3 className="font-bold text-base mb-2 text-blue-800 dark:text-blue-200 flex items-center gap-2"><DocumentTextIcon className="w-5 h-5" />{t.orderNotes}</h3>
-                                    <p className="text-sm text-blue-700 dark:text-blue-200 whitespace-pre-wrap">{order.notes}</p>
-                                </div>
-                            )}
-                            {order.refusalReason && (
-                                <div className="bg-red-50 dark:bg-red-900/40 p-4 rounded-lg border border-red-200 dark:border-red-500/30">
-                                    <h3 className="font-bold text-base mb-2 text-red-800 dark:text-red-200">{t.refusalInfo}</h3>
-                                    <p className="text-sm text-red-700 dark:text-red-200">{order.refusalReason}</p>
-                                </div>
-                            )}
-                            {order.customerFeedback && (
-                                 <div className="bg-green-50 dark:bg-green-900/40 p-4 rounded-lg border border-green-200 dark:border-green-500/30">
-                                    <h3 className="font-bold text-base mb-2 text-green-800 dark:text-green-200">{t.customerFeedback}</h3>
-                                    <div className="flex items-center mb-2"><StarRating rating={order.customerFeedback.rating} /></div>
-                                    <p className="text-sm text-green-700 dark:text-green-200 italic">"{order.customerFeedback.comment}"</p>
-                                </div>
-                            )}
-                        </div>
-
-                        {/* Sidebar */}
+                    <div className="p-4 sm:p-6 overflow-y-auto flex-grow grid grid-cols-1 lg:grid-cols-3 gap-6 bg-slate-50 dark:bg-slate-900/50">
+                        {/* Left Column */}
                         <div className="lg:col-span-1 space-y-5">
-                             <div className="bg-white dark:bg-slate-800 p-4 rounded-xl border dark:border-slate-700 space-y-4">
-                                <InfoItem label={t.status} icon={<CheckIcon className="w-4 h-4" />}>
-                                     <span className={`inline-block px-2.5 py-0.5 text-xs font-bold rounded-full border ${getStatusChipColor(order.status, restaurantInfo)}`}>
-                                        {statusDetails?.name[language] || order.status}
-                                    </span>
-                                </InfoItem>
-                                {creatorName && (
-                                    <InfoItem label={t.creator} icon={<UserCircleIcon className="w-4 h-4" />}>
-                                        {creatorName}
-                                    </InfoItem>
-                                )}
-                            </div>
-
-                             <div className="bg-white dark:bg-slate-800 p-4 rounded-xl border dark:border-slate-700 space-y-4">
+                            <InfoCard>
                                 <InfoItem label={t.orderType} icon={<OrderTypeIcon type={order.orderType}/>}>
                                     {t[order.orderType.toLowerCase() as keyof typeof t]} {order.tableNumber && `(${t.table} ${order.tableNumber})`}
                                 </InfoItem>
-                                <InfoItem label={t.date} icon={<ClockIcon className="w-4 h-4" />}>
+                                <InfoItem label={t.date} icon={<ClockIcon className="w-5 h-5 text-slate-500" />}>
                                     {formatDateTime(order.timestamp)}
                                 </InfoItem>
-                            </div>
-                            
-                            <div className="bg-white dark:bg-slate-800 p-4 rounded-xl border dark:border-slate-700 space-y-4">
-                                <InfoItem label={t.paymentMethod} icon={<CreditCardIcon className="w-4 h-4" />}>
+                                {creatorName && (
+                                    <InfoItem label={t.creator} icon={<UserCircleIcon className="w-5 h-5 text-slate-500" />}>
+                                        {creatorName}
+                                    </InfoItem>
+                                )}
+                            </InfoCard>
+
+                            <InfoCard>
+                                <InfoItem label={t.paymentMethod} icon={<CreditCardIcon className="w-5 h-5 text-slate-500" />}>
                                      {order.paymentMethod === 'cod' ? t.cashOnDelivery : order.paymentMethod === 'online' ? t.onlinePayment : "N/A"}
                                 </InfoItem>
 
                                 {order.paymentMethod === 'online' ? (
-                                    <div className="ps-6 flex items-center justify-between">
+                                    <div className="ps-7 flex items-center justify-between">
                                         <span className="font-medium text-slate-700 dark:text-slate-200">{order.paymentDetail}</span>
                                         {order.paymentReceiptUrl && (
                                             <button onClick={() => setIsReceiptViewerOpen(true)} className="text-sm font-semibold text-blue-600 hover:underline dark:text-blue-400">
@@ -274,7 +193,7 @@ export const OrderDetailsModal: React.FC<OrderDetailsModalProps> = ({ order, onC
                                                 </div>
                                             </div>
                                         ) : order.paymentDetail ? (
-                                            <div className="ps-6 flex items-center gap-2">
+                                            <div className="ps-7 flex items-center gap-2">
                                                 <p className="text-sm text-slate-500 dark:text-slate-400">{t.paymentCollectedVia} <span className="font-medium text-slate-700 dark:text-slate-200">{order.paymentDetail}</span></p>
                                                 {canEditPayment && <button onClick={() => setIsEditingPayment(true)} className="text-xs text-blue-600 dark:text-blue-400 hover:underline"><PencilIcon className="w-3 h-3" /></button>}
                                             </div>
@@ -285,21 +204,97 @@ export const OrderDetailsModal: React.FC<OrderDetailsModalProps> = ({ order, onC
                                         ) : null}
                                     </>
                                 )}
-                            </div>
+                            </InfoCard>
                         </div>
 
+                        {/* Right Column */}
+                        <div className="lg:col-span-2 space-y-6">
+                             <div className="bg-white dark:bg-slate-800 p-4 rounded-xl border dark:border-slate-700">
+                                <h3 className="font-bold text-lg mb-3 text-slate-800 dark:text-slate-100 flex items-center gap-2">
+                                    <UserIcon className="w-5 h-5 text-slate-500" />
+                                    {t.customerInfo}
+                                </h3>
+                                <div className="flex justify-between items-start">
+                                    <div>
+                                        <p className="font-semibold text-slate-800 dark:text-slate-100">{order.customer.name || 'Guest'}</p>
+                                        {order.customer.address && (
+                                            <p className="text-sm text-slate-500 dark:text-slate-400 mt-1 whitespace-pre-wrap">{order.customer.address}</p>
+                                        )}
+                                    </div>
+                                    <div className="text-end space-y-2">
+                                         <p className="text-sm text-slate-600 dark:text-slate-300 font-mono">{order.customer.mobile}</p>
+                                         <span className={`inline-block px-2.5 py-0.5 text-xs font-bold rounded-full border ${getStatusChipColor(order.status, restaurantInfo)}`}>
+                                            {statusDetails?.name[language] || order.status}
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div>
+                                 <div className="flex justify-between items-center mb-3">
+                                    <h3 className="font-bold text-lg text-slate-800 dark:text-slate-100">{t.orderItems}</h3>
+                                    <span className="text-sm font-semibold bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300 px-2.5 py-1 rounded-full">
+                                        {formatNumber(order.items.reduce((acc, i) => acc + i.quantity, 0))} {t.items}
+                                    </span>
+                                </div>
+                                <div className="space-y-3 bg-white dark:bg-slate-800 p-4 rounded-xl border dark:border-slate-700 max-h-80 overflow-y-auto">
+                                    {order.items.map((item, index) => (
+                                        <div key={`${item.product.id}-${index}`} className="flex items-start gap-4 py-3 border-b dark:border-slate-700 last:border-b-0">
+                                            <div className="text-end shrink-0">
+                                                <p className="font-semibold text-slate-700 dark:text-slate-200">{(item.product.price * item.quantity).toFixed(2)} {t.currency}</p>
+                                            </div>
+                                            <div className="flex-grow text-end">
+                                                <p className="font-semibold text-slate-800 dark:text-slate-300">{item.product.name[language]}</p>
+                                                <p className="text-sm text-slate-500 dark:text-slate-400">{t.quantity}: {formatNumber(item.quantity)}</p>
+                                                {item.options && (
+                                                    <div className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                                                        {Object.entries(item.options).map(([optionKey, valueKey]) => {
+                                                            const option = item.product.options?.find(o => o.name.en === optionKey);
+                                                            const value = option?.values.find(v => v.name.en === valueKey);
+                                                            if (option && value) return <div key={optionKey}>+ {value.name[language]}</div>
+                                                            return null;
+                                                        })}
+                                                    </div>
+                                                )}
+                                            </div>
+                                            <img src={item.product.image} alt={item.product.name[language]} className="w-16 h-16 rounded-lg object-cover" />
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                            
+                            {order.notes && (
+                                <div className="bg-blue-50 dark:bg-blue-900/40 p-4 rounded-lg border border-blue-200 dark:border-blue-500/30">
+                                    <h3 className="font-bold text-base mb-2 text-blue-800 dark:text-blue-200 flex items-center gap-2"><DocumentTextIcon className="w-5 h-5" />{t.orderNotes}</h3>
+                                    <p className="text-sm text-blue-700 dark:text-blue-200 whitespace-pre-wrap">{order.notes}</p>
+                                </div>
+                            )}
+                            {order.refusalReason && (
+                                <div className="bg-red-50 dark:bg-red-900/40 p-4 rounded-lg border border-red-200 dark:border-red-500/30">
+                                    <h3 className="font-bold text-base mb-2 text-red-800 dark:text-red-200">{t.refusalInfo}</h3>
+                                    <p className="text-sm text-red-700 dark:text-red-200">{order.refusalReason}</p>
+                                </div>
+                            )}
+                            {order.customerFeedback && (
+                                 <div className="bg-green-50 dark:bg-green-900/40 p-4 rounded-lg border border-green-200 dark:border-green-500/30">
+                                    <h3 className="font-bold text-base mb-2 text-green-800 dark:text-green-200">{t.customerFeedback}</h3>
+                                    <div className="flex items-center mb-2"><StarRating rating={order.customerFeedback.rating} /></div>
+                                    <p className="text-sm text-green-700 dark:text-green-200 italic">"{order.customerFeedback.comment}"</p>
+                                </div>
+                            )}
+                        </div>
                     </div>
                     <div className="p-4 border-t dark:border-slate-700 shrink-0 bg-slate-50/50 dark:bg-slate-800/50 rounded-b-2xl">
-                        <div className="sm:flex justify-between items-center">
+                        <div className="flex justify-between items-center flex-row-reverse">
                             <div className="flex items-center gap-2">
                                 {canEdit && <button onClick={() => onEdit(order)} title={t.editOrder} className="p-2 rounded-full text-blue-600 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-900/50 transition-colors"><PencilIcon className="w-5 h-5" /></button>}
                                 {canDelete && <button onClick={() => onDelete(order.id)} title={t.deleteOrder} className="p-2 rounded-full text-red-600 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/50 transition-colors"><TrashIcon className="w-5 h-5" /></button>}
                                 <button onClick={handleShare} disabled={isProcessing} title={t.share} className="p-2 rounded-full text-green-600 dark:text-green-400 hover:bg-green-100 dark:hover:bg-green-900/50 transition-colors disabled:opacity-50"><ShareIcon className="w-5 h-5" /></button>
                                 <button onClick={handlePrint} disabled={isProcessing} title={t.print} className="p-2 rounded-full text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors disabled:opacity-50"><PrintIcon className="w-5 h-5" /></button>
                             </div>
-                            <div className="text-end mt-4 sm:mt-0">
+                            <div className="text-start">
                                 <p className="font-semibold text-slate-500 dark:text-slate-400 text-sm">{t.total}</p>
-                                <p className="font-extrabold text-xl text-primary-600 dark:text-primary-400">{order.total.toFixed(2)} {t.currency}</p>
+                                <p className="font-extrabold text-2xl text-primary-600 dark:text-primary-400">{order.total.toFixed(2)} {t.currency}</p>
                             </div>
                         </div>
                     </div>

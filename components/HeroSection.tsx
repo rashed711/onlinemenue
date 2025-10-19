@@ -1,7 +1,9 @@
 
+
 import React from 'react';
 import type { Language, RestaurantInfo } from '../types';
-import { useTranslations } from '../i18n/translations';
+// @FIX: Replaced non-existent `useTranslations` hook with direct access to the `translations` object.
+import { translations } from '../i18n/translations';
 
 interface HeroSectionProps {
   language: Language;
@@ -9,7 +11,8 @@ interface HeroSectionProps {
 }
 
 export const HeroSection: React.FC<HeroSectionProps> = ({ language, restaurantInfo }) => {
-  const t = useTranslations(language);
+  // @FIX: Replaced non-existent `useTranslations` hook with direct access to the `translations` object.
+  const t = translations[language];
 
   const handleScrollToMenu = (e: React.MouseEvent<HTMLAnchorElement>) => {
     e.preventDefault();

@@ -41,13 +41,13 @@ export const NotificationsPage: React.FC = () => {
                 throw new Error(result.error || 'Failed to send notification.');
             }
 
-            showToast(t.language === 'ar' ? `تم إرسال الإشعار إلى ${result.sent} مشترك!` : `Notification sent to ${result.sent} subscribers!`);
+            showToast(t.notificationSentSuccess.replace('{count}', result.sent));
             setMessage('');
             setImageUrl('');
             setTargetRole('all');
         } catch (error) {
             console.error('Failed to send notification:', error);
-            showToast((error as Error).message || (t.language === 'ar' ? 'فشل إرسال الإشعار.' : 'Failed to send notification.'));
+            showToast((error as Error).message || t.notificationSendFailed);
         } finally {
             setIsProcessing(false);
         }

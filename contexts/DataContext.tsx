@@ -111,12 +111,12 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         } catch (error) {
             console.error("Error fetching public data:", error);
             if (isInitialLoad) setRestaurantInfo(fallbackRestaurantInfo);
-            else showToast("Couldn't refresh data.");
+            else showToast(t.dataRefreshFailed);
         } finally {
             if (isInitialLoad) setIsLoading(false);
             else { setProgress(100); setTimeout(() => setShowProgress(false), 500); }
         }
-    }, [setIsLoading, setShowProgress, setProgress, showToast]);
+    }, [setIsLoading, setShowProgress, setProgress, showToast, t.dataRefreshFailed]);
 
     useEffect(() => {
         fetchAllData(true);

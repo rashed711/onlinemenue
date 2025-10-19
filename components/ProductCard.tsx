@@ -1,6 +1,7 @@
 import React from 'react';
 import type { Product, Language } from '../types';
-import { useTranslations } from '../i18n/translations';
+// @FIX: Replaced non-existent `useTranslations` hook with direct access to the `translations` object.
+import { translations } from '../i18n/translations';
 import { StarIcon, PlusIcon } from './icons/Icons';
 import { formatNumber } from '../utils/helpers';
 
@@ -12,7 +13,8 @@ interface ProductCardProps {
 }
 
 export const ProductCard: React.FC<ProductCardProps> = ({ product, language, onProductClick, addToCart }) => {
-  const t = useTranslations(language);
+  // @FIX: Replaced non-existent `useTranslations` hook with direct access to the `translations` object.
+  const t = translations[language];
   const handleAddToCart = (e: React.MouseEvent) => {
     e.stopPropagation();
     if (product.options && product.options.length > 0) {

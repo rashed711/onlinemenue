@@ -1,5 +1,4 @@
 import React, { useState } from 'react';
-import { useTranslations } from '../../i18n/translations';
 import { useUI } from '../../contexts/UIContext';
 import { useAuth } from '../../contexts/AuthContext';
 import { Modal } from '../Modal';
@@ -9,9 +8,9 @@ interface ChangePasswordModalProps {
 }
 
 export const ChangePasswordModal: React.FC<ChangePasswordModalProps> = ({ onClose }) => {
-    const { language, isProcessing } = useUI();
+    // @FIX: Refactored to get translations `t` directly from the `useUI` hook.
+    const { language, isProcessing, t } = useUI();
     const { changeCurrentUserPassword } = useAuth();
-    const t = useTranslations(language);
     
     const [currentPassword, setCurrentPassword] = useState('');
     const [newPassword, setNewPassword] = useState('');

@@ -1,5 +1,4 @@
 import React, { useState } from 'react';
-import { useTranslations } from '../../i18n/translations';
 import { calculateTotal } from '../../utils/helpers';
 import { ChevronRightIcon } from '../icons/Icons';
 import { useUI } from '../../contexts/UIContext';

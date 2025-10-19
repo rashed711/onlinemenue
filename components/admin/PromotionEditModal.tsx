@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import type { Promotion, LocalizedString, Product } from '../../types';
-import { useTranslations } from '../../i18n/translations';
 import { useUI } from '../../contexts/UIContext';
 import { useData } from '../../contexts/DataContext';
 import { Modal } from '../Modal';
@@ -21,9 +20,9 @@ const emptyPromotion: Omit<Promotion, 'id'> = {
 };
 
 export const PromotionEditModal: React.FC<PromotionEditModalProps> = ({ promotion, onClose, onSave }) => {
-    const { language } = useUI();
+    // @FIX: Refactored to get translations `t` directly from the `useUI` hook.
+    const { language, t } = useUI();
     const { products: allProducts } = useData();
-    const t = useTranslations(language);
     
     const [formData, setFormData] = useState<Omit<Promotion, 'id'>>(emptyPromotion);
     const [error, setError] = useState('');

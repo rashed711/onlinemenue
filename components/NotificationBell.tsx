@@ -61,11 +61,11 @@ export const NotificationBell: React.FC = () => {
                     setSubscription(pushSubscription);
                     setIsSubscribed(true);
                     updateSubscriptionOnServer(pushSubscription);
-                    showToast(t.language === 'ar' ? 'تم الاشتراك في الإشعارات!' : 'Subscribed to notifications!');
+                    showToast(t.subscribedSuccess);
                 })
                 .catch(err => {
                     console.error('Failed to subscribe the user: ', err);
-                    showToast(t.language === 'ar' ? 'فشل الاشتراك.' : 'Failed to subscribe.');
+                    showToast(t.subscribeFailed);
                 });
         });
     }, [showToast, t]);
@@ -76,7 +76,7 @@ export const NotificationBell: React.FC = () => {
                 updateSubscriptionOnServer(null);
                 setSubscription(null);
                 setIsSubscribed(false);
-                showToast(t.language === 'ar' ? 'تم إلغاء الاشتراك في الإشعارات.' : 'Unsubscribed from notifications.');
+                showToast(t.unsubscribedSuccess);
             });
         }
     }, [subscription, showToast, t]);
@@ -86,7 +86,7 @@ export const NotificationBell: React.FC = () => {
             unsubscribeUser();
         } else {
             if (Notification.permission === 'denied') {
-                showToast(t.language === 'ar' ? 'تم رفض إذن الإشعارات. يرجى تفعيله من إعدادات المتصفح.' : 'Notification permission was denied. Please enable it in your browser settings.');
+                showToast(t.notificationPermissionDenied);
                 return;
             }
             Notification.requestPermission().then(permission => {
