@@ -134,8 +134,8 @@ export const AdminProvider: React.FC<{ children: React.ReactNode }> = ({ childre
                 const uploadRes = await fetch(`${API_BASE_URL}upload_image.php`, { method: 'POST', body: formData });
                 const result = await uploadRes.json();
                 if (result.success && result.url) {
-                    const relativeUrl = new URL(result.url, API_BASE_URL).pathname.substring(1);
-                    orderForDb.paymentReceiptUrl = relativeUrl.split('?v=')[0];
+                    // The URL from the PHP script is already the correct relative path.
+                    orderForDb.paymentReceiptUrl = result.url.split('?v=')[0];
                 } else {
                     throw new Error(result.error || 'Failed to get URL for receipt');
                 }

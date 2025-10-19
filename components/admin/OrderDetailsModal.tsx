@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import type { Order, RestaurantInfo } from '../../types';
 import { useTranslations } from '../../i18n/translations';
-// FIX: Added CheckIcon to imports
 import { DocumentTextIcon, PencilIcon, ShareIcon, PrintIcon, TrashIcon, CloseIcon, StarIcon, UserIcon, ClockIcon, HomeIcon, TakeawayIcon, TruckIcon, UserCircleIcon, CreditCardIcon, CheckIcon } from '../icons/Icons';
 import { StarRating } from '../StarRating';
 import { formatDateTime, formatNumber, generateReceiptImage } from '../../utils/helpers';
@@ -52,7 +51,8 @@ export const OrderDetailsModal: React.FC<OrderDetailsModalProps> = ({ order, onC
     const canEditPayment = hasPermission('edit_recorded_payment');
 
     useEffect(() => {
-        const shouldBeEditing = !order.paymentDetail && canEditPayment;
+        // Only trigger editing for non-online payments
+        const shouldBeEditing = !order.paymentDetail && canEditPayment && order.paymentMethod !== 'online';
         setIsEditingPayment(shouldBeEditing);
         setCodPaymentDetail(order.paymentDetail || '');
     }, [order, canEditPayment]);
@@ -247,27 +247,44 @@ export const OrderDetailsModal: React.FC<OrderDetailsModalProps> = ({ order, onC
                             
                             <div className="bg-white dark:bg-slate-800 p-4 rounded-xl border dark:border-slate-700 space-y-4">
                                 <InfoItem label={t.paymentMethod} icon={<CreditCardIcon className="w-4 h-4" />}>
-                                     {order.paymentMethod === 'cod' ? t.cashOnDelivery : t.onlinePayment || "N/A"}
+                                     {order.paymentMethod === 'cod' ? t.cashOnDelivery : order.paymentMethod === 'online' ? t.onlinePayment : "N/A"}
                                 </InfoItem>
-                                {isEditingPayment ? (
-                                    <div className="p-3 bg-blue-50 dark:bg-blue-900/30 rounded-lg border border-blue-200 dark:border-blue-700/50">
-                                        <label className="block text-xs font-semibold mb-2 text-blue-800 dark:text-blue-200">{order.paymentDetail ? t.edit : t.recordPayment}</label>
-                                        <div className="flex items-center gap-2">
-                                            <select value={codPaymentDetail} onChange={(e) => setCodPaymentDetail(e.target.value)} className="w-full p-2 text-sm border rounded-md dark:bg-slate-700 dark:border-slate-600">
-                                                <option value="">{t.selectMethod}</option><option value={t.cash}>{t.cash}</option>
-                                                {availableOnlineMethods.map(method => <option key={method.id} value={method.name[language]}>{method.name[language]}</option>)}
-                                            </select>
-                                            <button onClick={handleSaveCodPayment} disabled={!codPaymentDetail || isProcessing} className="bg-blue-500 text-white font-bold p-2 rounded-lg hover:bg-blue-600 disabled:bg-blue-300"><CheckIcon className="w-5 h-5"/></button>
-                                            {order.paymentDetail && <button type="button" onClick={() => setIsEditingPayment(false)} className="bg-slate-200 text-slate-800 p-2 rounded-lg hover:bg-slate-300"><CloseIcon className="w-5 h-5"/></button>}
-                                        </div>
+
+                                {order.paymentMethod === 'online' ? (
+                                    <div className="ps-6 flex items-center justify-between">
+                                        <span className="font-medium text-slate-700 dark:text-slate-200">{order.paymentDetail}</span>
+                                        {order.paymentReceiptUrl && (
+                                            <button onClick={() => setIsReceiptViewerOpen(true)} className="text-sm font-semibold text-blue-600 hover:underline dark:text-blue-400">
+                                                {t.viewReceipt}
+                                            </button>
+                                        )}
                                     </div>
-                                ) : order.paymentDetail ? (
-                                    <div className="flex items-center gap-2">
-                                        <p className="text-sm text-slate-500 dark:text-slate-400">{t.paymentCollectedVia} <span className="font-medium text-slate-700 dark:text-slate-200">{order.paymentDetail}</span></p>
-                                        {canEditPayment && <button onClick={() => setIsEditingPayment(true)} className="text-xs text-blue-600 dark:text-blue-400 hover:underline"><PencilIcon className="w-3 h-3" /></button>}
-                                    </div>
-                                ) : null}
-                                {order.paymentMethod === 'online' && order.paymentReceiptUrl && <button onClick={() => setIsReceiptViewerOpen(true)} className="text-sm font-semibold text-blue-600 hover:underline dark:text-blue-400">{t.viewReceipt}</button>}
+                                ) : (
+                                    <>
+                                        {isEditingPayment ? (
+                                            <div className="p-3 bg-blue-50 dark:bg-blue-900/30 rounded-lg border border-blue-200 dark:border-blue-700/50">
+                                                <label className="block text-xs font-semibold mb-2 text-blue-800 dark:text-blue-200">{order.paymentDetail ? t.edit : t.recordPayment}</label>
+                                                <div className="flex items-center gap-2">
+                                                    <select value={codPaymentDetail} onChange={(e) => setCodPaymentDetail(e.target.value)} className="w-full p-2 text-sm border rounded-md dark:bg-slate-700 dark:border-slate-600">
+                                                        <option value="">{t.selectMethod}</option><option value={t.cash}>{t.cash}</option>
+                                                        {availableOnlineMethods.map(method => <option key={method.id} value={method.name[language]}>{method.name[language]}</option>)}
+                                                    </select>
+                                                    <button onClick={handleSaveCodPayment} disabled={!codPaymentDetail || isProcessing} className="bg-blue-500 text-white font-bold p-2 rounded-lg hover:bg-blue-600 disabled:bg-blue-300"><CheckIcon className="w-5 h-5"/></button>
+                                                    {order.paymentDetail && <button type="button" onClick={() => setIsEditingPayment(false)} className="bg-slate-200 text-slate-800 p-2 rounded-lg hover:bg-slate-300"><CloseIcon className="w-5 h-5"/></button>}
+                                                </div>
+                                            </div>
+                                        ) : order.paymentDetail ? (
+                                            <div className="ps-6 flex items-center gap-2">
+                                                <p className="text-sm text-slate-500 dark:text-slate-400">{t.paymentCollectedVia} <span className="font-medium text-slate-700 dark:text-slate-200">{order.paymentDetail}</span></p>
+                                                {canEditPayment && <button onClick={() => setIsEditingPayment(true)} className="text-xs text-blue-600 dark:text-blue-400 hover:underline"><PencilIcon className="w-3 h-3" /></button>}
+                                            </div>
+                                        ) : canEditPayment ? (
+                                            <button onClick={() => setIsEditingPayment(true)} className="text-sm font-semibold text-blue-600 hover:underline dark:text-blue-400 w-full text-start p-2 bg-blue-50 dark:bg-blue-900/30 rounded-lg border border-blue-200 dark:border-blue-700/50">
+                                                {t.recordPayment}
+                                            </button>
+                                        ) : null}
+                                    </>
+                                )}
                             </div>
                         </div>
 
