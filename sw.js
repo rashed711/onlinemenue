@@ -15,24 +15,28 @@ const firebaseConfig = {
 // Initialize Firebase
 firebase.initializeApp(firebaseConfig);
 
-const messaging = firebase.messaging();
+try {
+  const messaging = firebase.messaging();
 
-// If you want to handle background notifications, you can add a listener here.
-// For now, Firebase handles showing the notification automatically.
-messaging.onBackgroundMessage((payload) => {
-  console.log(
-    "[firebase-messaging-sw.js] Received background message ",
-    payload,
-  );
-  
-  const notificationTitle = payload.notification.title || 'Fresco Restaurant';
-  const notificationOptions = {
-    body: payload.notification.body || 'You have a new notification.',
-    icon: payload.notification.icon || '/icons/icon-192x192.png',
-  };
+  // If you want to handle background notifications, you can add a listener here.
+  // For now, Firebase handles showing the notification automatically.
+  messaging.onBackgroundMessage((payload) => {
+    console.log(
+      "[firebase-messaging-sw.js] Received background message ",
+      payload,
+    );
+    
+    const notificationTitle = payload.notification.title || 'Fresco Restaurant';
+    const notificationOptions = {
+      body: payload.notification.body || 'You have a new notification.',
+      icon: payload.notification.icon || '/icons/icon-192x192.png',
+    };
 
-  self.registration.showNotification(notificationTitle, notificationOptions);
-});
+    self.registration.showNotification(notificationTitle, notificationOptions);
+  });
+} catch (e) {
+  console.log('Unable to initialize Firebase Messaging in service worker.', e);
+}
 
 
 // --- Standard Service Worker Logic (Caching) ---
