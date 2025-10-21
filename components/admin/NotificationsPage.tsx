@@ -1,4 +1,5 @@
 
+
 import React, { useState, useCallback, DragEvent } from 'react';
 import { useUI } from '../../contexts/UIContext';
 import { useAdmin } from '../../contexts/AdminContext';
@@ -73,6 +74,12 @@ export const NotificationsPage: React.FC = () => {
         e.preventDefault();
         if (!canSend || isProcessing || !message.trim()) return;
 
+        // [FIX] Add guard clause to ensure user is logged in
+        if (!currentUser) {
+            showToast("You must be logged in to send notifications.");
+            return;
+        }
+
         setIsProcessing(true);
         try {
             let finalImageUrl = null;
@@ -95,7 +102,7 @@ export const NotificationsPage: React.FC = () => {
                 image_url: finalImageUrl,
                 target_role: targetRole === 'all' ? null : targetRole,
                 with_sound: withSound ? 1 : 0,
-                created_by: currentUser?.id,
+                created_by: currentUser.id,
             };
             
             const response = await fetch(`${API_BASE_URL}send_notification.php`, {
@@ -107,12 +114,24 @@ export const NotificationsPage: React.FC = () => {
             if (!response.ok) {
                 const errorText = await response.text();
                 console.error("Notification Error Response Body:", errorText);
-                try {
-                    const errorJson = JSON.parse(errorText);
-                    throw new Error(errorJson.error || `Notification request failed: ${response.status}`);
-                } catch (e) {
-                    throw new Error(errorText || `Notification request failed with status ${response.status}`);
+                let errorMessage = t.notificationSendFailed; // Default message
+                
+                if (response.status === 500) {
+                     errorMessage = `Server Error (500). Please check server logs for details.`;
+                     if (language === 'ar') {
+                        errorMessage = `خطأ في الخادم (500). يرجى مراجعة سجلات الخادم للحصول على التفاصيل.`;
+                     }
+                } else {
+                    try {
+                        const errorJson = JSON.parse(errorText);
+                        errorMessage = errorJson.error || `${t.notificationSendFailed} (Status: ${response.status})`;
+                    } catch (e) {
+                         if (errorText) {
+                            errorMessage = errorText.substring(0, 150);
+                         }
+                    }
                 }
+                throw new Error(errorMessage);
             }
             
             const result = await response.json();

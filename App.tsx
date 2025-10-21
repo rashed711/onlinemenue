@@ -4,6 +4,8 @@ import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { DataProvider, useData } from './contexts/DataContext';
 import { CartProvider } from './contexts/CartContext';
 import { AdminProvider, useAdmin } from './contexts/AdminContext';
+import { getMessaging } from './firebase';
+import { onMessage } from 'firebase/messaging';
 
 // Lazy load page components for better performance
 const MenuPage = lazy(() => import('./components/MenuPage').then(module => ({ default: module.MenuPage })));
@@ -58,31 +60,36 @@ const AppContent: React.FC = () => {
   const hash = useSyncExternalStore(subscribe, getSnapshot, () => '');
   const displayedRoute = useMemo(() => hash || (restaurantInfo?.defaultPage === 'social' ? '#/social' : '#/'), [hash, restaurantInfo]);
 
-  // In-app notification handler
+  // In-app notification handler for Firebase Cloud Messaging (FCM)
   useEffect(() => {
-    const handleSWMessage = (event: MessageEvent) => {
-        if (event.data && event.data.type === 'push-notification') {
-            const notificationData = event.data.data;
-            console.log('In-app notification received:', notificationData);
-            
-            // Play a sound
-            if (notificationData.with_sound !== false) {
-              const audio = new Audio('/notification.mp3');
-              audio.play().catch(e => console.error("Failed to play notification sound:", e));
-            }
+    let unsubscribe: Function | undefined;
+    
+    const setupForegroundMessaging = async () => {
+        const messaging = await getMessaging();
+        if (messaging) {
+            unsubscribe = onMessage(messaging, (payload) => {
+                console.log('Foreground FCM message received:', payload);
+                const notificationData = payload.notification;
+                
+                if (notificationData) {
+                    // Play a sound
+                    const audio = new Audio('/notification.mp3');
+                    audio.play().catch(e => console.error("Failed to play notification sound:", e));
 
-            // Show a toast
-            showToast(notificationData.body || 'New notification!');
+                    // Show a toast
+                    showToast(notificationData.body || 'New notification!');
+                }
+            });
         }
     };
 
     if ('serviceWorker' in navigator) {
-        navigator.serviceWorker.addEventListener('message', handleSWMessage);
+        setupForegroundMessaging();
     }
 
     return () => {
-        if ('serviceWorker' in navigator) {
-            navigator.serviceWorker.removeEventListener('message', handleSWMessage);
+        if (unsubscribe) {
+            unsubscribe();
         }
     };
   }, [showToast]);

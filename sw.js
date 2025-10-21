@@ -1,3 +1,42 @@
+// Import Firebase SDKs
+importScripts("https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js");
+importScripts("https://www.gstatic.com/firebasejs/10.12.2/firebase-messaging-compat.js");
+
+// Your web app's Firebase configuration
+const firebaseConfig = {
+  apiKey: "AIzaSyB1G6oWz0Zip_nz9_Aylr2HVuTNgl5bz7s",
+  authDomain: "fresco-menu.web.app",
+  projectId: "fresco-menu",
+  storageBucket: "fresco-menu.appspot.com",
+  messagingSenderId: "904925567549",
+  appId: "1:904925567549:web:030fa370bc380d2fa2a854"
+};
+
+// Initialize Firebase
+firebase.initializeApp(firebaseConfig);
+
+const messaging = firebase.messaging();
+
+// If you want to handle background notifications, you can add a listener here.
+// For now, Firebase handles showing the notification automatically.
+messaging.onBackgroundMessage((payload) => {
+  console.log(
+    "[firebase-messaging-sw.js] Received background message ",
+    payload,
+  );
+  
+  const notificationTitle = payload.notification.title || 'Fresco Restaurant';
+  const notificationOptions = {
+    body: payload.notification.body || 'You have a new notification.',
+    icon: payload.notification.icon || '/icons/icon-192x192.png',
+  };
+
+  self.registration.showNotification(notificationTitle, notificationOptions);
+});
+
+
+// --- Standard Service Worker Logic (Caching) ---
+
 const CACHE_NAME = 'fresco-cache-v2';
 const URLS_TO_CACHE = [
   '/',
@@ -42,9 +81,7 @@ self.addEventListener('fetch', event => {
   const requestUrl = new URL(event.request.url);
 
   // Bypass cache for API calls and non-GET requests.
-  // This is crucial to prevent issues with POST requests and to ensure fresh data from the API.
-  if (requestUrl.href.startsWith('https://fresco.enjaz.app/api/') || event.request.method !== 'GET') {
-    // Just fetch from the network.
+  if (requestUrl.href.includes('/api/') || event.request.method !== 'GET') {
     event.respondWith(fetch(event.request));
     return;
   }
@@ -53,66 +90,10 @@ self.addEventListener('fetch', event => {
   event.respondWith(
     caches.match(event.request)
       .then(response => {
-        // Return from cache if found, otherwise fetch from network.
         return response || fetch(event.request);
       })
   );
 });
-
-
-// Intelligent Push Notification Handler
-self.addEventListener('push', event => {
-  console.log('[Service Worker] Push Received.');
-  
-  let data = {};
-  if (event.data) {
-    try {
-      data = event.data.json();
-    } catch (e) {
-      data = { title: 'Fresco Restaurant', body: event.data.text() };
-    }
-  }
-
-  const title = data.title || 'Fresco Restaurant';
-  const options = {
-    body: data.body || 'You have a new notification.',
-    icon: data.icon || '/icons/icon-192x192.png',
-    badge: '/icons/icon-192x192.png',
-    image: data.image,
-    data: data.data,
-    silent: data.with_sound === false, // Use silent option
-  };
-
-  const promiseChain = self.clients.matchAll({
-    type: 'window',
-    includeUncontrolled: true
-  }).then(windowClients => {
-    let clientIsVisible = false;
-    for (let i = 0; i < windowClients.length; i++) {
-      const windowClient = windowClients[i];
-      if (windowClient.visibilityState === 'visible') {
-        clientIsVisible = true;
-        // Send a message to the visible client to handle the notification in-app
-        windowClient.postMessage({ type: 'push-notification', data: data });
-        break;
-      }
-    }
-
-    if (clientIsVisible) {
-      // If the app is open and visible, don't show the system notification.
-      // The app itself will handle it (e.g., play a sound, show a toast).
-      console.log('[Service Worker] App is visible. Sending message to client.');
-      return Promise.resolve();
-    } else {
-      // If the app is not visible, show the system notification.
-      console.log('[Service Worker] App is not visible. Showing system notification.');
-      return self.registration.showNotification(title, options);
-    }
-  });
-
-  event.waitUntil(promiseChain);
-});
-
 
 self.addEventListener('notificationclick', event => {
   console.log('[Service Worker] Notification click Received.');

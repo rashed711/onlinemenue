@@ -18,6 +18,7 @@ import {
   EmailAuthProvider,
   updatePassword,
 } from "firebase/auth";
+import { getMessaging as getFirebaseMessaging, getToken, isSupported } from "firebase/messaging";
 import type { User } from "firebase/auth";
 
 // Your web app's Firebase configuration
@@ -38,9 +39,20 @@ const app = initializeApp(firebaseConfig);
 // Get Auth instance
 const auth = getAuth(app);
 
+// We only export a getter for messaging that returns null if not supported
+export const getMessaging = async () => {
+    if (await isSupported()) {
+        return getFirebaseMessaging(app);
+    }
+    console.log("Firebase Messaging is not supported in this browser.");
+    return null;
+};
+
 // Make auth functions available to the app
 export { 
+    app,
     auth, 
+    getToken,
     RecaptchaVerifier, 
     signInWithPhoneNumber, 
     onAuthStateChanged, 

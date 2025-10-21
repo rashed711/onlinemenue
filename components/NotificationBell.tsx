@@ -1,123 +1,129 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { BellIcon, BellSlashIcon } from './icons/Icons';
 import { useUI } from '../contexts/UIContext';
+import { useAuth } from '../contexts/AuthContext';
 import { API_BASE_URL } from '../utils/config';
+import { getMessaging, getToken } from '../firebase';
 
 // ====================================================================
-// ACTION REQUIRED: Replace this with the Public Key you generated.
+// ACTION REQUIRED: Go to your Firebase Project Settings -> Cloud Messaging
+// and generate a "Web push certificate" key pair. Paste the public key here.
 // ====================================================================
-const VAPID_PUBLIC_KEY = 'BGvGJjrIF5hse5btEpDw6BWFBQZP67ZuCkPLXHXxKv9rz_lfBFSrLfo7rgYs2qhCQl7HHRYjD1BcQ2r-AsDTiB8';
+const VAPID_PUBLIC_KEY = 'BNt0Bp3CeeM0T2jM1u0F7FNxbXmkMwxmgFpDXv-oJ_nXhn_CYENMzQPHq9RaxU3zScp3t_CdLw6lS9XmgDSE7D0';
 // ====================================================================
 
-
-function urlBase64ToUint8Array(base64String: string) {
-  const padding = '='.repeat((4 - base64String.length % 4) % 4);
-  const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
-  const rawData = window.atob(base64);
-  const outputArray = new Uint8Array(rawData.length);
-  for (let i = 0; i < rawData.length; ++i) {
-    outputArray[i] = rawData.charCodeAt(i);
-  }
-  return outputArray;
-}
 
 export const NotificationBell: React.FC = () => {
     const { showToast, t } = useUI();
+    const { currentUser } = useAuth();
     const [isSubscribed, setIsSubscribed] = useState(false);
-    const [subscription, setSubscription] = useState<PushSubscription | null>(null);
     const [isLoading, setIsLoading] = useState(true);
 
-    const updateSubscriptionOnServer = (sub: PushSubscription | null) => {
-        if (sub) {
-            // Send subscription to backend
-            return fetch(`${API_BASE_URL}subscribe_push.php`, {
+    const updateTokenOnServer = useCallback((token: string | null) => {
+        if (token && currentUser) {
+            return fetch(`${API_BASE_URL}subscribe_fcm.php`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(sub),
+                body: JSON.stringify({ token, userId: currentUser.id }),
             });
-        } else {
-            // TODO: Optionally send unsubscription event to backend
-            return Promise.resolve();
         }
-    };
-
-    const subscribeUser = useCallback(() => {
-        if (!('serviceWorker' in navigator)) return;
-        
+        // TODO: Handle unsubscription if needed by sending null token
+        return Promise.resolve();
+    }, [currentUser]);
+    
+    const subscribeToNotifications = useCallback(async () => {
         if (VAPID_PUBLIC_KEY.includes('...')) {
             alert("VAPID Public Key is not set in components/NotificationBell.tsx");
             return;
         }
-
-        navigator.serviceWorker.ready.then(registration => {
-            const subscribeOptions = {
-                userVisibleOnly: true,
-                applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY),
-            };
-
-            registration.pushManager.subscribe(subscribeOptions)
-                .then(pushSubscription => {
-                    console.log('Received PushSubscription: ', JSON.stringify(pushSubscription));
-                    setSubscription(pushSubscription);
-                    setIsSubscribed(true);
-                    updateSubscriptionOnServer(pushSubscription);
-                    showToast(t.subscribedSuccess);
-                })
-                .catch(err => {
-                    console.error('Failed to subscribe the user: ', err);
+        
+        try {
+            const permission = await Notification.requestPermission();
+            if (permission === 'granted') {
+                const messaging = await getMessaging();
+                if (!messaging) {
                     showToast(t.subscribeFailed);
-                });
-        });
-    }, [showToast, t]);
-
-    const unsubscribeUser = useCallback(() => {
-        if (subscription) {
-            subscription.unsubscribe().then(() => {
-                updateSubscriptionOnServer(null);
-                setSubscription(null);
-                setIsSubscribed(false);
-                showToast(t.unsubscribedSuccess);
-            });
+                    return;
+                }
+                const currentToken = await getToken(messaging, { vapidKey: VAPID_PUBLIC_KEY });
+                if (currentToken) {
+                    console.log('FCM Token:', currentToken);
+                    setIsSubscribed(true);
+                    await updateTokenOnServer(currentToken);
+                    showToast(t.subscribedSuccess);
+                } else {
+                    setIsSubscribed(false);
+                    showToast(t.subscribeFailed);
+                }
+            } else {
+                showToast(t.notificationPermissionDenied);
+            }
+        } catch (err) {
+            console.error('An error occurred while retrieving token. ', err);
+            showToast(t.subscribeFailed);
+            setIsSubscribed(false);
         }
-    }, [subscription, showToast, t]);
+    }, [showToast, t, updateTokenOnServer]);
+
 
     const handleBellClick = () => {
+        if (!currentUser) {
+            showToast(t.language === 'ar' ? 'يجب تسجيل الدخول للاشتراك.' : 'You must be logged in to subscribe.');
+            window.location.hash = '#/login';
+            return;
+        }
+
         if (isSubscribed) {
-            unsubscribeUser();
+            // Unsubscribing (deleting the token) is more complex with FCM and usually handled server-side.
+            // For simplicity, we'll just inform the user. A full implementation would involve deleting the token.
+            showToast(t.language === 'ar' ? 'لإلغاء الاشتراك، قم بإلغاء إذن الإشعارات من إعدادات المتصفح.' : 'To unsubscribe, revoke notification permission in your browser settings.');
         } else {
             if (Notification.permission === 'denied') {
                 showToast(t.notificationPermissionDenied);
                 return;
             }
-            Notification.requestPermission().then(permission => {
-                if (permission === 'granted') {
-                    subscribeUser();
-                }
-            });
+            subscribeToNotifications();
         }
     };
 
     useEffect(() => {
-        if ('serviceWorker' in navigator && 'PushManager' in window) {
-            navigator.serviceWorker.ready.then(registration => {
-                registration.pushManager.getSubscription().then(sub => {
-                    if (sub) {
-                        setSubscription(sub);
-                        setIsSubscribed(true);
+        const checkCurrentSubscription = async () => {
+            setIsLoading(true);
+            if (currentUser && 'serviceWorker' in navigator && 'PushManager' in window && Notification.permission === 'granted') {
+                const messaging = await getMessaging();
+                if (messaging) {
+                    try {
+                        const currentToken = await getToken(messaging, { vapidKey: VAPID_PUBLIC_KEY });
+                        setIsSubscribed(!!currentToken);
+                    } catch (err) {
+                        console.error('Could not get notification token silently.', err);
+                        setIsSubscribed(false);
                     }
-                    setIsLoading(false);
-                });
-            });
-        } else {
-            setIsLoading(false); // Not supported
-        }
-    }, []);
+                } else {
+                    setIsSubscribed(false);
+                }
+            } else {
+                setIsSubscribed(false);
+            }
+            setIsLoading(false);
+        };
 
-    if (isLoading || !('serviceWorker' in navigator && 'PushManager' in window)) {
-        return null; // Don't show the bell if not supported or still loading
+        checkCurrentSubscription();
+    }, [currentUser]); // Re-check when user logs in
+
+    if (!('serviceWorker' in navigator && 'PushManager' in window)) {
+        return null; // Don't show the bell if not supported
+    }
+
+    if (isLoading) {
+        return (
+             <div className="p-2 h-10 w-10 flex items-center justify-center rounded-full">
+                <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-slate-400"></div>
+            </div>
+        )
     }
     
-    const title = isSubscribed ? t.language === 'ar' ? 'إلغاء الاشتراك' : 'Unsubscribe' : t.language === 'ar' ? 'الاشتراك في الإشعارات' : 'Subscribe to notifications';
+    const title = isSubscribed ? (t.language === 'ar' ? 'أنت مشترك في الإشعارات' : 'You are subscribed') : (t.language === 'ar' ? 'الاشتراك في الإشعارات' : 'Subscribe to notifications');
 
     return (
         <button 
