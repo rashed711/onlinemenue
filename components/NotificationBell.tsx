@@ -45,7 +45,11 @@ export const NotificationBell: React.FC = () => {
                     showToast(t.subscribeFailed);
                     return;
                 }
-                const currentToken = await getToken(messaging, { vapidKey: VAPID_PUBLIC_KEY });
+                const swRegistration = await navigator.serviceWorker.ready;
+                const currentToken = await getToken(messaging, { 
+                    vapidKey: VAPID_PUBLIC_KEY,
+                    serviceWorkerRegistration: swRegistration
+                });
                 if (currentToken) {
                     console.log('FCM Token:', currentToken);
                     setIsSubscribed(true);
@@ -93,7 +97,11 @@ export const NotificationBell: React.FC = () => {
                 const messaging = await getMessaging();
                 if (messaging) {
                     try {
-                        const currentToken = await getToken(messaging, { vapidKey: VAPID_PUBLIC_KEY });
+                        const swRegistration = await navigator.serviceWorker.ready;
+                        const currentToken = await getToken(messaging, { 
+                            vapidKey: VAPID_PUBLIC_KEY,
+                            serviceWorkerRegistration: swRegistration
+                        });
                         setIsSubscribed(!!currentToken);
                     } catch (err) {
                         console.error('Could not get notification token silently.', err);
