@@ -29,7 +29,8 @@ try {
     const notificationTitle = payload.notification.title || 'Fresco Restaurant';
     const notificationOptions = {
       body: payload.notification.body || 'You have a new notification.',
-      icon: payload.notification.icon || '/icons/icon-192x192.png',
+      icon: '/icons/icon-192x192.png', // Use a standard small icon for consistency.
+      image: payload.notification.image, // Use the image from the payload for the large content image.
     };
 
     self.registration.showNotification(notificationTitle, notificationOptions);

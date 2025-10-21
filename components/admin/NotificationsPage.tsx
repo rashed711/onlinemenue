@@ -1,5 +1,6 @@
 
 
+
 import React, { useState, useCallback, DragEvent } from 'react';
 import { useUI } from '../../contexts/UIContext';
 import { useAdmin } from '../../contexts/AdminContext';
@@ -100,7 +101,7 @@ export const NotificationsPage: React.FC = () => {
             const payload = {
                 message,
                 image_url: finalImageUrl,
-                target_role: targetRole === 'all' ? null : targetRole,
+                target_role: targetRole === 'all' ? '' : targetRole,
                 with_sound: withSound ? 1 : 0,
                 created_by: currentUser.id,
             };
