@@ -1,3 +1,5 @@
+
+
 import React, { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import type { User, Product, Category, CartItem, Order, RestaurantInfo, OrderType, Tag, LocalizedString } from '../../types';
 import { calculateTotal, formatNumber, calculateItemUnitPrice, calculateItemTotal } from '../../utils/helpers';
@@ -408,6 +410,7 @@ export const CashierPage: React.FC = () => {
         if (cartItems.length === 0) return false;
         if (orderType === 'Dine-in') return tableNumber.trim() !== '';
         if (orderType === 'Takeaway') return customerName.trim() !== '';
+        // @FIX: Corrected variable name from `mobile` to `customerMobile`
         if (orderType === 'Delivery') return customerName.trim() !== '' && customerMobile.trim() !== '' && customerAddress.trim() !== '';
         return false;
     }, [cartItems.length, orderType, tableNumber, customerName, customerMobile, customerAddress]);
@@ -475,15 +478,12 @@ export const CashierPage: React.FC = () => {
             addToCart(product, 1);
         }
     };
-
+    
     const isCategoryOrChildSelected = useCallback((category: Category): boolean => {
         if (selectedCategory === null) return false;
-        if (selectedCategory === category.id) return true;
-        if (!category.children) return false;
-        
-        const childIds = category.children.map(c => c.id);
-        return childIds.includes(selectedCategory);
-    }, [selectedCategory]);
+        const allIds = getDescendantCategoryIds(category.id, allCategories);
+        return allIds.includes(selectedCategory);
+    }, [selectedCategory, allCategories]);
     
     if (!restaurantInfo) {
         return null;
@@ -517,8 +517,8 @@ export const CashierPage: React.FC = () => {
         <>
             <div className="flex flex-col md:flex-row md:h-[calc(100vh-5rem)] md:overflow-hidden -mx-4 sm:-mx-6 lg:-mx-8">
                 <div className="flex-1 flex flex-col bg-slate-100/50 dark:bg-slate-900/50 md:pb-0">
-                    <div className="relative z-20 p-3 border-b border-slate-200 dark:border-slate-700 shrink-0 space-y-3 -mb-72">
-                        <div className="flex flex-row gap-2 items-center">
+                    <div className="relative z-20 p-3 border-b border-slate-200 dark:border-slate-700 shrink-0 space-y-3 -mb-72 pointer-events-none">
+                        <div className="flex flex-row gap-2 items-center pointer-events-auto">
                             <div className="relative w-full flex-grow">
                                 <input
                                     type="text"
@@ -544,7 +544,7 @@ export const CashierPage: React.FC = () => {
                                 )}
                             </button>
                         </div>
-                        <div className={`transition-all duration-300 ease-in-out overflow-hidden ${isFilterOpen ? 'max-h-40 opacity-100 pt-3 border-t border-slate-200 dark:border-slate-700' : 'max-h-0 opacity-0'}`}>
+                        <div className={`transition-all duration-300 ease-in-out overflow-hidden pointer-events-auto ${isFilterOpen ? 'max-h-40 opacity-100 pt-3 border-t border-slate-200 dark:border-slate-700' : 'max-h-0 opacity-0'}`}>
                             <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
                             {allTags.map(tag => (
                                 <label key={tag.id} className="flex items-center gap-2 cursor-pointer">
@@ -561,11 +561,11 @@ export const CashierPage: React.FC = () => {
                             ))}
                             </div>
                         </div>
-                        <div className="relative z-20">
+                        <div className="relative">
                             <div className="flex items-start gap-2 overflow-x-auto scrollbar-hide py-2 pb-72 pointer-events-none">
                                 <button
                                     onClick={() => setSelectedCategory(null)}
-                                    className={`px-4 py-1.5 rounded-full text-sm font-bold transition-all duration-300 whitespace-nowrap pointer-events-auto ${selectedCategory === null ? 'bg-primary-600 text-white shadow-lg' : 'bg-white dark:bg-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-600'}`}
+                                    className={`px-4 py-1.5 rounded-full text-sm font-bold transition-all duration-300 whitespace-nowrap pointer-events-auto ${selectedCategory === null ? 'bg-primary-600 text-white shadow' : 'bg-white dark:bg-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-600'}`}
                                 >
                                     {t.allCategories}
                                 </button>
@@ -573,9 +573,9 @@ export const CashierPage: React.FC = () => {
                                     const hasChildren = category.children && category.children.length > 0;
                                     const isActive = isCategoryOrChildSelected(category);
                                     
-                                    const activeClasses = 'bg-primary-600 text-white shadow-lg';
+                                    const activeClasses = 'bg-primary-600 text-white shadow';
                                     const inactiveClasses = 'bg-white dark:bg-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-600';
-                                    const buttonClasses = `px-4 py-1.5 rounded-full text-sm font-bold transition-all duration-300 whitespace-nowrap flex items-center gap-2 pointer-events-auto ${isActive ? activeClasses : inactiveClasses}`;
+                                    const buttonClasses = `px-3 py-1.5 rounded-full text-sm font-bold transition-all duration-300 whitespace-nowrap flex items-center gap-2 pointer-events-auto ${isActive ? activeClasses : inactiveClasses}`;
 
                                     if (hasChildren) {
                                         return (

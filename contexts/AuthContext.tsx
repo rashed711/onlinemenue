@@ -26,6 +26,7 @@ interface AuthContextType {
     setCurrentUser: React.Dispatch<React.SetStateAction<User | null>>;
     setRolePermissions: React.Dispatch<React.SetStateAction<Record<UserRole, Permission[]>>>;
     staffLogin: (mobile: string, password: string) => Promise<string | null>;
+    unifiedLogin: (identifier: string, password: string) => Promise<string | null>;
     logout: () => void;
     
     // New Email/Password methods
@@ -96,7 +97,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         }
         setCurrentUser(null);
         window.location.hash = '#/';
-    }, []);
+    }, [setCurrentUser]);
 
      useEffect(() => {
         let isMounted = true;
@@ -217,6 +218,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         };
     }, [roles, setIsProcessing, showToast, logout, t.pleaseVerifyEmail, t.accountVerificationFailed]);
 
+    // This effect handles redirection for non-Firebase (manual) logins, like staff.
+    useEffect(() => {
+        if (currentUser && !currentUser.firebase_uid && !currentUser.google_id && window.location.hash.startsWith('#/login')) {
+            const customerRole = roles.find(r => r.name.en.toLowerCase() === 'customer');
+            // If not a customer, redirect to admin.
+            if (!customerRole || currentUser.role !== customerRole.key) {
+                window.location.hash = '#/admin';
+            }
+        }
+    }, [currentUser, roles]);
+
     const userRoleDetails = useMemo(() => roles.find(r => r.key === currentUser?.role), [roles, currentUser]);
     
     const isAdmin = useMemo(() => {
@@ -256,7 +268,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         } finally {
             setIsProcessing(false);
         }
-    }, [setIsProcessing, t.invalidCredentials]);
+    }, [setIsProcessing, t.invalidCredentials, setCurrentUser]);
 
     const registerWithEmailPassword = useCallback(async (details: { name: string; mobile: string; email: string; password: string }): Promise<string | null> => {
         setIsProcessing(true);
@@ -338,6 +350,34 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         }
     }, [setIsProcessing, t.networkRequestFailed]);
 
+    const unifiedLogin = useCallback(async (identifier: string, password: string): Promise<string | null> => {
+        // Both sub-functions handle their own processing state, so we don't need to manage it here.
+    
+        // Attempt 1: Staff Login (assuming mobile number if no '@')
+        if (!identifier.includes('@')) {
+            const staffLoginError = await staffLogin(identifier, password);
+            if (staffLoginError === null) {
+                // Success! staffLogin already set the user. The useEffect will handle redirect.
+                return null;
+            }
+            // If it's not a staff login, it's an invalid credential for staff. We don't try customer login.
+            return staffLoginError;
+        }
+    
+        // Attempt 2: Customer Login (assuming email)
+        if (identifier.includes('@')) {
+            const customerLoginError = await loginWithEmailPassword(identifier, password);
+            if (customerLoginError === null) {
+                // Success! onAuthStateChanged will handle the rest.
+                return null;
+            }
+            return customerLoginError;
+        }
+        
+        // Fallback for an identifier that's neither (shouldn't happen with basic validation)
+        return t.invalidCredentials;
+    }, [staffLogin, loginWithEmailPassword, t.invalidCredentials]);
+
 
     const completeProfile = useCallback(async (details: { name: string, mobile: string }) => {
         if (!newUserFirebaseData) return;
@@ -393,7 +433,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         } finally {
             setIsProcessing(false);
         }
-    }, [newUserFirebaseData, roles, setIsProcessing, showToast, t.profileSaveFailed]);
+    }, [newUserFirebaseData, roles, setIsProcessing, showToast, t.profileSaveFailed, setCurrentUser]);
 
      const updateUserProfile = useCallback(async (userId: number, updates: { name?: string; mobile?: string; profilePicture?: string }) => {
         if (!currentUser || currentUser.id !== userId) return;
@@ -448,7 +488,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         } finally {
             setIsProcessing(false);
         }
-    }, [currentUser, setIsProcessing, showToast, t.profileUpdatedSuccess, t.profileUpdateFailed]);
+    }, [currentUser, setIsProcessing, showToast, t.profileUpdatedSuccess, t.profileUpdateFailed, setCurrentUser]);
     
     const changeCurrentUserPassword = useCallback(async (currentPassword: string, newPassword: string): Promise<string | null> => {
         setIsProcessing(true);
@@ -490,6 +530,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setCurrentUser,
         setRolePermissions,
         staffLogin,
+        unifiedLogin,
         logout,
         registerWithEmailPassword,
         loginWithEmailPassword,
