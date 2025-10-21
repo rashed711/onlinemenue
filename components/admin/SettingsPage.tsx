@@ -9,6 +9,7 @@ import { useData } from '../../contexts/DataContext';
 import { useAdmin } from '../../contexts/AdminContext';
 import { useAuth } from '../../contexts/AuthContext';
 import { formatDateTime } from '../../utils/helpers';
+import { useCountdown } from '../../hooks/useCountdown';
 
 type SettingsTab = 'general' | 'social' | 'statuses' | 'payments' | 'activation';
 
@@ -217,15 +218,19 @@ export const SettingsPage: React.FC = () => {
 
     const handleExtendActivation = (amount: number, unit: 'day' | 'month' | 'year') => {
         if (!localInfo) return;
-        const startDate = localInfo.activationEndDate && new Date(localInfo.activationEndDate) > new Date()
+        // Determine the base date for extension. Use today if expired, otherwise use the existing end date.
+        const baseDate = localInfo.activationEndDate && new Date(localInfo.activationEndDate) > new Date()
             ? new Date(localInfo.activationEndDate)
             : new Date();
         
-        const newDate = new Date(startDate);
+        // Set the time to the end of the day to ensure full days are counted.
+        baseDate.setHours(23, 59, 59, 999);
+    
+        const newDate = new Date(baseDate);
         if (unit === 'day') newDate.setDate(newDate.getDate() + amount);
         if (unit === 'month') newDate.setMonth(newDate.getMonth() + amount);
         if (unit === 'year') newDate.setFullYear(newDate.getFullYear() + amount);
-
+    
         setLocalInfo(prev => prev ? { ...prev, activationEndDate: newDate.toISOString() } : null);
     };
 
@@ -238,6 +243,9 @@ export const SettingsPage: React.FC = () => {
     if (!localInfo || !restaurantInfo) {
         return <div className="p-8 text-center">Loading settings...</div>;
     }
+
+    const isExpired = localInfo.activationEndDate && new Date(localInfo.activationEndDate) < new Date();
+    const { days, hours } = useCountdown(localInfo.activationEndDate || new Date().toISOString());
 
     const tabs: { id: SettingsTab; label: string; permission: Permission }[] = [
         { id: 'general', label: t.settingsTabGeneralBranding, permission: 'manage_settings_general' },
@@ -477,8 +485,16 @@ export const SettingsPage: React.FC = () => {
                              <SettingsCard title={t.systemActivation} subtitle={t.systemActivationSubtitle}>
                                 <div className="p-4 rounded-lg bg-slate-100 dark:bg-slate-900/50">
                                     <h4 className="font-semibold text-slate-500 dark:text-slate-400">{t.activationStatus}</h4>
-                                    {localInfo.activationEndDate && new Date(localInfo.activationEndDate) > new Date() ? (
-                                        <p className="text-lg font-bold text-green-600 dark:text-green-400">{t.activeUntil} {formatDateTime(localInfo.activationEndDate)}</p>
+                                    {localInfo.activationEndDate && !isExpired ? (
+                                        <>
+                                            <p className="text-lg font-bold text-green-600 dark:text-green-400">{t.activeUntil} {formatDateTime(localInfo.activationEndDate)}</p>
+                                            <p className="text-sm font-medium text-slate-600 dark:text-slate-300 mt-1">
+                                                {t.remainingFor}{' '}
+                                                <span className="font-bold text-primary-600 dark:text-primary-400">
+                                                    {days} {days === 1 ? t.countdownDay : t.countdownDays}, {hours} {hours === 1 ? t.countdownHour : t.countdownHours}
+                                                </span>
+                                            </p>
+                                        </>
                                     ) : !localInfo.activationEndDate ? (
                                         <p className="text-lg font-bold text-green-600 dark:text-green-400">{t.activeIndefinitely}</p>
                                     ) : (

@@ -545,6 +545,11 @@ export const translations = {
     deactivateNow: 'Deactivate Now',
     confirmDeactivation: 'Are you sure you want to deactivate the system immediately?',
     loginAsAdmin: 'Login as Administrator',
+    remainingFor: 'Remaining:',
+    countdownDay: 'day',
+    countdownDays: 'days',
+    countdownHour: 'hour',
+    countdownHours: 'hours',
 
     // Notifications
     notifications: 'Notifications',
@@ -1101,6 +1106,11 @@ export const translations = {
     deactivateNow: 'إيقاف الآن',
     confirmDeactivation: 'هل أنت متأكد أنك تريد إيقاف النظام فوراً؟',
     loginAsAdmin: 'تسجيل الدخول كمسؤول',
+    remainingFor: 'متبقي:',
+    countdownDay: 'يوم',
+    countdownDays: 'أيام',
+    countdownHour: 'ساعة',
+    countdownHours: 'ساعات',
     notifications: 'الإشعارات',
     sendNotifications: 'إرسال إشعارات',
     notificationMessage: 'نص الإشعار',
