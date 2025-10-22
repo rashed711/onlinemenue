@@ -47,7 +47,7 @@ export const ProductList: React.FC<ProductListProps> = ({ titleKey, products, la
 
   if (slider) {
     return (
-      <section className="my-12 sm:my-16 animate-fade-in-up">
+      <section className="my-[10px] animate-fade-in-up">
         <h2 className="text-3xl font-extrabold mb-8 text-slate-900 dark:text-slate-200">{t[titleKey]}</h2>
         <div className="relative -mx-4">
           <div ref={sliderRef} className="flex overflow-x-auto snap-x snap-mandatory scroll-smooth scrollbar-hide px-2">
@@ -88,7 +88,7 @@ export const ProductList: React.FC<ProductListProps> = ({ titleKey, products, la
   const gridClasses = 'grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-6';
 
   return (
-    <section className="py-12 sm:py-16 animate-fade-in-up">
+    <section className="py-[10px] sm:py-[10px] animate-fade-in-up">
       <h2 className="text-3xl font-extrabold mb-8 text-slate-900 dark:text-slate-200">{t[titleKey]}</h2>
       <div className={gridClasses}>
         {products.map(product => (

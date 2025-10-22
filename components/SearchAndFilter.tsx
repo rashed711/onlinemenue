@@ -86,7 +86,7 @@ export const SearchAndFilter: React.FC<SearchAndFilterProps> = ({
 
 
   return (
-    <div id="menu" className="relative z-30 py-8">
+    <div id="menu" className="relative py-[5px]">
       {/* Categories */}
       <div ref={dropdownsRef} className="flex items-start justify-start md:justify-center gap-4 sm:gap-6 overflow-x-auto scrollbar-hide py-2 pb-40 -mb-40">
           <button
