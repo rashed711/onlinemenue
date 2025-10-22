@@ -17,21 +17,19 @@ export const BottomNavBar: React.FC<BottomNavBarProps> = ({ onCartClick }) => {
     const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
     const cartItemCount = cartItems.reduce((acc, item) => acc + item.quantity, 0);
 
-    const navItems = [
-        { id: 'home', href: '#/', label: t.home, icon: HomeIcon },
-        { id: 'menu', href: '#/menu', label: t.fullMenu, icon: MenuAlt2Icon },
-        { id: 'cart', label: t.cart, icon: CartIcon, isButton: true, badge: cartItemCount },
-        { id: 'orders', href: '#/profile', label: t.orders, icon: ClockIcon },
-        { id: 'profile', label: t.myProfile, icon: UserIcon, isButton: true },
-    ];
-    
-    const currentHash = window.location.hash || '#/';
-    
     const handleNav = (path: string) => {
         setIsUserMenuOpen(false);
         window.location.hash = path;
     };
 
+    const navItems = [
+        { id: 'home', path: '/', label: t.home, icon: HomeIcon, isButton: true },
+        { id: 'cart', path: '', label: t.cart, icon: CartIcon, isButton: true, badge: cartItemCount },
+        { id: 'profile', path: '', label: t.myProfile, icon: UserIcon, isButton: true },
+    ];
+    
+    const currentHash = window.location.hash || '#/';
+    
     const portalRoot = document.getElementById('portal-root');
 
     return (
@@ -40,7 +38,7 @@ export const BottomNavBar: React.FC<BottomNavBarProps> = ({ onCartClick }) => {
                 <div className="bg-white/80 dark:bg-slate-800/80 backdrop-blur-xl rounded-2xl shadow-2xl border border-white/50 dark:border-slate-700/50">
                     <nav className="flex justify-around items-center h-20">
                         {navItems.map((item) => {
-                            const isActive = item.href === currentHash;
+                            const isActive = item.path === currentHash && item.path !== '';
                             const iconClasses = `w-7 h-7 mb-1 transition-all ${isActive ? 'text-primary-600 dark:text-primary-400' : 'text-slate-500 dark:text-slate-400 group-hover:text-primary-600 dark:group-hover:text-primary-400'}`;
                             const labelClasses = `text-xs font-bold transition-colors ${isActive ? 'text-primary-600 dark:text-primary-400' : 'text-slate-600 dark:text-slate-400 group-hover:text-primary-600 dark:group-hover:text-primary-400'}`;
 
@@ -56,22 +54,15 @@ export const BottomNavBar: React.FC<BottomNavBarProps> = ({ onCartClick }) => {
                                 </>
                             );
 
-                            if (item.isButton) {
-                                let clickHandler = () => {};
-                                if (item.id === 'cart') clickHandler = onCartClick;
-                                if (item.id === 'profile') clickHandler = () => setIsUserMenuOpen(true);
-                                
-                                return (
-                                    <button key={item.label} onClick={clickHandler} className="relative flex-1 flex flex-col items-center justify-center group">
-                                        {content}
-                                    </button>
-                                );
-                            }
-
+                            let clickHandler = () => {};
+                            if (item.id === 'home') clickHandler = () => handleNav(item.path!);
+                            if (item.id === 'cart') clickHandler = onCartClick;
+                            if (item.id === 'profile') clickHandler = () => setIsUserMenuOpen(true);
+                            
                             return (
-                                <a key={item.label} href={item.href} className="relative flex-1 flex flex-col items-center justify-center group">
+                                <button key={item.label} onClick={clickHandler} className="relative flex-1 flex flex-col items-center justify-center group">
                                     {content}
-                                </a>
+                                </button>
                             );
                         })}
                     </nav>

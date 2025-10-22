@@ -34,18 +34,9 @@ export const ProductList: React.FC<ProductListProps> = ({ titleKey, products, la
     }
   };
   
-  if (products.length === 0 && titleKey === 'fullMenu') {
-      return (
-          <section className="py-12 sm:py-16 text-center">
-              <h2 className="text-3xl font-extrabold mb-8 text-slate-900 dark:text-slate-200">{t[titleKey]}</h2>
-              <p className="text-slate-500 dark:text-slate-400">{language === 'ar' ? 'لم يتم العثور على منتجات تطابق بحثك.' : 'No products match your search.'}</p>
-          </section>
-      );
-  }
-  
-  if (products.length === 0) return null;
-
   if (slider) {
+    if (products.length === 0) return null;
+
     return (
       <section className="my-[10px] animate-fade-in-up">
         <h2 className="text-3xl font-extrabold mb-8 text-slate-900 dark:text-slate-200">{t[titleKey]}</h2>
@@ -85,11 +76,30 @@ export const ProductList: React.FC<ProductListProps> = ({ titleKey, products, la
     );
   }
 
-  const gridClasses = 'grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-6';
+  const isFullMenu = titleKey === 'fullMenu';
+  const gridClasses = isFullMenu
+    ? 'grid grid-cols-3 gap-3 md:grid-cols-4 lg:grid-cols-5 md:gap-4'
+    : 'grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-6';
+  
+  const titleClasses = isFullMenu
+    ? "text-2xl font-bold mb-4 text-slate-700 dark:text-slate-200 text-center bg-slate-200 dark:bg-slate-800 p-3 rounded-lg"
+    : "text-3xl font-extrabold mb-8 text-slate-900 dark:text-slate-200";
+
+  if (products.length === 0) {
+    if (isFullMenu) {
+      return (
+        <section className="py-12 sm:py-16 text-center">
+            <h2 className={titleClasses}>{t[titleKey]}</h2>
+            <p className="text-slate-500 dark:text-slate-400">{language === 'ar' ? 'لم يتم العثور على منتجات تطابق بحثك.' : 'No products match your search.'}</p>
+        </section>
+      );
+    }
+    return null;
+  }
 
   return (
     <section className="py-[10px] sm:py-[10px] animate-fade-in-up">
-      <h2 className="text-3xl font-extrabold mb-8 text-slate-900 dark:text-slate-200">{t[titleKey]}</h2>
+      <h2 className={titleClasses}>{t[titleKey]}</h2>
       <div className={gridClasses}>
         {products.map(product => (
           <ProductCard 

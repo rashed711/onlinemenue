@@ -22,7 +22,16 @@ export const ProductCard: React.FC<ProductCardProps> = React.memo(({ product, la
         e.preventDefault();
         onProductClick(product);
     }
-  }
+  };
+
+  const handleAddToCartClick = (e: React.MouseEvent) => {
+      e.stopPropagation();
+      if (product.options && product.options.length > 0) {
+          onProductClick(product);
+      } else {
+          addToCart(product, 1);
+      }
+  };
 
   return (
     <div 
@@ -31,27 +40,35 @@ export const ProductCard: React.FC<ProductCardProps> = React.memo(({ product, la
         role="button"
         tabIndex={0}
         aria-label={`View details for ${product.name[language]}`}
-        className="bg-white dark:bg-slate-800 rounded-2xl shadow-md overflow-hidden group transform hover:shadow-xl hover:-translate-y-1 transition-all duration-300 cursor-pointer flex flex-col border border-slate-200 dark:border-slate-700/50 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 dark:focus:ring-offset-cream"
+        className="bg-white dark:bg-slate-800 rounded-xl shadow-sm overflow-hidden group transform hover:shadow-lg transition-all duration-300 cursor-pointer flex flex-col border border-slate-200 dark:border-slate-700/50 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 dark:focus:ring-offset-cream"
     >
-      <div className="relative h-40 sm:h-48">
+      <div className="relative aspect-square w-full">
         {!isImageLoaded && (
           <div className="absolute inset-0 bg-slate-200 dark:bg-slate-700 animate-pulse" />
         )}
         <img 
           src={product.image} 
           alt={product.name[language]} 
-          className={`absolute inset-0 w-full h-full object-cover transition-all duration-500 group-hover:scale-105 ${isImageLoaded ? 'opacity-100' : 'opacity-0'}`}
+          className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-500 ${isImageLoaded ? 'opacity-100' : 'opacity-0'}`}
           loading="lazy"
           onLoad={() => setIsImageLoaded(true)}
         />
       </div>
-      <div className="p-3 sm:p-4 flex flex-col flex-grow">
-        <h3 className="text-sm sm:text-base font-bold text-slate-800 dark:text-slate-100 h-10 sm:h-12 line-clamp-2">{product.name[language]}</h3>
-        
-        <div className="flex justify-between items-center mt-2">
-          <p className="text-lg sm:text-xl font-extrabold text-primary-700 dark:text-primary-400">
-            {product.price.toFixed(2)} <span className="text-xs sm:text-sm font-semibold">{t.currency}</span>
-          </p>
+      <div className="p-2">
+        <div className="flex justify-between items-center gap-2">
+            <div className="flex-1 min-w-0">
+                <p className="text-xs font-bold text-slate-700 dark:text-slate-200 truncate">{product.name[language]}</p>
+                <p className="text-xs font-semibold text-primary-600 dark:text-primary-400">{product.price.toFixed(2)} {t.currency}</p>
+            </div>
+            <div className="flex-shrink-0">
+                <button
+                    onClick={handleAddToCartClick}
+                    className="w-8 h-8 flex items-center justify-center bg-amber-400 hover:bg-amber-500 text-white rounded-full transition-transform transform hover:scale-110 focus:outline-none focus:ring-2 focus:ring-offset-1 focus:ring-amber-500"
+                    aria-label={t.addToCart}
+                >
+                    <PlusIcon className="w-5 h-5" />
+                </button>
+            </div>
         </div>
       </div>
     </div>

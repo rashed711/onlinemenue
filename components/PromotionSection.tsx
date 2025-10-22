@@ -3,6 +3,7 @@ import type { Promotion, Product } from '../types';
 import { useCountdown } from '../hooks/useCountdown';
 import { ChevronLeftIcon, ChevronRightIcon } from './icons/Icons';
 import { useUI } from '../contexts/UIContext';
+import { formatNumber } from '../utils/helpers';
 
 interface PromotionCardProps {
   promotion: Promotion;
@@ -20,9 +21,10 @@ const PromotionCard: React.FC<PromotionCardProps> = ({ promotion, product, onPro
     }
     
     const discountedPrice = product.price * (1 - promotion.discountPercent / 100);
+    const discountText = `-${formatNumber(promotion.discountPercent)}%`;
 
     return (
-        <div onClick={() => onProductClick(product)} className="relative aspect-[2/1] sm:aspect-[3/1] w-full bg-slate-800 text-white rounded-2xl overflow-hidden shadow-xl cursor-pointer group">
+        <div onClick={() => onProductClick(product)} className="relative aspect-[16/9] sm:aspect-[2/1] md:aspect-[2.5/1] w-full bg-slate-800 text-white rounded-2xl overflow-hidden shadow-xl cursor-pointer group">
             {/* Background Image */}
             {!isImageLoaded && <div className="absolute inset-0 bg-primary-400/50 animate-pulse"></div>}
             <img 
@@ -33,28 +35,47 @@ const PromotionCard: React.FC<PromotionCardProps> = ({ promotion, product, onPro
                 onLoad={() => setIsImageLoaded(true)}
             />
             {/* Gradient Overlay */}
-            <div className="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent"></div>
+            <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/30 to-transparent"></div>
+            <div className="absolute inset-0 bg-gradient-to-r from-black/50 to-transparent"></div>
             
+            {/* Discount Badge */}
+            <div className="absolute top-3 right-3 sm:top-4 sm:right-4 bg-red-600 text-white text-xs sm:text-sm font-bold px-3 py-1 rounded-full shadow-lg transform group-hover:scale-110 transition-transform z-10">
+                {discountText}
+            </div>
+
             {/* Content */}
-            <div className="relative h-full flex flex-col justify-end p-4 sm:p-6">
-                <div>
-                    <h3 className="text-xl sm:text-2xl font-bold">{promotion.title[language]}</h3>
-                    <p className="mt-1 text-sm opacity-90 line-clamp-1">{promotion.description[language]}</p>
+            <div className="relative h-full flex flex-col justify-end p-4 sm:p-5">
+                 <div className="mb-4">
+                    <h3 className="text-xl sm:text-2xl font-bold drop-shadow-lg">{promotion.title[language]}</h3>
+                    <p className="mt-1 text-sm opacity-90 line-clamp-1 drop-shadow-md">{product.name[language]}</p>
                 </div>
-                <div className="flex flex-col items-start gap-3 sm:flex-row sm:items-end sm:justify-between mt-4">
+                
+                <div className="flex flex-col items-start gap-3 sm:flex-row sm:items-end sm:justify-between">
                     {/* Prices */}
-                    <div className="flex items-baseline gap-2">
-                        <span className="text-2xl sm:text-3xl font-extrabold">{discountedPrice.toFixed(2)} {t.currency}</span>
-                        <span className="line-through text-md sm:text-lg opacity-80">{product.price.toFixed(2)} {t.currency}</span>
+                    <div className="flex items-baseline gap-2 drop-shadow-lg">
+                        <span className="text-3xl sm:text-4xl font-extrabold text-amber-400">{discountedPrice.toFixed(2)}</span>
+                        <span className="text-xl sm:text-2xl font-bold text-amber-400">{t.currency}</span>
+                        <span className="line-through text-md sm:text-lg opacity-70">{product.price.toFixed(2)}</span>
                     </div>
                     {/* Countdown */}
                     <div className="flex-shrink-0">
-                        <p className="font-semibold uppercase text-xs opacity-90 mb-1">{t.expiresIn}</p>
-                        <div className="flex rtl:flex-row-reverse gap-1 text-sm sm:text-base font-mono font-bold">
-                            <div className="bg-white/20 px-1.5 py-0.5 sm:py-1 rounded-md min-w-[2.25rem] text-center">{String(days).padStart(2,'0')}<span className="text-[9px] block -mt-1">{t.days}</span></div>
-                            <div className="bg-white/20 px-1.5 py-0.5 sm:py-1 rounded-md min-w-[2.25rem] text-center">{String(hours).padStart(2,'0')}<span className="text-[9px] block -mt-1">{t.hours}</span></div>
-                            <div className="bg-white/20 px-1.5 py-0.5 sm:py-1 rounded-md min-w-[2.25rem] text-center">{String(minutes).padStart(2,'0')}<span className="text-[9px] block -mt-1">{t.minutes}</span></div>
-                            <div className="bg-white/20 px-1.5 py-0.5 sm:py-1 rounded-md min-w-[2.25rem] text-center">{String(seconds).padStart(2,'0')}<span className="text-[9px] block -mt-1">{t.seconds}</span></div>
+                        <div className="flex rtl:flex-row-reverse gap-1.5 text-sm sm:text-base font-bold">
+                            <div className="bg-white/10 backdrop-blur-sm p-1.5 rounded-lg w-12 sm:w-14 flex flex-col items-center justify-center">
+                                <span className="text-lg font-bold font-sans">{String(days).padStart(2, '0')}</span>
+                                <span className="text-[9px] uppercase opacity-75 -mt-1">{t.days}</span>
+                            </div>
+                             <div className="bg-white/10 backdrop-blur-sm p-1.5 rounded-lg w-12 sm:w-14 flex flex-col items-center justify-center">
+                                <span className="text-lg font-bold font-sans">{String(hours).padStart(2, '0')}</span>
+                                <span className="text-[9px] uppercase opacity-75 -mt-1">{t.hours}</span>
+                            </div>
+                             <div className="bg-white/10 backdrop-blur-sm p-1.5 rounded-lg w-12 sm:w-14 flex flex-col items-center justify-center">
+                                <span className="text-lg font-bold font-sans">{String(minutes).padStart(2, '0')}</span>
+                                <span className="text-[9px] uppercase opacity-75 -mt-1">{t.minutes}</span>
+                            </div>
+                             <div className="bg-white/10 backdrop-blur-sm p-1.5 rounded-lg w-12 sm:w-14 flex flex-col items-center justify-center">
+                                <span className="text-lg font-bold font-sans">{String(seconds).padStart(2, '0')}</span>
+                                <span className="text-[9px] uppercase opacity-75 -mt-1">{t.seconds}</span>
+                            </div>
                         </div>
                     </div>
                 </div>
