@@ -55,7 +55,16 @@ export const BottomNavBar: React.FC<BottomNavBarProps> = ({ onCartClick }) => {
                             );
 
                             let clickHandler = () => {};
-                            if (item.id === 'home') clickHandler = () => handleNav(item.path!);
+                            if (item.id === 'home') {
+                                clickHandler = () => {
+                                    const currentPath = window.location.hash.split('?')[0];
+                                    if (currentPath === '' || currentPath === '#/' || currentPath === '#') {
+                                        window.scrollTo({ top: 0, behavior: 'smooth' });
+                                    } else {
+                                        handleNav(item.path!);
+                                    }
+                                };
+                            }
                             if (item.id === 'cart') clickHandler = onCartClick;
                             if (item.id === 'profile') clickHandler = () => setIsUserMenuOpen(true);
                             
