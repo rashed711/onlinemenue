@@ -46,7 +46,25 @@ export const SearchAndFilter: React.FC<SearchAndFilterProps> = ({
   const [openDropdown, setOpenDropdown] = useState<number | null>(null);
   const dropdownsRef = useRef<HTMLDivElement>(null);
 
-  const topLevelCategories = useMemo(() => categories.filter(c => !c.parent_id), [categories]);
+  const topLevelCategories = useMemo(() => {
+    const sorter = (a: Category, b: Category) => 
+        a.name[language].localeCompare(b.name[language], language);
+
+    // Deep copy to avoid mutating original data from context
+    const categoriesCopy: Category[] = JSON.parse(JSON.stringify(categories));
+
+    // Sort children of each category
+    categoriesCopy.forEach(cat => {
+        if (cat.children && cat.children.length > 0) {
+            cat.children.sort(sorter);
+        }
+    });
+
+    // Sort top-level categories
+    categoriesCopy.sort(sorter);
+
+    return categoriesCopy;
+  }, [categories, language]);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -70,10 +88,10 @@ export const SearchAndFilter: React.FC<SearchAndFilterProps> = ({
   return (
     <div id="menu" className="relative z-30 py-8">
       {/* Categories */}
-      <div ref={dropdownsRef} className="flex items-start justify-start md:justify-center gap-4 sm:gap-6 overflow-x-auto scrollbar-hide py-2 pb-40 -mb-40 pointer-events-none">
+      <div ref={dropdownsRef} className="flex items-start justify-start md:justify-center gap-4 sm:gap-6 overflow-x-auto scrollbar-hide py-2 pb-40 -mb-40">
           <button
               onClick={() => { setSelectedCategory(null); setOpenDropdown(null); }}
-              className="flex flex-col items-center justify-center gap-2 group flex-shrink-0 transition-transform transform hover:scale-105 pointer-events-auto"
+              className="flex flex-col items-center justify-center gap-2 group flex-shrink-0 transition-transform transform hover:scale-105"
           >
               <div className={`w-16 h-16 sm:w-20 sm:h-20 rounded-full flex items-center justify-center transition-all duration-300 ${selectedCategory === null ? 'bg-primary-600 shadow-lg' : 'bg-slate-100 dark:bg-slate-800 group-hover:bg-primary-100 dark:group-hover:bg-primary-900/50'}`}>
                 <span className={`font-bold text-lg ${selectedCategory === null ? 'text-white' : 'text-slate-700 dark:text-slate-200'}`}>{t.allCategories}</span>
@@ -98,7 +116,7 @@ export const SearchAndFilter: React.FC<SearchAndFilterProps> = ({
 
               if (hasChildren) {
                   return (
-                      <div key={category.id} className="relative flex-shrink-0 pointer-events-auto">
+                      <div key={category.id} className="relative flex-shrink-0">
                           <button
                               onClick={() => setOpenDropdown(prev => prev === category.id ? null : category.id)}
                               className="flex flex-col items-center justify-center gap-2 group transition-transform transform hover:scale-105"
@@ -132,7 +150,7 @@ export const SearchAndFilter: React.FC<SearchAndFilterProps> = ({
                  <button
                     key={category.id}
                     onClick={() => { setSelectedCategory(isSelected ? null : category.id); setOpenDropdown(null); }}
-                    className="flex flex-col items-center justify-center gap-2 group flex-shrink-0 transition-transform transform hover:scale-105 pointer-events-auto"
+                    className="flex flex-col items-center justify-center gap-2 group flex-shrink-0 transition-transform transform hover:scale-105"
                 >
                    {buttonContent}
                 </button>
