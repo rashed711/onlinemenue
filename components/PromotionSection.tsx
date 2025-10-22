@@ -33,7 +33,7 @@ const PromotionCard: React.FC<PromotionCardProps> = ({ promotion, product, onPro
                 onLoad={() => setIsImageLoaded(true)}
             />
             {/* Gradient Overlay */}
-            <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent"></div>
+            <div className="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent"></div>
             
             {/* Content */}
             <div className="relative h-full flex flex-col justify-end p-4 sm:p-6">
@@ -41,20 +41,20 @@ const PromotionCard: React.FC<PromotionCardProps> = ({ promotion, product, onPro
                     <h3 className="text-xl sm:text-2xl font-bold">{promotion.title[language]}</h3>
                     <p className="mt-1 text-sm opacity-90 line-clamp-1">{promotion.description[language]}</p>
                 </div>
-                <div className="flex items-end justify-between mt-3 gap-4">
+                <div className="flex flex-col items-start gap-3 sm:flex-row sm:items-end sm:justify-between mt-4">
                     {/* Prices */}
                     <div className="flex items-baseline gap-2">
                         <span className="text-2xl sm:text-3xl font-extrabold">{discountedPrice.toFixed(2)} {t.currency}</span>
                         <span className="line-through text-md sm:text-lg opacity-80">{product.price.toFixed(2)} {t.currency}</span>
                     </div>
                     {/* Countdown */}
-                    <div className="text-right flex-shrink-0">
+                    <div className="flex-shrink-0">
                         <p className="font-semibold uppercase text-xs opacity-90 mb-1">{t.expiresIn}</p>
-                        <div className="flex rtl:flex-row-reverse gap-1 text-lg font-mono font-bold">
-                            <div className="bg-white/20 px-2 py-1 rounded-md min-w-[2.5rem] text-center">{String(days).padStart(2,'0')}<span className="text-[9px] block -mt-1">{t.days}</span></div>
-                            <div className="bg-white/20 px-2 py-1 rounded-md min-w-[2.5rem] text-center">{String(hours).padStart(2,'0')}<span className="text-[9px] block -mt-1">{t.hours}</span></div>
-                            <div className="bg-white/20 px-2 py-1 rounded-md min-w-[2.5rem] text-center">{String(minutes).padStart(2,'0')}<span className="text-[9px] block -mt-1">{t.minutes}</span></div>
-                            <div className="bg-white/20 px-2 py-1 rounded-md min-w-[2.5rem] text-center">{String(seconds).padStart(2,'0')}<span className="text-[9px] block -mt-1">{t.seconds}</span></div>
+                        <div className="flex rtl:flex-row-reverse gap-1 text-sm sm:text-base font-mono font-bold">
+                            <div className="bg-white/20 px-1.5 py-0.5 sm:py-1 rounded-md min-w-[2.25rem] text-center">{String(days).padStart(2,'0')}<span className="text-[9px] block -mt-1">{t.days}</span></div>
+                            <div className="bg-white/20 px-1.5 py-0.5 sm:py-1 rounded-md min-w-[2.25rem] text-center">{String(hours).padStart(2,'0')}<span className="text-[9px] block -mt-1">{t.hours}</span></div>
+                            <div className="bg-white/20 px-1.5 py-0.5 sm:py-1 rounded-md min-w-[2.25rem] text-center">{String(minutes).padStart(2,'0')}<span className="text-[9px] block -mt-1">{t.minutes}</span></div>
+                            <div className="bg-white/20 px-1.5 py-0.5 sm:py-1 rounded-md min-w-[2.25rem] text-center">{String(seconds).padStart(2,'0')}<span className="text-[9px] block -mt-1">{t.seconds}</span></div>
                         </div>
                     </div>
                 </div>
@@ -156,14 +156,14 @@ export const PromotionSection: React.FC<PromotionSectionProps> = ({ promotions, 
                 <>
                     <button
                         onClick={() => handleScroll('prev')}
-                        className={`absolute top-1/2 -translate-y-1/2 ${isRtl ? 'right-4' : 'left-4'} z-10 p-2 bg-white/70 dark:bg-slate-900/70 rounded-full shadow-lg hover:bg-white dark:hover:bg-slate-900 transition-colors`}
+                        className={`hidden sm:flex absolute top-1/2 -translate-y-1/2 ${isRtl ? 'right-4' : 'left-4'} z-10 p-2 items-center justify-center bg-white/70 dark:bg-slate-900/70 rounded-full shadow-lg hover:bg-white dark:hover:bg-slate-900 transition-colors`}
                         aria-label="Previous Offer"
                     >
                         {isRtl ? <ChevronRightIcon className="w-6 h-6" /> : <ChevronLeftIcon className="w-6 h-6" />}
                     </button>
                     <button
                         onClick={() => handleScroll('next')}
-                        className={`absolute top-1/2 -translate-y-1/2 ${isRtl ? 'left-4' : 'right-4'} z-10 p-2 bg-white/70 dark:bg-slate-900/70 rounded-full shadow-lg hover:bg-white dark:hover:bg-slate-900 transition-colors`}
+                        className={`hidden sm:flex absolute top-1/2 -translate-y-1/2 ${isRtl ? 'left-4' : 'right-4'} z-10 p-2 items-center justify-center bg-white/70 dark:bg-slate-900/70 rounded-full shadow-lg hover:bg-white dark:hover:bg-slate-900 transition-colors`}
                         aria-label="Next Offer"
                     >
                         {isRtl ? <ChevronLeftIcon className="w-6 h-6" /> : <ChevronRightIcon className="w-6 h-6" />}

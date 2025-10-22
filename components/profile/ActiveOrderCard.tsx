@@ -20,7 +20,7 @@ const OrderStatusTracker: React.FC<{ order: Order }> = ({ order }) => {
         return null;
     }
 
-    // [FIXED] Filter out terminal/inactive statuses (like 'cancelled') by their color property
+    // @FIX: Filter out terminal/inactive statuses by their color property
     // instead of a hardcoded ID, which is more robust.
     const orderStages = restaurantInfo.orderStatusColumns.filter(
         s => s.color !== 'slate'
