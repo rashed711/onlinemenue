@@ -9,6 +9,7 @@ import { useAdmin } from '../../contexts/AdminContext';
 import { OrderHistory } from './OrderHistory';
 import { Header } from '../Header'; // Import the main header
 import { optimizeImage } from '../../utils/imageOptimizer';
+import { BottomNavBar } from '../BottomNavBar';
 
 export const ProfilePage: React.FC = () => {
     const { language, t, setIsChangePasswordModalOpen, setIsProcessing, showToast } = useUI();
@@ -141,8 +142,10 @@ export const ProfilePage: React.FC = () => {
     );
     
     return (
-        <>
-            <Header onCartClick={() => window.location.hash = '#/'} />
+        <div className="pb-24">
+            <div className="hidden md:block">
+                <Header onCartClick={() => window.location.hash = '#/'} />
+            </div>
             <div className="min-h-screen bg-slate-100 dark:bg-slate-950 p-4 sm:p-6 md:p-8">
                 <div className="max-w-7xl mx-auto">
                     <h1 className="text-3xl sm:text-4xl font-extrabold text-slate-800 dark:text-slate-100 mb-8">{t.myProfile}</h1>
@@ -217,6 +220,7 @@ export const ProfilePage: React.FC = () => {
                 </div>
                 {feedbackOrder && <FeedbackModal order={feedbackOrder} onClose={() => setFeedbackOrder(null)} onSave={handleSaveFeedback} />}
             </div>
-        </>
+            <BottomNavBar onCartClick={() => {}} />
+        </div>
     );
 };

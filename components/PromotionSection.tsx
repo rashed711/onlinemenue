@@ -22,34 +22,39 @@ const PromotionCard: React.FC<PromotionCardProps> = ({ promotion, product, onPro
     const discountedPrice = product.price * (1 - promotion.discountPercent / 100);
 
     return (
-        <div onClick={() => onProductClick(product)} className="bg-gradient-to-br from-primary-500 to-primary-700 h-full text-white rounded-2xl p-6 lg:p-8 flex flex-col md:flex-row items-center gap-6 lg:gap-8 shadow-xl hover:shadow-2xl hover:shadow-primary-500/40 cursor-pointer transform hover:scale-105 transition-all duration-300 min-h-72">
-            <div className="relative w-full md:w-36 h-48 md:h-36 rounded-xl md:rounded-full flex-shrink-0 border-4 border-primary-300 overflow-hidden">
-                {!isImageLoaded && <div className="absolute inset-0 bg-primary-400/50 animate-pulse"></div>}
-                <img 
-                    src={product.image} 
-                    alt={product.name[language]} 
-                    className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-500 ${isImageLoaded ? 'opacity-100' : 'opacity-0'}`}
-                    loading="lazy"
-                    onLoad={() => setIsImageLoaded(true)}
-                />
-            </div>
-            <div className="flex flex-col flex-1 justify-center text-center md:text-start">
+        <div onClick={() => onProductClick(product)} className="relative aspect-[2/1] sm:aspect-[3/1] w-full bg-slate-800 text-white rounded-2xl overflow-hidden shadow-xl cursor-pointer group">
+            {/* Background Image */}
+            {!isImageLoaded && <div className="absolute inset-0 bg-primary-400/50 animate-pulse"></div>}
+            <img 
+                src={product.image} 
+                alt={product.name[language]} 
+                className={`absolute inset-0 w-full h-full object-cover transition-all duration-500 group-hover:scale-110 ${isImageLoaded ? 'opacity-100' : 'opacity-0'}`}
+                loading="lazy"
+                onLoad={() => setIsImageLoaded(true)}
+            />
+            {/* Gradient Overlay */}
+            <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent"></div>
+            
+            {/* Content */}
+            <div className="relative h-full flex flex-col justify-end p-4 sm:p-6">
                 <div>
-                    <div>
-                        <h3 className="text-2xl lg:text-3xl font-bold">{promotion.title[language]}</h3>
-                        <p className="mt-1 lg:mt-2 opacity-90 line-clamp-2">{promotion.description[language]}</p>
-                        <div className="flex items-baseline gap-2 mt-2 lg:mt-3 justify-center md:justify-start">
-                            <span className="text-3xl lg:text-4xl font-extrabold">{discountedPrice.toFixed(2)} {t.currency}</span>
-                            <span className="line-through text-lg lg:text-xl opacity-80">{product.price.toFixed(2)} {t.currency}</span>
-                        </div>
+                    <h3 className="text-xl sm:text-2xl font-bold">{promotion.title[language]}</h3>
+                    <p className="mt-1 text-sm opacity-90 line-clamp-1">{promotion.description[language]}</p>
+                </div>
+                <div className="flex items-end justify-between mt-3 gap-4">
+                    {/* Prices */}
+                    <div className="flex items-baseline gap-2">
+                        <span className="text-2xl sm:text-3xl font-extrabold">{discountedPrice.toFixed(2)} {t.currency}</span>
+                        <span className="line-through text-md sm:text-lg opacity-80">{product.price.toFixed(2)} {t.currency}</span>
                     </div>
-                    <div className="mt-4">
-                        <p className="font-semibold uppercase text-sm opacity-90">{t.expiresIn}</p>
-                        <div className="flex rtl:flex-row-reverse gap-2 text-2xl font-mono font-bold mt-1 justify-center md:justify-start">
-                            <div className="bg-white/20 p-2 lg:py-2 lg:px-3 rounded-md min-w-12 lg:min-w-14 text-center">{String(days).padStart(2,'0')}<span className="text-xs block">{t.days}</span></div>
-                            <div className="bg-white/20 p-2 lg:py-2 lg:px-3 rounded-md min-w-12 lg:min-w-14 text-center">{String(hours).padStart(2,'0')}<span className="text-xs block">{t.hours}</span></div>
-                            <div className="bg-white/20 p-2 lg:py-2 lg:px-3 rounded-md min-w-12 lg:min-w-14 text-center">{String(minutes).padStart(2,'0')}<span className="text-xs block">{t.minutes}</span></div>
-                            <div className="bg-white/20 p-2 lg:py-2 lg:px-3 rounded-md min-w-12 lg:min-w-14 text-center">{String(seconds).padStart(2,'0')}<span className="text-xs block">{t.seconds}</span></div>
+                    {/* Countdown */}
+                    <div className="text-right flex-shrink-0">
+                        <p className="font-semibold uppercase text-xs opacity-90 mb-1">{t.expiresIn}</p>
+                        <div className="flex rtl:flex-row-reverse gap-1 text-lg font-mono font-bold">
+                            <div className="bg-white/20 px-2 py-1 rounded-md min-w-[2.5rem] text-center">{String(days).padStart(2,'0')}<span className="text-[9px] block -mt-1">{t.days}</span></div>
+                            <div className="bg-white/20 px-2 py-1 rounded-md min-w-[2.5rem] text-center">{String(hours).padStart(2,'0')}<span className="text-[9px] block -mt-1">{t.hours}</span></div>
+                            <div className="bg-white/20 px-2 py-1 rounded-md min-w-[2.5rem] text-center">{String(minutes).padStart(2,'0')}<span className="text-[9px] block -mt-1">{t.minutes}</span></div>
+                            <div className="bg-white/20 px-2 py-1 rounded-md min-w-[2.5rem] text-center">{String(seconds).padStart(2,'0')}<span className="text-[9px] block -mt-1">{t.seconds}</span></div>
                         </div>
                     </div>
                 </div>
@@ -116,8 +121,10 @@ export const PromotionSection: React.FC<PromotionSectionProps> = ({ promotions, 
 
   const startAutoPlay = useCallback(() => {
     if (intervalRef.current) clearInterval(intervalRef.current);
-    intervalRef.current = window.setInterval(scrollNext, 3500);
-  }, [scrollNext]);
+    if (displayablePromotions.length > 1) {
+        intervalRef.current = window.setInterval(scrollNext, 3500);
+    }
+  }, [scrollNext, displayablePromotions.length]);
 
   const stopAutoPlay = () => {
     if (intervalRef.current) clearInterval(intervalRef.current);
@@ -133,19 +140,19 @@ export const PromotionSection: React.FC<PromotionSectionProps> = ({ promotions, 
   }
 
   return (
-    <section className="my-12 animate-fade-in-up">
-        <h2 className="text-3xl font-extrabold mb-8 text-slate-900 dark:text-slate-200">{t.todaysOffers}</h2>
-        <div className="relative -mx-4" onMouseEnter={stopAutoPlay} onMouseLeave={startAutoPlay} onTouchStart={stopAutoPlay} onTouchEnd={startAutoPlay}>
-            <div ref={sliderRef} className="flex overflow-x-auto snap-x snap-mandatory scroll-smooth scrollbar-hide px-2">
+    <section className="container mx-auto max-w-7xl px-4 pt-8 animate-fade-in">
+        <h2 className="text-3xl font-extrabold mb-6 text-slate-900 dark:text-slate-200 hidden sm:block">{t.todaysOffers}</h2>
+        <div className="relative" onMouseEnter={stopAutoPlay} onMouseLeave={startAutoPlay} onTouchStart={stopAutoPlay} onTouchEnd={startAutoPlay}>
+            <div ref={sliderRef} className="flex overflow-x-auto snap-x snap-mandatory scroll-smooth scrollbar-hide -mx-2">
                 {displayablePromotions.map(({ promo, product }) => {
                     return (
-                        <div key={promo.id} className="w-5/6 md:w-1/2 lg:w-5/12 xl:w-1/2 flex-shrink-0 snap-center p-2">
+                        <div key={promo.id} className="w-full flex-shrink-0 snap-center p-2">
                              <PromotionCard promotion={promo} product={product} onProductClick={onProductClick} />
                         </div>
                     );
                 })}
             </div>
-            {displayablePromotions.length > 2 && (
+            {displayablePromotions.length > 1 && (
                 <>
                     <button
                         onClick={() => handleScroll('prev')}

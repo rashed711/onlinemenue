@@ -1,12 +1,12 @@
 import React, { useState, useMemo, useCallback } from 'react';
-import type { Product, CartItem, Order, OrderStatus, OrderType, Category } from '../types';
+import type { Product, CartItem, Order, OrderStatus, OrderType, Category, Promotion } from '../types';
 import { Header } from './Header';
 import { SearchAndFilter } from './SearchAndFilter';
 import { ProductList } from './ProductList';
 import { CartSidebar } from './CartSidebar';
 import { ProductModal } from './ProductModal';
 import { PromotionSection } from './PromotionSection';
-import { Footer } from './Footer';
+import { BottomNavBar } from './BottomNavBar';
 import { ReceiptModal } from './ReceiptModal';
 import { HeroSection } from './HeroSection';
 import { calculateTotal, generateReceiptImage } from '../utils/helpers';
@@ -80,6 +80,19 @@ export const MenuPage: React.FC = () => {
 
     const visibleProducts = useMemo(() => products.filter(p => p.isVisible), [products]);
 
+    const displayablePromotions = useMemo(() => {
+        const now = new Date();
+        return promotions
+          .map(promo => {
+            const product = products.find(p => p.id === promo.productId);
+            if (!promo.isActive || new Date(promo.endDate) <= now || !product || !product.isVisible) {
+              return null;
+            }
+            return { promo, product };
+          })
+          .filter((item): item is { promo: Promotion; product: Product } => item !== null);
+    }, [promotions, products]);
+
     const filteredProducts = useMemo(() => {
         return visibleProducts.filter(product => {
           const name = product.name[language] || product.name['en'];
@@ -100,7 +113,7 @@ export const MenuPage: React.FC = () => {
       }, [searchTerm, selectedCategory, selectedTags, language, visibleProducts, categories]);
       
     const popularProducts = useMemo(() => visibleProducts.filter(p => p.isPopular).slice(0, 8), [visibleProducts]);
-    const newProducts = useMemo(() => visibleProducts.filter(p => p.isNew).slice(0, 4), [visibleProducts]);
+    const newProducts = useMemo(() => visibleProducts.filter(p => p.isNew).slice(0, 8), [visibleProducts]);
 
     const handleAddToCartWithoutOpeningCart = useCallback((product: Product, quantity: number, options?: { [key: string]: string }) => {
         addToCart(product, quantity, options);
@@ -140,17 +153,21 @@ export const MenuPage: React.FC = () => {
     if (!restaurantInfo) return null;
 
     return (
-        <>
-            <Header onCartClick={handleCartClick} />
+        <div className="pb-24 bg-cream dark:bg-slate-950">
+            <div className="hidden md:block">
+                <Header onCartClick={handleCartClick} />
+            </div>
             
-            <HeroSection language={language} restaurantInfo={restaurantInfo} />
+            {displayablePromotions.length > 0 ? (
+                <PromotionSection promotions={promotions} products={visibleProducts} onProductClick={handleProductClick} />
+            ) : (
+                <HeroSection />
+            )}
 
             <div className="container mx-auto max-w-7xl px-4">
                 <main>
-                    <PromotionSection promotions={promotions} products={visibleProducts} onProductClick={handleProductClick} />
-
                     <ProductList 
-                        titleKey="mostPopular" 
+                        titleKey="mostPopular"
                         products={popularProducts} 
                         language={language} 
                         onProductClick={handleProductClick} 
@@ -164,8 +181,9 @@ export const MenuPage: React.FC = () => {
                         language={language} 
                         onProductClick={handleProductClick} 
                         addToCart={handleAddToCartWithoutOpeningCart}
+                        slider={true}
                     />
-                    
+
                     <SearchAndFilter
                         language={language}
                         categories={categories}
@@ -178,20 +196,18 @@ export const MenuPage: React.FC = () => {
                         setSelectedTags={setSelectedTags}
                     />
 
-                    <div className="relative z-10">
-                        <ProductList 
-                            titleKey="fullMenu"
-                            products={filteredProducts} 
-                            language={language} 
-                            onProductClick={handleProductClick} 
-                            addToCart={handleAddToCartWithoutOpeningCart}
-                            slider={false}
-                        />
-                    </div>
+                    <ProductList 
+                        titleKey="fullMenu"
+                        products={filteredProducts} 
+                        language={language} 
+                        onProductClick={handleProductClick} 
+                        addToCart={handleAddToCartWithoutOpeningCart}
+                        slider={false}
+                    />
                 </main>
             </div>
 
-            <Footer />
+            <BottomNavBar onCartClick={handleCartClick} />
 
             <CartSidebar
                 isOpen={isCartOpen}
@@ -219,6 +235,6 @@ export const MenuPage: React.FC = () => {
               }}
               receiptImageUrl={receiptImageUrl}
             />
-        </>
+        </div>
     )
 }

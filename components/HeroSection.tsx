@@ -1,66 +1,48 @@
-import React, { useState } from 'react';
-import type { Language, RestaurantInfo } from '../types';
-// @FIX: Replaced non-existent `useTranslations` hook with direct access to the `translations` object.
-import { translations } from '../i18n/translations';
+import React from 'react';
+import { useData } from '../contexts/DataContext';
+import { useUI } from '../contexts/UIContext';
 
-interface HeroSectionProps {
-  language: Language;
-  restaurantInfo: RestaurantInfo;
-}
+export const HeroSection: React.FC = () => {
+    const { restaurantInfo } = useData();
+    const { t, language } = useUI();
 
-export const HeroSection: React.FC<HeroSectionProps> = ({ language, restaurantInfo }) => {
-  // @FIX: Replaced non-existent `useTranslations` hook with direct access to the `translations` object.
-  const t = translations[language];
-  const [isImageLoaded, setIsImageLoaded] = useState(false);
-
-  const handleScrollToMenu = (e: React.MouseEvent<HTMLAnchorElement>) => {
-    e.preventDefault();
-    const menuElement = document.getElementById('menu');
-    if (menuElement) {
-      menuElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    if (!restaurantInfo) {
+        return null;
     }
-  };
-  
-  const handleNav = (e: React.MouseEvent<HTMLAnchorElement>, path: string) => {
-    e.preventDefault();
-    window.location.hash = path;
-  };
 
-  return (
-    <section className="relative h-[60vh] min-h-[400px] max-h-[600px] flex items-center justify-center text-white text-center bg-slate-800">
-      <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/40 to-black/10 z-10"></div>
-      
-      {!isImageLoaded && <div className="absolute inset-0 w-full h-full bg-slate-700 animate-pulse"></div>}
-      <img 
-        src={restaurantInfo.heroImage} 
-        alt="Delicious food spread" 
-        className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-500 ${isImageLoaded ? 'opacity-100' : 'opacity-0'}`}
-        onLoad={() => setIsImageLoaded(true)}
-      />
-      <div className="relative z-20 p-4 animate-fade-in-up">
-        <h1 className="text-4xl md:text-6xl font-extrabold tracking-tight mb-4" style={{ textShadow: '2px 2px 8px rgba(0,0,0,0.8)' }}>
-          {restaurantInfo.heroTitle?.[language] || ''}
-        </h1>
-        <p className="text-lg md:text-xl max-w-3xl mx-auto mb-8" style={{ textShadow: '1px 1px 4px rgba(0,0,0,0.8)' }}>
-          {restaurantInfo.description?.[language] || ''}
-        </p>
-        <div className="flex flex-row items-center justify-center gap-3">
-          <a 
-            href="#menu"
-            onClick={handleScrollToMenu}
-            className="bg-primary-500 hover:bg-primary-600 text-white font-bold py-2.5 px-6 rounded-full text-base transition-transform transform hover:scale-105 inline-block shadow-lg shadow-primary-500/30 whitespace-nowrap"
-          >
-            {t.viewMenu}
-          </a>
-           <a 
-            href="#/social"
-            onClick={(e) => handleNav(e, '/social')}
-            className="bg-white/20 hover:bg-white/30 backdrop-blur-sm border-2 border-white text-white font-bold py-2.5 px-6 rounded-full text-base transition-colors transform hover:scale-105 inline-block shadow-lg whitespace-nowrap"
-          >
-            {t.contactUs}
-          </a>
+    const visibleLinks = restaurantInfo.socialLinks.filter(link => link.isVisible);
+
+    return (
+        <div 
+            className="relative h-[60vh] min-h-[400px] max-h-[500px] bg-cover bg-center text-white"
+            style={{ backgroundImage: `url(${restaurantInfo.heroImage})` }}
+        >
+            <div className="absolute inset-0 bg-black/50"></div>
+            <div className="relative h-full flex flex-col items-center justify-center text-center p-4 animate-fade-in">
+                <h1 className="text-4xl md:text-5xl font-extrabold tracking-tight" style={{ textShadow: '2px 2px 8px rgba(0,0,0,0.7)' }}>
+                    {restaurantInfo.heroTitle[language]}
+                </h1>
+                <p className="mt-4 max-w-2xl text-lg text-slate-200" style={{ textShadow: '1px 1px 4px rgba(0,0,0,0.7)' }}>
+                    {restaurantInfo.description[language]}
+                </p>
+                
+                <div className="mt-8 flex flex-wrap justify-center items-center gap-4">
+                    {visibleLinks.map((link) => (
+                        <a
+                            key={link.id}
+                            href={link.url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="w-14 h-14 bg-white/20 backdrop-blur-sm hover:bg-white/30 border border-white/30 text-white rounded-full transition-all transform hover:scale-110 inline-flex items-center justify-center shadow-lg hover:shadow-xl"
+                            aria-label={link.name}
+                            title={link.name}
+                        >
+                           <img src={link.icon} alt={link.name} className="w-7 h-7 object-contain" />
+                        </a>
+                    ))}
+                </div>
+
+            </div>
         </div>
-      </div>
-    </section>
-  );
+    );
 };

@@ -13,10 +13,10 @@ const firebaseConfig = {
 };
 
 // Initialize Firebase
-firebase.initializeApp(firebaseConfig);
+const app = firebase.initializeApp(firebaseConfig);
 
 try {
-  const messaging = firebase.messaging();
+  const messaging = firebase.messaging(app);
 
   // If you want to handle background notifications, you can add a listener here.
   // For now, Firebase handles showing the notification automatically.

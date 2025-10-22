@@ -35,7 +35,7 @@ export const CartSidebar: React.FC<CartSidebarProps> = (props) => {
         aria-hidden="true"
       />
       <div
-        className={`fixed bottom-0 inset-x-0 md:top-0 md:right-0 md:inset-x-auto w-full md:max-w-md bg-white dark:bg-slate-900 shadow-2xl z-50 flex flex-col transition-transform duration-300 ease-in-out rounded-t-2xl md:rounded-none max-h-[85vh] md:max-h-full ${
+        className={`fixed bottom-0 inset-x-0 md:top-0 md:right-0 md:inset-x-auto w-full md:max-w-md bg-cream dark:bg-slate-900 shadow-2xl z-50 flex flex-col transition-transform duration-300 ease-in-out rounded-t-2xl md:rounded-none max-h-[85vh] md:max-h-full ${
           isOpen ? openClasses : closedClasses
         }`}
         role="dialog"
