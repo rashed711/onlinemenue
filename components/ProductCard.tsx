@@ -57,7 +57,7 @@ export const ProductCard: React.FC<ProductCardProps> = React.memo(({ product, la
       <div className="p-2">
         <div className="flex justify-between items-center gap-2">
             <div className="flex-1 min-w-0">
-                <p className="text-xs font-bold text-slate-700 dark:text-slate-200 truncate">{product.name[language]}</p>
+                <p className="text-xs font-bold text-slate-700 dark:text-slate-200 line-clamp-2 h-8">{product.name[language]}</p>
                 <p className="text-xs font-semibold text-primary-600 dark:text-primary-400">{product.price.toFixed(2)} {t.currency}</p>
             </div>
             <div className="flex-shrink-0">
