@@ -14,7 +14,7 @@ export const HeroSection: React.FC = () => {
 
     return (
         <div 
-            className="relative h-[60vh] min-h-[400px] max-h-[500px] bg-cover bg-center text-white"
+            className="relative h-[45vh] min-h-[300px] max-h-[400px] bg-cover bg-center text-white"
             style={{ backgroundImage: `url(${restaurantInfo.heroImage})` }}
         >
             <div className="absolute inset-0 bg-black/50"></div>
