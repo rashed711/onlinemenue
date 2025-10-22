@@ -156,10 +156,19 @@ export const CartContents: React.FC<CartContentsProps> = ({
             <span>{t.total}</span>
             <span>{subtotal.toFixed(2)} {t.currency}</span>
           </div>
-          <button onClick={handlePlaceOrderClick} disabled={isPlaceOrderDisabled} className="w-full bg-green-500 text-white font-bold py-3 px-4 rounded-lg hover:bg-green-600 transition-all flex justify-center items-center shadow-lg hover:shadow-xl transform hover:scale-105 disabled:bg-gray-400 disabled:cursor-not-allowed disabled:scale-100 disabled:shadow-none">
-            {placeOrderButtonText}
-          </button>
-           <button onClick={clearCart} className="w-full text-center text-red-500 hover:text-red-700 dark:hover:text-red-400 text-sm font-semibold">Clear Cart</button>
+          <div className="flex items-center gap-3">
+            <button
+                type="button"
+                onClick={clearCart}
+                aria-label="Clear Cart"
+                className="p-3 bg-red-100 dark:bg-red-900/40 text-red-600 dark:text-red-300 font-bold rounded-lg hover:bg-red-200 dark:hover:bg-red-900/60 transition-colors flex-shrink-0"
+            >
+                <TrashIcon className="w-6 h-6" />
+            </button>
+            <button onClick={handlePlaceOrderClick} disabled={isPlaceOrderDisabled} className="w-full bg-green-500 text-white font-bold py-3 px-4 rounded-lg hover:bg-green-600 transition-all flex justify-center items-center shadow-lg hover:shadow-xl transform hover:scale-105 disabled:bg-gray-400 disabled:cursor-not-allowed disabled:scale-100 disabled:shadow-none">
+                {placeOrderButtonText}
+            </button>
+          </div>
         </div>
       )}
     </>
