@@ -13,7 +13,7 @@ export const TableSelector: React.FC<TableSelectorProps> = ({ tableCount, select
     const tables = Array.from({ length: tableCount }, (_, i) => i + 1);
 
     return (
-        <div className="grid grid-cols-5 gap-2">
+        <div className="grid grid-cols-7 gap-1">
             {tables.map(tableNum => {
                 const tableStr = tableNum.toString();
                 const isSelected = selectedTable === tableStr;
@@ -22,7 +22,7 @@ export const TableSelector: React.FC<TableSelectorProps> = ({ tableCount, select
                         key={tableNum}
                         type="button"
                         onClick={() => onSelectTable(isSelected ? '' : tableStr)} // Allow unselecting
-                        className={`p-2 text-base font-bold rounded-md aspect-square flex items-center justify-center transition-all duration-200 border-2 ${
+                        className={`p-1 text-xs font-bold rounded-md aspect-square flex items-center justify-center transition-all duration-200 border-2 ${
                             isSelected 
                             ? 'bg-primary-500 text-white border-primary-600 shadow-lg scale-105' 
                             : 'bg-slate-100 dark:bg-slate-700 border-slate-200 dark:border-slate-600 text-slate-700 dark:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-600'
