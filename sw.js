@@ -26,7 +26,7 @@ try {
       payload,
     );
     
-    const notificationTitle = payload.notification.title || 'Fresco Restaurant';
+    const notificationTitle = payload.notification.title || 'Online Menu';
     const notificationOptions = {
       body: payload.notification.body || 'You have a new notification.',
       icon: '/icons/icon-192x192.png', // Use a standard small icon for consistency.

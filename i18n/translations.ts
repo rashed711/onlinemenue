@@ -1,7 +1,7 @@
 import type { Language } from '../types';
 
 const en = {
-  restaurantName: 'fresco Restaurant',
+  restaurantName: 'Online Menu',
   viewMenu: 'View Menu',
   searchPlaceholder: 'Search for dishes...',
   allCategories: 'All',

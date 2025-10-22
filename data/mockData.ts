@@ -1,7 +1,7 @@
 import type { Product, Category, Tag, Promotion, RestaurantInfo, User } from '../types';
 
 export const restaurantInfo: RestaurantInfo = {
-    name: { en: "Fresco", ar: "فريسكو" },
+    name: { en: "Online Menu", ar: "منيو اونلاين" },
     logo: "",
     heroImage: "",
     heroTitle: { en: "Welcome", ar: "أهلاً بك" },

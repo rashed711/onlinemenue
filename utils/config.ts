@@ -1,1 +1,1 @@
-export const API_BASE_URL = 'https://fresco.enjaz.app/api/';
+export const API_BASE_URL = 'https://menu.enjaz.app/api/';
