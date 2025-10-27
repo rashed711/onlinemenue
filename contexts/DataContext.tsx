@@ -73,8 +73,9 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
                     if (data.activationEndDate.startsWith('0000-00-00')) {
                         data.activationEndDate = null;
                     } else {
-                        const localDateString = data.activationEndDate.replace(' ', 'T');
-                        const dateObj = new Date(localDateString);
+                        // FIX: Assume DB datetime string is UTC and append 'Z' to parse correctly, preventing timezone errors.
+                        const utcDateString = data.activationEndDate.replace(' ', 'T') + 'Z';
+                        const dateObj = new Date(utcDateString);
                         if (!isNaN(dateObj.getTime())) {
                             data.activationEndDate = dateObj.toISOString();
                         } else {
@@ -104,7 +105,19 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 setCategories(data.categories || []);
                 setTags(data.tags || []);
             }
-            if (promotionsRes.ok) setPromotions(await promotionsRes.json() || []);
+            if (promotionsRes.ok) {
+                const rawPromotions: any[] = (await promotionsRes.json()) || [];
+                // FIX: Ensure endDate from the database (which might lack timezone info) is parsed as UTC.
+                const processedPromotions = rawPromotions.map((promo) => {
+                    // Check if endDate exists and is a string before processing
+                    if (promo.endDate && typeof promo.endDate === 'string' && !promo.endDate.endsWith('Z')) {
+                        // Converts "YYYY-MM-DD HH:MM:SS" to "YYYY-MM-DDTHH:MM:SSZ"
+                        return { ...promo, endDate: promo.endDate.replace(' ', 'T') + 'Z' };
+                    }
+                    return promo;
+                });
+                setPromotions(processedPromotions);
+            }
             if (productsRes.ok) {
                 const data = await productsRes.json();
                 setProducts((data || []).map((p: Product) => ({ ...p, image: resolveImageUrl(p.image) })));
