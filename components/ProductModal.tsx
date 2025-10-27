@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import type { Product, Promotion } from '../types';
 import { StarIcon, PlusIcon } from './icons/Icons';
 import { formatNumber, getActivePromotionForProduct } from '../utils/helpers';
@@ -44,23 +44,27 @@ export const ProductModal: React.FC<ProductModalProps> = ({
     setSelectedOptions(prev => ({ ...prev, [optionKey]: valueKey }));
   };
   
-  const calculateTotalPrice = () => {
-    let unitPrice = product.price;
-    product.options?.forEach(option => {
-        const selectedValueKey = selectedOptions[option.name.en];
-        const selectedValue = option.values.find(v => v.name.en === selectedValueKey);
-        if (selectedValue) {
-            unitPrice += selectedValue.priceModifier;
-        }
-    });
+  const promotion = getActivePromotionForProduct(product.id, promotions);
 
-    const promotion = getActivePromotionForProduct(product.id, promotions);
-    if (promotion) {
-        unitPrice = unitPrice * (1 - promotion.discountPercent / 100);
-    }
+    const originalUnitPrice = useMemo(() => {
+        let price = product.price;
+        product.options?.forEach(option => {
+            const selectedValueKey = selectedOptions[option.name.en];
+            const selectedValue = option.values.find(v => v.name.en === selectedValueKey);
+            if (selectedValue) {
+                price += selectedValue.priceModifier;
+            }
+        });
+        return price;
+    }, [product, selectedOptions]);
 
-    return unitPrice * quantity;
-  };
+    const discountedUnitPrice = useMemo(() => {
+        if (!promotion) return originalUnitPrice;
+        return originalUnitPrice * (1 - promotion.discountPercent / 100);
+    }, [originalUnitPrice, promotion]);
+
+    const finalTotalPrice = discountedUnitPrice * quantity;
+    const originalTotalPrice = originalUnitPrice * quantity;
 
   return (
     <Modal title={product.name[language]} onClose={onClose} size="3xl">
@@ -124,7 +128,14 @@ export const ProductModal: React.FC<ProductModalProps> = ({
         <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-4">
           <div className="text-center sm:text-start">
             <span className="text-slate-500 dark:text-slate-400 text-sm">{t.total}</span>
-            <p className="text-xl font-extrabold text-primary-600 dark:text-primary-400">{calculateTotalPrice().toFixed(2)} {t.currency}</p>
+            {promotion ? (
+                <div className="flex items-baseline gap-2 justify-center sm:justify-start">
+                    <p className="text-xl font-extrabold text-primary-600 dark:text-primary-400">{finalTotalPrice.toFixed(2)} {t.currency}</p>
+                    <p className="text-base line-through text-slate-500 dark:text-slate-400 font-normal">{originalTotalPrice.toFixed(2)} {t.currency}</p>
+                </div>
+            ) : (
+                <p className="text-xl font-extrabold text-primary-600 dark:text-primary-400">{finalTotalPrice.toFixed(2)} {t.currency}</p>
+            )}
           </div>
           <button onClick={handleAddToCart} className="w-full sm:w-auto bg-primary-500 text-white font-bold py-2.5 px-5 rounded-lg hover:bg-primary-600 flex items-center justify-center gap-2 transition-all text-sm focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 dark:focus:ring-offset-slate-800 shadow-lg hover:shadow-xl transform hover:scale-105">
             <PlusIcon className="w-5 h-5" />
