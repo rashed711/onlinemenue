@@ -24,21 +24,22 @@ export const usePushNotifications = () => {
     const { showToast, t } = useUI();
     const [isSubscribed, setIsSubscribed] = useState(false);
     const [subscription, setSubscription] = useState<PushSubscription | null>(null);
-    const [isLoading, setIsLoading] = useState(true);
+    const [isLoading, setIsLoading] = useState(false);
     const [isSupported, setIsSupported] = useState(false);
 
     useEffect(() => {
         if ('serviceWorker' in navigator && 'PushManager' in window) {
             setIsSupported(true);
+            setIsLoading(true);
             navigator.serviceWorker.ready.then(registration => {
                 registration.pushManager.getSubscription().then(sub => {
                     if (sub) {
                         setIsSubscribed(true);
                         setSubscription(sub);
                     }
-                    setIsLoading(false);
                 }).catch(err => {
                     console.error("Error getting subscription:", err);
+                }).finally(() => {
                     setIsLoading(false);
                 });
             }).catch(err => {

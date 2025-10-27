@@ -78,6 +78,7 @@ export interface OrderStatusColumn {
   id: string; // e.g., 'pending', 'in-progress'
   name: LocalizedString;
   color: string; // e.g., 'yellow', 'blue'
+  playSound?: boolean;
 }
 
 export interface OnlinePaymentMethod {

@@ -204,38 +204,47 @@ export const AdminPage: React.FC<AdminPageProps> = ({ activeSubRoute, reportSubR
     }, []);
 
     const [isSoundEnabled] = usePersistentState<boolean>('admin_sound_enabled', true);
-    const pendingOrderIdsRef = useRef<Set<string>>(new Set());
+    const orderStatusMapRef = useRef<Map<string, string>>(new Map());
     const isInitialLoadRef = useRef(true);
 
     useEffect(() => {
         if (!restaurantInfo || !hasPermission('view_orders_page')) return;
-
-        const pendingStatusId = restaurantInfo.orderStatusColumns[0]?.id;
-        if (!pendingStatusId) return;
-
-        const currentPendingOrderIds = new Set(
-            allOrders.filter(o => o.status === pendingStatusId).map(o => o.id)
-        );
-
+    
         if (isInitialLoadRef.current) {
-            pendingOrderIdsRef.current = currentPendingOrderIds;
+            const initialMap = new Map<string, string>();
+            if (allOrders.length > 0) {
+                allOrders.forEach(o => initialMap.set(o.id, o.status));
+            }
+            orderStatusMapRef.current = initialMap;
             isInitialLoadRef.current = false;
             return;
         }
-
-        let newOrderFound = false;
-        currentPendingOrderIds.forEach(id => {
-            if (!pendingOrderIdsRef.current.has(id)) {
-                newOrderFound = true;
+    
+        let soundShouldBePlayed = false;
+    
+        for (const order of allOrders) {
+            const oldStatus = orderStatusMapRef.current.get(order.id);
+            const newStatus = order.status;
+    
+            if (oldStatus !== newStatus) {
+                const statusConfig = restaurantInfo.orderStatusColumns.find(col => col.id === newStatus);
+                if (statusConfig?.playSound) {
+                    soundShouldBePlayed = true;
+                    break; // Found one sound-triggering event, no need to check further
+                }
             }
-        });
-
-        if (newOrderFound && isSoundEnabled) {
+        }
+    
+        if (soundShouldBePlayed && isSoundEnabled) {
             playNotificationSound();
         }
-
-        pendingOrderIdsRef.current = currentPendingOrderIds;
+    
+        // Update the map for the next render cycle with the current state of all orders
+        const newStatusMap = new Map<string, string>();
+        allOrders.forEach(o => newStatusMap.set(o.id, o.status));
+        orderStatusMapRef.current = newStatusMap;
     }, [allOrders, restaurantInfo, isSoundEnabled, hasPermission, playNotificationSound]);
+
 
     // Handle viewing order from notification click
      useEffect(() => {

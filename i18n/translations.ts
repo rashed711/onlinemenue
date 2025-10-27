@@ -578,8 +578,11 @@ export const translations = {
     notificationsBlocked: 'Notification permission was denied. Please enable it in your browser settings.',
 
     notificationSettings: 'Notification Settings',
-    playSoundForNewOrders: 'Play sound for new orders',
-    playSoundForNewOrdersHelpText: 'A sound will play automatically when a new order arrives in the \'New Orders\' column.',
+    playSoundOnEntry: 'Play sound on entry',
+    playSoundOnEntryHelpText: 'Plays a sound when an order moves into this status.',
+    generalSoundNotifications: 'Enable Sound Notifications',
+    generalSoundNotificationsHelpText: 'This is the master switch to enable or disable all sound alerts across the admin panel.',
+
 
     // New keys for checkout update
     orderReceived: "Your order has been received!",
@@ -1141,8 +1144,10 @@ export const translations = {
     pushUnsubscriptionFailed: 'فشل إلغاء الاشتراك في الإشعارات.',
     notificationsBlocked: 'تم رفض إذن الإشعارات. يرجى تفعيله من إعدادات المتصفح.',
     notificationSettings: 'إعدادات الإشعارات',
-    playSoundForNewOrders: 'تشغيل صوت للطلبات الجديدة',
-    playSoundForNewOrdersHelpText: 'سيتم تشغيل صوت تلقائيًا عند وصول طلب جديد في عمود "طلبات جديدة".',
+    playSoundOnEntry: 'تشغيل صوت عند الدخول',
+    playSoundOnEntryHelpText: 'تشغيل صوت عند نقل طلب إلى هذه الحالة.',
+    generalSoundNotifications: 'تفعيل الإشعارات الصوتية',
+    generalSoundNotificationsHelpText: 'هذا هو المفتاح الرئيسي لتفعيل أو تعطيل جميع التنبيهات الصوتية في لوحة التحكم.',
     
     // New keys for checkout update
     orderReceived: "تم استلام طلبك!",

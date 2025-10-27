@@ -193,6 +193,16 @@ export const SettingsPage: React.FC = () => {
         await updateRestaurantInfo({ orderStatusColumns: updatedColumns });
         setEditingOrderStatus(null);
     };
+
+    const handleStatusSoundToggle = (columnId: string) => {
+        setLocalInfo(prev => {
+            if (!prev) return null;
+            const updatedColumns = prev.orderStatusColumns.map(col =>
+                col.id === columnId ? { ...col, playSound: !col.playSound } : col
+            );
+            return { ...prev, orderStatusColumns: updatedColumns };
+        });
+    };
     
     const handleSavePaymentMethod = async (methodData: OnlinePaymentMethod | Omit<OnlinePaymentMethod, 'id'>) => {
         if (!restaurantInfo) return;
@@ -315,13 +325,8 @@ export const SettingsPage: React.FC = () => {
                                     <input type="text" name="whatsappNumber" value={localInfo.whatsappNumber || ''} onChange={handleNonLocalizedChange} className={formInputClasses} />
                                 </FormGroup>
                             </SettingsCard>
-                             <SettingsCard title={t.tableManagement} subtitle={t.settingsTablesDescription}>
-                                <FormGroup label={t.totalTables}>
-                                    <input type="number" name="tableCount" value={localInfo.tableCount || 0} onChange={handleNonLocalizedChange} className={formInputClasses} min="0" />
-                                </FormGroup>
-                            </SettingsCard>
                              <SettingsCard title={t.notificationSettings} subtitle="Manage sound alerts for new events.">
-                                <FormGroup label={t.playSoundForNewOrders} helperText={t.playSoundForNewOrdersHelpText}>
+                                <FormGroup label={t.generalSoundNotifications} helperText={t.generalSoundNotificationsHelpText}>
                                     <label className="relative inline-flex items-center cursor-pointer">
                                         <input 
                                             type="checkbox" 
@@ -426,7 +431,7 @@ export const SettingsPage: React.FC = () => {
                         }
                      >
                         <ul className="divide-y divide-gray-200 dark:divide-gray-700 -m-4 sm:-m-6">
-                            {(restaurantInfo.orderStatusColumns || []).map(status => (
+                            {(localInfo.orderStatusColumns || []).map(status => (
                                 <li key={status.id} className="p-3 flex justify-between items-center gap-4 hover:bg-slate-50 dark:hover:bg-gray-700/50">
                                     <div className="flex items-center gap-3">
                                         <div className={`w-4 h-4 rounded-full bg-${status.color}-500 flex-shrink-0`}></div>
@@ -435,7 +440,16 @@ export const SettingsPage: React.FC = () => {
                                             <div className="text-xs text-slate-500 dark:text-slate-400 font-mono">{status.id}</div>
                                         </div>
                                     </div>
-                                    <div className="flex items-center gap-1">
+                                    <div className="flex items-center gap-4">
+                                        <label className="relative inline-flex items-center cursor-pointer" title={t.playSoundOnEntry}>
+                                            <input
+                                                type="checkbox"
+                                                checked={!!status.playSound}
+                                                onChange={() => handleStatusSoundToggle(status.id)}
+                                                className="sr-only peer"
+                                            />
+                                            <div className="w-11 h-6 bg-slate-200 rounded-full peer dark:bg-slate-700 peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:bg-green-600 after:content-[''] after:absolute after:top-0.5 after:start-[2px] after:bg-white after:border after:rounded-full after:h-5 after:w-5 after:transition-all"></div>
+                                        </label>
                                         <button onClick={() => setEditingOrderStatus(status)} className={btnIconSecondaryClasses} title={t.editStatus}><PencilIcon className="w-5 h-5" /></button>
                                         <button onClick={() => handleDeleteStatus(status.id)} className={btnIconDangerClasses} title={t.cancel}><TrashIcon className="w-5 h-5" /></button>
                                     </div>
