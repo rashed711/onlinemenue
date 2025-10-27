@@ -28,6 +28,7 @@ interface AdminContextType {
     addCategory: (categoryData: Omit<Category, 'id'>) => Promise<void>;
     updateCategory: (categoryData: Category) => Promise<void>;
     deleteCategory: (categoryId: number) => Promise<void>;
+    updateCategoryOrder: (orderedCategories: Category[]) => Promise<void>;
     addTag: (tagData: Omit<Tag, 'id'> & { id: string }) => Promise<void>;
     updateTag: (tagData: Tag) => Promise<void>;
     deleteTag: (tagId: string) => Promise<void>;
@@ -496,6 +497,45 @@ export const AdminProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         }
     }, [hasPermission, t, categories, setCategories, fetchAllData, showToast, setIsProcessing]);
 
+    const updateCategoryOrder = useCallback(async (orderedCategories: Category[]) => {
+        if (!hasPermission('edit_category')) {
+            showToast(t.permissionDenied);
+            return;
+        }
+        setIsProcessing(true);
+        try {
+            const payload: { id: number, display_order: number }[] = [];
+            
+            const generatePayload = (categories: Category[]) => {
+                categories.forEach((cat, index) => {
+                    payload.push({ id: cat.id, display_order: index });
+                    if (cat.children && cat.children.length > 0) {
+                        generatePayload(cat.children);
+                    }
+                });
+            };
+            generatePayload(orderedCategories);
+
+            const response = await fetch(`${APP_CONFIG.API_BASE_URL}update_category_order.php`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+            const result = await response.json();
+            if (!response.ok || !result.success) {
+                throw new Error(result.error || t.orderSaveFailed);
+            }
+
+            await fetchAllData();
+            showToast(t.orderSavedSuccess);
+        } catch (error: any) {
+            showToast(error.message || t.orderSaveFailed);
+            await fetchAllData(); // Refetch to revert to last saved state on error
+        } finally {
+            setIsProcessing(false);
+        }
+    }, [hasPermission, t, setIsProcessing, showToast, fetchAllData]);
+
     const deleteCategory = useCallback(async (categoryId: number) => {
         if (!hasPermission('delete_category') || !window.confirm(t.confirmDeleteCategory)) { return; }
         const originalCategories = categories;
@@ -689,7 +729,8 @@ export const AdminProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         resetUserPassword, 
         updateRolePermissions,
         addCategory, 
-        updateCategory, 
+        updateCategory,
+        updateCategoryOrder, 
         deleteCategory,
         addTag, 
         updateTag, 

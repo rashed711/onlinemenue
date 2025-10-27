@@ -10,9 +10,11 @@ interface CategoryEditModalProps {
     onSave: (categoryData: Category | Omit<Category, 'id'>) => void;
 }
 
+// FIX: Added missing 'display_order' property to satisfy the Omit<Category, 'id'> type.
 const emptyCategory: Omit<Category, 'id'> = {
     name: { en: '', ar: '' },
     parent_id: null,
+    display_order: 0,
 };
 
 // Helper to get all descendant IDs of a category
@@ -38,8 +40,9 @@ export const CategoryEditModal: React.FC<CategoryEditModalProps> = ({ category, 
     useEffect(() => {
         if (category) {
             const { id, children, ...editableData } = category;
+            // FIX: Spread editableData to include all properties, including 'display_order'.
             setFormData({
-                name: editableData.name,
+                ...editableData,
                 parent_id: editableData.parent_id || null
             });
         } else {

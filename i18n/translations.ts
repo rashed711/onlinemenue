@@ -592,6 +592,12 @@ export const translations = {
     selectGovernorate: 'Search and select a governorate...',
     addressDetailsLabel: 'Address Details (Street, Building No.)',
     forInquiries: 'For any inquiries, please contact us at ',
+
+    // New for category reordering
+    saveOrder: 'Save Order',
+    orderSavedSuccess: 'Category order saved successfully.',
+    orderSaveFailed: 'Failed to save category order.',
+    dragToReorder: 'Drag to reorder',
   },
   ar: {
     restaurantName: APP_CONFIG.APP_NAME.ar,
@@ -1157,5 +1163,11 @@ export const translations = {
     selectGovernorate: 'ابحث واختر محافظة...',
     addressDetailsLabel: 'تفاصيل العنوان (الشارع، رقم المبنى)',
     forInquiries: 'لأي استفسار يرجى التواصل معنا على رقم ',
+    
+    // New for category reordering
+    saveOrder: 'حفظ الترتيب',
+    orderSavedSuccess: 'تم حفظ ترتيب الفئات بنجاح.',
+    orderSaveFailed: 'فشل حفظ ترتيب الفئات.',
+    dragToReorder: 'اسحب للترتيب',
   },
 };

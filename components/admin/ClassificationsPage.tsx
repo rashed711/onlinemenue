@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import type { Category, Tag } from '../../types';
-import { PlusIcon, PencilIcon, TrashIcon, ChevronRightIcon } from '../icons/Icons';
+import { PlusIcon, PencilIcon, TrashIcon, ChevronRightIcon, GripVerticalIcon } from '../icons/Icons';
 import { useUI } from '../../contexts/UIContext';
 import { useData } from '../../contexts/DataContext';
 import { useAdmin } from '../../contexts/AdminContext';
@@ -16,10 +16,22 @@ interface CategoryRowProps {
     isExpanded: boolean;
     onToggleExpand: (categoryId: number) => void;
     expandedCategories: number[];
+    onDragStart: (e: React.DragEvent, categoryId: number) => void;
+    onDragOver: (e: React.DragEvent, categoryId: number) => void;
+    onDragEnd: () => void;
+    onDrop: (targetCategoryId: number) => void;
+    isDragging: boolean;
+    isDragOver: boolean;
 }
 
-const CategoryRow: React.FC<CategoryRowProps> = ({ category, level, onEditCategory, onDeleteCategory, canEdit, canDelete, isExpanded, onToggleExpand, expandedCategories }) => {
-    const { language } = useUI();
+const CategoryRow: React.FC<CategoryRowProps> = (props) => {
+    const { 
+        category, level, onEditCategory, onDeleteCategory, canEdit, canDelete, 
+        isExpanded, onToggleExpand, expandedCategories,
+        onDragStart, onDragOver, onDragEnd, onDrop, isDragging, isDragOver
+    } = props;
+    
+    const { language, t } = useUI();
     const indentStyle = language === 'ar' ? { paddingRight: `${level * 1.5}rem` } : { paddingLeft: `${level * 1.5}rem` };
     const hasChildren = category.children && category.children.length > 0;
     
@@ -40,20 +52,28 @@ const CategoryRow: React.FC<CategoryRowProps> = ({ category, level, onEditCatego
     };
 
     return (
-        <li className="group border-b border-slate-100 dark:border-slate-700 last:border-b-0">
+        <li 
+            className={`group border-b border-slate-100 dark:border-slate-700 last:border-b-0 relative transition-opacity ${isDragging ? 'opacity-50' : 'opacity-100'}`}
+            draggable={canEdit}
+            onDragStart={(e) => onDragStart(e, category.id)}
+            onDragOver={(e) => onDragOver(e, category.id)}
+            onDragEnd={onDragEnd}
+            onDrop={() => onDrop(category.id)}
+        >
+            {isDragOver && <div className="absolute top-0 left-0 right-0 h-0.5 bg-primary-500 z-10" />}
             <div 
-                className={`flex justify-between items-center hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors ${hasChildren ? 'cursor-pointer' : ''}`}
-                onClick={handleToggle}
+                className={`flex justify-between items-center hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors`}
             >
-                <div className="flex items-center p-3" style={indentStyle}>
+                <div className="flex items-center p-3 flex-grow" style={indentStyle}>
+                    {canEdit && <div title={t.dragToReorder} className="p-1 cursor-grab touch-none text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300"><GripVerticalIcon className="w-5 h-5" /></div>}
                     {hasChildren ? (
-                        <div className="p-1 -ml-1 mr-2 rtl:ml-2 rtl:-mr-1 text-slate-500">
+                        <button className="p-1 text-slate-500" onClick={handleToggle}>
                             <ChevronRightIcon className={`w-5 h-5 transition-transform ${isExpanded ? 'rotate-90' : ''}`} />
-                        </div>
+                        </button>
                     ) : (
-                        <div className="w-5 h-5 mr-3 rtl:ml-3 shrink-0"></div> // Placeholder for alignment
+                        <div className="w-7 h-5 shrink-0"></div> // Placeholder for alignment
                     )}
-                    <span className="font-medium text-slate-700 dark:text-slate-200">
+                    <span className="font-medium text-slate-700 dark:text-slate-200" onClick={handleToggle}>
                         {category.name[language]}
                     </span>
                 </div>
@@ -78,6 +98,12 @@ const CategoryRow: React.FC<CategoryRowProps> = ({ category, level, onEditCatego
                                     isExpanded={expandedCategories.includes(child.id)}
                                     onToggleExpand={onToggleExpand}
                                     expandedCategories={expandedCategories}
+                                    onDragStart={onDragStart}
+                                    onDragOver={onDragOver}
+                                    onDragEnd={onDragEnd}
+                                    onDrop={onDrop}
+                                    isDragging={isDragging && category.id === child.id}
+                                    isDragOver={isDragOver && category.id === child.id}
                                 />
                             ))}
                         </ul>
@@ -101,9 +127,21 @@ export const ClassificationsPage: React.FC<ClassificationsPageProps> = (props) =
     
     const { language, t } = useUI();
     const { categories, tags } = useData();
-    const { deleteCategory, deleteTag } = useAdmin();
+    const { deleteCategory, deleteTag, updateCategoryOrder } = useAdmin();
     const { hasPermission } = useAuth();
+
+    const [orderedCategories, setOrderedCategories] = useState<Category[]>([]);
+    const [isOrderDirty, setIsOrderDirty] = useState(false);
     const [expandedCategories, setExpandedCategories] = useState<number[]>([]);
+    
+    const [draggedItemId, setDraggedItemId] = useState<number | null>(null);
+    const [dragOverItemId, setDragOverItemId] = useState<number | null>(null);
+
+    useEffect(() => {
+        // Deep copy to prevent mutation of context state
+        setOrderedCategories(JSON.parse(JSON.stringify(categories)));
+        setIsOrderDirty(false);
+    }, [categories]);
     
     const canAddCategory = hasPermission('add_category');
     const canEditCategory = hasPermission('edit_category');
@@ -132,6 +170,99 @@ export const ClassificationsPage: React.FC<ClassificationsPageProps> = (props) =
         }
     };
 
+    const handleSaveOrder = async () => {
+        await updateCategoryOrder(orderedCategories);
+        setIsOrderDirty(false);
+    };
+
+    // --- Drag and Drop Logic ---
+    const handleDragStart = (e: React.DragEvent, categoryId: number) => {
+        setDraggedItemId(categoryId);
+        e.dataTransfer.effectAllowed = 'move';
+    };
+
+    const handleDragOver = (e: React.DragEvent, categoryId: number) => {
+        e.preventDefault();
+        if (categoryId !== dragOverItemId) {
+            setDragOverItemId(categoryId);
+        }
+    };
+
+    const handleDragEnd = () => {
+        setDraggedItemId(null);
+        setDragOverItemId(null);
+    };
+
+    const handleDrop = (targetCategoryId: number) => {
+        if (draggedItemId === null || draggedItemId === targetCategoryId) return;
+
+        let draggedItem: Category | null = null;
+        let targetItem: Category | null = null;
+        let draggedItemParent: Category | null = null;
+        let targetItemParent: Category | null = null;
+
+        const findItemAndParent = (nodes: Category[], id: number, parent: Category | null = null): {item: Category | null, parent: Category | null} => {
+            for (const node of nodes) {
+                if (node.id === id) return { item: node, parent: parent };
+                if (node.children) {
+                    const found = findItemAndParent(node.children, id, node);
+                    if (found.item) return found;
+                }
+            }
+            return { item: null, parent: null };
+        };
+
+        const draggedResult = findItemAndParent(orderedCategories, draggedItemId);
+        const targetResult = findItemAndParent(orderedCategories, targetCategoryId);
+
+        draggedItem = draggedResult.item;
+        targetItem = targetResult.item;
+        draggedItemParent = draggedResult.parent;
+        targetItemParent = targetResult.parent;
+
+        if (!draggedItem || !targetItem || (draggedItemParent?.id !== targetItemParent?.id)) {
+            // Prevent dropping between different levels for now
+            return;
+        }
+
+        const siblings = draggedItemParent ? draggedItemParent.children! : orderedCategories.filter(c => !c.parent_id);
+
+        const draggedIndex = siblings.findIndex(c => c.id === draggedItemId);
+        const targetIndex = siblings.findIndex(c => c.id === targetCategoryId);
+        
+        // Remove and re-insert
+        const [removed] = siblings.splice(draggedIndex, 1);
+        siblings.splice(targetIndex, 0, removed);
+
+        setOrderedCategories([...orderedCategories]);
+        setIsOrderDirty(true);
+    };
+    
+    const renderCategoryTree = (categoriesToRender: Category[], level: number) => (
+        <ul>
+            {categoriesToRender.map(category => (
+                <CategoryRow 
+                    key={category.id} 
+                    category={category} 
+                    level={level}
+                    onEditCategory={onEditCategory}
+                    onDeleteCategory={handleDeleteCategory}
+                    canEdit={canEditCategory}
+                    canDelete={canDeleteCategory}
+                    isExpanded={expandedCategories.includes(category.id)}
+                    onToggleExpand={handleToggleExpand}
+                    expandedCategories={expandedCategories}
+                    onDragStart={handleDragStart}
+                    onDragOver={handleDragOver}
+                    onDragEnd={handleDragEnd}
+                    onDrop={handleDrop}
+                    isDragging={draggedItemId === category.id}
+                    isDragOver={dragOverItemId === category.id}
+                />
+            ))}
+        </ul>
+    );
+
     return (
         <div className="animate-fade-in-up">
             <h2 className="text-2xl font-bold mb-6 text-slate-800 dark:text-slate-100">{t.classifications}</h2>
@@ -148,23 +279,15 @@ export const ClassificationsPage: React.FC<ClassificationsPageProps> = (props) =
                         )}
                     </div>
                     <div className="p-2">
-                         <ul>
-                            {categories.map(category => (
-                                <CategoryRow 
-                                    key={category.id} 
-                                    category={category} 
-                                    level={0}
-                                    onEditCategory={onEditCategory}
-                                    onDeleteCategory={handleDeleteCategory}
-                                    canEdit={canEditCategory}
-                                    canDelete={canDeleteCategory}
-                                    isExpanded={expandedCategories.includes(category.id)}
-                                    onToggleExpand={handleToggleExpand}
-                                    expandedCategories={expandedCategories}
-                                />
-                            ))}
-                        </ul>
+                         {renderCategoryTree(orderedCategories, 0)}
                     </div>
+                    {isOrderDirty && (
+                        <div className="p-4 border-t border-slate-200 dark:border-slate-700 text-right">
+                             <button onClick={handleSaveOrder} className="bg-green-500 text-white font-bold py-2 px-4 rounded-lg hover:bg-green-600 transition-colors">
+                                {t.saveOrder}
+                            </button>
+                        </div>
+                    )}
                 </div>
 
                 {/* Tags Card */}

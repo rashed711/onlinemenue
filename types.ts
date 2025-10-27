@@ -16,6 +16,7 @@ export interface Category {
   id: number;
   name: LocalizedString;
   parent_id?: number | null;
+  display_order: number;
   children?: Category[];
 }
 
