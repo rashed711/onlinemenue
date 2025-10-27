@@ -1,5 +1,5 @@
 import React, { useRef, useCallback, useEffect } from 'react';
-import type { Product, Language, CartItem } from '../types';
+import type { Product, Language, CartItem, Promotion } from '../types';
 import { ProductCard } from './ProductCard';
 // @FIX: Replaced non-existent `useTranslations` hook with direct access to the `translations` object.
 import { translations } from '../i18n/translations';
@@ -13,9 +13,10 @@ interface ProductListProps {
   onProductClick: (product: Product) => void;
   addToCart: (product: Product, quantity: number, options?: { [key:string]: string }) => void;
   slider?: boolean;
+  promotions: Promotion[];
 }
 
-export const ProductList: React.FC<ProductListProps> = ({ titleKey, products, language, onProductClick, addToCart, slider = false }) => {
+export const ProductList: React.FC<ProductListProps> = ({ titleKey, products, language, onProductClick, addToCart, slider = false, promotions }) => {
   // @FIX: Replaced non-existent `useTranslations` hook with direct access to the `translations` object.
   const t = translations[language];
   const sliderRef = useRef<HTMLDivElement>(null);
@@ -49,6 +50,7 @@ export const ProductList: React.FC<ProductListProps> = ({ titleKey, products, la
                   language={language}
                   onProductClick={onProductClick}
                   addToCart={addToCart}
+                  promotions={promotions}
                 />
               </div>
             ))}
@@ -89,6 +91,7 @@ export const ProductList: React.FC<ProductListProps> = ({ titleKey, products, la
             language={language}
             onProductClick={onProductClick}
             addToCart={addToCart}
+            promotions={promotions}
           />
         ))}
       </div>

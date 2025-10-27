@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useCallback } from 'react';
-import type { Product, CartItem, Order, OrderStatus, OrderType, Category } from '../types';
+import type { Product, CartItem, Order, OrderStatus, OrderType, Category, Promotion } from '../types';
 import { Header } from './Header';
 import { SearchAndFilter } from './SearchAndFilter';
 import { ProductList } from './ProductList';
@@ -70,6 +70,11 @@ export const MenuPage: React.FC = () => {
     const handleCloseProductModal = useCallback(() => setSelectedProduct(null), []);
 
     const visibleProducts = useMemo(() => products.filter(p => p.isVisible), [products]);
+    
+    const activePromotions = useMemo(() => {
+        const now = new Date();
+        return promotions.filter(p => p.isActive && new Date(p.endDate) > now);
+    }, [promotions]);
 
     const filteredProducts = useMemo(() => {
         return visibleProducts.filter(product => {
@@ -119,6 +124,7 @@ export const MenuPage: React.FC = () => {
                         onProductClick={handleProductClick} 
                         addToCart={handleAddToCartWithoutOpeningCart}
                         slider={true}
+                        promotions={activePromotions}
                     />
 
                     <ProductList 
@@ -127,6 +133,7 @@ export const MenuPage: React.FC = () => {
                         language={language} 
                         onProductClick={handleProductClick} 
                         addToCart={handleAddToCartWithoutOpeningCart}
+                        promotions={activePromotions}
                     />
                     
                     <SearchAndFilter
@@ -149,6 +156,7 @@ export const MenuPage: React.FC = () => {
                             onProductClick={handleProductClick} 
                             addToCart={handleAddToCartWithoutOpeningCart}
                             slider={false}
+                            promotions={activePromotions}
                         />
                     </div>
                 </main>
@@ -166,6 +174,7 @@ export const MenuPage: React.FC = () => {
                 product={selectedProduct}
                 onClose={handleCloseProductModal}
                 addToCart={handleAddToCartWithoutOpeningCart}
+                promotions={activePromotions}
                 />
             )}
         </>

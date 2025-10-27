@@ -1,7 +1,16 @@
-import type { CartItem, Order, RestaurantInfo, Language, Product } from '../types';
+import type { CartItem, Order, RestaurantInfo, Language, Product, Promotion } from '../types';
 import { translations } from '../i18n/translations';
 // @FIX: Import APP_CONFIG to resolve 'Cannot find name' error.
 import { APP_CONFIG } from './config';
+
+export const getActivePromotionForProduct = (productId: number, promotions: Promotion[]): Promotion | undefined => {
+    const now = new Date();
+    return promotions.find(promo => 
+        promo.productId === productId && 
+        promo.isActive && 
+        new Date(promo.endDate) > now
+    );
+};
 
 export const formatNumber = (num: number): string => {
   try {
@@ -13,7 +22,7 @@ export const formatNumber = (num: number): string => {
   }
 };
 
-export const calculateItemUnitPrice = (item: CartItem): number => {
+export const calculateOriginalItemUnitPrice = (item: CartItem): number => {
     let itemPrice = item.product.price;
     if (item.options && item.product.options) {
         Object.entries(item.options).forEach(([optionKey, valueKey]) => {
@@ -27,6 +36,19 @@ export const calculateItemUnitPrice = (item: CartItem): number => {
     return itemPrice;
 };
 
+export const calculateItemUnitPrice = (item: CartItem): number => {
+    let itemPrice = calculateOriginalItemUnitPrice(item);
+    if (item.appliedDiscountPercent) {
+        itemPrice = itemPrice * (1 - item.appliedDiscountPercent / 100);
+    }
+    return itemPrice;
+};
+
+export const calculateOriginalItemTotal = (item: CartItem): number => {
+    return calculateOriginalItemUnitPrice(item) * item.quantity;
+};
+
+
 export const calculateItemTotal = (item: CartItem): number => {
     return calculateItemUnitPrice(item) * item.quantity;
 };
@@ -34,6 +56,12 @@ export const calculateItemTotal = (item: CartItem): number => {
 
 export const calculateTotal = (cartItems: CartItem[]): number => {
   return cartItems.reduce((total, item) => total + calculateItemTotal(item), 0);
+};
+
+export const calculateTotalSavings = (cartItems: CartItem[]): number => {
+    const originalTotal = cartItems.reduce((total, item) => total + calculateOriginalItemTotal(item), 0);
+    const finalTotal = calculateTotal(cartItems);
+    return originalTotal - finalTotal;
 };
 
 export const formatDate = (isoString: string): string => {

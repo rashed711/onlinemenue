@@ -592,6 +592,7 @@ export const translations = {
     selectGovernorate: 'Search and select a governorate...',
     addressDetailsLabel: 'Address Details (Street, Building No.)',
     forInquiries: 'For any inquiries, please contact us at ',
+    discount: 'Discount',
 
     // New for category reordering
     saveOrder: 'Save Order',
@@ -1163,6 +1164,7 @@ export const translations = {
     selectGovernorate: 'ابحث واختر محافظة...',
     addressDetailsLabel: 'تفاصيل العنوان (الشارع، رقم المبنى)',
     forInquiries: 'لأي استفسار يرجى التواصل معنا على رقم ',
+    discount: 'الخصم',
     
     // New for category reordering
     saveOrder: 'حفظ الترتيب',

@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import type { Order } from '../../types';
 import { useUI } from '../../contexts/UIContext';
 import { useData } from '../../contexts/DataContext';
-import { formatDateTime } from '../../utils/helpers';
+import { formatDateTime, calculateItemTotal, calculateOriginalItemTotal } from '../../utils/helpers';
 import { StarRating } from '../StarRating';
 import { ChevronDownIcon } from '../icons/Icons';
 
@@ -48,16 +48,30 @@ export const PastOrderCard: React.FC<PastOrderCardProps> = ({ order, onLeaveFeed
                     <div className="bg-slate-50 dark:bg-slate-800/50 p-4 border-t border-slate-200 dark:border-slate-700">
                         <h4 className="font-bold text-slate-700 dark:text-slate-200 mb-3">{t.orderDetails}</h4>
                         <div className="space-y-2">
-                            {order.items.map((item, index) => (
+                            {order.items.map((item, index) => {
+                                const finalTotal = calculateItemTotal(item);
+                                const originalTotal = calculateOriginalItemTotal(item);
+                                return (
                                 <div key={index} className="flex justify-between items-center text-sm">
                                     <div className="text-slate-600 dark:text-slate-300">
                                         <span className="font-semibold">{item.quantity} x</span> {item.product.name[language]}
                                     </div>
-                                    <div className="font-medium text-slate-800 dark:text-slate-100">
-                                        {(item.product.price * item.quantity).toFixed(2)}
-                                    </div>
+                                    {item.appliedDiscountPercent ? (
+                                        <div className="text-end">
+                                            <div className="font-medium text-slate-800 dark:text-slate-100">
+                                                {finalTotal.toFixed(2)}
+                                            </div>
+                                            <div className="text-xs text-slate-500 line-through">
+                                                {originalTotal.toFixed(2)}
+                                            </div>
+                                        </div>
+                                    ) : (
+                                        <div className="font-medium text-slate-800 dark:text-slate-100">
+                                            {finalTotal.toFixed(2)}
+                                        </div>
+                                    )}
                                 </div>
-                            ))}
+                            )})}
                         </div>
                         {order.orderType === 'Delivery' && order.customer.address && (
                             <p className="text-xs text-slate-500 pt-2 border-t border-slate-200 dark:border-slate-700 mt-3">{t.address}: {order.customer.address}</p>

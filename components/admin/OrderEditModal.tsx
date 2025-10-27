@@ -16,7 +16,8 @@ interface OrderEditModalProps {
 export const OrderEditModal: React.FC<OrderEditModalProps> = ({ order, onClose, onSave }) => {
     // @FIX: Refactored to get translations `t` directly from the `useUI` hook.
     const { language, t } = useUI();
-    const { products: allProducts } = useData();
+    // FIX: Destructure 'promotions' from useData to pass to ProductModal.
+    const { products: allProducts, promotions } = useData();
     
     const [editedItems, setEditedItems] = useState<CartItem[]>(() => JSON.parse(JSON.stringify(order.items)));
     const [notes, setNotes] = useState(order.notes || '');
@@ -167,6 +168,8 @@ export const OrderEditModal: React.FC<OrderEditModalProps> = ({ order, onClose, 
                     product={addingProductWithOptions}
                     onClose={() => setAddingProductWithOptions(null)}
                     addToCart={handleAddFromModal}
+                    // FIX: Pass the required 'promotions' prop to the ProductModal.
+                    promotions={promotions}
                 />
             )}
         </>

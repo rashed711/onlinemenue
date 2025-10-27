@@ -55,6 +55,7 @@ export interface CartItem {
   product: Product;
   quantity: number;
   options?: { [key: string]: string };
+  appliedDiscountPercent?: number;
 }
 
 export interface Promotion {

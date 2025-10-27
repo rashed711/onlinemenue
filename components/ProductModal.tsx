@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import type { Product } from '../types';
+import type { Product, Promotion } from '../types';
 import { StarIcon, PlusIcon } from './icons/Icons';
-import { formatNumber } from '../utils/helpers';
+import { formatNumber, getActivePromotionForProduct } from '../utils/helpers';
 import { Modal } from './Modal';
 import { useUI } from '../contexts/UIContext';
 
@@ -9,12 +9,14 @@ interface ProductModalProps {
   product: Product;
   onClose: () => void;
   addToCart: (product: Product, quantity: number, options?: { [key: string]: string }) => void;
+  promotions: Promotion[];
 }
 
 export const ProductModal: React.FC<ProductModalProps> = ({
   product,
   onClose,
   addToCart,
+  promotions
 }) => {
   const { t, language } = useUI();
   const [quantity, setQuantity] = useState(1);
@@ -43,15 +45,21 @@ export const ProductModal: React.FC<ProductModalProps> = ({
   };
   
   const calculateTotalPrice = () => {
-    let basePrice = product.price;
+    let unitPrice = product.price;
     product.options?.forEach(option => {
         const selectedValueKey = selectedOptions[option.name.en];
         const selectedValue = option.values.find(v => v.name.en === selectedValueKey);
         if (selectedValue) {
-            basePrice += selectedValue.priceModifier;
+            unitPrice += selectedValue.priceModifier;
         }
     });
-    return basePrice * quantity;
+
+    const promotion = getActivePromotionForProduct(product.id, promotions);
+    if (promotion) {
+        unitPrice = unitPrice * (1 - promotion.discountPercent / 100);
+    }
+
+    return unitPrice * quantity;
   };
 
   return (

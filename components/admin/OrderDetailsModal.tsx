@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import type { Order, RestaurantInfo, OrderType } from '../../types';
 import { DocumentTextIcon, PencilIcon, ShareIcon, PrintIcon, TrashIcon, CloseIcon, StarIcon, UserIcon, ClockIcon, HomeIcon, TakeawayIcon, TruckIcon, UserCircleIcon, CreditCardIcon, CheckIcon } from '../icons/Icons';
 import { StarRating } from '../StarRating';
-import { formatDateTime, formatNumber, generateReceiptImage } from '../../utils/helpers';
+import { formatDateTime, formatNumber, generateReceiptImage, calculateItemTotal, calculateOriginalItemTotal } from '../../utils/helpers';
 import { Modal } from '../Modal';
 import { useUI } from '../../contexts/UIContext';
 import { useData } from '../../contexts/DataContext';
@@ -238,10 +238,20 @@ export const OrderDetailsModal: React.FC<OrderDetailsModalProps> = ({ order, onC
                                     </span>
                                 </div>
                                 <div className="space-y-3 bg-white dark:bg-slate-800 p-4 rounded-xl border dark:border-slate-700 max-h-80 overflow-y-auto">
-                                    {order.items.map((item, index) => (
+                                    {order.items.map((item, index) => {
+                                        const finalTotal = calculateItemTotal(item);
+                                        const originalTotal = calculateOriginalItemTotal(item);
+                                        return (
                                         <div key={`${item.product.id}-${index}`} className="flex items-start gap-4 py-3 border-b dark:border-slate-700 last:border-b-0">
                                             <div className="text-end shrink-0">
-                                                <p className="font-semibold text-slate-700 dark:text-slate-200">{(item.product.price * item.quantity).toFixed(2)} {t.currency}</p>
+                                                {item.appliedDiscountPercent ? (
+                                                    <>
+                                                        <p className="font-semibold text-slate-700 dark:text-slate-200">{finalTotal.toFixed(2)} {t.currency}</p>
+                                                        <p className="text-xs text-slate-500 dark:text-slate-400 line-through">{originalTotal.toFixed(2)} {t.currency}</p>
+                                                    </>
+                                                ) : (
+                                                    <p className="font-semibold text-slate-700 dark:text-slate-200">{finalTotal.toFixed(2)} {t.currency}</p>
+                                                )}
                                             </div>
                                             <div className="flex-grow text-end">
                                                 <p className="font-semibold text-slate-800 dark:text-slate-300">{item.product.name[language]}</p>
@@ -259,7 +269,7 @@ export const OrderDetailsModal: React.FC<OrderDetailsModalProps> = ({ order, onC
                                             </div>
                                             <img src={item.product.image} alt={item.product.name[language]} className="w-16 h-16 rounded-lg object-cover" />
                                         </div>
-                                    ))}
+                                    )})}
                                 </div>
                             </div>
                             

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { calculateTotal } from '../../utils/helpers';
+import { calculateTotal, calculateItemTotal, calculateOriginalItemTotal, calculateTotalSavings } from '../../utils/helpers';
 import { ChevronRightIcon } from '../icons/Icons';
 import { useUI } from '../../contexts/UIContext';
 import { useCart } from '../../contexts/CartContext';
@@ -8,29 +8,52 @@ export const OrderSummary: React.FC = () => {
     const { language, t } = useUI();
     const { cartItems } = useCart();
     const [isExpanded, setIsExpanded] = useState(false);
+    
     const subtotal = calculateTotal(cartItems);
+    const totalSavings = calculateTotalSavings(cartItems);
+    const originalSubtotal = subtotal + totalSavings;
+
 
     const summaryContent = (
         <div className="space-y-4">
-            {cartItems.map((item, index) => (
-                <div key={index} className="flex items-start gap-4">
-                    <div className="relative">
-                        <img src={item.product.image} alt={item.product.name[language]} className="w-16 h-16 rounded-lg object-cover" />
-                        <span className="absolute -top-2 -right-2 bg-primary-600 text-white text-xs font-bold rounded-full h-6 w-6 flex items-center justify-center">
-                            {item.quantity}
-                        </span>
+            {cartItems.map((item, index) => {
+                const finalTotal = calculateItemTotal(item);
+                const originalTotal = calculateOriginalItemTotal(item);
+                return (
+                    <div key={index} className="flex items-start gap-4">
+                        <div className="relative">
+                            <img src={item.product.image} alt={item.product.name[language]} className="w-16 h-16 rounded-lg object-cover" />
+                            <span className="absolute -top-2 -right-2 bg-primary-600 text-white text-xs font-bold rounded-full h-6 w-6 flex items-center justify-center">
+                                {item.quantity}
+                            </span>
+                        </div>
+                        <div className="flex-grow">
+                            <p className="font-semibold text-sm leading-tight text-slate-800 dark:text-slate-100">{item.product.name[language]}</p>
+                        </div>
+                         {item.appliedDiscountPercent ? (
+                            <div className="text-right">
+                                <p className="font-semibold text-sm text-slate-700 dark:text-slate-200">{finalTotal.toFixed(2)} {t.currency}</p>
+                                <p className="text-xs text-slate-500 line-through">{originalTotal.toFixed(2)} {t.currency}</p>
+                            </div>
+                        ) : (
+                            <p className="font-semibold text-sm text-slate-700 dark:text-slate-200">{finalTotal.toFixed(2)} {t.currency}</p>
+                        )}
                     </div>
-                    <div className="flex-grow">
-                        <p className="font-semibold text-sm leading-tight text-slate-800 dark:text-slate-100">{item.product.name[language]}</p>
-                    </div>
-                    <p className="font-semibold text-sm text-slate-700 dark:text-slate-200">{calculateTotal([item]).toFixed(2)} {t.currency}</p>
-                </div>
-            ))}
+                )
+            })}
             <div className="border-t border-slate-200 dark:border-slate-700 pt-4 space-y-2 text-sm text-slate-600 dark:text-slate-300">
-                <div className="flex justify-between">
-                    <span>{t.subtotal}</span>
-                    <span className="font-medium text-slate-800 dark:text-slate-100">{subtotal.toFixed(2)} {t.currency}</span>
-                </div>
+                {totalSavings > 0 && (
+                    <div className="flex justify-between">
+                        <span>{t.subtotal}</span>
+                        <span className="font-medium text-slate-800 dark:text-slate-100">{originalSubtotal.toFixed(2)} {t.currency}</span>
+                    </div>
+                )}
+                {totalSavings > 0 && (
+                    <div className="flex justify-between text-red-600 dark:text-red-400">
+                        <span>{t.discount}</span>
+                        <span className="font-medium">-{totalSavings.toFixed(2)} {t.currency}</span>
+                    </div>
+                )}
                 <div className="flex justify-between">
                     <span>{t.shipping}</span>
                     <span className="font-medium text-slate-800 dark:text-slate-100">{t.free}</span>
