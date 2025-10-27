@@ -58,7 +58,10 @@ const CategoryRow: React.FC<CategoryRowProps> = (props) => {
             onDragStart={(e) => onDragStart(e, category.id)}
             onDragOver={(e) => onDragOver(e, category.id)}
             onDragEnd={onDragEnd}
-            onDrop={() => onDrop(category.id)}
+            onDrop={(e) => {
+                e.preventDefault();
+                onDrop(category.id);
+            }}
         >
             {isDragOver && <div className="absolute top-0 left-0 right-0 h-0.5 bg-primary-500 z-10" />}
             <div 
@@ -225,10 +228,14 @@ export const ClassificationsPage: React.FC<ClassificationsPageProps> = (props) =
             return;
         }
 
-        const siblings = draggedItemParent ? draggedItemParent.children! : orderedCategories.filter(c => !c.parent_id);
+        const siblings = draggedItemParent ? draggedItemParent.children! : orderedCategories;
 
         const draggedIndex = siblings.findIndex(c => c.id === draggedItemId);
         const targetIndex = siblings.findIndex(c => c.id === targetCategoryId);
+        
+        if (draggedIndex === -1 || targetIndex === -1) {
+            return;
+        }
         
         // Remove and re-insert
         const [removed] = siblings.splice(draggedIndex, 1);

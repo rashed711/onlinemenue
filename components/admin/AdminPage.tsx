@@ -268,28 +268,6 @@ export const AdminPage: React.FC<AdminPageProps> = ({ activeSubRoute, reportSubR
         checkUrlForOrder();
     }, [allOrders, setViewingOrder]);
 
-
-    const sortedCategories = useMemo(() => {
-        // A generic sorter for localized names
-        const sorter = (a: { name: LocalizedString }, b: { name: LocalizedString }) => 
-            a.name[language].localeCompare(b.name[language], language);
-
-        // Deep copy to avoid mutating the original data from context
-        const categoriesCopy: Category[] = JSON.parse(JSON.stringify(categories));
-
-        // Sort children of each category
-        categoriesCopy.forEach(cat => {
-            if (cat.children && cat.children.length > 0) {
-                cat.children.sort(sorter);
-            }
-        });
-
-        // Sort top-level categories
-        categoriesCopy.sort(sorter);
-
-        return categoriesCopy;
-    }, [categories, language]);
-
      useEffect(() => {
         const handleClickOutside = (event: MouseEvent) => {
           if (categoryDropdownRef.current && !categoryDropdownRef.current.contains(event.target as Node)) {
@@ -687,7 +665,7 @@ export const AdminPage: React.FC<AdminPageProps> = ({ activeSubRoute, reportSubR
                                     >
                                         {t.allCategories}
                                     </button>
-                                    {sortedCategories.map(category => {
+                                    {categories.map(category => {
                                         const hasChildren = category.children && category.children.length > 0;
                                         const isActive = isCategoryOrChildSelected(category);
 

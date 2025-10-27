@@ -506,31 +506,39 @@ export const AdminProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         try {
             const payload: { id: number, display_order: number }[] = [];
             
-            const generatePayload = (categories: Category[]) => {
-                categories.forEach((cat, index) => {
+            const buildPayload = (categoryList: Category[]) => {
+                categoryList.forEach((cat, index) => {
                     payload.push({ id: cat.id, display_order: index });
                     if (cat.children && cat.children.length > 0) {
-                        generatePayload(cat.children);
+                        buildPayload(cat.children);
                     }
                 });
             };
-            generatePayload(orderedCategories);
+    
+            buildPayload(orderedCategories);
 
             const response = await fetch(`${APP_CONFIG.API_BASE_URL}update_category_order.php`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(payload)
             });
+
+            if (!response.ok) {
+                 const errorText = await response.text();
+                 throw new Error(`Server Error: ${response.status} - ${errorText}`);
+            }
+
             const result = await response.json();
-            if (!response.ok || !result.success) {
+            if (!result.success) {
                 throw new Error(result.error || t.orderSaveFailed);
             }
 
             await fetchAllData();
             showToast(t.orderSavedSuccess);
         } catch (error: any) {
+            console.error("Failed to update category order:", error);
             showToast(error.message || t.orderSaveFailed);
-            await fetchAllData(); // Refetch to revert to last saved state on error
+            await fetchAllData();
         } finally {
             setIsProcessing(false);
         }
