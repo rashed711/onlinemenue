@@ -1,88 +1,162 @@
-import React, { useState } from 'react';
-import type { Language } from '../../types';
-import { useTranslations } from '../../i18n/translations';
+import React, { useState, useEffect } from 'react';
+import { useUI } from '../../contexts/UIContext';
+import { useAuth } from '../../contexts/AuthContext';
 
-interface LoginPageProps {
-    language: Language;
-    login: (mobile: string, password: string) => Promise<string | null>;
-    isProcessing: boolean;
-}
+export const LoginPage: React.FC = () => {
+    const { t, isProcessing } = useUI();
+    const { unifiedLogin, registerWithEmailPassword } = useAuth();
 
-export const LoginPage: React.FC<LoginPageProps> = ({ language, login, isProcessing }) => {
-    const t = useTranslations(language);
-    const [mobile, setMobile] = useState('superAdmin');
-    const [password, setPassword] = useState('password');
+    const [formType, setFormType] = useState<'login' | 'register'>('login');
     const [error, setError] = useState('');
+
+    // Unified login state
+    const [identifier, setIdentifier] = useState('');
+    const [loginPassword, setLoginPassword] = useState('');
+
+    // Register state
+    const [name, setName] = useState('');
+    const [mobile, setMobile] = useState('');
+    const [email, setEmail] = useState('');
+    const [registerPassword, setRegisterPassword] = useState('');
+    const [confirmPassword, setConfirmPassword] = useState('');
+
+    useEffect(() => {
+        setError('');
+    }, [formType]);
 
     const handleNav = (e: React.MouseEvent<HTMLAnchorElement>, path: string) => {
         e.preventDefault();
         window.location.hash = path;
     };
 
-    const handleLogin = async (e: React.FormEvent) => {
+    const handleUnifiedLogin = async (e: React.FormEvent) => {
         e.preventDefault();
         setError('');
-        try {
-            const errorMessage = await login(mobile, password);
-            if (errorMessage) {
-                setError(errorMessage);
-            }
-            // Successful login will trigger a redirect via useEffect in App.tsx
-        } catch (err) {
-            setError('An unexpected error occurred. Please try again.');
+        const errorMessage = await unifiedLogin(identifier, loginPassword);
+        if (errorMessage) {
+            setError(errorMessage);
+        }
+        // On success, context handles redirect
+    };
+
+    const handleCustomerRegister = async (e: React.FormEvent) => {
+        e.preventDefault();
+        setError('');
+        if (registerPassword !== confirmPassword) {
+            setError(t.passwordsDoNotMatch);
+            return;
+        }
+        const errorMessage = await registerWithEmailPassword({ name, mobile, email, password: registerPassword });
+        if (errorMessage) {
+            setError(errorMessage);
+        } else {
+            // Success toast is shown from AuthContext.
+            // Switch to login form for a better UX.
+            setFormType('login');
+            setName('');
+            setMobile('');
+            setEmail('');
+            setRegisterPassword('');
+            setConfirmPassword('');
         }
     };
 
+    const renderLoginForm = () => (
+        <form className="space-y-4" onSubmit={handleUnifiedLogin}>
+            <div>
+                <label htmlFor="identifier" className="block mb-2 text-sm font-medium text-slate-800 dark:text-slate-300">{t.emailOrMobile}</label>
+                <input 
+                    type="text" 
+                    id="identifier" 
+                    value={identifier} 
+                    onChange={(e) => setIdentifier(e.target.value)} 
+                    className="w-full p-3 text-slate-900 bg-slate-50 dark:bg-slate-700 dark:text-white border-2 border-slate-200 dark:border-slate-600 rounded-lg focus:ring-primary-500 focus:border-primary-500 transition" 
+                    required 
+                />
+            </div>
+            <div>
+                <label htmlFor="login-password" className="block mb-2 text-sm font-medium text-slate-800 dark:text-slate-300">{t.password}</label>
+                <input 
+                    type="password" 
+                    id="login-password" 
+                    value={loginPassword} 
+                    onChange={(e) => setLoginPassword(e.target.value)} 
+                    className="w-full p-3 text-slate-900 bg-slate-50 dark:bg-slate-700 dark:text-white border-2 border-slate-200 dark:border-slate-600 rounded-lg focus:ring-primary-500 focus:border-primary-500 transition" 
+                    required 
+                />
+            </div>
+            <button type="submit" disabled={isProcessing} className="w-full px-5 py-3 font-medium text-white bg-primary-600 rounded-lg hover:bg-primary-700 disabled:bg-primary-400">
+                {isProcessing ? '...' : t.login}
+            </button>
+        </form>
+    );
+
+    const renderRegisterForm = () => (
+        <form className="space-y-4" onSubmit={handleCustomerRegister}>
+            <div>
+                <label htmlFor="name" className="block mb-2 text-sm font-medium text-slate-800 dark:text-slate-300">{t.name}</label>
+                <input type="text" id="name" value={name} onChange={(e) => setName(e.target.value)} className="w-full p-3 text-slate-900 bg-slate-50 dark:bg-slate-700 dark:text-white border-2 border-slate-200 dark:border-slate-600 rounded-lg focus:ring-primary-500 focus:border-primary-500 transition" required />
+            </div>
+            <div>
+                <label htmlFor="mobile" className="block mb-2 text-sm font-medium text-slate-800 dark:text-slate-300">{t.mobileNumber}</label>
+                <input type="tel" id="mobile" value={mobile} onChange={(e) => setMobile(e.target.value)} className="w-full p-3 text-slate-900 bg-slate-50 dark:bg-slate-700 dark:text-white border-2 border-slate-200 dark:border-slate-600 rounded-lg focus:ring-primary-500 focus:border-primary-500 transition" required />
+            </div>
+            <div>
+                <label htmlFor="email" className="block mb-2 text-sm font-medium text-slate-800 dark:text-slate-300">{t.email}</label>
+                <input type="email" id="email" value={email} onChange={(e) => setEmail(e.target.value)} className="w-full p-3 text-slate-900 bg-slate-50 dark:bg-slate-700 dark:text-white border-2 border-slate-200 dark:border-slate-600 rounded-lg focus:ring-primary-500 focus:border-primary-500 transition" required />
+            </div>
+            <div>
+                <label htmlFor="register-password" className="block mb-2 text-sm font-medium text-slate-800 dark:text-slate-300">{t.password}</label>
+                <input type="password" id="register-password" value={registerPassword} onChange={(e) => setRegisterPassword(e.target.value)} className="w-full p-3 text-slate-900 bg-slate-50 dark:bg-slate-700 dark:text-white border-2 border-slate-200 dark:border-slate-600 rounded-lg focus:ring-primary-500 focus:border-primary-500 transition" required />
+            </div>
+            <div>
+                <label htmlFor="confirmPassword" className="block mb-2 text-sm font-medium text-slate-800 dark:text-slate-300">{t.confirmNewPassword}</label>
+                <input type="password" id="confirmPassword" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} className="w-full p-3 text-slate-900 bg-slate-50 dark:bg-slate-700 dark:text-white border-2 border-slate-200 dark:border-slate-600 rounded-lg focus:ring-primary-500 focus:border-primary-500 transition" required />
+            </div>
+            <button type="submit" disabled={isProcessing} className="w-full px-5 py-3 font-medium text-white bg-primary-600 rounded-lg hover:bg-primary-700 disabled:bg-primary-400">
+                {isProcessing ? '...' : t.createAccount}
+            </button>
+        </form>
+    );
+
     return (
         <div className="flex items-center justify-center min-h-screen bg-slate-100 dark:bg-slate-900 p-4">
-            <div className="w-full max-w-md p-8 space-y-6 bg-white dark:bg-slate-800 rounded-2xl shadow-xl border border-slate-200 dark:border-slate-700">
-                <h1 className="text-3xl font-bold text-center text-primary-600 dark:text-primary-400">{t.login}</h1>
-                <form className="space-y-6" onSubmit={handleLogin}>
-                    <div>
-                        <label htmlFor="mobile" className="block mb-2 text-sm font-medium text-gray-900 dark:text-gray-300">
-                            {t.username}
-                        </label>
-                        <input
-                            type="text"
-                            id="mobile"
-                            value={mobile}
-                            onChange={(e) => setMobile(e.target.value)}
-                            className="w-full p-3 text-gray-900 bg-gray-50 dark:bg-gray-700 dark:text-white border-2 border-gray-200 dark:border-gray-600 rounded-lg focus:ring-primary-500 focus:border-primary-500 transition"
-                            required
-                        />
+            <div className="w-full max-w-sm">
+                <div className="p-8 space-y-6 bg-white dark:bg-slate-800 rounded-2xl shadow-xl border border-slate-200 dark:border-slate-700">
+                    <h1 className="text-2xl font-bold text-center text-primary-600 dark:text-primary-400 mb-6">
+                        {formType === 'login' ? t.login : t.createAccount}
+                    </h1>
+
+                    {formType === 'login' ? renderLoginForm() : renderRegisterForm()}
+                    
+                    {error && <p className="text-sm text-red-500 text-center mt-4">{error}</p>}
+                    
+                    <div className="space-y-2 text-sm text-center mt-4">
+                        {formType === 'login' ? (
+                            <p>
+                                <span className="text-slate-600 dark:text-slate-400">{t.dontHaveAccount} </span>
+                                <button onClick={() => setFormType('register')} className="font-medium text-primary-600 hover:underline dark:text-primary-500">{t.createAccount}</button>
+                            </p>
+                        ) : (
+                            <p>
+                                <span className="text-slate-600 dark:text-slate-400">{t.alreadyHaveAccount} </span>
+                                <button onClick={() => setFormType('login')} className="font-medium text-primary-600 hover:underline dark:text-primary-500">{t.login}</button>
+                            </p>
+                        )}
+                        {formType === 'login' && (
+                            <p>
+                                <a href="#/forgot-password" onClick={(e) => handleNav(e, '/forgot-password')} className="text-xs font-medium text-primary-600 hover:underline dark:text-primary-500">
+                                    {t.forgotPassword}
+                                </a>
+                            </p>
+                        )}
                     </div>
-                    <div>
-                        <label htmlFor="password" className="block mb-2 text-sm font-medium text-gray-900 dark:text-gray-300">
-                            {t.password}
-                        </label>
-                        <input
-                            type="password"
-                            id="password"
-                            value={password}
-                            onChange={(e) => setPassword(e.target.value)}
-                            className="w-full p-3 text-gray-900 bg-gray-50 dark:bg-gray-700 dark:text-white border-2 border-gray-200 dark:border-gray-600 rounded-lg focus:ring-primary-500 focus:border-primary-500 transition"
-                            required
-                        />
+
+                     <div className="text-center border-t border-slate-200 dark:border-slate-700 pt-4 mt-6">
+                        <a href="#/" onClick={(e) => handleNav(e, '/')} className="text-sm text-primary-600 hover:underline dark:text-primary-500">
+                            {t.backToMenu}
+                        </a>
                     </div>
-                    {error && <p className="text-sm text-red-500 text-center">{error}</p>}
-                    <button
-                        type="submit"
-                        disabled={isProcessing}
-                        className="w-full px-5 py-3 text-base font-medium text-center text-white bg-primary-600 rounded-lg hover:bg-primary-700 focus:ring-4 focus:ring-primary-300 dark:focus:ring-primary-800 transition shadow-md hover:shadow-lg transform hover:scale-105 disabled:bg-primary-400 disabled:cursor-not-allowed"
-                    >
-                        {isProcessing ? 'Logging in...' : t.login}
-                    </button>
-                </form>
-                 <div className="flex justify-between items-center text-sm">
-                    <span className="text-gray-600 dark:text-gray-400">{t.dontHaveAccount} <a href="#/register" onClick={(e) => handleNav(e, '/register')} className="font-medium text-primary-600 hover:underline dark:text-primary-500">{t.register}</a></span>
-                    <a href="#/forgot-password" onClick={(e) => handleNav(e, '/forgot-password')} className="font-medium text-primary-600 hover:underline dark:text-primary-500">
-                        {t.forgotPassword}
-                    </a>
-                </div>
-                 <div className="text-center border-t border-slate-200 dark:border-slate-700 pt-4 mt-4">
-                    <a href="#/" onClick={(e) => handleNav(e, '/')} className="text-sm text-primary-600 hover:underline dark:text-primary-500">
-                        {t.backToMenu}
-                    </a>
                 </div>
             </div>
         </div>

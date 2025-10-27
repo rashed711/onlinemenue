@@ -1,20 +1,11 @@
 import React, { useState } from 'react';
-import type { Language, User } from '../../types';
-import { useTranslations } from '../../i18n/translations';
+import { useUI } from '../../contexts/UIContext';
+import { useAuth } from '../../contexts/AuthContext';
 
-interface ForgotPasswordPageProps {
-    language: Language;
-    users: User[];
-    onPasswordReset: (user: User, newPassword: string) => Promise<boolean>;
-}
-
-export const ForgotPasswordPage: React.FC<ForgotPasswordPageProps> = ({ language, users, onPasswordReset }) => {
-    const t = useTranslations(language);
-    const [step, setStep] = useState(1); // 1 for mobile input, 2 for password reset
-    const [mobile, setMobile] = useState('');
-    const [userToReset, setUserToReset] = useState<User | null>(null);
-    const [newPassword, setNewPassword] = useState('');
-    const [confirmPassword, setConfirmPassword] = useState('');
+export const ForgotPasswordPage: React.FC = () => {
+    const { t } = useUI();
+    const { sendPasswordResetLink } = useAuth();
+    const [email, setEmail] = useState('');
     const [error, setError] = useState('');
     const [success, setSuccess] = useState('');
 
@@ -23,41 +14,19 @@ export const ForgotPasswordPage: React.FC<ForgotPasswordPageProps> = ({ language
         window.location.hash = path;
     };
 
-    const handleMobileSubmit = (e: React.FormEvent) => {
-        e.preventDefault();
-        setError('');
-        const userExists = users.find(u => u.mobile === mobile);
-        if (userExists) {
-            setUserToReset(userExists);
-            setStep(2);
-        } else {
-            setError(t.mobileNotFound);
-        }
-    };
-
-    const handlePasswordSubmit = async (e: React.FormEvent) => {
+    const handleEmailSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setError('');
         setSuccess('');
-        if (!userToReset) {
-            setError('An unexpected error occurred.');
-            return;
-        }
-        if (newPassword !== confirmPassword) {
-            setError(t.passwordsDoNotMatch);
-            return;
-        }
-        if (newPassword.length < 6) { // Basic validation
-            setError('Password must be at least 6 characters long.');
-            return;
-        }
-        
-        const resetSuccess = await onPasswordReset(userToReset, newPassword);
-        if (resetSuccess) {
-            setSuccess(t.passwordResetSuccess);
-            // Don't redirect immediately, show the success message
+        const errorMsg = await sendPasswordResetLink(email);
+        if (errorMsg) {
+            if (errorMsg.includes('auth/user-not-found')) {
+                setError(t.emailNotFound);
+            } else {
+                setError(errorMsg);
+            }
         } else {
-            setError('Failed to reset password. Please try again.'); 
+            setSuccess(t.passwordResetSent);
         }
     };
 
@@ -73,53 +42,21 @@ export const ForgotPasswordPage: React.FC<ForgotPasswordPageProps> = ({ language
                             {t.backToLogin}
                         </a>
                     </div>
-                ) : step === 1 ? (
-                    <form className="space-y-6" onSubmit={handleMobileSubmit}>
-                        <p className="text-center text-slate-600 dark:text-slate-300">{t.enterMobilePrompt}</p>
-                        <div>
-                            <label htmlFor="mobile" className="block mb-2 text-sm font-medium text-gray-900 dark:text-gray-300">
-                                {t.mobileNumber}
-                            </label>
-                            <input
-                                type="text"
-                                id="mobile"
-                                value={mobile}
-                                onChange={(e) => setMobile(e.target.value)}
-                                className="w-full p-3 text-gray-900 bg-gray-50 dark:bg-gray-700 dark:text-white border-2 border-gray-200 dark:border-gray-600 rounded-lg focus:ring-primary-500 focus:border-primary-500 transition"
-                                required
-                            />
-                        </div>
-                        {error && <p className="text-sm text-red-500 text-center">{error}</p>}
-                        <button type="submit" className="w-full px-5 py-3 text-base font-medium text-center text-white bg-primary-600 rounded-lg hover:bg-primary-700 focus:ring-4 focus:ring-primary-300 dark:focus:ring-primary-800 transition shadow-md">
-                            Continue
-                        </button>
-                    </form>
                 ) : (
-                    <form className="space-y-6" onSubmit={handlePasswordSubmit}>
+                    <form className="space-y-6" onSubmit={handleEmailSubmit}>
+                        <p className="text-center text-slate-600 dark:text-slate-300">{t.enterEmailPrompt}</p>
                         <div>
-                            <label htmlFor="newPassword" className="block mb-2 text-sm font-medium text-gray-900 dark:text-gray-300">
-                                {t.newPassword}
+                            <label htmlFor="email" className="block mb-2 text-sm font-medium text-slate-800 dark:text-slate-300">
+                                {t.email}
                             </label>
                             <input
-                                type="password"
-                                id="newPassword"
-                                value={newPassword}
-                                onChange={(e) => setNewPassword(e.target.value)}
-                                className="w-full p-3 text-gray-900 bg-gray-50 dark:bg-gray-700 dark:text-white border-2 border-gray-200 dark:border-gray-600 rounded-lg focus:ring-primary-500 focus:border-primary-500 transition"
+                                type="email"
+                                id="email"
+                                value={email}
+                                onChange={(e) => setEmail(e.target.value)}
+                                className="w-full p-3 text-slate-900 bg-slate-50 dark:bg-slate-700 dark:text-white border-2 border-slate-200 dark:border-slate-600 rounded-lg focus:ring-primary-500 focus:border-primary-500 transition"
                                 required
-                            />
-                        </div>
-                        <div>
-                            <label htmlFor="confirmPassword" className="block mb-2 text-sm font-medium text-gray-900 dark:text-gray-300">
-                                {t.confirmNewPassword}
-                            </label>
-                            <input
-                                type="password"
-                                id="confirmPassword"
-                                value={confirmPassword}
-                                onChange={(e) => setConfirmPassword(e.target.value)}
-                                className="w-full p-3 text-gray-900 bg-gray-50 dark:bg-gray-700 dark:text-white border-2 border-gray-200 dark:border-gray-600 rounded-lg focus:ring-primary-500 focus:border-primary-500 transition"
-                                required
+                                autoFocus
                             />
                         </div>
                         {error && <p className="text-sm text-red-500 text-center">{error}</p>}

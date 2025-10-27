@@ -1,21 +1,20 @@
-import React, { useRef, useCallback, useEffect, useMemo } from 'react';
-import type { Promotion, Language, Product } from '../types';
-import { useTranslations } from '../i18n/translations';
+import React, { useRef, useCallback, useEffect, useMemo, useState } from 'react';
+import type { Promotion, Product } from '../types';
 import { useCountdown } from '../hooks/useCountdown';
 import { ChevronLeftIcon, ChevronRightIcon } from './icons/Icons';
+import { useUI } from '../contexts/UIContext';
 
 interface PromotionCardProps {
   promotion: Promotion;
   product: Product;
-  language: Language;
   onProductClick: (product: Product) => void;
 }
 
-const PromotionCard: React.FC<PromotionCardProps> = ({ promotion, product, language, onProductClick }) => {
-    const t = useTranslations(language);
+const PromotionCard: React.FC<PromotionCardProps> = ({ promotion, product, onProductClick }) => {
+    const { t, language } = useUI();
     const { days, hours, minutes, seconds } = useCountdown(promotion.endDate);
+    const [isImageLoaded, setIsImageLoaded] = useState(false);
 
-    // This check is a safeguard; primary filtering is now done in the parent.
     if (!product) {
         return null;
     }
@@ -24,7 +23,16 @@ const PromotionCard: React.FC<PromotionCardProps> = ({ promotion, product, langu
 
     return (
         <div onClick={() => onProductClick(product)} className="bg-gradient-to-br from-primary-500 to-primary-700 h-full text-white rounded-2xl p-6 lg:p-8 flex flex-col md:flex-row items-center gap-6 lg:gap-8 shadow-xl hover:shadow-2xl hover:shadow-primary-500/40 cursor-pointer transform hover:scale-105 transition-all duration-300 min-h-72">
-            <img src={product.image} alt={product.name[language]} className="w-full md:w-36 h-48 md:h-36 rounded-xl md:rounded-full object-cover border-4 border-primary-300 flex-shrink-0" />
+            <div className="relative w-full md:w-36 h-48 md:h-36 rounded-xl md:rounded-full flex-shrink-0 border-4 border-primary-300 overflow-hidden">
+                {!isImageLoaded && <div className="absolute inset-0 bg-primary-400/50 animate-pulse"></div>}
+                <img 
+                    src={product.image} 
+                    alt={product.name[language]} 
+                    className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-500 ${isImageLoaded ? 'opacity-100' : 'opacity-0'}`}
+                    loading="lazy"
+                    onLoad={() => setIsImageLoaded(true)}
+                />
+            </div>
             <div className="flex flex-col flex-1 justify-center text-center md:text-start">
                 <div>
                     <div>
@@ -53,12 +61,11 @@ const PromotionCard: React.FC<PromotionCardProps> = ({ promotion, product, langu
 interface PromotionSectionProps {
   promotions: Promotion[];
   products: Product[];
-  language: Language;
   onProductClick: (product: Product) => void;
 }
 
-export const PromotionSection: React.FC<PromotionSectionProps> = ({ promotions, products, language, onProductClick }) => {
-  const t = useTranslations(language);
+export const PromotionSection: React.FC<PromotionSectionProps> = ({ promotions, products, onProductClick }) => {
+  const { t, language } = useUI();
   const sliderRef = useRef<HTMLDivElement>(null);
   const intervalRef = useRef<number | null>(null);
   const isRtl = language === 'ar';
@@ -68,7 +75,6 @@ export const PromotionSection: React.FC<PromotionSectionProps> = ({ promotions, 
     return promotions
       .map(promo => {
         const product = products.find(p => p.id === promo.productId);
-        // An offer is displayable only if it's active, not expired, and linked to a valid, VISIBLE product.
         if (!promo.isActive || new Date(promo.endDate) <= now || !product || !product.isVisible) {
           return null;
         }
@@ -128,13 +134,13 @@ export const PromotionSection: React.FC<PromotionSectionProps> = ({ promotions, 
 
   return (
     <section className="my-12 animate-fade-in-up">
-        <h2 className="text-3xl font-extrabold mb-8">{t.todaysOffers}</h2>
+        <h2 className="text-3xl font-extrabold mb-8 text-slate-900 dark:text-slate-200">{t.todaysOffers}</h2>
         <div className="relative -mx-4" onMouseEnter={stopAutoPlay} onMouseLeave={startAutoPlay} onTouchStart={stopAutoPlay} onTouchEnd={startAutoPlay}>
             <div ref={sliderRef} className="flex overflow-x-auto snap-x snap-mandatory scroll-smooth scrollbar-hide px-2">
                 {displayablePromotions.map(({ promo, product }) => {
                     return (
                         <div key={promo.id} className="w-5/6 md:w-1/2 lg:w-5/12 xl:w-1/2 flex-shrink-0 snap-center p-2">
-                             <PromotionCard promotion={promo} product={product} language={language} onProductClick={onProductClick} />
+                             <PromotionCard promotion={promo} product={product} onProductClick={onProductClick} />
                         </div>
                     );
                 })}

@@ -1,20 +1,21 @@
 import React, { useState, useEffect } from 'react';
-import ReactDOM from 'react-dom';
-import type { Language } from '../types';
-import { useTranslations } from '../i18n/translations';
-import { CloseIcon, DownloadIcon } from './icons/Icons';
+import { useUI } from '../contexts/UIContext';
+import { DownloadIcon } from './icons/Icons';
+import { useCart } from '../contexts/CartContext';
+import { useData } from '../contexts/DataContext';
+import { Modal } from './Modal';
 
 interface ReceiptModalProps {
     isOpen: boolean;
     onClose: () => void;
     receiptImageUrl: string;
-    language: Language;
-    whatsappNumber: string;
-    clearCart: () => void;
 }
 
-export const ReceiptModal: React.FC<ReceiptModalProps> = ({ isOpen, onClose, receiptImageUrl, language, whatsappNumber, clearCart }) => {
-    const t = useTranslations(language);
+export const ReceiptModal: React.FC<ReceiptModalProps> = ({ isOpen, onClose, receiptImageUrl }) => {
+    // @FIX: Refactored to get translations `t` directly from the `useUI` hook.
+    const { language, t } = useUI();
+    const { restaurantInfo } = useData();
+    const { clearCart } = useCart();
     const [canShare, setCanShare] = useState(false);
     const [isSharing, setIsSharing] = useState(false);
 
@@ -24,9 +25,7 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({ isOpen, onClose, rec
         }
     }, []);
     
-    const portalRoot = document.getElementById('portal-root');
-
-    if (!isOpen || !portalRoot) return null;
+    if (!isOpen) return null;
 
     const handleCloseAndClear = () => {
         clearCart();
@@ -36,7 +35,7 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({ isOpen, onClose, rec
     const handleShare = async () => {
         setIsSharing(true);
         const whatsAppMessage = language === 'ar' ? 'تفضل إيصال طلبي' : 'Here is my order receipt';
-        const whatsappUrl = `https://wa.me/${whatsappNumber}?text=${encodeURIComponent(whatsAppMessage)}`;
+        const whatsappUrl = `https://wa.me/${restaurantInfo?.whatsappNumber}?text=${encodeURIComponent(whatsAppMessage)}`;
         
         try {
             const response = await fetch(receiptImageUrl);
@@ -67,64 +66,55 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({ isOpen, onClose, rec
     };
 
     const whatsAppMessage = language === 'ar' ? 'تفضل إيصال طلبي' : 'Here is my order receipt';
-    const whatsappUrl = `https://wa.me/${whatsappNumber}?text=${encodeURIComponent(whatsAppMessage)}`;
+    const whatsappUrl = `https://wa.me/${restaurantInfo?.whatsappNumber}?text=${encodeURIComponent(whatsAppMessage)}`;
     
-    return ReactDOM.createPortal(
-        <div className="fixed inset-0 bg-black bg-opacity-70 z-50 flex justify-center items-center p-4" onClick={onClose}>
-            <div className="bg-white dark:bg-gray-800 rounded-2xl w-full max-w-md max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
-                <div className="p-4 flex justify-between items-center border-b border-gray-200 dark:border-gray-700">
-                    <h2 className="text-lg font-bold text-primary-600 dark:text-primary-400">{t.receiptTitle}</h2>
-                    <button onClick={onClose} className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700">
-                        <CloseIcon className="w-6 h-6"/>
-                    </button>
+    return (
+        <Modal title={t.receiptTitle} onClose={onClose} size="md">
+            <div className="p-4 sm:p-5 overflow-y-auto">
+                <div className="mb-6 border border-slate-300 dark:border-slate-600 rounded-lg overflow-hidden">
+                    <img src={receiptImageUrl} alt="Order Receipt" className="w-full h-auto" />
                 </div>
-                <div className="p-4 sm:p-5">
-                    <div className="mb-6 border border-gray-300 dark:border-gray-600 rounded-lg overflow-hidden">
-                        <img src={receiptImageUrl} alt="Order Receipt" className="w-full h-auto" />
-                    </div>
 
-                    {canShare ? (
-                        <>
-                            <p className="mb-4 text-center font-semibold">{t.shareInstructions}</p>
-                            <button
-                                onClick={handleShare}
-                                disabled={isSharing}
-                                className="w-full bg-green-500 text-white font-bold py-2.5 px-4 rounded-lg hover:bg-green-600 transition-colors flex items-center justify-center gap-2 disabled:bg-gray-400"
+                {canShare ? (
+                    <>
+                        <p className="mb-4 text-center font-semibold">{t.shareInstructions}</p>
+                        <button
+                            onClick={handleShare}
+                            disabled={isSharing}
+                            className="w-full bg-green-500 text-white font-bold py-2.5 px-4 rounded-lg hover:bg-green-600 transition-colors flex items-center justify-center gap-2 disabled:bg-slate-400"
+                        >
+                            {isSharing ? '...' : t.shareOnWhatsApp}
+                        </button>
+                    </>
+                ) : (
+                    <>
+                        <p className="mb-4 text-center font-semibold">{t.receiptInstructions}</p>
+                        <div className="bg-slate-100 dark:bg-slate-700 rounded-lg p-4 mb-4 text-sm space-y-2">
+                            <p dangerouslySetInnerHTML={{ __html: t.receiptStep1 }} />
+                            <p dangerouslySetInnerHTML={{ __html: t.receiptStep2 }} />
+                        </div>
+                        <div className="space-y-3">
+                            <a
+                                href={receiptImageUrl}
+                                download={`receipt-${Date.now()}.png`}
+                                className="w-full bg-blue-500 text-white font-bold py-2.5 px-4 rounded-lg hover:bg-blue-600 transition-colors flex items-center justify-center gap-2"
                             >
-                                {isSharing ? '...' : t.shareOnWhatsApp}
-                            </button>
-                        </>
-                    ) : (
-                        <>
-                            <p className="mb-4 text-center font-semibold">{t.receiptInstructions}</p>
-                            <div className="bg-gray-100 dark:bg-gray-700 rounded-lg p-4 mb-4 text-sm space-y-2">
-                                <p dangerouslySetInnerHTML={{ __html: t.receiptStep1 }} />
-                                <p dangerouslySetInnerHTML={{ __html: t.receiptStep2 }} />
-                            </div>
-                            <div className="space-y-3">
-                                <a
-                                    href={receiptImageUrl}
-                                    download={`receipt-${Date.now()}.png`}
-                                    className="w-full bg-blue-500 text-white font-bold py-2.5 px-4 rounded-lg hover:bg-blue-600 transition-colors flex items-center justify-center gap-2"
-                                >
-                                    <DownloadIcon className="w-6 h-6"/>
-                                    {t.downloadReceipt}
-                                </a>
-                                <a
-                                    href={whatsappUrl}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    onClick={handleCloseAndClear}
-                                    className="w-full bg-green-500 text-white font-bold py-2.5 px-4 rounded-lg hover:bg-green-600 transition-colors block text-center"
-                                >
-                                {t.openWhatsApp}
-                                </a>
-                            </div>
-                        </>
-                    )}
-                </div>
+                                <DownloadIcon className="w-6 h-6"/>
+                                {t.downloadReceipt}
+                            </a>
+                            <a
+                                href={whatsappUrl}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                onClick={handleCloseAndClear}
+                                className="w-full bg-green-500 text-white font-bold py-2.5 px-4 rounded-lg hover:bg-green-600 transition-colors block text-center"
+                            >
+                            {t.openWhatsApp}
+                            </a>
+                        </div>
+                    </>
+                )}
             </div>
-        </div>,
-        portalRoot
+        </Modal>
     );
 };

@@ -1,6 +1,7 @@
 import React from 'react';
 import type { Language } from '../../types';
-import { useTranslations } from '../../i18n/translations';
+// @FIX: Replaced non-existent `useTranslations` hook with direct access to the `translations` object.
+import { translations } from '../../i18n/translations';
 import { CheckCircleIcon } from '../icons/Icons';
 
 type CheckoutStep = 'delivery' | 'payment' | 'confirm';
@@ -11,7 +12,8 @@ interface CheckoutStepperProps {
 }
 
 export const CheckoutStepper: React.FC<CheckoutStepperProps> = ({ currentStep, language }) => {
-    const t = useTranslations(language);
+    // @FIX: Replaced non-existent `useTranslations` hook with direct access to the `translations` object.
+    const t = translations[language];
     const steps: { id: CheckoutStep; label: string }[] = [
         { id: 'delivery', label: t.stepDelivery },
         { id: 'payment', label: t.stepPayment },

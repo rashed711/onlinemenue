@@ -25,7 +25,7 @@ export const TableSelector: React.FC<TableSelectorProps> = ({ tableCount, select
                         className={`p-3 text-lg font-bold rounded-md aspect-square flex items-center justify-center transition-all duration-200 border-2 ${
                             isSelected 
                             ? 'bg-primary-500 text-white border-primary-600 shadow-lg scale-105' 
-                            : 'bg-slate-100 dark:bg-slate-700 border-slate-200 dark:border-slate-600 hover:bg-slate-200 dark:hover:bg-slate-600'
+                            : 'bg-slate-100 dark:bg-slate-700 border-slate-200 dark:border-slate-600 text-slate-700 dark:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-600'
                         }`}
                     >
                         {formatNumber(tableNum)}

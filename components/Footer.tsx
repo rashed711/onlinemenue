@@ -1,15 +1,13 @@
 import React from 'react';
-import type { Language, RestaurantInfo } from '../types';
-import { useTranslations } from '../i18n/translations';
+import { useUI } from '../contexts/UIContext';
+import { useData } from '../contexts/DataContext';
 
-interface FooterProps {
-    language: Language;
-    restaurantInfo: RestaurantInfo;
-}
-
-export const Footer: React.FC<FooterProps> = ({ language, restaurantInfo }) => {
-    const t = useTranslations(language);
+export const Footer: React.FC = () => {
+    const { language } = useUI();
+    const { restaurantInfo } = useData();
     
+    if (!restaurantInfo) return null;
+
     return (
         <footer className="bg-slate-100 dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800 mt-16 py-8">
             <div className="container mx-auto max-w-7xl px-4 text-center text-slate-500 dark:text-slate-400">

@@ -6,9 +6,17 @@ export interface LocalizedString {
   ar: string;
 }
 
+export interface Role {
+  key: string;
+  name: LocalizedString;
+  isSystem: boolean;
+}
+
 export interface Category {
   id: number;
   name: LocalizedString;
+  parent_id?: number | null;
+  children?: Category[];
 }
 
 export interface Tag {
@@ -79,6 +87,7 @@ export interface OnlinePaymentMethod {
   details: string;
   icon: string; // Image URL or data URL
   isVisible: boolean;
+  instructions?: LocalizedString;
 }
 
 export interface RestaurantInfo {
@@ -93,23 +102,31 @@ export interface RestaurantInfo {
     defaultPage: 'menu' | 'social';
     orderStatusColumns: OrderStatusColumn[];
     onlinePaymentMethods: OnlinePaymentMethod[];
+    codNotes?: LocalizedString;
+    onlinePaymentNotes?: LocalizedString;
+    activationEndDate?: string | null; // Null means active indefinitely
+    deactivationMessage?: LocalizedString;
 }
 
 // New Types for Users and Orders
-export type UserRole = 'superAdmin' | 'admin' | 'employee' | 'waiter' | 'waiterSupervisor' | 'restaurantStaff' | 'delivery' | 'driver' | 'customer';
-export const USER_ROLES: UserRole[] = ['superAdmin', 'admin', 'employee', 'waiter', 'waiterSupervisor', 'restaurantStaff', 'delivery', 'driver', 'customer'];
+export type UserRole = string;
 
 export interface User {
   id: number;
   name: string;
   mobile: string;
-  password: string; // In a real app, this should be a hash
+  email?: string | null;
+  password?: string; // Made optional
   role: UserRole;
   profilePicture?: string;
+  firebase_uid?: string;
+  google_id?: string;
 }
 
+
 export type OrderStatus = string;
-export type OrderType = 'Dine-in' | 'Delivery';
+// FIX: Expanded OrderType to include all possible values.
+export type OrderType = 'Delivery' | 'Dine-in' | 'Takeaway';
 export type PaymentMethod = 'cod' | 'online';
 
 export interface CheckoutDetails {
@@ -125,13 +142,14 @@ export interface Order {
   status: OrderStatus;
   timestamp: string;
   orderType: OrderType;
-  tableNumber?: string;
   customer: {
     userId?: number; // for registered users
     name?: string; // for registered users
     mobile: string; // mandatory for all
     address?: string;
   };
+  // FIX: Added optional tableNumber property to the Order interface.
+  tableNumber?: string;
   createdBy?: number; // ID of the user (waiter, admin) who created the order
   notes?: string;
   refusalReason?: string;
@@ -140,6 +158,7 @@ export interface Order {
     comment: string;
   };
   paymentMethod?: PaymentMethod;
+  paymentDetail?: string; // The specific payment method used, e.g., "Cash", "Vodafone Cash"
   paymentReceiptUrl?: string; // URL or Data URL of the uploaded receipt
 }
 
