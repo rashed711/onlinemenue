@@ -80,6 +80,7 @@ export const PERMISSION_GROUPS: Record<string, PermissionGroup> = {
         { id: 'view_inventory_page', nameKey: 'permission_view_inventory_page' },
         { id: 'manage_suppliers', nameKey: 'permission_manage_suppliers' },
         { id: 'add_purchase_invoice', nameKey: 'permission_add_purchase_invoice' },
+        { id: 'manage_sales_invoices', nameKey: 'permission_manage_sales_invoices' },
     ]
   },
   products: {

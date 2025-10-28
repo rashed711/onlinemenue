@@ -1,5 +1,5 @@
 import React, { createContext, useState, useCallback, useContext, useEffect } from 'react';
-import type { Order, Product, Promotion, User, Permission, UserRole, Role, Category, Tag, Supplier, PurchaseInvoice } from '../types';
+import type { Order, Product, Promotion, User, Permission, UserRole, Role, Category, Tag, Supplier, PurchaseInvoice, SalesInvoice } from '../types';
 import { APP_CONFIG } from '../utils/config';
 import { useUI } from './UIContext';
 import { useAuth } from './AuthContext';
@@ -12,7 +12,7 @@ interface AdminContextType {
     roles: Role[];
     suppliers: Supplier[];
     purchaseInvoices: PurchaseInvoice[];
-    rolePermissions: Record<UserRole, Permission[]>;
+    salesInvoices: SalesInvoice[];
     placeOrder: (order: Omit<Order, 'id' | 'timestamp'>) => Promise<Order>;
     updateOrder: (orderId: string, payload: Partial<Omit<Order, 'id' | 'timestamp' | 'customer'>>) => Promise<void>;
     deleteOrder: (orderId: string) => Promise<void>;
@@ -44,6 +44,8 @@ interface AdminContextType {
     addPurchaseInvoice: (invoiceData: Omit<PurchaseInvoice, 'id'|'invoice_number'|'supplier_name'|'invoice_date'>) => Promise<void>;
     updatePurchaseInvoice: (invoiceData: PurchaseInvoice) => Promise<void>;
     deletePurchaseInvoice: (invoiceId: number) => Promise<void>;
+    addSalesInvoice: (invoiceData: Omit<SalesInvoice, 'id' | 'invoice_number' | 'created_by_name' | 'invoice_date' | 'created_by'>) => Promise<void>;
+    deleteSalesInvoice: (invoiceId: number) => Promise<void>;
     viewingOrder: Order | null;
     setViewingOrder: React.Dispatch<React.SetStateAction<Order | null>>;
     refusingOrder: Order | null;
@@ -61,14 +63,14 @@ const resolveImageUrl = (path: string | undefined): string => {
 
 export const AdminProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     const { setIsProcessing, showToast, t, language } = useUI();
-    const { currentUser, hasPermission, roles: authRoles, setCurrentUser, setRolePermissions: setAuthRolePermissions, refetchAuthData } = useAuth();
+    const { currentUser, hasPermission, roles: authRoles, setCurrentUser, refetchAuthData } = useAuth();
     const { restaurantInfo, products, setProducts, promotions, setPromotions, categories, setCategories, tags, setTags, fetchAllData } = useData();
 
     const [orders, setOrders] = useState<Order[]>([]);
     const [users, setUsers] = useState<User[]>([]);
     const [suppliers, setSuppliers] = useState<Supplier[]>([]);
     const [purchaseInvoices, setPurchaseInvoices] = useState<PurchaseInvoice[]>([]);
-    const [rolePermissions, setRolePermissions] = useState<Record<UserRole, Permission[]>>({});
+    const [salesInvoices, setSalesInvoices] = useState<SalesInvoice[]>([]);
     const [viewingOrder, setViewingOrder] = useState<Order | null>(null);
     const [refusingOrder, setRefusingOrder] = useState<Order | null>(null);
 
@@ -78,23 +80,25 @@ export const AdminProvider: React.FC<{ children: React.ReactNode }> = ({ childre
             setUsers([]);
             setSuppliers([]);
             setPurchaseInvoices([]);
+            setSalesInvoices([]);
             return;
         }
 
         const isAdmin = hasPermission('view_orders_page'); // A good proxy for admin-level access
 
         try {
-            const fetchOptions = { method: 'GET' };
+            const fetchOptions = { method: 'GET', credentials: 'include' as RequestCredentials };
             const ordersRes = await fetch(`${APP_CONFIG.API_BASE_URL}get_orders.php`, fetchOptions);
             if (!ordersRes.ok) throw new Error('Failed to fetch orders');
             const allOrders = (await ordersRes.json() || []).map((o: any) => ({ ...o, paymentReceiptUrl: resolveImageUrl(o.paymentReceiptUrl)}));
 
             if (isAdmin) {
                 setOrders(allOrders);
-                const [usersRes, suppliersRes, invoicesRes] = await Promise.all([
+                const [usersRes, suppliersRes, invoicesRes, salesInvoicesRes] = await Promise.all([
                     fetch(`${APP_CONFIG.API_BASE_URL}get_users.php`, fetchOptions),
                     fetch(`${APP_CONFIG.API_BASE_URL}get_suppliers.php`, fetchOptions),
                     fetch(`${APP_CONFIG.API_BASE_URL}get_purchase_invoices.php`, fetchOptions),
+                    fetch(`${APP_CONFIG.API_BASE_URL}get_sales_invoices.php`, fetchOptions),
                 ]);
 
                 if (usersRes.ok) {
@@ -110,12 +114,14 @@ export const AdminProvider: React.FC<{ children: React.ReactNode }> = ({ childre
                 }
                 if (suppliersRes.ok) setSuppliers(await suppliersRes.json() || []);
                 if (invoicesRes.ok) setPurchaseInvoices(await invoicesRes.json() || []);
+                if (salesInvoicesRes.ok) setSalesInvoices(await salesInvoicesRes.json() || []);
 
             } else {
                 setOrders(allOrders.filter((o: Order) => o.customer.userId === currentUser.id));
                 setUsers([]);
                 setSuppliers([]);
                 setPurchaseInvoices([]);
+                setSalesInvoices([]);
             }
         } catch (error) {
             console.error("Failed to load admin data:", error);
@@ -125,26 +131,8 @@ export const AdminProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
 
     useEffect(() => {
-        const fetchPermissions = async () => {
-            if (!currentUser) {
-                setRolePermissions({});
-                return;
-            }
-            try {
-                const fetchOptions = { method: 'GET' };
-                const permissionsRes = await fetch(`${APP_CONFIG.API_BASE_URL}get_permissions.php`, fetchOptions);
-                if (permissionsRes.ok) {
-                    const permissions = await permissionsRes.json() || {};
-                    setRolePermissions(permissions);
-                    setAuthRolePermissions(permissions);
-                }
-            } catch (error) {
-                console.error("Failed to load permissions:", error);
-            }
-        };
-        fetchPermissions();
         fetchAdminData();
-    }, [currentUser, setAuthRolePermissions, fetchAdminData]);
+    }, [fetchAdminData]);
 
     const placeOrder = useCallback(async (order: Omit<Order, 'id' | 'timestamp'>): Promise<Order> => {
         setIsProcessing(true);
@@ -156,7 +144,7 @@ export const AdminProvider: React.FC<{ children: React.ReactNode }> = ({ childre
                 const formData = new FormData();
                 formData.append('image', blob, 'receipt.png');
                 formData.append('type', 'payment');
-                const uploadRes = await fetch(`${APP_CONFIG.API_BASE_URL}upload_image.php`, { method: 'POST', body: formData });
+                const uploadRes = await fetch(`${APP_CONFIG.API_BASE_URL}upload_image.php`, { method: 'POST', body: formData, credentials: 'include' });
                 const result = await uploadRes.json();
                 if (result.success && result.url) {
                     orderForDb.paymentReceiptUrl = result.url.split('?v=')[0];
@@ -173,7 +161,7 @@ export const AdminProvider: React.FC<{ children: React.ReactNode }> = ({ childre
                 createdBy: currentUser?.id,
             };
 
-            const response = await fetch(`${APP_CONFIG.API_BASE_URL}add_order.php`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+            const response = await fetch(`${APP_CONFIG.API_BASE_URL}add_order.php`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload), credentials: 'include' });
             const result = await response.json();
             if (!result.success) throw new Error(result.error || 'Failed to place order.');
             const newOrder = { ...result.order, paymentReceiptUrl: resolveImageUrl(result.order.paymentReceiptUrl) };
@@ -205,7 +193,7 @@ export const AdminProvider: React.FC<{ children: React.ReactNode }> = ({ childre
                 let dbPayload = { ...payload };
                 if (dbPayload.items) dbPayload.total = calculateTotal(dbPayload.items);
                 
-                const res = await fetch(`${APP_CONFIG.API_BASE_URL}update_order.php`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ orderId, payload: dbPayload }) });
+                const res = await fetch(`${APP_CONFIG.API_BASE_URL}update_order.php`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ orderId, payload: dbPayload }), credentials: 'include' });
                 if (!res.ok || !(await res.json()).success) throw new Error('Failed to update order.');
                 showToast(t.orderUpdatedSuccess);
             } catch (error: any) { 
@@ -228,7 +216,7 @@ export const AdminProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     
         setIsProcessing(true);
         try {
-            const res = await fetch(`${APP_CONFIG.API_BASE_URL}delete_order.php`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: orderId }) });
+            const res = await fetch(`${APP_CONFIG.API_BASE_URL}delete_order.php`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: orderId }), credentials: 'include' });
             if (!res.ok || !(await res.json()).success) throw new Error(t.orderDeleteFailed);
             showToast(t.orderDeletedSuccess);
         } catch (error: any) {
@@ -248,14 +236,14 @@ export const AdminProvider: React.FC<{ children: React.ReactNode }> = ({ childre
                 const formData = new FormData();
                 formData.append('image', imageFile);
                 formData.append('type', 'products');
-                const uploadRes = await fetch(`${APP_CONFIG.API_BASE_URL}upload_image.php`, { method: 'POST', body: formData });
+                const uploadRes = await fetch(`${APP_CONFIG.API_BASE_URL}upload_image.php`, { method: 'POST', body: formData, credentials: 'include' });
                 const result = await uploadRes.json();
                 if (!uploadRes.ok || !result.success) throw new Error(result.error || 'Image upload failed');
                 
                 finalProductData.image = result.url.split('?v=')[0];
             }
 
-            const response = await fetch(`${APP_CONFIG.API_BASE_URL}add_product.php`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(finalProductData) });
+            const response = await fetch(`${APP_CONFIG.API_BASE_URL}add_product.php`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(finalProductData), credentials: 'include' });
             const result = await response.json();
             if (!response.ok || !result.success) throw new Error(result.error || t.productAddFailed);
             
@@ -284,7 +272,7 @@ export const AdminProvider: React.FC<{ children: React.ReactNode }> = ({ childre
                 formData.append('type', 'products');
                 const relativeOldPath = updatedProduct.image.split('?')[0].replace(new URL(APP_CONFIG.API_BASE_URL).origin + '/', '');
                 formData.append('oldPath', relativeOldPath);
-                const uploadRes = await fetch(`${APP_CONFIG.API_BASE_URL}upload_image.php`, { method: 'POST', body: formData });
+                const uploadRes = await fetch(`${APP_CONFIG.API_BASE_URL}upload_image.php`, { method: 'POST', body: formData, credentials: 'include' });
                 const result = await uploadRes.json();
                 if (!uploadRes.ok || !result.success) throw new Error(result.error || 'Image upload failed');
                 
@@ -295,7 +283,7 @@ export const AdminProvider: React.FC<{ children: React.ReactNode }> = ({ childre
                  finalProductData.image = updatedProduct.image ? updatedProduct.image.split('?v=')[0].replace(domain, '') : '';
             }
             
-            const response = await fetch(`${APP_CONFIG.API_BASE_URL}update_product.php`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(finalProductData) });
+            const response = await fetch(`${APP_CONFIG.API_BASE_URL}update_product.php`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(finalProductData), credentials: 'include' });
             const result = await response.json();
             if (!response.ok || !result.success) throw new Error(result.error || t.productUpdateFailed);
 
@@ -317,7 +305,7 @@ export const AdminProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         
         setIsProcessing(true);
         try {
-            const response = await fetch(`${APP_CONFIG.API_BASE_URL}delete_product.php`, { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ id: productId }) });
+            const response = await fetch(`${APP_CONFIG.API_BASE_URL}delete_product.php`, { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ id: productId }), credentials: 'include' });
             const result = await response.json();
             if (!response.ok || !result.success) throw new Error(result.error || t.productDeleteFailed);
             showToast(t.productDeletedSuccess);
@@ -333,7 +321,7 @@ export const AdminProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         if (!hasPermission('add_promotion')) { showToast(t.permissionDenied); return; }
         setIsProcessing(true);
         try {
-            const response = await fetch(`${APP_CONFIG.API_BASE_URL}add_promotion.php`, { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(promotionData) });
+            const response = await fetch(`${APP_CONFIG.API_BASE_URL}add_promotion.php`, { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(promotionData), credentials: 'include' });
             const result = await response.json();
             if (!response.ok || !result.success) throw new Error(result.error || t.promotionAddFailed);
             setPromotions(prev => [...prev, result.promotion]);
@@ -352,7 +340,7 @@ export const AdminProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         
         setIsProcessing(true);
         try {
-            const response = await fetch(`${APP_CONFIG.API_BASE_URL}update_promotion.php`, { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(updatedPromotion) });
+            const response = await fetch(`${APP_CONFIG.API_BASE_URL}update_promotion.php`, { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(updatedPromotion), credentials: 'include' });
             if (!response.ok || !(await response.json()).success) throw new Error(t.promotionUpdateFailed);
             showToast(t.promotionUpdatedSuccess);
         } catch(error: any) {
@@ -370,7 +358,7 @@ export const AdminProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
         setIsProcessing(true);
         try {
-            const response = await fetch(`${APP_CONFIG.API_BASE_URL}delete_promotion.php`, { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ id: promotionId }) });
+            const response = await fetch(`${APP_CONFIG.API_BASE_URL}delete_promotion.php`, { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ id: promotionId }), credentials: 'include' });
             if (!response.ok || !(await response.json()).success) throw new Error(t.promotionDeleteFailed);
             showToast(t.promotionDeletedSuccess);
         } catch (error: any) {
@@ -389,7 +377,7 @@ export const AdminProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         setIsProcessing(true);
         try {
             const payload = { name: userData.name, mobile: userData.mobile, password: userData.password, role: roleName };
-            const response = await fetch(`${APP_CONFIG.API_BASE_URL}add_user.php`, { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(payload) });
+            const response = await fetch(`${APP_CONFIG.API_BASE_URL}add_user.php`, { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(payload), credentials: 'include' });
             const result = await response.json();
             if (!response.ok || !result.success) throw new Error(result.error || t.userAddFailed);
             
@@ -421,7 +409,7 @@ export const AdminProvider: React.FC<{ children: React.ReactNode }> = ({ childre
             const payload: any = { id: updatedUser.id, name: updatedUser.name, mobile: updatedUser.mobile, role: roleName };
             if (updatedUser.password) payload.password = updatedUser.password;
             
-            const response = await fetch(`${APP_CONFIG.API_BASE_URL}update_user.php`, { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(payload) });
+            const response = await fetch(`${APP_CONFIG.API_BASE_URL}update_user.php`, { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(payload), credentials: 'include' });
             if (!response.ok || !(await response.json()).success) throw new Error(t.userUpdateFailed);
             showToast(t.userUpdatedSuccess);
         } catch (error: any) {
@@ -447,7 +435,7 @@ export const AdminProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
         setIsProcessing(true);
         try {
-            const response = await fetch(`${APP_CONFIG.API_BASE_URL}delete_user.php`, { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ id: userId }) });
+            const response = await fetch(`${APP_CONFIG.API_BASE_URL}delete_user.php`, { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ id: userId }), credentials: 'include' });
             if (!response.ok || !(await response.json()).success) throw new Error(t.userDeleteFailed);
             showToast(t.userDeletedSuccess);
         } catch(error: any) {
@@ -461,7 +449,7 @@ export const AdminProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     const resetUserPassword = useCallback(async (user: User, newPassword: string): Promise<boolean> => {
         setIsProcessing(true);
         try {
-            const response = await fetch(`${APP_CONFIG.API_BASE_URL}update_user.php`, { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ id: user.id, password: newPassword }) });
+            const response = await fetch(`${APP_CONFIG.API_BASE_URL}update_user.php`, { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ id: user.id, password: newPassword }), credentials: 'include' });
             if (!response.ok || !(await response.json()).success) throw new Error(t.passwordResetFailed);
             showToast(t.passwordResetSuccess);
             return true;
@@ -476,30 +464,26 @@ export const AdminProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     const updateRolePermissions = useCallback(async (roleKey: string, permissions: Permission[]) => {
         if (!hasPermission('manage_permissions')) { showToast(t.permissionDenied); return; }
         
-        const originalPermissions = { ...rolePermissions };
-        const newPermissions = { ...rolePermissions, [roleKey]: permissions };
-        setRolePermissions(newPermissions);
-        setAuthRolePermissions(newPermissions);
-
+        // This function now only needs to make the API call. The state is in AuthContext.
         setIsProcessing(true);
         try {
-            const response = await fetch(`${APP_CONFIG.API_BASE_URL}update_permissions.php`, { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ roleName: roleKey, permissions }) });
+            const response = await fetch(`${APP_CONFIG.API_BASE_URL}update_permissions.php`, { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ roleName: roleKey, permissions }), credentials: 'include' });
             if (!response.ok || !(await response.json()).success) throw new Error(t.permissionsUpdateFailed);
+            await refetchAuthData(); // Refetch permissions into AuthContext
             showToast(t.permissionsUpdatedSuccess);
         } catch(error: any) {
             showToast(error.message || t.permissionsUpdateFailed);
-            setRolePermissions(originalPermissions);
-            setAuthRolePermissions(originalPermissions);
+            await refetchAuthData(); // Refetch to revert to original state on failure
         } finally {
             setIsProcessing(false);
         }
-    }, [hasPermission, t, rolePermissions, setAuthRolePermissions, showToast, setIsProcessing]);
+    }, [hasPermission, t, refetchAuthData, showToast, setIsProcessing]);
 
     const addCategory = useCallback(async (categoryData: Omit<Category, 'id'>) => {
         if (!hasPermission('add_category')) { showToast(t.permissionDenied); return; }
         setIsProcessing(true);
         try {
-            const response = await fetch(`${APP_CONFIG.API_BASE_URL}add_category.php`, { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(categoryData) });
+            const response = await fetch(`${APP_CONFIG.API_BASE_URL}add_category.php`, { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(categoryData), credentials: 'include' });
             const result = await response.json();
             if (!response.ok || !result.success) throw new Error(result.error || t.categoryAddFailed);
             await fetchAllData(); // Refetch all to rebuild tree
@@ -517,7 +501,7 @@ export const AdminProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         // Local update requires complex tree manipulation. Refetching is simpler here.
         setIsProcessing(true);
         try {
-            const response = await fetch(`${APP_CONFIG.API_BASE_URL}update_category.php`, { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(categoryData) });
+            const response = await fetch(`${APP_CONFIG.API_BASE_URL}update_category.php`, { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(categoryData), credentials: 'include' });
             if (!response.ok || !(await response.json()).success) throw new Error(t.categoryUpdateFailed);
             await fetchAllData();
             showToast(t.categoryUpdatedSuccess);
@@ -552,7 +536,8 @@ export const AdminProvider: React.FC<{ children: React.ReactNode }> = ({ childre
             const response = await fetch(`${APP_CONFIG.API_BASE_URL}update_category_order.php`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(payload)
+                body: JSON.stringify(payload),
+                credentials: 'include'
             });
 
             if (!response.ok) {
@@ -585,7 +570,8 @@ export const AdminProvider: React.FC<{ children: React.ReactNode }> = ({ childre
             const response = await fetch(`${APP_CONFIG.API_BASE_URL}delete_category.php`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ id: categoryId }) 
+                body: JSON.stringify({ id: categoryId }),
+                credentials: 'include'
             });
             const result = await response.json();
             if (!response.ok || !result.success) {
@@ -607,7 +593,7 @@ export const AdminProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         if (!hasPermission('add_tag')) { showToast(t.permissionDenied); return; }
         setIsProcessing(true);
         try {
-            const response = await fetch(`${APP_CONFIG.API_BASE_URL}add_tag.php`, { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(tagData) });
+            const response = await fetch(`${APP_CONFIG.API_BASE_URL}add_tag.php`, { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(tagData), credentials: 'include' });
             const result = await response.json();
             if (!response.ok || !result.success) throw new Error(result.error || t.tagAddFailed);
             setTags(prev => [...prev, result.tag]);
@@ -626,7 +612,7 @@ export const AdminProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         
         setIsProcessing(true);
         try {
-            const response = await fetch(`${APP_CONFIG.API_BASE_URL}update_tag.php`, { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(tagData) });
+            const response = await fetch(`${APP_CONFIG.API_BASE_URL}update_tag.php`, { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(tagData), credentials: 'include' });
             if (!response.ok || !(await response.json()).success) throw new Error(t.tagUpdateFailed);
             showToast(t.tagUpdatedSuccess);
         } catch (error: any) {
@@ -644,7 +630,7 @@ export const AdminProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         
         setIsProcessing(true);
         try {
-            const response = await fetch(`${APP_CONFIG.API_BASE_URL}delete_tag.php`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: tagId }) });
+            const response = await fetch(`${APP_CONFIG.API_BASE_URL}delete_tag.php`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: tagId }), credentials: 'include' });
             const result = await response.json();
             if (!response.ok || !result.success) {
                 if (result.errorKey && t[result.errorKey as keyof typeof t]) throw new Error(t[result.errorKey as keyof typeof t]);
@@ -669,7 +655,8 @@ export const AdminProvider: React.FC<{ children: React.ReactNode }> = ({ childre
             const response = await fetch(`${APP_CONFIG.API_BASE_URL}add_role.php`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(roleData)
+                body: JSON.stringify(roleData),
+                credentials: 'include'
             });
             const result = await response.json();
             if (!response.ok || !result.success) {
@@ -694,7 +681,8 @@ export const AdminProvider: React.FC<{ children: React.ReactNode }> = ({ childre
             const response = await fetch(`${APP_CONFIG.API_BASE_URL}update_role.php`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(roleData)
+                body: JSON.stringify(roleData),
+                credentials: 'include'
             });
             const result = await response.json();
             if (!response.ok || !result.success) {
@@ -728,7 +716,8 @@ export const AdminProvider: React.FC<{ children: React.ReactNode }> = ({ childre
             const response = await fetch(`${APP_CONFIG.API_BASE_URL}delete_role.php`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ key: roleKey })
+                body: JSON.stringify({ key: roleKey }),
+                credentials: 'include'
             });
             const result = await response.json();
     
@@ -757,6 +746,7 @@ export const AdminProvider: React.FC<{ children: React.ReactNode }> = ({ childre
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(supplierData),
+                credentials: 'include'
             });
             const result = await response.json();
             if (!response.ok || !result.success) throw new Error(result.error || t.supplierAddFailed);
@@ -779,6 +769,7 @@ export const AdminProvider: React.FC<{ children: React.ReactNode }> = ({ childre
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(supplierData),
+                credentials: 'include'
             });
             const result = await response.json();
             if (!response.ok || !result.success) throw new Error(result.error || t.supplierUpdateFailed);
@@ -801,6 +792,7 @@ export const AdminProvider: React.FC<{ children: React.ReactNode }> = ({ childre
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ id: supplierId }),
+                credentials: 'include'
             });
             const result = await response.json();
             if (!response.ok || !result.success) {
@@ -827,6 +819,7 @@ export const AdminProvider: React.FC<{ children: React.ReactNode }> = ({ childre
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(payload),
+                credentials: 'include'
             });
             const result = await response.json();
             if (!response.ok || !result.success) throw new Error(result.error || t.invoiceAddFailed);
@@ -853,6 +846,7 @@ export const AdminProvider: React.FC<{ children: React.ReactNode }> = ({ childre
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(invoiceData),
+                credentials: 'include'
             });
             const result = await response.json();
             if (!response.ok || !result.success) {
@@ -880,6 +874,7 @@ export const AdminProvider: React.FC<{ children: React.ReactNode }> = ({ childre
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ id: invoiceId }),
+                credentials: 'include'
             });
             const result = await response.json();
             if (!response.ok || !result.success) throw new Error(result.error || t.invoiceDeleteFailed);
@@ -895,13 +890,66 @@ export const AdminProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         }
     }, [hasPermission, showToast, t, setIsProcessing, fetchAdminData, fetchAllData]);
     
+    const addSalesInvoice = useCallback(async (invoiceData: Omit<SalesInvoice, 'id' | 'invoice_number' | 'invoice_date' | 'created_by' | 'created_by_name'>) => {
+        if (!hasPermission('manage_sales_invoices')) { showToast(t.permissionDenied); return; }
+        setIsProcessing(true);
+        try {
+            const payload = { ...invoiceData, created_by: currentUser?.id };
+            const response = await fetch(`${APP_CONFIG.API_BASE_URL}add_sales_invoice.php`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload),
+                credentials: 'include'
+            });
+            const result = await response.json();
+            if (!response.ok || !result.success) throw new Error(result.error || t.invoiceAddFailed);
+            
+            showToast(t.invoiceAddedSuccess);
+            await fetchAdminData();
+            await fetchAllData();
+            
+        } catch (error: any) {
+            showToast(error.message || t.invoiceAddFailed);
+        } finally {
+            setIsProcessing(false);
+        }
+    }, [hasPermission, showToast, t, setIsProcessing, currentUser, fetchAllData, fetchAdminData]);
+
+    const deleteSalesInvoice = useCallback(async (invoiceId: number) => {
+        if (!hasPermission('manage_sales_invoices')) {
+            showToast(t.permissionDenied);
+            return;
+        }
+        if (!window.confirm(t.confirmDeleteSalesInvoice)) return;
+        setIsProcessing(true);
+        try {
+            const response = await fetch(`${APP_CONFIG.API_BASE_URL}delete_sales_invoice.php`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ id: invoiceId }),
+                credentials: 'include'
+            });
+            const result = await response.json();
+            if (!response.ok || !result.success) throw new Error(result.error || t.invoiceDeleteFailed);
+
+            showToast(t.invoiceDeletedSuccess);
+            await fetchAdminData();
+            await fetchAllData();
+
+        } catch (error: any) {
+            showToast(error.message || t.invoiceDeleteFailed);
+        } finally {
+            setIsProcessing(false);
+        }
+    }, [hasPermission, showToast, t, setIsProcessing, fetchAdminData, fetchAllData]);
+    
     const value: AdminContextType = {
         orders, 
         users, 
         roles: authRoles,
         suppliers,
         purchaseInvoices,
-        rolePermissions,
+        salesInvoices,
         placeOrder, 
         updateOrder, 
         deleteOrder,
@@ -932,6 +980,8 @@ export const AdminProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         addPurchaseInvoice,
         updatePurchaseInvoice,
         deletePurchaseInvoice,
+        addSalesInvoice,
+        deleteSalesInvoice,
         viewingOrder,
         setViewingOrder,
         refusingOrder,

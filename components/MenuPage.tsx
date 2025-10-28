@@ -111,7 +111,7 @@ export const MenuPage: React.FC = () => {
         <>
             <Header onCartClick={handleCartClick} />
             
-            <HeroSection language={language} restaurantInfo={restaurantInfo} />
+            <HeroSection />
 
             <div className="container mx-auto max-w-7xl px-4">
                 <main>
@@ -120,7 +120,6 @@ export const MenuPage: React.FC = () => {
                     <ProductList 
                         titleKey="mostPopular" 
                         products={popularProducts} 
-                        language={language} 
                         onProductClick={handleProductClick} 
                         addToCart={handleAddToCartWithoutOpeningCart}
                         slider={true}
@@ -130,7 +129,6 @@ export const MenuPage: React.FC = () => {
                     <ProductList 
                         titleKey="newItems"
                         products={newProducts} 
-                        language={language} 
                         onProductClick={handleProductClick} 
                         addToCart={handleAddToCartWithoutOpeningCart}
                         promotions={activePromotions}
@@ -152,7 +150,6 @@ export const MenuPage: React.FC = () => {
                         <ProductList 
                             titleKey="fullMenu"
                             products={filteredProducts} 
-                            language={language} 
                             onProductClick={handleProductClick} 
                             addToCart={handleAddToCartWithoutOpeningCart}
                             slider={false}

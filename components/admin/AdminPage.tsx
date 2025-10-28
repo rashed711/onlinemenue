@@ -102,7 +102,6 @@ export const AdminPage: React.FC<AdminPageProps> = ({ activeSubRoute, reportSubR
         orders: allOrders, 
         users: allUsers, 
         roles, 
-        rolePermissions,
         updateOrder, deleteOrder, addProduct, updateProduct, deleteProduct, 
         addPromotion, updatePromotion, deletePromotion, addUser, updateUser, deleteUser,
         updateRolePermissions,

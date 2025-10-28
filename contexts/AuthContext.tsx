@@ -25,6 +25,7 @@ interface AuthContextType {
     currentUser: User | null;
     setCurrentUser: React.Dispatch<React.SetStateAction<User | null>>;
     setRolePermissions: React.Dispatch<React.SetStateAction<Record<UserRole, Permission[]>>>;
+    rolePermissions: Record<UserRole, Permission[]>;
     staffLogin: (mobile: string, password: string) => Promise<string | null>;
     unifiedLogin: (identifier: string, password: string) => Promise<string | null>;
     logout: () => void;
@@ -559,6 +560,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         currentUser,
         setCurrentUser,
         setRolePermissions,
+        rolePermissions,
         staffLogin,
         unifiedLogin,
         logout,

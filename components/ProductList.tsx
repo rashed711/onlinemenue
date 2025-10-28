@@ -1,24 +1,20 @@
 import React, { useRef, useCallback, useEffect } from 'react';
 import type { Product, Language, CartItem, Promotion } from '../types';
 import { ProductCard } from './ProductCard';
-// @FIX: Replaced non-existent `useTranslations` hook with direct access to the `translations` object.
-import { translations } from '../i18n/translations';
+import { useUI } from '../contexts/UIContext';
 import { ChevronLeftIcon, ChevronRightIcon } from './icons/Icons';
 
 interface ProductListProps {
-  // @FIX: Corrected type for titleKey to use the imported translations object instead of a non-existent hook.
-  titleKey: keyof typeof translations['en'];
+  titleKey: keyof ReturnType<typeof useUI>['t'];
   products: Product[];
-  language: Language;
   onProductClick: (product: Product) => void;
   addToCart: (product: Product, quantity: number, options?: { [key:string]: string }) => void;
   slider?: boolean;
   promotions: Promotion[];
 }
 
-export const ProductList: React.FC<ProductListProps> = ({ titleKey, products, language, onProductClick, addToCart, slider = false, promotions }) => {
-  // @FIX: Replaced non-existent `useTranslations` hook with direct access to the `translations` object.
-  const t = translations[language];
+export const ProductList: React.FC<ProductListProps> = ({ titleKey, products, onProductClick, addToCart, slider = false, promotions }) => {
+  const { t, language } = useUI();
   const sliderRef = useRef<HTMLDivElement>(null);
   const isRtl = language === 'ar';
 
@@ -47,7 +43,6 @@ export const ProductList: React.FC<ProductListProps> = ({ titleKey, products, la
               <div key={product.id} className="w-11/12 sm:w-1/2 md:w-1/3 lg:w-1/4 flex-shrink-0 snap-center p-2">
                 <ProductCard 
                   product={product} 
-                  language={language}
                   onProductClick={onProductClick}
                   addToCart={addToCart}
                   promotions={promotions}
@@ -88,7 +83,6 @@ export const ProductList: React.FC<ProductListProps> = ({ titleKey, products, la
           <ProductCard 
             key={product.id} 
             product={product} 
-            language={language}
             onProductClick={onProductClick}
             addToCart={addToCart}
             promotions={promotions}

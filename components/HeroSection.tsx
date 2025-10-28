@@ -1,16 +1,13 @@
 import React, { useState } from 'react';
 import type { Language, RestaurantInfo } from '../types';
-// @FIX: Replaced non-existent `useTranslations` hook with direct access to the `translations` object.
-import { translations } from '../i18n/translations';
+import { useUI } from '../contexts/UIContext';
+import { useData } from '../contexts/DataContext';
 
-interface HeroSectionProps {
-  language: Language;
-  restaurantInfo: RestaurantInfo;
-}
+interface HeroSectionProps {}
 
-export const HeroSection: React.FC<HeroSectionProps> = ({ language, restaurantInfo }) => {
-  // @FIX: Replaced non-existent `useTranslations` hook with direct access to the `translations` object.
-  const t = translations[language];
+export const HeroSection: React.FC<HeroSectionProps> = () => {
+  const { t, language } = useUI();
+  const { restaurantInfo } = useData(); // Assuming restaurantInfo is available in UIContext or DataContext
   const [isImageLoaded, setIsImageLoaded] = useState(false);
 
   const handleScrollToMenu = (e: React.MouseEvent<HTMLAnchorElement>) => {
@@ -25,6 +22,8 @@ export const HeroSection: React.FC<HeroSectionProps> = ({ language, restaurantIn
     e.preventDefault();
     window.location.hash = path;
   };
+  
+  if (!restaurantInfo) return null;
 
   return (
     <section className="relative h-[60vh] min-h-[400px] max-h-[600px] flex items-center justify-center text-white text-center bg-slate-800">

@@ -202,3 +202,26 @@ export interface PurchaseInvoice {
     items: PurchaseInvoiceItem[];
     created_by?: number;
 }
+
+export interface SalesInvoiceItem {
+    id?: number;
+    product_id: number;
+    product_name?: LocalizedString; // For display
+    quantity: number;
+    sale_price: number;
+    subtotal: number;
+}
+
+export interface SalesInvoice {
+    id: number;
+    invoice_number: string;
+    customer_id?: number | null; // Can be a guest
+    customer_name: string; // Stored for guests or as a snapshot
+    customer_mobile: string;
+    invoice_date: string;
+    total_amount: number;
+    notes?: string;
+    items: SalesInvoiceItem[];
+    created_by?: number;
+    created_by_name?: string; // For display
+}

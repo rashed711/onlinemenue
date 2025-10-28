@@ -67,8 +67,8 @@ interface PermissionsEditModalProps {
 export const PermissionsEditModal: React.FC<PermissionsEditModalProps> = ({ roleId, onClose, onSave }) => {
   const { language, t } = useUI();
   const { restaurantInfo } = useData();
-  const { roles, rolePermissions } = useAdmin();
-  const { currentUser } = useAuth();
+  const { roles } = useAdmin();
+  const { currentUser, rolePermissions } = useAuth();
   const currentPermissions = rolePermissions[roleId] || [];
 
   const [selectedPermissions, setSelectedPermissions] = useState<Permission[]>(currentPermissions);
