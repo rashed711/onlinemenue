@@ -20,9 +20,10 @@ export const PurchaseInvoiceModal: React.FC<PurchaseInvoiceModalProps> = ({ invo
     const [supplierId, setSupplierId] = useState<number | ''>('');
     const [items, setItems] = useState<Partial<PurchaseInvoiceItem>[]>([{ product_id: undefined, quantity: 1, purchase_price: 0 }]);
     const [notes, setNotes] = useState('');
-    const itemsContainerRef = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
+        // This effect runs only when the modal is opened with a new invoice to edit.
+        // It sets the initial state from the prop.
         if (invoiceToEdit) {
             setSupplierId(invoiceToEdit.supplier_id);
             setNotes(invoiceToEdit.notes || '');
@@ -33,11 +34,21 @@ export const PurchaseInvoiceModal: React.FC<PurchaseInvoiceModalProps> = ({ invo
                 subtotal: item.subtotal,
             })));
         } else {
-            setSupplierId(suppliers[0]?.id || '');
+            // Reset to a clean slate only when opening for a "new" invoice.
+            // A separate effect will handle setting the default supplier when the list loads.
+            setSupplierId('');
             setItems([{ product_id: undefined, quantity: 1, purchase_price: 0 }]);
             setNotes('');
         }
-    }, [invoiceToEdit, suppliers]);
+    }, [invoiceToEdit]);
+
+    useEffect(() => {
+        // This effect specifically handles setting the default supplier for a *new* invoice
+        // once the suppliers list is available, without resetting the entire form state.
+        if (!invoiceToEdit && !supplierId && suppliers.length > 0) {
+            setSupplierId(suppliers[0].id);
+        }
+    }, [suppliers, supplierId, invoiceToEdit]);
     
     const productOptions = useMemo(() => {
         return products.map(p => ({
@@ -58,12 +69,6 @@ export const PurchaseInvoiceModal: React.FC<PurchaseInvoiceModalProps> = ({ invo
         setItems(prev => [...prev, { product_id: undefined, quantity: 1, purchase_price: 0 }]);
     };
     
-    useEffect(() => {
-        if (itemsContainerRef.current) {
-            itemsContainerRef.current.scrollTop = itemsContainerRef.current.scrollHeight;
-        }
-    }, [items.length]);
-
     const handleRemoveItem = (index: number) => {
         setItems(prev => prev.filter((_, i) => i !== index));
     };
@@ -124,68 +129,76 @@ export const PurchaseInvoiceModal: React.FC<PurchaseInvoiceModalProps> = ({ invo
 
     return (
         <Modal title={invoiceToEdit ? t.editPurchaseInvoice : t.addNewPurchaseInvoice} onClose={onClose} size="3xl">
-            <form onSubmit={handleSubmit} className="p-5 flex flex-col max-h-[85vh]">
-                <div className="space-y-4">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <form onSubmit={handleSubmit}>
+                <div className="p-5 space-y-4">
+                    <div className="space-y-4">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">{t.supplier}</label>
+                                <select value={supplierId} onChange={(e) => setSupplierId(parseInt(e.target.value, 10))} className={formInputClasses} required>
+                                    <option value="" disabled>Select a supplier</option>
+                                    {suppliers.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+                                </select>
+                            </div>
+                        </div>
                         <div>
-                            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">{t.supplier}</label>
-                            <select value={supplierId} onChange={(e) => setSupplierId(parseInt(e.target.value, 10))} className={formInputClasses} required>
-                                <option value="" disabled>Select a supplier</option>
-                                {suppliers.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
-                            </select>
+                            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">{t.orderNotes}</label>
+                            <textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={2} className={formInputClasses}></textarea>
                         </div>
                     </div>
-                    <div>
-                        <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">{t.orderNotes}</label>
-                        <textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={2} className={formInputClasses}></textarea>
+
+                    <div className="mt-6 space-y-4">
+                        <h3 className="text-lg font-semibold text-slate-800 dark:text-slate-100 mb-2">{t.invoiceItems}</h3>
+                        
+                        <div className="hidden md:grid grid-cols-12 gap-2 items-center px-2 pb-2">
+                            <div className="col-span-5 text-xs font-medium text-slate-500 dark:text-slate-400">{t.product}</div>
+                            <div className="col-span-2 text-xs font-medium text-slate-500 dark:text-slate-400">{t.quantity}</div>
+                            <div className="col-span-2 text-xs font-medium text-slate-500 dark:text-slate-400">{t.purchasePrice}</div>
+                            <div className="col-span-2 text-center text-xs font-medium text-slate-500 dark:text-slate-400">{t.subtotal}</div>
+                            <div className="col-span-1"></div>
+                        </div>
+
+                        <div className="space-y-3">
+                            {items.map((item, index) => (
+                                <div key={index} className="flex flex-col gap-3 md:grid md:grid-cols-12 md:gap-2 items-center p-3 rounded-lg bg-slate-50 dark:bg-slate-700/50">
+                                    <div className="w-full md:col-span-5">
+                                        <label className="text-xs font-medium text-slate-500 md:hidden">{t.product}</label>
+                                        <SearchableSelect
+                                            options={productOptions}
+                                            value={item.product_id}
+                                            onChange={(value) => handleItemChange(index, 'product_id', value)}
+                                            placeholder={t.selectProduct}
+                                        />
+                                    </div>
+                                    <div className="w-full md:col-span-2">
+                                        <label className="text-xs font-medium text-slate-500 md:hidden">{t.quantity}</label>
+                                        <input type="number" value={item.quantity} onChange={(e) => handleItemChange(index, 'quantity', e.target.value)} className={formInputClasses + " text-sm"} min="1" required />
+                                    </div>
+                                    <div className="w-full md:col-span-2">
+                                        <label className="text-xs font-medium text-slate-500 md:hidden">{t.purchasePrice}</label>
+                                        <input type="number" value={item.purchase_price} onChange={(e) => handleItemChange(index, 'purchase_price', e.target.value)} className={formInputClasses + " text-sm"} step="0.01" min="0" required />
+                                    </div>
+                                    <div className="w-full md:col-span-2 text-start md:text-center">
+                                        <label className="text-xs font-medium text-slate-500 md:hidden">{t.subtotal}</label>
+                                        <p className="font-semibold text-sm text-slate-700 dark:text-slate-200 mt-1 md:mt-0">
+                                            {((item.quantity || 0) * (item.purchase_price || 0)).toFixed(2)}
+                                        </p>
+                                    </div>
+                                    <div className="w-full md:w-auto md:col-span-1 text-end md:text-center">
+                                        <button type="button" onClick={() => handleRemoveItem(index)} className="p-2 text-red-500 hover:bg-red-100 dark:hover:bg-red-900/50 rounded-full">
+                                            <TrashIcon className="w-5 h-5" />
+                                        </button>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                        <button type="button" onClick={handleAddItem} className="mt-3 text-sm text-green-600 dark:text-green-400 hover:text-green-800 dark:hover:text-green-300 font-semibold flex items-center gap-1">
+                            <PlusIcon className="w-4 h-4" /> {t.addItemToInvoice}
+                        </button>
                     </div>
                 </div>
 
-                <div ref={itemsContainerRef} className="mt-6 flex-grow overflow-y-auto -mx-5 px-5">
-                    <h3 className="text-lg font-semibold text-slate-800 dark:text-slate-100 mb-2 sticky top-0 bg-white dark:bg-slate-800 py-2 z-10">{t.invoiceItems}</h3>
-                    
-                    <div className="grid grid-cols-12 gap-2 items-center px-2 pb-2 sticky top-12 bg-white dark:bg-slate-800 z-10">
-                        <div className="col-span-5 text-xs font-medium text-slate-500 dark:text-slate-400">{t.product}</div>
-                        <div className="col-span-2 text-xs font-medium text-slate-500 dark:text-slate-400">{t.quantity}</div>
-                        <div className="col-span-2 text-xs font-medium text-slate-500 dark:text-slate-400">{t.purchasePrice}</div>
-                        <div className="col-span-2 text-center text-xs font-medium text-slate-500 dark:text-slate-400">{t.subtotal}</div>
-                        <div className="col-span-1"></div>
-                    </div>
-
-                    <div className="space-y-3">
-                        {items.map((item, index) => (
-                            <div key={index} className="grid grid-cols-12 gap-2 items-center p-2 rounded-md bg-slate-50 dark:bg-slate-700/50">
-                                <div className="col-span-5">
-                                    <SearchableSelect
-                                        options={productOptions}
-                                        value={item.product_id}
-                                        onChange={(value) => handleItemChange(index, 'product_id', value)}
-                                        placeholder={t.selectProduct}
-                                    />
-                                </div>
-                                <div className="col-span-2">
-                                     <input type="number" value={item.quantity} onChange={(e) => handleItemChange(index, 'quantity', e.target.value)} className={formInputClasses + " text-sm"} min="1" required />
-                                </div>
-                                <div className="col-span-2">
-                                    <input type="number" value={item.purchase_price} onChange={(e) => handleItemChange(index, 'purchase_price', e.target.value)} className={formInputClasses + " text-sm"} step="0.01" min="0" required />
-                                </div>
-                                <div className="col-span-2 text-center font-semibold text-sm text-slate-700 dark:text-slate-200">
-                                    {((item.quantity || 0) * (item.purchase_price || 0)).toFixed(2)}
-                                </div>
-                                <div className="col-span-1 text-center">
-                                    <button type="button" onClick={() => handleRemoveItem(index)} className="p-2 text-red-500 hover:bg-red-100 dark:hover:bg-red-900/50 rounded-full">
-                                        <TrashIcon className="w-4 h-4" />
-                                    </button>
-                                </div>
-                            </div>
-                        ))}
-                    </div>
-                    <button type="button" onClick={handleAddItem} className="mt-3 text-sm text-green-600 dark:text-green-400 hover:text-green-800 dark:hover:text-green-300 font-semibold flex items-center gap-1">
-                        <PlusIcon className="w-4 h-4" /> {t.addItemToInvoice}
-                    </button>
-                </div>
-
-                <div className="mt-auto pt-4 border-t border-slate-200 dark:border-slate-700 flex justify-between items-center">
+                <div className="p-4 border-t border-slate-200 dark:border-slate-700 flex justify-between items-center">
                     <div>
                         <span className="text-sm font-semibold text-slate-500 dark:text-slate-400">{t.totalAmount}</span>
                         <p className="text-2xl font-bold text-primary-600 dark:text-primary-400">{totalAmount.toFixed(2)} {t.currency}</p>

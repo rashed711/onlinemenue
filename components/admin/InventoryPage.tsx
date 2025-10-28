@@ -79,53 +79,84 @@ export const InventoryPage: React.FC = () => {
     );
 
     const renderInvoices = () => (
-         <div>
-            <div className="flex justify-end mb-4">
-                {canAddInvoices && (
-                    <button onClick={() => { setEditingInvoice(null); setIsInvoiceModalOpen(true); }} className="bg-green-500 text-white font-bold py-2 px-4 rounded-lg hover:bg-green-600 transition-colors flex items-center gap-2">
-                        <PlusIcon className="w-5 h-5" />
-                        {t.addNewPurchaseInvoice}
-                    </button>
-                )}
-            </div>
-            <div className="bg-white dark:bg-slate-800 rounded-lg shadow-md overflow-hidden border border-slate-200 dark:border-slate-700">
-                <table className="min-w-full divide-y divide-slate-200 dark:divide-slate-700">
-                     <thead className="bg-slate-50 dark:bg-slate-700/50">
-                        <tr>
-                            <th scope="col" className="px-6 py-3 text-start text-xs font-medium text-slate-500 dark:text-slate-300 uppercase tracking-wider">ID</th>
-                            <th scope="col" className="px-6 py-3 text-start text-xs font-medium text-slate-500 dark:text-slate-300 uppercase tracking-wider">{t.supplier}</th>
-                            <th scope="col" className="px-6 py-3 text-start text-xs font-medium text-slate-500 dark:text-slate-300 uppercase tracking-wider">{t.invoiceDate}</th>
-                            <th scope="col" className="px-6 py-3 text-start text-xs font-medium text-slate-500 dark:text-slate-300 uppercase tracking-wider">{t.totalAmount}</th>
-                            <th scope="col" className="px-6 py-3 text-start text-xs font-medium text-slate-500 dark:text-slate-300 uppercase tracking-wider">{t.items}</th>
-                            <th scope="col" className="px-6 py-3 text-start text-xs font-medium text-slate-500 dark:text-slate-300 uppercase tracking-wider">{t.actions}</th>
-                        </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-200 dark:divide-slate-700">
-                        {purchaseInvoices.length > 0 ? purchaseInvoices.map((invoice) => (
-                            <tr key={invoice.id} className="hover:bg-slate-50 dark:hover:bg-slate-700/50">
-                                <td className="px-6 py-4 whitespace-nowrap text-sm font-mono text-slate-500">{invoice.id}</td>
-                                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-slate-900 dark:text-slate-100">{invoice.supplier_name}</td>
-                                <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-600 dark:text-slate-300">{formatDateTime(invoice.invoice_date)}</td>
-                                <td className="px-6 py-4 whitespace-nowrap text-sm font-semibold text-primary-700 dark:text-primary-400">{invoice.total_amount.toFixed(2)} {t.currency}</td>
-                                <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-600 dark:text-slate-300">{invoice.items.length}</td>
-                                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                                    <div className="flex items-center gap-4">
-                                        <button onClick={() => setViewingInvoice(invoice)} className="text-blue-600 hover:text-blue-900 dark:text-blue-400 dark:hover:text-blue-200 flex items-center gap-1"><EyeIcon className="w-4 h-4" /> {t.viewDetails}</button>
-                                        {canAddInvoices && <button onClick={() => setEditingInvoice(invoice)} className="text-indigo-600 hover:text-indigo-900 dark:text-indigo-400 dark:hover:text-indigo-200 flex items-center gap-1"><PencilIcon className="w-4 h-4" /> {t.edit}</button>}
-                                        {canAddInvoices && <button onClick={() => handleDeleteInvoice(invoice.id)} className="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-200 flex items-center gap-1"><TrashIcon className="w-4 h-4" /> {t.delete}</button>}
-                                    </div>
-                                </td>
-                            </tr>
-                        )) : (
-                            <tr>
-                                <td colSpan={6} className="text-center py-10 text-slate-500">{t.noInvoicesFound}</td>
-                            </tr>
-                        )}
-                    </tbody>
-                </table>
-            </div>
-        </div>
-    );
+        <div>
+           <div className="flex justify-end mb-4">
+               {canAddInvoices && (
+                   <button onClick={() => { setEditingInvoice(null); setIsInvoiceModalOpen(true); }} className="bg-green-500 text-white font-bold py-2 px-4 rounded-lg hover:bg-green-600 transition-colors flex items-center gap-2">
+                       <PlusIcon className="w-5 h-5" />
+                       {t.addNewPurchaseInvoice}
+                   </button>
+               )}
+           </div>
+           
+           {/* Desktop Table View */}
+           <div className="hidden md:block bg-white dark:bg-slate-800 rounded-lg shadow-md overflow-hidden border border-slate-200 dark:border-slate-700">
+               <table className="min-w-full divide-y divide-slate-200 dark:divide-slate-700">
+                    <thead className="bg-slate-50 dark:bg-slate-700/50">
+                       <tr>
+                           <th scope="col" className="px-6 py-3 text-start text-xs font-medium text-slate-500 dark:text-slate-300 uppercase tracking-wider">ID</th>
+                           <th scope="col" className="px-6 py-3 text-start text-xs font-medium text-slate-500 dark:text-slate-300 uppercase tracking-wider">{t.supplier}</th>
+                           <th scope="col" className="px-6 py-3 text-start text-xs font-medium text-slate-500 dark:text-slate-300 uppercase tracking-wider">{t.invoiceDate}</th>
+                           <th scope="col" className="px-6 py-3 text-start text-xs font-medium text-slate-500 dark:text-slate-300 uppercase tracking-wider">{t.totalAmount}</th>
+                           <th scope="col" className="px-6 py-3 text-start text-xs font-medium text-slate-500 dark:text-slate-300 uppercase tracking-wider">{t.items}</th>
+                           <th scope="col" className="px-6 py-3 text-start text-xs font-medium text-slate-500 dark:text-slate-300 uppercase tracking-wider">{t.actions}</th>
+                       </tr>
+                   </thead>
+                   <tbody className="divide-y divide-slate-200 dark:divide-slate-700">
+                       {purchaseInvoices.length > 0 ? purchaseInvoices.map((invoice) => (
+                           <tr key={invoice.id} onClick={() => setViewingInvoice(invoice)} className="hover:bg-slate-50 dark:hover:bg-slate-700/50 cursor-pointer">
+                               <td className="px-6 py-4 whitespace-nowrap text-sm font-mono text-slate-500">{invoice.id}</td>
+                               <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-slate-900 dark:text-slate-100">{invoice.supplier_name}</td>
+                               <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-600 dark:text-slate-300">{formatDateTime(invoice.invoice_date)}</td>
+                               <td className="px-6 py-4 whitespace-nowrap text-sm font-semibold text-primary-700 dark:text-primary-400">{invoice.total_amount.toFixed(2)} {t.currency}</td>
+                               <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-600 dark:text-slate-300">{invoice.items.length}</td>
+                               <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                                   <div onClick={e => e.stopPropagation()} className="flex items-center gap-4">
+                                       {canAddInvoices && <button onClick={() => setEditingInvoice(invoice)} className="text-indigo-600 hover:text-indigo-900 dark:text-indigo-400 dark:hover:text-indigo-200 flex items-center gap-1"><PencilIcon className="w-4 h-4" /> {t.edit}</button>}
+                                       {canAddInvoices && <button onClick={() => handleDeleteInvoice(invoice.id)} className="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-200 flex items-center gap-1"><TrashIcon className="w-4 h-4" /> {t.delete}</button>}
+                                   </div>
+                               </td>
+                           </tr>
+                       )) : (
+                           <tr>
+                               <td colSpan={6} className="text-center py-10 text-slate-500">{t.noInvoicesFound}</td>
+                           </tr>
+                       )}
+                   </tbody>
+               </table>
+           </div>
+
+           {/* Mobile Card View */}
+           <div className="md:hidden space-y-4">
+               {purchaseInvoices.length > 0 ? purchaseInvoices.map(invoice => (
+                   <div key={invoice.id} onClick={() => setViewingInvoice(invoice)} className="bg-white dark:bg-slate-800 rounded-lg shadow p-4 space-y-3 border-l-4 border-primary-500">
+                       <div className="flex justify-between items-start">
+                            <div>
+                               <p className="font-bold text-slate-900 dark:text-slate-100">{invoice.supplier_name}</p>
+                               <p className="text-sm text-slate-500 dark:text-slate-400">ID: {invoice.id}</p>
+                           </div>
+                           <div className="text-end">
+                               <p className="font-semibold text-lg text-primary-600 dark:text-primary-400">{invoice.total_amount.toFixed(2)}</p>
+                               <p className="text-xs text-slate-400">{formatDateTime(invoice.invoice_date)}</p>
+                           </div>
+                       </div>
+                        <div className="border-t border-slate-100 dark:border-slate-700 pt-3 flex justify-between items-center">
+                           <span className="text-sm font-medium text-slate-600 dark:text-slate-300">{invoice.items.length} {t.items}</span>
+                           {canAddInvoices && (
+                               <div onClick={e => e.stopPropagation()} className="flex items-center gap-4">
+                                   <button onClick={() => setEditingInvoice(invoice)} className="text-indigo-600 dark:text-indigo-400 font-semibold flex items-center gap-1"><PencilIcon className="w-4 h-4" /> {t.edit}</button>
+                                   <button onClick={() => handleDeleteInvoice(invoice.id)} className="text-red-600 dark:text-red-400 font-semibold flex items-center gap-1"><TrashIcon className="w-4 h-4" /> {t.delete}</button>
+                               </div>
+                           )}
+                       </div>
+                   </div>
+               )) : (
+                   <div className="text-center py-10 text-slate-500 bg-white dark:bg-slate-800 rounded-lg">{t.noInvoicesFound}</div>
+               )}
+           </div>
+
+       </div>
+   );
 
     return (
         <div className="animate-fade-in-up">
