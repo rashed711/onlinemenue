@@ -17,21 +17,31 @@ import {
   TruckIcon,
   UserIcon,
   BellIcon,
+  // New Icon
+  ArchiveIcon,
 } from '../components/icons/Icons';
+
+// A simple placeholder for icons that might not exist yet
+// FIX: Rewrote the component to explicitly return React.ReactElement to avoid potential JSX parsing issues.
+const PlaceholderIcon = ({className}: {className?: string}): React.ReactElement => {
+    // FIX: Replaced JSX with React.createElement to be valid in a .ts file.
+    return React.createElement('div', { className: `w-5 h-5 bg-slate-300 rounded ${className}` });
+};
+
 
 // Define a type for translation keys to ensure type safety
 type TranslationKey = keyof typeof translations['en'];
 
 // Structure for grouping permissions in the UI
-interface PermissionInfo {
-  id: Permission;
-  nameKey: TranslationKey;
-}
-
 export interface PermissionGroup {
   nameKey: TranslationKey;
   icon: React.FC<any>; // Add icon property
   permissions: PermissionInfo[];
+}
+
+interface PermissionInfo {
+  id: Permission;
+  nameKey: TranslationKey;
 }
 
 // Static permissions grouped by page/feature for a clearer UI
@@ -62,6 +72,15 @@ export const PERMISSION_GROUPS: Record<string, PermissionGroup> = {
       { id: 'view_delivery_report', nameKey: 'permission_view_delivery_report' },
       { id: 'view_user_activity_report', nameKey: 'permission_view_user_activity_report' },
     ],
+  },
+  inventory: {
+    nameKey: 'inventory',
+    icon: ArchiveIcon,
+    permissions: [
+        { id: 'view_inventory_page', nameKey: 'permission_view_inventory_page' },
+        { id: 'manage_suppliers', nameKey: 'permission_manage_suppliers' },
+        { id: 'add_purchase_invoice', nameKey: 'permission_add_purchase_invoice' },
+    ]
   },
   products: {
     nameKey: 'productList',

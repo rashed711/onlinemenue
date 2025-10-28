@@ -41,6 +41,9 @@ export interface Product {
   name: LocalizedString;
   description: LocalizedString;
   price: number;
+  cost_price: number;
+  stock_quantity: number;
+  supplier_id?: number | null;
   image: string;
   categoryId: number;
   rating: number;
@@ -49,6 +52,7 @@ export interface Product {
   isVisible: boolean;
   tags: string[];
   options?: ProductOption[];
+  display_order: number;
 }
 
 export interface CartItem {
@@ -167,3 +171,28 @@ export interface Order {
 
 // Permissions Type
 export type Permission = string;
+
+// Inventory Types
+export interface Supplier {
+    id: number;
+    name: string;
+    contact_person?: string | null;
+    mobile?: string | null;
+    email?: string | null;
+    address?: string | null;
+}
+
+export interface PurchaseInvoiceItem {
+    product_id: number;
+    quantity: number;
+    purchase_price: number;
+    subtotal: number;
+}
+
+export interface PurchaseInvoice {
+    supplier_id: number;
+    total_amount: number;
+    notes?: string;
+    items: PurchaseInvoiceItem[];
+    created_by?: number;
+}

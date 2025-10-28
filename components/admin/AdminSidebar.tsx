@@ -1,12 +1,12 @@
 import React from 'react';
 import type { Permission, User, UserRole, Role } from '../../types';
-import { ClipboardListIcon, CollectionIcon, UsersIcon, CloseIcon, ShieldCheckIcon, BookmarkAltIcon, ChartBarIcon, TagIcon, CogIcon, CashRegisterIcon, LogoutIcon, HomeIcon, BellIcon } from '../icons/Icons';
+import { ClipboardListIcon, CollectionIcon, UsersIcon, CloseIcon, ShieldCheckIcon, BookmarkAltIcon, ChartBarIcon, TagIcon, CogIcon, CashRegisterIcon, LogoutIcon, HomeIcon, BellIcon, ArchiveIcon } from '../icons/Icons';
 import { useUI } from '../../contexts/UIContext';
 import { useAuth } from '../../contexts/AuthContext';
 import { useData } from '../../contexts/DataContext';
 import { useAdmin } from '../../contexts/AdminContext';
 
-type AdminTab = 'orders' | 'cashier' | 'reports' | 'productList' | 'classifications' | 'promotions' | 'users' | 'roles' | 'settings';
+type AdminTab = 'orders' | 'cashier' | 'reports' | 'inventory' | 'productList' | 'classifications' | 'promotions' | 'users' | 'roles' | 'settings';
 
 interface AdminSidebarProps {
     activeTab: AdminTab;
@@ -29,6 +29,7 @@ export const AdminSidebar: React.FC<AdminSidebarProps> = (props) => {
             { id: 'reports', label: t.reports, icon: ChartBarIcon, permission: 'view_reports_page' as Permission },
         ],
         management: [
+            { id: 'inventory', label: t.inventory, icon: ArchiveIcon, permission: 'view_inventory_page' as Permission },
             { id: 'productList', label: t.productList, icon: CollectionIcon, permission: 'view_products_page' as Permission },
             { id: 'classifications', label: t.classifications, icon: BookmarkAltIcon, permission: 'view_classifications_page' as Permission },
             { id: 'promotions', label: t.managePromotions, icon: TagIcon, permission: 'view_promotions_page' as Permission },

@@ -17,11 +17,16 @@ export const ProductEditModal: React.FC<ProductEditModalProps> = ({ product, onC
     const { language, t, setIsProcessing, showToast } = useUI();
     const { categories, tags: allTags } = useData();
     
+    // FIX: Added missing properties `cost_price`, `stock_quantity`, and `supplier_id` to satisfy the Omit<Product, 'id' | 'rating'> type.
+    // FIX: Added `display_order` property to align with the database schema and resolve silent backend errors.
     const emptyProduct: Omit<Product, 'id' | 'rating'> = {
         code: '',
         name: { en: '', ar: '' },
         description: { en: '', ar: '' },
         price: 0,
+        cost_price: 0,
+        stock_quantity: 0,
+        supplier_id: null,
         image: '',
         categoryId: categories[0]?.id || 1,
         isPopular: false,
@@ -29,6 +34,7 @@ export const ProductEditModal: React.FC<ProductEditModalProps> = ({ product, onC
         isVisible: true,
         tags: [],
         options: [],
+        display_order: 0,
     };
 
     const [formData, setFormData] = useState<Omit<Product, 'id' | 'rating'>>(emptyProduct);

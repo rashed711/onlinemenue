@@ -1,5 +1,5 @@
 import React, { createContext, useState, useCallback, useContext, useEffect } from 'react';
-import type { Order, Product, Promotion, User, Permission, UserRole, Role, Category, Tag } from '../types';
+import type { Order, Product, Promotion, User, Permission, UserRole, Role, Category, Tag, Supplier, PurchaseInvoice } from '../types';
 import { APP_CONFIG } from '../utils/config';
 import { useUI } from './UIContext';
 import { useAuth } from './AuthContext';
@@ -10,6 +10,7 @@ interface AdminContextType {
     orders: Order[];
     users: User[];
     roles: Role[];
+    suppliers: Supplier[];
     rolePermissions: Record<UserRole, Permission[]>;
     placeOrder: (order: Omit<Order, 'id' | 'timestamp'>) => Promise<Order>;
     updateOrder: (orderId: string, payload: Partial<Omit<Order, 'id' | 'timestamp' | 'customer'>>) => Promise<void>;
@@ -35,6 +36,10 @@ interface AdminContextType {
     addRole: (roleData: Omit<Role, 'isSystem' | 'key'>) => Promise<void>;
     updateRole: (roleData: Role) => Promise<void>;
     deleteRole: (roleKey: string) => Promise<void>;
+    addSupplier: (supplierData: Omit<Supplier, 'id'>) => Promise<void>;
+    updateSupplier: (supplierData: Supplier) => Promise<void>;
+    deleteSupplier: (supplierId: number) => Promise<void>;
+    addPurchaseInvoice: (invoiceData: PurchaseInvoice) => Promise<void>;
     viewingOrder: Order | null;
     setViewingOrder: React.Dispatch<React.SetStateAction<Order | null>>;
     refusingOrder: Order | null;
@@ -57,6 +62,7 @@ export const AdminProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
     const [orders, setOrders] = useState<Order[]>([]);
     const [users, setUsers] = useState<User[]>([]);
+    const [suppliers, setSuppliers] = useState<Supplier[]>([]);
     const [rolePermissions, setRolePermissions] = useState<Record<UserRole, Permission[]>>({});
     const [viewingOrder, setViewingOrder] = useState<Order | null>(null);
     const [refusingOrder, setRefusingOrder] = useState<Order | null>(null);
@@ -65,10 +71,11 @@ export const AdminProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         if (!currentUser) {
             setOrders([]);
             setUsers([]);
+            setSuppliers([]);
             return;
         }
 
-        const isAdmin = hasPermission('view_orders_page');
+        const isAdmin = hasPermission('view_orders_page'); // A good proxy for admin-level access
 
         try {
             const fetchOptions = { method: 'GET' };
@@ -78,7 +85,11 @@ export const AdminProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
             if (isAdmin) {
                 setOrders(allOrders);
-                const usersRes = await fetch(`${APP_CONFIG.API_BASE_URL}get_users.php`, fetchOptions);
+                const [usersRes, suppliersRes] = await Promise.all([
+                    fetch(`${APP_CONFIG.API_BASE_URL}get_users.php`, fetchOptions),
+                    fetch(`${APP_CONFIG.API_BASE_URL}get_suppliers.php`, fetchOptions)
+                ]);
+
                 if (usersRes.ok) {
                     setUsers((await usersRes.json() || []).map((u: any) => ({ 
                         id: Number(u.id), 
@@ -90,9 +101,14 @@ export const AdminProvider: React.FC<{ children: React.ReactNode }> = ({ childre
                         profilePicture: resolveImageUrl(u.profile_picture) || `https://placehold.co/512x512/60a5fa/white?text=${u.name.charAt(0).toUpperCase()}` 
                     })));
                 }
+                if (suppliersRes.ok) {
+                    setSuppliers(await suppliersRes.json() || []);
+                }
+
             } else {
                 setOrders(allOrders.filter((o: Order) => o.customer.userId === currentUser.id));
                 setUsers([]);
+                setSuppliers([]);
             }
         } catch (error) {
             console.error("Failed to load admin data:", error);
@@ -716,11 +732,104 @@ export const AdminProvider: React.FC<{ children: React.ReactNode }> = ({ childre
             setIsProcessing(false);
         }
     }, [hasPermission, authRoles, refetchAuthData, showToast, t, setIsProcessing]);
+
+    const addSupplier = useCallback(async (supplierData: Omit<Supplier, 'id'>) => {
+        if (!hasPermission('manage_suppliers')) { showToast(t.permissionDenied); return; }
+        setIsProcessing(true);
+        try {
+            const response = await fetch(`${APP_CONFIG.API_BASE_URL}add_supplier.php`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(supplierData),
+            });
+            const result = await response.json();
+            if (!response.ok || !result.success) throw new Error(result.error || t.supplierAddFailed);
+            setSuppliers(prev => [...prev, result.supplier].sort((a,b) => a.name.localeCompare(b.name)));
+            showToast(t.supplierAddedSuccess);
+        } catch (error: any) {
+            showToast(error.message || t.supplierAddFailed);
+        } finally {
+            setIsProcessing(false);
+        }
+    }, [hasPermission, showToast, t, setIsProcessing]);
+
+    const updateSupplier = useCallback(async (supplierData: Supplier) => {
+        if (!hasPermission('manage_suppliers')) { showToast(t.permissionDenied); return; }
+        setIsProcessing(true);
+        const originalSuppliers = suppliers;
+        setSuppliers(prev => prev.map(s => s.id === supplierData.id ? supplierData : s));
+        try {
+            const response = await fetch(`${APP_CONFIG.API_BASE_URL}update_supplier.php`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(supplierData),
+            });
+            const result = await response.json();
+            if (!response.ok || !result.success) throw new Error(result.error || t.supplierUpdateFailed);
+            showToast(t.supplierUpdatedSuccess);
+        } catch (error: any) {
+            showToast(error.message || t.supplierUpdateFailed);
+            setSuppliers(originalSuppliers); // Revert
+        } finally {
+            setIsProcessing(false);
+        }
+    }, [hasPermission, showToast, t, setIsProcessing, suppliers]);
+
+    const deleteSupplier = useCallback(async (supplierId: number) => {
+        if (!hasPermission('manage_suppliers') || !window.confirm(t.confirmDeleteSupplier)) return;
+        setIsProcessing(true);
+        const originalSuppliers = suppliers;
+        setSuppliers(prev => prev.filter(s => s.id !== supplierId));
+        try {
+            const response = await fetch(`${APP_CONFIG.API_BASE_URL}delete_supplier.php`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ id: supplierId }),
+            });
+            const result = await response.json();
+            if (!response.ok || !result.success) {
+                if (response.status === 409) {
+                     throw new Error(t.deleteSupplierError);
+                }
+                throw new Error(result.error || t.supplierDeleteFailed);
+            }
+            showToast(t.supplierDeletedSuccess);
+        } catch (error: any) {
+            showToast(error.message || t.supplierDeleteFailed);
+            setSuppliers(originalSuppliers); // Revert
+        } finally {
+            setIsProcessing(false);
+        }
+    }, [hasPermission, showToast, t, setIsProcessing, suppliers]);
+    
+    const addPurchaseInvoice = useCallback(async (invoiceData: PurchaseInvoice) => {
+        if (!hasPermission('add_purchase_invoice')) { showToast(t.permissionDenied); return; }
+        setIsProcessing(true);
+        try {
+            const payload = { ...invoiceData, created_by: currentUser?.id };
+            const response = await fetch(`${APP_CONFIG.API_BASE_URL}add_purchase_invoice.php`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload),
+            });
+            const result = await response.json();
+            if (!response.ok || !result.success) throw new Error(result.error || t.invoiceAddFailed);
+            
+            showToast(t.invoiceAddedSuccess);
+            await fetchAllData(); // Refetch products to update stock and cost
+            
+        } catch (error: any) {
+            showToast(error.message || t.invoiceAddFailed);
+        } finally {
+            setIsProcessing(false);
+        }
+    }, [hasPermission, showToast, t, setIsProcessing, currentUser, fetchAllData]);
     
     const value: AdminContextType = {
         orders, 
         users, 
-        roles: authRoles, 
+        roles: authRoles,
+        suppliers,
         rolePermissions,
         placeOrder, 
         updateOrder, 
@@ -746,6 +855,10 @@ export const AdminProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         addRole, 
         updateRole, 
         deleteRole,
+        addSupplier,
+        updateSupplier,
+        deleteSupplier,
+        addPurchaseInvoice,
         viewingOrder,
         setViewingOrder,
         refusingOrder,

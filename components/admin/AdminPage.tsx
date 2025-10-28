@@ -15,6 +15,7 @@ import { OrderEditModal } from './OrderEditModal';
 import { CashierPage } from './CashierPage';
 import { SettingsPage } from './SettingsPage';
 import { NotificationsPage } from './NotificationsPage';
+import { InventoryPage } from './InventoryPage'; // New Import
 import { formatDate, formatNumber, normalizeArabic } from '../../utils/helpers';
 import { OrderCard } from './OrderCard';
 import { RoleEditModal } from './RoleEditModal';
@@ -31,7 +32,7 @@ interface AdminPageProps {
     reportSubRoute?: string;
 }
 
-type AdminTab = 'orders' | 'cashier' | 'reports' | 'productList' | 'classifications' | 'promotions' | 'users' | 'roles' | 'settings';
+type AdminTab = 'orders' | 'cashier' | 'reports' | 'inventory' | 'productList' | 'classifications' | 'promotions' | 'users' | 'roles' | 'settings';
 type DateFilter = 'today' | 'yesterday' | 'week' | 'month' | 'custom';
 type UserTab = 'customers' | 'staff';
 
@@ -39,6 +40,7 @@ const NAV_ITEMS_WITH_PERMS = [
     { id: 'orders', permission: 'view_orders_page' },
     { id: 'cashier', permission: 'use_cashier_page' },
     { id: 'reports', permission: 'view_reports_page' },
+    { id: 'inventory', permission: 'view_inventory_page' },
     { id: 'productList', permission: 'view_products_page' },
     { id: 'classifications', permission: 'view_classifications_page' },
     { id: 'promotions', permission: 'view_promotions_page' },
@@ -621,6 +623,7 @@ export const AdminPage: React.FC<AdminPageProps> = ({ activeSubRoute, reportSubR
             }
             case 'cashier': return hasPermission('use_cashier_page') ? <CashierPage /> : <PermissionDeniedComponent />;
             case 'reports': return hasPermission('view_reports_page') ? <ReportsRootPage activeSubRoute={reportSubRoute} /> : <PermissionDeniedComponent />;
+            case 'inventory': return hasPermission('view_inventory_page') ? <InventoryPage /> : <PermissionDeniedComponent />;
             case 'productList':
                 if (!hasPermission('view_products_page')) return <PermissionDeniedComponent />;
                 return (
@@ -724,7 +727,11 @@ export const AdminPage: React.FC<AdminPageProps> = ({ activeSubRoute, reportSubR
                                 <table className="min-w-full divide-y divide-slate-200 dark:divide-slate-700">
                                     <thead className="bg-slate-50 dark:bg-slate-700/50">
                                         <tr>
-                                            <th scope="col" className="px-6 py-4 text-start text-xs font-medium text-slate-500 dark:text-slate-300 uppercase tracking-wider">{t.product}</th><th scope="col" className="px-6 py-4 text-start text-xs font-medium text-slate-500 dark:text-slate-300 uppercase tracking-wider">{t.price}</th><th scope="col" className="px-6 py-4 text-center text-xs font-medium text-slate-500 dark:text-slate-300 uppercase tracking-wider">{t.popular}</th><th scope="col" className="px-6 py-4 text-center text-xs font-medium text-slate-500 dark:text-slate-300 uppercase tracking-wider">{t.new}</th><th scope="col" className="px-6 py-4 text-center text-xs font-medium text-slate-500 dark:text-slate-300 uppercase tracking-wider">{t.visibleInMenu}</th>
+                                            <th scope="col" className="px-6 py-4 text-start text-xs font-medium text-slate-500 dark:text-slate-300 uppercase tracking-wider">{t.product}</th>
+                                            <th scope="col" className="px-4 py-4 text-start text-xs font-medium text-slate-500 dark:text-slate-300 uppercase tracking-wider">{t.stockQuantity}</th>
+                                            <th scope="col" className="px-4 py-4 text-start text-xs font-medium text-slate-500 dark:text-slate-300 uppercase tracking-wider">{t.costPrice}</th>
+                                            <th scope="col" className="px-4 py-4 text-start text-xs font-medium text-slate-500 dark:text-slate-300 uppercase tracking-wider">{t.price}</th>
+                                            <th scope="col" className="px-4 py-4 text-center text-xs font-medium text-slate-500 dark:text-slate-300 uppercase tracking-wider">{t.visibleInMenu}</th>
                                             {(hasPermission('edit_product') || hasPermission('delete_product')) && <th scope="col" className="px-6 py-4 text-start text-xs font-medium text-slate-500 dark:text-slate-300 uppercase tracking-wider">{t.actions}</th>}
                                         </tr>
                                     </thead>
@@ -732,10 +739,10 @@ export const AdminPage: React.FC<AdminPageProps> = ({ activeSubRoute, reportSubR
                                         {filteredProducts.map((product) => (
                                             <tr key={product.id} className="odd:bg-white even:bg-slate-50 dark:odd:bg-slate-800 dark:even:bg-slate-800/50 hover:bg-slate-100 dark:hover:bg-slate-700/50 transition-colors">
                                                 <td className="px-6 py-4 whitespace-nowrap"><div className="flex items-center"><img src={product.image} alt={product.name[language]} className="w-12 h-12 rounded-md object-cover me-4" loading="lazy" /><div><div className="text-sm font-semibold text-slate-900 dark:text-slate-100">{product.name[language]}</div><div className="text-xs text-slate-500 dark:text-slate-400">{product.code}</div></div></div></td>
-                                                <td className="px-6 py-4 whitespace-nowrap text-slate-600 dark:text-slate-300"><div className="text-sm">{product.price.toFixed(2)} {t.currency}</div></td>
-                                                <td className="px-6 py-4 whitespace-nowrap text-center"><label className="relative inline-flex items-center cursor-pointer"><input type="checkbox" checked={product.isPopular} onChange={() => hasPermission('edit_product') && handleToggleProductFlag(product, 'isPopular')} disabled={!hasPermission('edit_product')} className="sr-only peer" /><div className="w-11 h-6 bg-slate-200 rounded-full peer dark:bg-slate-700 peer-focus:ring-4 peer-focus:ring-primary-300 dark:peer-focus:ring-primary-800 peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full after:content-[''] after:absolute after:top-0.5 after:start-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary-600"></div></label></td>
-                                                <td className="px-6 py-4 whitespace-nowrap text-center"><label className="relative inline-flex items-center cursor-pointer"><input type="checkbox" checked={product.isNew} onChange={() => hasPermission('edit_product') && handleToggleProductFlag(product, 'isNew')} disabled={!hasPermission('edit_product')} className="sr-only peer" /><div className="w-11 h-6 bg-slate-200 rounded-full peer dark:bg-slate-700 peer-focus:ring-4 peer-focus:ring-green-300 dark:peer-focus:ring-green-800 peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full after:content-[''] after:absolute after:top-0.5 after:start-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-green-600"></div></label></td>
-                                                <td className="px-6 py-4 whitespace-nowrap text-center"><label className="relative inline-flex items-center cursor-pointer"><input type="checkbox" checked={product.isVisible} onChange={() => hasPermission('edit_product') && handleToggleProductFlag(product, 'isVisible')} disabled={!hasPermission('edit_product')} className="sr-only peer" /><div className="w-11 h-6 bg-slate-200 rounded-full peer dark:bg-slate-700 peer-focus:ring-4 peer-focus:ring-blue-300 dark:peer-focus:ring-blue-800 peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full after:content-[''] after:absolute after:top-0.5 after:start-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div></label></td>
+                                                <td className="px-4 py-4 whitespace-nowrap text-sm font-medium text-slate-600 dark:text-slate-300">{product.stock_quantity}</td>
+                                                <td className="px-4 py-4 whitespace-nowrap text-sm text-slate-600 dark:text-slate-300">{product.cost_price.toFixed(2)}</td>
+                                                <td className="px-4 py-4 whitespace-nowrap text-sm font-bold text-primary-600 dark:text-primary-400">{product.price.toFixed(2)}</td>
+                                                <td className="px-4 py-4 whitespace-nowrap text-center"><label className="relative inline-flex items-center cursor-pointer"><input type="checkbox" checked={product.isVisible} onChange={() => hasPermission('edit_product') && handleToggleProductFlag(product, 'isVisible')} disabled={!hasPermission('edit_product')} className="sr-only peer" /><div className="w-11 h-6 bg-slate-200 rounded-full peer dark:bg-slate-700 peer-focus:ring-4 peer-focus:ring-blue-300 dark:peer-focus:ring-blue-800 peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full after:content-[''] after:absolute after:top-0.5 after:start-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div></label></td>
                                                 {(hasPermission('edit_product') || hasPermission('delete_product')) && <td className="px-6 py-4 whitespace-nowrap text-sm font-medium"><div className="flex items-center gap-4">{hasPermission('edit_product') && <button onClick={() => setEditingProduct(product)} className="text-indigo-600 hover:text-indigo-900 dark:text-indigo-400 dark:hover:text-indigo-200 flex items-center gap-1"><PencilIcon className="w-4 h-4" /> {t.edit}</button>}{hasPermission('delete_product') && <button onClick={() => deleteProduct(product.id)} className="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-200 flex items-center gap-1"><TrashIcon className="w-4 h-4" /> {t.delete}</button>}</div></td>}
                                             </tr>
                                         ))}
@@ -752,27 +759,27 @@ export const AdminPage: React.FC<AdminPageProps> = ({ activeSubRoute, reportSubR
                                                 <div className="flex-1 min-w-0">
                                                     <p className="font-semibold text-slate-900 dark:text-slate-100 truncate">{product.name[language]}</p>
                                                     <p className="text-xs text-slate-500 dark:text-slate-400">{product.code}</p>
+                                                    <p className="text-lg font-bold text-primary-600 dark:text-primary-400">{product.price.toFixed(2)}</p>
                                                 </div>
                                             </div>
-                                            <p className="text-lg font-bold text-primary-600 dark:text-primary-400">{product.price.toFixed(2)}</p>
-                                        </div>
-                                        <div className="grid grid-cols-3 gap-2 text-center text-xs py-2 border-y border-slate-100 dark:border-slate-700">
-                                            {[ { flag: 'isPopular', label: t.popular, color: 'primary' }, { flag: 'isNew', label: t.new, color: 'green' }, { flag: 'isVisible', label: t.visibleInMenu, color: 'blue' } ].map(({ flag, label, color }) => (
-                                                <div key={flag}>
-                                                    <label className="flex flex-col items-center gap-1 cursor-pointer">
-                                                        <span className="font-medium text-slate-600 dark:text-slate-300">{label}</span>
-                                                        <input type="checkbox" checked={product[flag as keyof Product] as boolean} onChange={() => hasPermission('edit_product') && handleToggleProductFlag(product, flag as any)} disabled={!hasPermission('edit_product')} className={`sr-only peer peer-checked:bg-${color}-600`}/>
-                                                        <div className={`relative w-10 h-5 bg-slate-200 rounded-full peer dark:bg-slate-700 peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full after:content-[''] after:absolute after:top-0.5 after:start-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-${color}-600`}></div>
-                                                    </label>
-                                                </div>
-                                            ))}
-                                        </div>
-                                        {(hasPermission('edit_product') || hasPermission('delete_product')) && (
-                                            <div className="flex items-center justify-end gap-4">
-                                                {hasPermission('edit_product') && <button onClick={() => setEditingProduct(product)} className="text-indigo-600 dark:text-indigo-400 font-semibold flex items-center gap-1"><PencilIcon className="w-4 h-4" /> {t.edit}</button>}
-                                                {hasPermission('delete_product') && <button onClick={() => deleteProduct(product.id)} className="text-red-600 dark:text-red-400 font-semibold flex items-center gap-1"><TrashIcon className="w-4 h-4" /> {t.delete}</button>}
+                                            <div className="flex flex-col items-end gap-2 text-xs">
+                                                <span className="font-semibold">{t.stockQuantity}: <span className="font-bold text-slate-800 dark:text-slate-100">{product.stock_quantity}</span></span>
+                                                <span className="font-semibold">{t.costPrice}: <span className="font-bold text-slate-800 dark:text-slate-100">{product.cost_price.toFixed(2)}</span></span>
                                             </div>
-                                        )}
+                                        </div>
+                                        <div className="border-t border-slate-100 dark:border-slate-700 pt-3 flex justify-between items-center">
+                                            <label className="flex items-center gap-2 cursor-pointer">
+                                                <span className="font-medium text-sm text-slate-600 dark:text-slate-300">{t.visibleInMenu}</span>
+                                                <input type="checkbox" checked={product.isVisible} onChange={() => hasPermission('edit_product') && handleToggleProductFlag(product, 'isVisible' as any)} disabled={!hasPermission('edit_product')} className={`sr-only peer`}/>
+                                                <div className={`relative w-10 h-5 bg-slate-200 rounded-full peer dark:bg-slate-700 peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full after:content-[''] after:absolute after:top-0.5 after:start-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-blue-600`}></div>
+                                            </label>
+                                            {(hasPermission('edit_product') || hasPermission('delete_product')) && (
+                                                <div className="flex items-center justify-end gap-4">
+                                                    {hasPermission('edit_product') && <button onClick={() => setEditingProduct(product)} className="text-indigo-600 dark:text-indigo-400 font-semibold flex items-center gap-1"><PencilIcon className="w-4 h-4" /> {t.edit}</button>}
+                                                    {hasPermission('delete_product') && <button onClick={() => deleteProduct(product.id)} className="text-red-600 dark:text-red-400 font-semibold flex items-center gap-1"><TrashIcon className="w-4 h-4" /> {t.delete}</button>}
+                                                </div>
+                                            )}
+                                        </div>
                                     </div>
                                 ))}
                             </div>
@@ -991,16 +998,4 @@ export const AdminPage: React.FC<AdminPageProps> = ({ activeSubRoute, reportSubR
                 </main>
             </div>
             
-            {viewingOrder && hasPermission('view_orders_page') && <OrderDetailsModal order={viewingOrder} onClose={() => setViewingOrder(null)} canEdit={hasPermission('edit_order_content')} onEdit={(order) => { setViewingOrder(null); setEditingOrder(order); }} canDelete={hasPermission('delete_order')} onDelete={(orderId) => { deleteOrder(orderId); setViewingOrder(null); }} creatorName={viewingOrderCreatorName} />}
-            {editingOrder && hasPermission('edit_order_content') && <OrderEditModal order={editingOrder} onClose={() => setEditingOrder(null)} onSave={handleSaveOrder} />}
-            {editingProduct && (hasPermission('add_product') || hasPermission('edit_product')) && <ProductEditModal product={editingProduct === 'new' ? null : editingProduct} onClose={() => setEditingProduct(null)} onSave={handleSaveProduct} />}
-            {editingPromotion && (hasPermission('add_promotion') || hasPermission('edit_promotion')) && <PromotionEditModal promotion={editingPromotion === 'new' ? null : editingPromotion} onClose={() => setEditingPromotion(null)} onSave={handleSavePromotion} />}
-            {editingUser && (hasPermission('add_user') || hasPermission('edit_user')) && <UserEditModal user={editingUser === 'new' ? null : editingUser} onClose={() => setEditingUser(null)} onSave={handleSaveUser} />}
-            {editingPermissionsForRole && hasPermission('manage_permissions') && <PermissionsEditModal roleId={editingPermissionsForRole} onClose={() => setEditingPermissionsForRole(null)} onSave={handleSavePermissions} />}
-            {editingRole && (hasPermission('add_role') || hasPermission('edit_role')) && <RoleEditModal role={editingRole === 'new' ? null : editingRole} onClose={() => setEditingRole(null)} onSave={handleSaveRole} />}
-            {editingCategory && (hasPermission('add_category') || hasPermission('edit_category')) && <CategoryEditModal category={editingCategory === 'new' ? null : editingCategory} categories={categories} onClose={() => setEditingCategory(null)} onSave={(data) => { if ('id' in data) updateCategory(data); else addCategory(data); setEditingCategory(null); }} />}
-            {editingTag && (hasPermission('add_tag') || hasPermission('edit_tag')) && <TagEditModal tag={editingTag === 'new' ? null : editingTag} onClose={() => setEditingTag(null)} onSave={(data) => { if (editingTag !== 'new' && 'id' in data) updateTag(data); else addTag(data as Tag); setEditingTag(null); }} />}
-            {refusingOrder && <RefusalReasonModal order={refusingOrder} onClose={() => setRefusingOrder(null)} onSave={(reason) => { updateOrder(refusingOrder.id, { status: 'refused', refusalReason: reason }); setRefusingOrder(null); }} />}
-        </div>
-    );
-};
+            {viewingOrder && hasPermission('view_orders_page') && <OrderDetailsModal order={viewingOrder} onClose={() => setViewingOrder
