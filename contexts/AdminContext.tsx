@@ -221,20 +221,23 @@ export const AdminProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
     const deleteOrder = useCallback(async (orderId: string) => {
         if (!hasPermission('delete_order') || !window.confirm(t.confirmDeleteOrder)) return;
-        
+    
         const originalOrders = orders;
         setOrders(prev => prev.filter(o => o.id !== orderId)); // Optimistic delete
-        
+        setViewingOrder(null); // Close the modal immediately
+    
         setIsProcessing(true);
         try {
             const res = await fetch(`${APP_CONFIG.API_BASE_URL}delete_order.php`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: orderId }) });
             if (!res.ok || !(await res.json()).success) throw new Error(t.orderDeleteFailed);
             showToast(t.orderDeletedSuccess);
-        } catch (error: any) { 
+        } catch (error: any) {
             showToast(error.message);
             setOrders(originalOrders); // Revert on failure
-        } finally { setIsProcessing(false); }
-    }, [hasPermission, t, setIsProcessing, orders]);
+        } finally {
+            setIsProcessing(false);
+        }
+    }, [hasPermission, t, setIsProcessing, orders, setOrders, showToast, setViewingOrder]);
     
     const addProduct = useCallback(async (productData: Omit<Product, 'id' | 'rating'>, imageFile?: File | null) => {
         if (!hasPermission('add_product')) { showToast(t.permissionDenied); return; }
