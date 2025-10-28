@@ -1,25 +1,36 @@
 import React, { useState } from 'react';
-import type { Supplier } from '../../types';
+import type { Supplier, PurchaseInvoice } from '../../types';
 import { useUI } from '../../contexts/UIContext';
 import { useAdmin } from '../../contexts/AdminContext';
 import { useAuth } from '../../contexts/AuthContext';
-import { PlusIcon, PencilIcon, TrashIcon, UsersIcon, ClipboardListIcon } from '../icons/Icons';
+import { PlusIcon, PencilIcon, TrashIcon, UsersIcon, ClipboardListIcon, EyeIcon } from '../icons/Icons';
 import { SupplierEditModal } from './SupplierEditModal';
 import { PurchaseInvoiceModal } from './PurchaseInvoiceModal';
+import { PurchaseInvoiceDetailsModal } from './PurchaseInvoiceDetailsModal'; // New Import
+import { formatDateTime } from '../../utils/helpers';
 
 type InventoryTab = 'suppliers' | 'invoices';
 
 export const InventoryPage: React.FC = () => {
     const { t } = useUI();
     const { hasPermission } = useAuth();
-    const { suppliers, deleteSupplier } = useAdmin();
+    const { suppliers, purchaseInvoices, deleteSupplier, deletePurchaseInvoice } = useAdmin();
 
     const [activeTab, setActiveTab] = useState<InventoryTab>('suppliers');
     const [editingSupplier, setEditingSupplier] = useState<Supplier | 'new' | null>(null);
     const [isInvoiceModalOpen, setIsInvoiceModalOpen] = useState(false);
+    const [editingInvoice, setEditingInvoice] = useState<PurchaseInvoice | null>(null);
+    const [viewingInvoice, setViewingInvoice] = useState<PurchaseInvoice | null>(null);
+
 
     const canManageSuppliers = hasPermission('manage_suppliers');
     const canAddInvoices = hasPermission('add_purchase_invoice');
+    
+    const handleDeleteInvoice = (invoiceId: number) => {
+        if (window.confirm(t.confirmDeleteInvoice)) {
+            deletePurchaseInvoice(invoiceId);
+        }
+    };
 
     const renderSuppliers = () => (
         <div>
@@ -71,14 +82,47 @@ export const InventoryPage: React.FC = () => {
          <div>
             <div className="flex justify-end mb-4">
                 {canAddInvoices && (
-                    <button onClick={() => setIsInvoiceModalOpen(true)} className="bg-green-500 text-white font-bold py-2 px-4 rounded-lg hover:bg-green-600 transition-colors flex items-center gap-2">
+                    <button onClick={() => { setEditingInvoice(null); setIsInvoiceModalOpen(true); }} className="bg-green-500 text-white font-bold py-2 px-4 rounded-lg hover:bg-green-600 transition-colors flex items-center gap-2">
                         <PlusIcon className="w-5 h-5" />
                         {t.addNewPurchaseInvoice}
                     </button>
                 )}
             </div>
-            <div className="bg-white dark:bg-slate-800 rounded-lg shadow-md border border-slate-200 dark:border-slate-700 min-h-[200px] flex items-center justify-center">
-                 <p className="text-slate-500">{t.noInvoicesFound}</p>
+            <div className="bg-white dark:bg-slate-800 rounded-lg shadow-md overflow-hidden border border-slate-200 dark:border-slate-700">
+                <table className="min-w-full divide-y divide-slate-200 dark:divide-slate-700">
+                     <thead className="bg-slate-50 dark:bg-slate-700/50">
+                        <tr>
+                            <th scope="col" className="px-6 py-3 text-start text-xs font-medium text-slate-500 dark:text-slate-300 uppercase tracking-wider">ID</th>
+                            <th scope="col" className="px-6 py-3 text-start text-xs font-medium text-slate-500 dark:text-slate-300 uppercase tracking-wider">{t.supplier}</th>
+                            <th scope="col" className="px-6 py-3 text-start text-xs font-medium text-slate-500 dark:text-slate-300 uppercase tracking-wider">{t.invoiceDate}</th>
+                            <th scope="col" className="px-6 py-3 text-start text-xs font-medium text-slate-500 dark:text-slate-300 uppercase tracking-wider">{t.totalAmount}</th>
+                            <th scope="col" className="px-6 py-3 text-start text-xs font-medium text-slate-500 dark:text-slate-300 uppercase tracking-wider">{t.items}</th>
+                            <th scope="col" className="px-6 py-3 text-start text-xs font-medium text-slate-500 dark:text-slate-300 uppercase tracking-wider">{t.actions}</th>
+                        </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-200 dark:divide-slate-700">
+                        {purchaseInvoices.length > 0 ? purchaseInvoices.map((invoice) => (
+                            <tr key={invoice.id} className="hover:bg-slate-50 dark:hover:bg-slate-700/50">
+                                <td className="px-6 py-4 whitespace-nowrap text-sm font-mono text-slate-500">{invoice.id}</td>
+                                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-slate-900 dark:text-slate-100">{invoice.supplier_name}</td>
+                                <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-600 dark:text-slate-300">{formatDateTime(invoice.invoice_date)}</td>
+                                <td className="px-6 py-4 whitespace-nowrap text-sm font-semibold text-primary-700 dark:text-primary-400">{invoice.total_amount.toFixed(2)} {t.currency}</td>
+                                <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-600 dark:text-slate-300">{invoice.items.length}</td>
+                                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                                    <div className="flex items-center gap-4">
+                                        <button onClick={() => setViewingInvoice(invoice)} className="text-blue-600 hover:text-blue-900 dark:text-blue-400 dark:hover:text-blue-200 flex items-center gap-1"><EyeIcon className="w-4 h-4" /> {t.viewDetails}</button>
+                                        {canAddInvoices && <button onClick={() => setEditingInvoice(invoice)} className="text-indigo-600 hover:text-indigo-900 dark:text-indigo-400 dark:hover:text-indigo-200 flex items-center gap-1"><PencilIcon className="w-4 h-4" /> {t.edit}</button>}
+                                        {canAddInvoices && <button onClick={() => handleDeleteInvoice(invoice.id)} className="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-200 flex items-center gap-1"><TrashIcon className="w-4 h-4" /> {t.delete}</button>}
+                                    </div>
+                                </td>
+                            </tr>
+                        )) : (
+                            <tr>
+                                <td colSpan={6} className="text-center py-10 text-slate-500">{t.noInvoicesFound}</td>
+                            </tr>
+                        )}
+                    </tbody>
+                </table>
             </div>
         </div>
     );
@@ -116,8 +160,20 @@ export const InventoryPage: React.FC = () => {
                     onClose={() => setEditingSupplier(null)}
                 />
             )}
-            {isInvoiceModalOpen && (
-                <PurchaseInvoiceModal onClose={() => setIsInvoiceModalOpen(false)} />
+            {(isInvoiceModalOpen || editingInvoice) && (
+                <PurchaseInvoiceModal
+                    invoiceToEdit={editingInvoice} 
+                    onClose={() => {
+                        setIsInvoiceModalOpen(false);
+                        setEditingInvoice(null);
+                    }} 
+                />
+            )}
+            {viewingInvoice && (
+                <PurchaseInvoiceDetailsModal 
+                    invoice={viewingInvoice} 
+                    onClose={() => setViewingInvoice(null)}
+                />
             )}
         </div>
     );

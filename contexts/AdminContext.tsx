@@ -11,6 +11,7 @@ interface AdminContextType {
     users: User[];
     roles: Role[];
     suppliers: Supplier[];
+    purchaseInvoices: PurchaseInvoice[];
     rolePermissions: Record<UserRole, Permission[]>;
     placeOrder: (order: Omit<Order, 'id' | 'timestamp'>) => Promise<Order>;
     updateOrder: (orderId: string, payload: Partial<Omit<Order, 'id' | 'timestamp' | 'customer'>>) => Promise<void>;
@@ -28,8 +29,9 @@ interface AdminContextType {
     updateRolePermissions: (roleKey: string, permissions: Permission[]) => Promise<void>;
     addCategory: (categoryData: Omit<Category, 'id'>) => Promise<void>;
     updateCategory: (categoryData: Category) => Promise<void>;
-    deleteCategory: (categoryId: number) => Promise<void>;
     updateCategoryOrder: (orderedCategories: Category[]) => Promise<void>;
+    // FIX: Add missing `deleteCategory` function to the AdminContextType interface.
+    deleteCategory: (categoryId: number) => Promise<void>;
     addTag: (tagData: Omit<Tag, 'id'> & { id: string }) => Promise<void>;
     updateTag: (tagData: Tag) => Promise<void>;
     deleteTag: (tagId: string) => Promise<void>;
@@ -39,7 +41,9 @@ interface AdminContextType {
     addSupplier: (supplierData: Omit<Supplier, 'id'>) => Promise<void>;
     updateSupplier: (supplierData: Supplier) => Promise<void>;
     deleteSupplier: (supplierId: number) => Promise<void>;
-    addPurchaseInvoice: (invoiceData: PurchaseInvoice) => Promise<void>;
+    addPurchaseInvoice: (invoiceData: Omit<PurchaseInvoice, 'id'|'invoice_number'|'supplier_name'|'invoice_date'>) => Promise<void>;
+    updatePurchaseInvoice: (invoiceData: PurchaseInvoice) => Promise<void>;
+    deletePurchaseInvoice: (invoiceId: number) => Promise<void>;
     viewingOrder: Order | null;
     setViewingOrder: React.Dispatch<React.SetStateAction<Order | null>>;
     refusingOrder: Order | null;
@@ -63,6 +67,7 @@ export const AdminProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     const [orders, setOrders] = useState<Order[]>([]);
     const [users, setUsers] = useState<User[]>([]);
     const [suppliers, setSuppliers] = useState<Supplier[]>([]);
+    const [purchaseInvoices, setPurchaseInvoices] = useState<PurchaseInvoice[]>([]);
     const [rolePermissions, setRolePermissions] = useState<Record<UserRole, Permission[]>>({});
     const [viewingOrder, setViewingOrder] = useState<Order | null>(null);
     const [refusingOrder, setRefusingOrder] = useState<Order | null>(null);
@@ -72,6 +77,7 @@ export const AdminProvider: React.FC<{ children: React.ReactNode }> = ({ childre
             setOrders([]);
             setUsers([]);
             setSuppliers([]);
+            setPurchaseInvoices([]);
             return;
         }
 
@@ -85,9 +91,10 @@ export const AdminProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
             if (isAdmin) {
                 setOrders(allOrders);
-                const [usersRes, suppliersRes] = await Promise.all([
+                const [usersRes, suppliersRes, invoicesRes] = await Promise.all([
                     fetch(`${APP_CONFIG.API_BASE_URL}get_users.php`, fetchOptions),
-                    fetch(`${APP_CONFIG.API_BASE_URL}get_suppliers.php`, fetchOptions)
+                    fetch(`${APP_CONFIG.API_BASE_URL}get_suppliers.php`, fetchOptions),
+                    fetch(`${APP_CONFIG.API_BASE_URL}get_purchase_invoices.php`, fetchOptions),
                 ]);
 
                 if (usersRes.ok) {
@@ -101,14 +108,14 @@ export const AdminProvider: React.FC<{ children: React.ReactNode }> = ({ childre
                         profilePicture: resolveImageUrl(u.profile_picture) || `https://placehold.co/512x512/60a5fa/white?text=${u.name.charAt(0).toUpperCase()}` 
                     })));
                 }
-                if (suppliersRes.ok) {
-                    setSuppliers(await suppliersRes.json() || []);
-                }
+                if (suppliersRes.ok) setSuppliers(await suppliersRes.json() || []);
+                if (invoicesRes.ok) setPurchaseInvoices(await invoicesRes.json() || []);
 
             } else {
                 setOrders(allOrders.filter((o: Order) => o.customer.userId === currentUser.id));
                 setUsers([]);
                 setSuppliers([]);
+                setPurchaseInvoices([]);
             }
         } catch (error) {
             console.error("Failed to load admin data:", error);
@@ -152,14 +159,27 @@ export const AdminProvider: React.FC<{ children: React.ReactNode }> = ({ childre
                 const uploadRes = await fetch(`${APP_CONFIG.API_BASE_URL}upload_image.php`, { method: 'POST', body: formData });
                 const result = await uploadRes.json();
                 if (result.success && result.url) {
-                    // The URL from the PHP script is already the correct relative path.
                     orderForDb.paymentReceiptUrl = result.url.split('?v=')[0];
                 } else {
                     throw new Error(result.error || 'Failed to get URL for receipt');
                 }
             }
             const statusId = restaurantInfo?.orderStatusColumns?.[0]?.id || 'pending';
-            const payload = { ...orderForDb, id: `ORD-${Math.floor(Math.random() * 900000) + 100000}`, status: statusId, createdBy: currentUser?.id };
+
+            // Correctly flatten the customer object for the PHP backend
+            const { customer, ...restOfOrder } = orderForDb;
+
+            const payload = {
+                ...restOfOrder,
+                id: `ORD-${Math.floor(Math.random() * 900000) + 100000}`,
+                status: statusId,
+                createdBy: currentUser?.id,
+                customer_id: customer.userId,
+                customer_name: customer.name,
+                customer_mobile: customer.mobile,
+                customer_address: customer.address,
+            };
+
             const response = await fetch(`${APP_CONFIG.API_BASE_URL}add_order.php`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
             const result = await response.json();
             if (!result.success) throw new Error(result.error || 'Failed to place order.');
@@ -221,7 +241,7 @@ export const AdminProvider: React.FC<{ children: React.ReactNode }> = ({ childre
             showToast(error.message);
             setOrders(originalOrders); // Revert on failure
         } finally { setIsProcessing(false); }
-    }, [hasPermission, showToast, t, setIsProcessing, orders]);
+    }, [hasPermission, t, setIsProcessing, orders]);
     
     const addProduct = useCallback(async (productData: Omit<Product, 'id' | 'rating'>, imageFile?: File | null) => {
         if (!hasPermission('add_product')) { showToast(t.permissionDenied); return; }
@@ -802,7 +822,7 @@ export const AdminProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         }
     }, [hasPermission, showToast, t, setIsProcessing, suppliers]);
     
-    const addPurchaseInvoice = useCallback(async (invoiceData: PurchaseInvoice) => {
+    const addPurchaseInvoice = useCallback(async (invoiceData: Omit<PurchaseInvoice, 'id' | 'invoice_number' | 'supplier_name' | 'invoice_date'>) => {
         if (!hasPermission('add_purchase_invoice')) { showToast(t.permissionDenied); return; }
         setIsProcessing(true);
         try {
@@ -816,20 +836,75 @@ export const AdminProvider: React.FC<{ children: React.ReactNode }> = ({ childre
             if (!response.ok || !result.success) throw new Error(result.error || t.invoiceAddFailed);
             
             showToast(t.invoiceAddedSuccess);
-            await fetchAllData(); // Refetch products to update stock and cost
+            await fetchAdminData();
+            await fetchAllData();
             
         } catch (error: any) {
             showToast(error.message || t.invoiceAddFailed);
         } finally {
             setIsProcessing(false);
         }
-    }, [hasPermission, showToast, t, setIsProcessing, currentUser, fetchAllData]);
+    }, [hasPermission, showToast, t, setIsProcessing, currentUser, fetchAllData, fetchAdminData]);
+
+    const updatePurchaseInvoice = useCallback(async (invoiceData: PurchaseInvoice) => {
+        if (!hasPermission('add_purchase_invoice')) { // Assuming edit uses same permission as add
+            showToast(t.permissionDenied);
+            return;
+        }
+        setIsProcessing(true);
+        try {
+            const response = await fetch(`${APP_CONFIG.API_BASE_URL}update_purchase_invoice.php`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(invoiceData),
+            });
+            const result = await response.json();
+            if (!response.ok || !result.success) {
+                throw new Error(result.error || t.invoiceUpdateFailed);
+            }
+            showToast(t.invoiceUpdatedSuccess);
+            await fetchAdminData(); // Refreshes invoices list
+            await fetchAllData(); // Refreshes product stock/cost
+        } catch (error: any) {
+            showToast(error.message || t.invoiceUpdateFailed);
+        } finally {
+            setIsProcessing(false);
+        }
+    }, [hasPermission, showToast, t, setIsProcessing, fetchAdminData, fetchAllData]);
+
+    const deletePurchaseInvoice = useCallback(async (invoiceId: number) => {
+        if (!hasPermission('add_purchase_invoice')) { // Assuming same permission for delete for now
+            showToast(t.permissionDenied);
+            return;
+        }
+        if (!window.confirm(t.confirmDeleteInvoice)) return;
+        setIsProcessing(true);
+        try {
+            const response = await fetch(`${APP_CONFIG.API_BASE_URL}delete_purchase_invoice.php`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ id: invoiceId }),
+            });
+            const result = await response.json();
+            if (!response.ok || !result.success) throw new Error(result.error || t.invoiceDeleteFailed);
+
+            showToast(t.invoiceDeletedSuccess);
+            await fetchAdminData();
+            await fetchAllData(); // Refetch products data
+
+        } catch (error: any) {
+            showToast(error.message || t.invoiceDeleteFailed);
+        } finally {
+            setIsProcessing(false);
+        }
+    }, [hasPermission, showToast, t, setIsProcessing, fetchAdminData, fetchAllData]);
     
     const value: AdminContextType = {
         orders, 
         users, 
         roles: authRoles,
         suppliers,
+        purchaseInvoices,
         rolePermissions,
         placeOrder, 
         updateOrder, 
@@ -859,6 +934,8 @@ export const AdminProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         updateSupplier,
         deleteSupplier,
         addPurchaseInvoice,
+        updatePurchaseInvoice,
+        deletePurchaseInvoice,
         viewingOrder,
         setViewingOrder,
         refusingOrder,

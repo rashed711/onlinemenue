@@ -1,5 +1,5 @@
-import React, { useState, useMemo } from 'react';
-import type { PurchaseInvoiceItem, Supplier, Product } from '../../types';
+import React, { useState, useMemo, useEffect } from 'react';
+import type { PurchaseInvoiceItem, Supplier, Product, PurchaseInvoice } from '../../types';
 import { Modal } from '../Modal';
 import { useUI } from '../../contexts/UIContext';
 import { useAdmin } from '../../contexts/AdminContext';
@@ -7,17 +7,36 @@ import { useData } from '../../contexts/DataContext';
 import { PlusIcon, TrashIcon } from '../icons/Icons';
 
 interface PurchaseInvoiceModalProps {
+    invoiceToEdit?: PurchaseInvoice | null;
     onClose: () => void;
 }
 
-export const PurchaseInvoiceModal: React.FC<PurchaseInvoiceModalProps> = ({ onClose }) => {
+export const PurchaseInvoiceModal: React.FC<PurchaseInvoiceModalProps> = ({ invoiceToEdit, onClose }) => {
     const { t } = useUI();
-    const { suppliers, addPurchaseInvoice } = useAdmin();
+    const { suppliers, addPurchaseInvoice, updatePurchaseInvoice } = useAdmin();
     const { products } = useData();
     
-    const [supplierId, setSupplierId] = useState<number | ''>(suppliers[0]?.id || '');
+    const [supplierId, setSupplierId] = useState<number | ''>('');
     const [items, setItems] = useState<Partial<PurchaseInvoiceItem>[]>([{ product_id: undefined, quantity: 1, purchase_price: 0 }]);
     const [notes, setNotes] = useState('');
+
+    useEffect(() => {
+        if (invoiceToEdit) {
+            setSupplierId(invoiceToEdit.supplier_id);
+            setNotes(invoiceToEdit.notes || '');
+            setItems(invoiceToEdit.items.map(item => ({
+                product_id: item.product_id,
+                quantity: item.quantity,
+                purchase_price: item.purchase_price,
+                subtotal: item.subtotal,
+            })));
+        } else {
+            setSupplierId(suppliers[0]?.id || '');
+            setItems([{ product_id: undefined, quantity: 1, purchase_price: 0 }]);
+            setNotes('');
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [invoiceToEdit]);
 
     const totalAmount = useMemo(() => {
         return items.reduce((total, item) => {
@@ -68,12 +87,22 @@ export const PurchaseInvoiceModal: React.FC<PurchaseInvoiceModalProps> = ({ onCl
             subtotal: (item.quantity || 0) * (item.purchase_price || 0)
         })) as PurchaseInvoiceItem[];
 
-        addPurchaseInvoice({
-            supplier_id: supplierId,
-            total_amount: totalAmount,
-            notes,
-            items: finalItems,
-        });
+        if (invoiceToEdit) {
+            updatePurchaseInvoice({
+                ...invoiceToEdit,
+                supplier_id: supplierId,
+                total_amount: totalAmount,
+                notes,
+                items: finalItems,
+            });
+        } else {
+            addPurchaseInvoice({
+                supplier_id: supplierId,
+                total_amount: totalAmount,
+                notes,
+                items: finalItems,
+            });
+        }
         onClose();
     };
     
@@ -81,7 +110,7 @@ export const PurchaseInvoiceModal: React.FC<PurchaseInvoiceModalProps> = ({ onCl
 
 
     return (
-        <Modal title={t.addNewPurchaseInvoice} onClose={onClose} size="3xl">
+        <Modal title={invoiceToEdit ? t.editPurchaseInvoice : t.addNewPurchaseInvoice} onClose={onClose} size="3xl">
             <form onSubmit={handleSubmit} className="p-5 flex flex-col max-h-[85vh]">
                 <div className="space-y-4">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

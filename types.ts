@@ -183,14 +183,20 @@ export interface Supplier {
 }
 
 export interface PurchaseInvoiceItem {
+    id?: number;
     product_id: number;
+    product_name?: LocalizedString;
     quantity: number;
     purchase_price: number;
     subtotal: number;
 }
 
 export interface PurchaseInvoice {
+    id: number;
+    invoice_number: string | null;
     supplier_id: number;
+    supplier_name: string;
+    invoice_date: string;
     total_amount: number;
     notes?: string;
     items: PurchaseInvoiceItem[];
