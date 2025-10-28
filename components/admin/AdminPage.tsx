@@ -166,7 +166,7 @@ export const AdminPage: React.FC<AdminPageProps> = ({ activeSubRoute, reportSubR
                     }
                 }
                 const audioCtx = audioCtxRef.current;
-                const response = await fetch('/sound/new_order_sound.mp3');
+                const response = await fetch('https://cdn.jsdelivr.net/gh/cosmo-project/cosmo-ui/assets/sounds/notify.mp3');
                 if (!response.ok) {
                     throw new Error(`Sound file not found (status: ${response.status})`);
                 }
@@ -200,7 +200,7 @@ export const AdminPage: React.FC<AdminPageProps> = ({ activeSubRoute, reportSubR
         } else {
             // Fallback to simple audio if Web Audio API failed
             console.log("Falling back to simple Audio playback for notification.");
-            const audio = new Audio('/sound/new_order_sound.mp3');
+            const audio = new Audio('https://cdn.jsdelivr.net/gh/cosmo-project/cosmo-ui/assets/sounds/notify.mp3');
             audio.play().catch(e => console.error("Could not play notification sound (fallback):", e));
         }
     }, []);
@@ -524,6 +524,24 @@ export const AdminPage: React.FC<AdminPageProps> = ({ activeSubRoute, reportSubR
     const handleSaveRole = (roleData: Role | Omit<Role, 'isSystem' | 'key'>) => {
         if ('isSystem' in roleData) updateRole(roleData); else addRole(roleData);
         setEditingRole(null);
+    };
+
+    const handleSaveCategory = (categoryData: Category | Omit<Category, 'id'>) => {
+        if ('id' in categoryData) {
+            updateCategory(categoryData);
+        } else {
+            addCategory(categoryData);
+        }
+        setEditingCategory(null);
+    };
+    
+    const handleSaveTag = (tagData: Tag | (Omit<Tag, 'id'> & {id: string})) => {
+        if (editingTag && editingTag !== 'new') {
+            updateTag(tagData as Tag);
+        } else {
+            addTag(tagData as (Omit<Tag, 'id'> & {id: string}));
+        }
+        setEditingTag(null);
     };
 
     const getStatusColorClass = (color: string) => `text-${color}-500`;
@@ -998,4 +1016,16 @@ export const AdminPage: React.FC<AdminPageProps> = ({ activeSubRoute, reportSubR
                 </main>
             </div>
             
-            {viewingOrder && hasPermission('view_orders_page') && <OrderDetailsModal order={viewingOrder} onClose={() => setViewingOrder
+            {viewingOrder && hasPermission('view_orders_page') && <OrderDetailsModal order={viewingOrder} onClose={() => setViewingOrder(null)} canEdit={hasPermission('edit_order_content')} onEdit={setEditingOrder} canDelete={hasPermission('delete_order')} onDelete={deleteOrder} creatorName={viewingOrderCreatorName} />}
+            {editingProduct && (hasPermission('add_product') || hasPermission('edit_product')) && <ProductEditModal product={editingProduct === 'new' ? null : editingProduct} onClose={() => setEditingProduct(null)} onSave={handleSaveProduct} />}
+            {editingPromotion && (hasPermission('add_promotion') || hasPermission('edit_promotion')) && <PromotionEditModal promotion={editingPromotion === 'new' ? null : editingPromotion} onClose={() => setEditingPromotion(null)} onSave={handleSavePromotion} />}
+            {editingUser && (hasPermission('add_user') || hasPermission('edit_user')) && <UserEditModal user={editingUser === 'new' ? null : editingUser} onClose={() => setEditingUser(null)} onSave={handleSaveUser} />}
+            {editingPermissionsForRole && hasPermission('manage_permissions') && <PermissionsEditModal roleId={editingPermissionsForRole} onClose={() => setEditingPermissionsForRole(null)} onSave={handleSavePermissions} />}
+            {editingRole && (hasPermission('add_role') || hasPermission('edit_role')) && <RoleEditModal role={editingRole === 'new' ? null : editingRole} onClose={() => setEditingRole(null)} onSave={handleSaveRole} />}
+            {editingCategory && (hasPermission('add_category') || hasPermission('edit_category')) && <CategoryEditModal category={editingCategory === 'new' ? null : editingCategory} categories={categories} onClose={() => setEditingCategory(null)} onSave={handleSaveCategory} />}
+            {editingTag && (hasPermission('add_tag') || hasPermission('edit_tag')) && <TagEditModal tag={editingTag === 'new' ? null : editingTag} onClose={() => setEditingTag(null)} onSave={handleSaveTag} />}
+            {refusingOrder && hasPermission('manage_order_status') && <RefusalReasonModal order={refusingOrder} onClose={() => setRefusingOrder(null)} onSave={(reason) => { updateOrder(refusingOrder.id, { status: 'refused', refusalReason: reason }); setRefusingOrder(null); }} />}
+            {editingOrder && hasPermission('edit_order_content') && <OrderEditModal order={editingOrder} onClose={() => setEditingOrder(null)} onSave={handleSaveOrder} />}
+        </div>
+    );
+};
