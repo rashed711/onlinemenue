@@ -166,18 +166,11 @@ export const AdminProvider: React.FC<{ children: React.ReactNode }> = ({ childre
             }
             const statusId = restaurantInfo?.orderStatusColumns?.[0]?.id || 'pending';
 
-            // Correctly flatten the customer object for the PHP backend
-            const { customer, ...restOfOrder } = orderForDb;
-
             const payload = {
-                ...restOfOrder,
+                ...orderForDb,
                 id: `ORD-${Math.floor(Math.random() * 900000) + 100000}`,
                 status: statusId,
                 createdBy: currentUser?.id,
-                customer_id: customer.userId,
-                customer_name: customer.name,
-                customer_mobile: customer.mobile,
-                customer_address: customer.address,
             };
 
             const response = await fetch(`${APP_CONFIG.API_BASE_URL}add_order.php`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
