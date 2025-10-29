@@ -9,10 +9,10 @@ interface ReceiptModalProps {
     isOpen: boolean;
     onClose: () => void;
     receiptImageUrl: string;
+    isFromCheckout?: boolean;
 }
 
-export const ReceiptModal: React.FC<ReceiptModalProps> = ({ isOpen, onClose, receiptImageUrl }) => {
-    // @FIX: Refactored to get translations `t` directly from the `useUI` hook.
+export const ReceiptModal: React.FC<ReceiptModalProps> = ({ isOpen, onClose, receiptImageUrl, isFromCheckout = false }) => {
     const { language, t } = useUI();
     const { restaurantInfo } = useData();
     const { clearCart } = useCart();
@@ -27,8 +27,10 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({ isOpen, onClose, rec
     
     if (!isOpen) return null;
 
-    const handleCloseAndClear = () => {
-        clearCart();
+    const handleAfterShare = () => {
+        if (isFromCheckout) {
+            clearCart();
+        }
         onClose();
     };
 
@@ -49,10 +51,10 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({ isOpen, onClose, rec
                     title: t.receiptTitle,
                     text: whatsAppMessage,
                 });
-                handleCloseAndClear();
+                handleAfterShare();
             } else {
                 window.open(whatsappUrl, '_blank', 'noopener,noreferrer');
-                handleCloseAndClear();
+                handleAfterShare();
             }
         } catch (error) {
             console.error('Error sharing receipt:', error);
@@ -106,7 +108,7 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({ isOpen, onClose, rec
                                 href={whatsappUrl}
                                 target="_blank"
                                 rel="noopener noreferrer"
-                                onClick={handleCloseAndClear}
+                                onClick={handleAfterShare}
                                 className="w-full bg-green-500 text-white font-bold py-2.5 px-4 rounded-lg hover:bg-green-600 transition-colors block text-center"
                             >
                             {t.openWhatsApp}

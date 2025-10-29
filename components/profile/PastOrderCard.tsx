@@ -4,14 +4,15 @@ import { useUI } from '../../contexts/UIContext';
 import { useData } from '../../contexts/DataContext';
 import { formatDateTime, calculateItemTotal, calculateOriginalItemTotal } from '../../utils/helpers';
 import { StarRating } from '../StarRating';
-import { ChevronDownIcon } from '../icons/Icons';
+import { ChevronDownIcon, ShareIcon } from '../icons/Icons';
 
 interface PastOrderCardProps {
     order: Order;
     onLeaveFeedback: (order: Order) => void;
+    onShareInvoice: (order: Order) => void;
 }
 
-export const PastOrderCard: React.FC<PastOrderCardProps> = ({ order, onLeaveFeedback }) => {
+export const PastOrderCard: React.FC<PastOrderCardProps> = ({ order, onLeaveFeedback, onShareInvoice }) => {
     const { language, t } = useUI();
     const { restaurantInfo } = useData();
     const [isExpanded, setIsExpanded] = useState(false);
@@ -77,18 +78,26 @@ export const PastOrderCard: React.FC<PastOrderCardProps> = ({ order, onLeaveFeed
                             <p className="text-xs text-slate-500 pt-2 border-t border-slate-200 dark:border-slate-700 mt-3">{t.address}: {order.customer.address}</p>
                         )}
                         <div className="mt-4 pt-4 border-t border-slate-200 dark:border-slate-700 flex justify-between items-center">
-                            {order.status === 'completed' ? (
-                                order.customerFeedback ? (
+                            <div className="flex items-center gap-2">
+                                {order.status === 'completed' && !order.customerFeedback && (
+                                    <button onClick={() => onLeaveFeedback(order)} className="text-sm font-semibold text-white bg-primary-500 hover:bg-primary-600 px-4 py-2 rounded-lg transition-colors shadow-sm">
+                                        {t.leaveFeedback}
+                                    </button>
+                                )}
+                                {order.customerFeedback && (
                                     <div className="flex items-center gap-2">
                                         <StarRating rating={order.customerFeedback.rating} size="sm" />
                                         <span className="text-xs text-slate-500">({t.customerFeedback})</span>
                                     </div>
-                                ) : (
-                                    <button onClick={() => onLeaveFeedback(order)} className="text-sm font-semibold text-white bg-primary-500 hover:bg-primary-600 px-4 py-2 rounded-lg transition-colors shadow-sm">
-                                        {t.leaveFeedback}
-                                    </button>
-                                )
-                            ) : <div></div>}
+                                )}
+                                <button 
+                                    onClick={() => onShareInvoice(order)} 
+                                    className="text-sm font-semibold text-blue-600 dark:text-blue-400 bg-blue-100 dark:bg-blue-900/50 hover:bg-blue-200 dark:hover:bg-blue-900 px-3 py-2 rounded-lg transition-colors shadow-sm flex items-center gap-2"
+                                >
+                                    <ShareIcon className="w-4 h-4" />
+                                    {t.share}
+                                </button>
+                            </div>
                             <div className="text-end">
                                 <span className="text-sm font-medium text-slate-600 dark:text-slate-300">{t.total}: </span>
                                 <span className="font-bold text-lg text-slate-800 dark:text-slate-100">{order.total.toFixed(2)} {t.currency}</span>

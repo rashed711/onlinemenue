@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import type { Order, RestaurantInfo, OrderType } from '../../types';
 import { DocumentTextIcon, PencilIcon, ShareIcon, PrintIcon, TrashIcon, CloseIcon, StarIcon, UserIcon, ClockIcon, HomeIcon, TakeawayIcon, TruckIcon, UserCircleIcon, CreditCardIcon, CheckIcon } from '../icons/Icons';
 import { StarRating } from '../StarRating';
-import { formatDateTime, formatNumber, generateReceiptImage, calculateItemTotal, calculateOriginalItemTotal } from '../../utils/helpers';
+import { formatDateTime, formatNumber, generateReceiptImage, calculateItemTotal, calculateOriginalItemTotal, calculateTotalSavings } from '../../utils/helpers';
 import { Modal } from '../Modal';
 import { useUI } from '../../contexts/UIContext';
 import { useData } from '../../contexts/DataContext';
@@ -43,7 +43,6 @@ const InfoItem: React.FC<{ label: string; icon: React.ReactNode; children: React
 
 
 export const OrderDetailsModal: React.FC<OrderDetailsModalProps> = ({ order, onClose, canEdit, onEdit, canDelete, onDelete, creatorName }) => {
-    // @FIX: Refactored to get translations `t` directly from the `useUI` hook.
     const { language, t, isProcessing, setIsProcessing } = useUI();
     const { restaurantInfo } = useData();
     const { updateOrder } = useOrders();
@@ -54,6 +53,10 @@ export const OrderDetailsModal: React.FC<OrderDetailsModalProps> = ({ order, onC
     const [isEditingPayment, setIsEditingPayment] = useState(false);
 
     const canEditPayment = hasPermission('edit_recorded_payment');
+    
+    const finalTotal = order.total;
+    const totalSavings = calculateTotalSavings(order.items);
+    const originalTotal = finalTotal + totalSavings;
 
     useEffect(() => {
         const shouldBeEditing = !order.paymentDetail && canEditPayment && order.paymentMethod !== 'online';
@@ -239,18 +242,18 @@ export const OrderDetailsModal: React.FC<OrderDetailsModalProps> = ({ order, onC
                                 </div>
                                 <div className="space-y-3 bg-white dark:bg-slate-800 p-4 rounded-xl border dark:border-slate-700 max-h-80 overflow-y-auto">
                                     {order.items.map((item, index) => {
-                                        const finalTotal = calculateItemTotal(item);
-                                        const originalTotal = calculateOriginalItemTotal(item);
+                                        const finalItemTotal = calculateItemTotal(item);
+                                        const originalItemTotal = calculateOriginalItemTotal(item);
                                         return (
                                         <div key={`${item.product.id}-${index}`} className="flex items-start gap-4 py-3 border-b dark:border-slate-700 last:border-b-0">
                                             <div className="text-end shrink-0">
                                                 {item.appliedDiscountPercent ? (
                                                     <>
-                                                        <p className="font-semibold text-slate-700 dark:text-slate-200">{finalTotal.toFixed(2)} {t.currency}</p>
-                                                        <p className="text-xs text-slate-500 dark:text-slate-400 line-through">{originalTotal.toFixed(2)} {t.currency}</p>
+                                                        <p className="font-semibold text-slate-700 dark:text-slate-200">{finalItemTotal.toFixed(2)} {t.currency}</p>
+                                                        <p className="text-xs text-slate-500 dark:text-slate-400 line-through">{originalItemTotal.toFixed(2)} {t.currency}</p>
                                                     </>
                                                 ) : (
-                                                    <p className="font-semibold text-slate-700 dark:text-slate-200">{finalTotal.toFixed(2)} {t.currency}</p>
+                                                    <p className="font-semibold text-slate-700 dark:text-slate-200">{finalItemTotal.toFixed(2)} {t.currency}</p>
                                                 )}
                                             </div>
                                             <div className="flex-grow text-end">
@@ -295,16 +298,30 @@ export const OrderDetailsModal: React.FC<OrderDetailsModalProps> = ({ order, onC
                         </div>
                     </div>
                     <div className="p-4 border-t dark:border-slate-700 shrink-0 bg-slate-50/50 dark:bg-slate-800/50 rounded-b-2xl">
-                        <div className="flex justify-between items-center flex-row-reverse">
+                        <div className="flex justify-between items-end flex-row-reverse gap-4">
                             <div className="flex items-center gap-2">
                                 {canEdit && <button onClick={() => onEdit(order)} title={t.editOrder} className="p-2 rounded-full text-blue-600 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-900/50 transition-colors"><PencilIcon className="w-5 h-5" /></button>}
                                 {canDelete && <button onClick={() => onDelete(order.id)} title={t.deleteOrder} className="p-2 rounded-full text-red-600 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/50 transition-colors"><TrashIcon className="w-5 h-5" /></button>}
                                 <button onClick={handleShare} disabled={isProcessing} title={t.share} className="p-2 rounded-full text-green-600 dark:text-green-400 hover:bg-green-100 dark:hover:bg-green-900/50 transition-colors disabled:opacity-50"><ShareIcon className="w-5 h-5" /></button>
                                 <button onClick={handlePrint} disabled={isProcessing} title={t.print} className="p-2 rounded-full text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors disabled:opacity-50"><PrintIcon className="w-5 h-5" /></button>
                             </div>
-                            <div className="text-start">
-                                <p className="font-semibold text-slate-500 dark:text-slate-400 text-sm">{t.total}</p>
-                                <p className="font-extrabold text-2xl text-primary-600 dark:text-primary-400">{order.total.toFixed(2)} {t.currency}</p>
+                             <div className="text-start flex-grow">
+                                {totalSavings > 0 && (
+                                    <div className="flex justify-between items-baseline text-sm">
+                                        <span className="text-slate-500 dark:text-slate-400">{t.subtotal}:</span>
+                                        <span className="font-medium text-slate-700 dark:text-slate-200">{originalTotal.toFixed(2)} {t.currency}</span>
+                                    </div>
+                                )}
+                                {totalSavings > 0 && (
+                                    <div className="flex justify-between items-baseline text-sm">
+                                        <span className="text-red-600 dark:text-red-400">{t.discount}:</span>
+                                        <span className="font-medium text-red-600 dark:text-red-400">-{totalSavings.toFixed(2)} {t.currency}</span>
+                                    </div>
+                                )}
+                                <div className="flex justify-between items-baseline mt-1 pt-1 border-t border-slate-200 dark:border-slate-700">
+                                    <span className="font-bold text-slate-700 dark:text-slate-200 text-base">{t.total}:</span>
+                                    <span className="font-extrabold text-2xl text-primary-600 dark:text-primary-400">{finalTotal.toFixed(2)} {t.currency}</span>
+                                </div>
                             </div>
                         </div>
                     </div>

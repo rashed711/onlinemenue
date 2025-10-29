@@ -309,5 +309,9 @@ export default {
   "permission_manage_settings_social": "Manage Social Links",
   "permission_manage_settings_statuses": "Manage Order Statuses",
   "permission_manage_settings_payments": "Manage Payment Methods",
-  "permission_manage_settings_activation": "Manage System Activation"
+  "permission_manage_settings_activation": "Manage System Activation",
+  "purchaseInvoice": "Purchase Invoice",
+  "salesInvoice": "Sales Invoice",
+  "invoiceNumber": "Invoice Number",
+  "invoiceId": "Invoice ID"
 };

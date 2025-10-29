@@ -9,6 +9,8 @@ import { useOrders } from '../../contexts/OrderContext';
 import { OrderHistory } from './OrderHistory';
 import { Header } from '../Header'; // Import the main header
 import { optimizeImage } from '../../utils/imageOptimizer';
+import { ReceiptModal } from '../ReceiptModal';
+import { generateReceiptImage } from '../../utils/helpers';
 
 export const ProfilePage: React.FC = () => {
     const { language, t, setIsChangePasswordModalOpen, setIsProcessing, showToast } = useUI();
@@ -17,6 +19,8 @@ export const ProfilePage: React.FC = () => {
     const { orders, updateOrder } = useOrders();
     
     const [feedbackOrder, setFeedbackOrder] = useState<Order | null>(null);
+    const [receiptImageUrl, setReceiptImageUrl] = useState<string>('');
+    const [isReceiptModalOpen, setIsReceiptModalOpen] = useState(false);
     
     // State for inline editing
     const [isEditingName, setIsEditingName] = useState(false);
@@ -92,6 +96,21 @@ export const ProfilePage: React.FC = () => {
         if (feedbackOrder) {
             updateOrder(feedbackOrder.id, { customerFeedback: feedback });
             setFeedbackOrder(null);
+        }
+    };
+
+    const handleShareInvoice = async (order: Order) => {
+        if (!restaurantInfo) return;
+        setIsProcessing(true);
+        try {
+            const imageUrl = await generateReceiptImage(order, restaurantInfo, t, language);
+            setReceiptImageUrl(imageUrl);
+            setIsReceiptModalOpen(true);
+        } catch (error) {
+            console.error("Error generating receipt for sharing:", error);
+            showToast("Failed to generate receipt image.");
+        } finally {
+            setIsProcessing(false);
         }
     };
     
@@ -209,6 +228,7 @@ export const ProfilePage: React.FC = () => {
                                         activeOrders={activeOrders}
                                         pastOrders={pastOrders}
                                         onLeaveFeedback={setFeedbackOrder}
+                                        onShareInvoice={handleShareInvoice}
                                     />
                                 </div>
                             </div>
@@ -216,6 +236,14 @@ export const ProfilePage: React.FC = () => {
                     </div>
                 </div>
                 {feedbackOrder && <FeedbackModal order={feedbackOrder} onClose={() => setFeedbackOrder(null)} onSave={handleSaveFeedback} />}
+                {isReceiptModalOpen && receiptImageUrl && (
+                    <ReceiptModal
+                        isOpen={isReceiptModalOpen}
+                        onClose={() => setIsReceiptModalOpen(false)}
+                        receiptImageUrl={receiptImageUrl}
+                        isFromCheckout={false}
+                    />
+                )}
             </div>
         </>
     );

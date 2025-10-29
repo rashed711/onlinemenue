@@ -2,16 +2,49 @@ import React from 'react';
 import type { SalesInvoice } from '../../types';
 import { Modal } from '../Modal';
 import { useUI } from '../../contexts/UIContext';
-import { formatDateTime } from '../../utils/helpers';
+import { useData } from '../../contexts/DataContext';
+import { formatDateTime, generateSalesInvoiceImage } from '../../utils/helpers';
+import { PencilIcon, TrashIcon, ShareIcon } from '../icons/Icons';
 
 interface SalesInvoiceDetailsModalProps {
     invoice: SalesInvoice;
     onClose: () => void;
+    onEdit: (invoice: SalesInvoice) => void;
+    onDelete: (invoiceId: number) => void;
+    canManage: boolean;
 }
 
-export const SalesInvoiceDetailsModal: React.FC<SalesInvoiceDetailsModalProps> = ({ invoice, onClose }) => {
-    const { t, language } = useUI();
+export const SalesInvoiceDetailsModal: React.FC<SalesInvoiceDetailsModalProps> = ({ invoice, onClose, onEdit, onDelete, canManage }) => {
+    const { t, language, setIsProcessing, isProcessing, showToast } = useUI();
+    const { restaurantInfo } = useData();
     
+    const handleShare = async () => {
+        if (!restaurantInfo) return;
+        setIsProcessing(true);
+        try {
+            const imageUrl = await generateSalesInvoiceImage(invoice, restaurantInfo, t, language);
+            const response = await fetch(imageUrl);
+            const blob = await response.blob();
+            const file = new File([blob], `sales-invoice-${invoice.invoice_number}.png`, { type: 'image/png' });
+
+            if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
+                await navigator.share({
+                    files: [file],
+                    title: `${t.salesInvoice} - #${invoice.invoice_number}`,
+                });
+            } else {
+                showToast('Web Share API is not supported in this browser.');
+            }
+        } catch (error) {
+            console.error('Error sharing invoice:', error);
+            if ((error as DOMException)?.name !== 'AbortError') {
+                 showToast(language === 'ar' ? 'فشلت المشاركة.' : 'Sharing failed.');
+            }
+        } finally {
+            setIsProcessing(false);
+        }
+    };
+
     return (
         <Modal title={`${t.invoiceDetails} - #${invoice.invoice_number}`} onClose={onClose} size="2xl">
             <div className="p-5 space-y-6 max-h-[80vh] overflow-y-auto">
@@ -64,7 +97,38 @@ export const SalesInvoiceDetailsModal: React.FC<SalesInvoiceDetailsModalProps> =
                      </div>
                 </div>
             </div>
-             <div className="flex justify-end gap-4 p-4 border-t border-slate-200 dark:border-slate-700">
+             <div className="flex justify-between items-center gap-4 p-4 border-t border-slate-200 dark:border-slate-700">
+                <div>
+                    {canManage && (
+                        <div className="flex items-center gap-2">
+                            <button
+                                onClick={() => onEdit(invoice)}
+                                className="p-2 text-indigo-600 hover:bg-indigo-100 dark:text-indigo-400 dark:hover:bg-indigo-900/50 rounded-full transition-colors"
+                                title={t.edit}
+                            >
+                                <PencilIcon className="w-5 h-5" />
+                            </button>
+                            <button
+                                onClick={() => {
+                                    onDelete(invoice.id);
+                                    onClose();
+                                }}
+                                className="p-2 text-red-600 hover:bg-red-100 dark:text-red-400 dark:hover:bg-red-900/50 rounded-full transition-colors"
+                                title={t.delete}
+                            >
+                                <TrashIcon className="w-5 h-5" />
+                            </button>
+                             <button
+                                onClick={handleShare}
+                                disabled={isProcessing}
+                                className="p-2 text-green-600 hover:bg-green-100 dark:text-green-400 dark:hover:bg-green-900/50 rounded-full transition-colors disabled:opacity-50"
+                                title={t.share}
+                            >
+                                <ShareIcon className="w-5 h-5" />
+                            </button>
+                        </div>
+                    )}
+                </div>
                 <button type="button" onClick={onClose} className="px-4 py-2 rounded-lg bg-slate-200 dark:bg-slate-600 hover:bg-slate-300 dark:hover:bg-slate-500 font-semibold text-slate-800 dark:text-slate-300 transition-colors">{t.close}</button>
             </div>
         </Modal>

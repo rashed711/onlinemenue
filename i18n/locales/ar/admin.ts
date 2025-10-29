@@ -171,7 +171,6 @@ export default {
   "pushSubscriptionFailed": "فشل تفعيل الإشعارات.",
   "pushUnsubscriptionSuccess": "تم إيقاف الإشعارات.",
   "pushUnsubscriptionFailed": "فشل إيقاف الإشعارات.",
-  // FIX: Added missing 'editRole' translation to resolve type error.
   "editRole": "تعديل الدور",
   "roleNameEn": "اسم الدور (إنجليزي)",
   "roleNameAr": "اسم الدور (عربي)",
@@ -310,5 +309,9 @@ export default {
   "permission_manage_settings_social": "إدارة روابط التواصل",
   "permission_manage_settings_statuses": "إدارة حالات الطلب",
   "permission_manage_settings_payments": "إدارة طرق الدفع",
-  "permission_manage_settings_activation": "إدارة تفعيل النظام"
+  "permission_manage_settings_activation": "إدارة تفعيل النظام",
+  "purchaseInvoice": "فاتورة شراء",
+  "salesInvoice": "فاتورة بيع",
+  "invoiceNumber": "رقم الفاتورة",
+  "invoiceId": "معرف الفاتورة"
 };

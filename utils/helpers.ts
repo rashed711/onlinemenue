@@ -1,6 +1,5 @@
-import type { CartItem, Order, RestaurantInfo, Language, Product, Promotion, Category } from '../types';
+import type { CartItem, Order, RestaurantInfo, Language, Product, Promotion, Category, PurchaseInvoice, SalesInvoice } from '../types';
 import { translations } from '../i18n/translations';
-// @FIX: Import APP_CONFIG to resolve 'Cannot find name' error.
 import { APP_CONFIG } from './config';
 
 export const getActivePromotionForProduct = (productId: number, promotions: Promotion[]): Promotion | undefined => {
@@ -14,10 +13,8 @@ export const getActivePromotionForProduct = (productId: number, promotions: Prom
 
 export const formatNumber = (num: number): string => {
   try {
-    // Using a basic formatter, can be expanded with locale options if needed
     return new Intl.NumberFormat().format(num);
   } catch (e) {
-    // Fallback for environments that might not support it
     return String(num);
   }
 };
@@ -87,7 +84,6 @@ export const formatDateTime = (isoString: string): string => {
 const loadImage = (src: string): Promise<HTMLImageElement> => {
     return new Promise((resolve, reject) => {
         if (!src) {
-            // Immediately resolve with a placeholder if src is empty
             const placeholder = new Image();
             placeholder.src = 'data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=';
             placeholder.onload = () => resolve(placeholder);
@@ -98,7 +94,6 @@ const loadImage = (src: string): Promise<HTMLImageElement> => {
         img.onload = () => resolve(img);
         img.onerror = (e) => {
             console.error(`Failed to load image: ${src}`, e);
-            // Resolve with a placeholder 1x1 pixel image to prevent total failure
             const placeholder = new Image();
             placeholder.src = 'data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=';
             placeholder.onload = () => resolve(placeholder);
@@ -116,18 +111,11 @@ export const resolveImageUrl = (path: string | undefined): string => {
   return `${domain}/${cleanPath}`;
 };
 
-
-// FIX: Refactored the entire image generation logic to dynamically calculate height
-// based on content, preventing long receipts from being cut off.
-
-/**
- * Splits text into lines that fit within a max width.
- * @returns An array of strings, each representing a line.
- */
 const getWrappedTextLines = (ctx: CanvasRenderingContext2D, text: string, maxWidth: number): string[] => {
     const words = text.split(' ');
+    if (words.length === 0) return [];
     const lines: string[] = [];
-    let currentLine = words[0];
+    let currentLine = words[0] || '';
 
     for (let i = 1; i < words.length; i++) {
         const word = words[i];
@@ -146,10 +134,10 @@ const getWrappedTextLines = (ctx: CanvasRenderingContext2D, text: string, maxWid
 export const normalizeArabic = (text: string): string => {
     if (!text) return '';
     return text
-      .replace(/أ|إ|آ/g, 'ا') // Normalize Alef
-      .replace(/ى/g, 'ي')   // Normalize Yaa
-      .replace(/ة/g, 'ه')   // Normalize Teh Marbuta
-      .replace(/[\u064B-\u0652]/g, ''); // Remove diacritics (Tashkeel)
+      .replace(/أ|إ|آ/g, 'ا')
+      .replace(/ى/g, 'ي')
+      .replace(/ة/g, 'ه')
+      .replace(/[\u064B-\u0652]/g, '');
 };
 
 export const generateReceiptImage = async (
@@ -163,26 +151,22 @@ export const generateReceiptImage = async (
     const ctx = canvas.getContext('2d');
     if (!ctx) return '';
 
-    // --- Configuration ---
     const isRtl = language === 'ar';
     const FONT_FAMILY_SANS = isRtl ? 'Cairo, sans-serif' : 'Inter, sans-serif';
     const width = 500;
     const padding = 25;
     const contentWidth = width - (padding * 2);
-    const COLORS = { BG: '#F8F9FA', PAPER: '#FFFFFF', TEXT_DARK: '#1E293B', TEXT_LIGHT: '#64748B', PRIMARY: '#F59E0B', GREEN: '#10B981', BLUE: '#3B82F6', ORANGE: '#F97316', BORDER: '#E2E8F0' };
+    const COLORS = { BG: '#F8F9FA', PAPER: '#FFFFFF', TEXT_DARK: '#1E293B', TEXT_LIGHT: '#64748B', PRIMARY: '#F59E0B', GREEN: '#10B981', BLUE: '#3B82F6', ORANGE: '#F97316', BORDER: '#E2E8F0', RED: '#EF4444' };
     
-    // Line heights
     const H_DETAIL = 22;
-    const H_ITEM_NAME = 22;
-    const H_OPTION = 18;
+    const H_ITEM_NAME = 24;
+    const H_ITEM_OPTION = 18;
+    const H_ITEM_DISCOUNT = 18;
+    const H_TOTAL_LINE = 28;
 
-    // --- Dynamic Height Calculation Pass ---
     let totalHeight = 0;
-    
-    // Header
-    totalHeight += 215; // Fixed height for logo, titles, and initial padding.
+    totalHeight += 215; 
 
-    // Order Details
     const details = [
         { label: t.orderId, value: order.id },
         { label: t.date, value: formatDateTime(order.timestamp) },
@@ -194,49 +178,45 @@ export const generateReceiptImage = async (
         details.push({ label: t.address, value: order.customer.address });
     }
     details.forEach(detail => {
-        // Address might wrap
         if (detail.label === t.address) {
             ctx.font = `14px ${FONT_FAMILY_SANS}`;
-            const addressLines = getWrappedTextLines(ctx, detail.value, contentWidth / 2); // Address takes up roughly half width
-            totalHeight += addressLines.length * H_DETAIL;
-        } else {
-            totalHeight += H_DETAIL;
+            const addressLines = getWrappedTextLines(ctx, detail.value, contentWidth / 2);
+            totalHeight += (addressLines.length -1) * H_DETAIL;
         }
+        totalHeight += H_DETAIL;
     });
-    totalHeight += 10; // Padding after details
+    totalHeight += 10;
 
-    // Items Section
-    totalHeight += 45; // Dashed line and header
+    totalHeight += 45;
     order.items.forEach(item => {
         ctx.font = `15px ${FONT_FAMILY_SANS}`;
         const itemText = `${item.quantity} x ${item.product.name[language]}`;
-        const itemLines = getWrappedTextLines(ctx, itemText, contentWidth - 80); // Reserve space for price
+        const itemLines = getWrappedTextLines(ctx, itemText, contentWidth - 80);
         totalHeight += itemLines.length * H_ITEM_NAME;
         
-        if (item.options) {
-            totalHeight += Object.keys(item.options).length * H_OPTION;
+        if (item.appliedDiscountPercent) {
+            totalHeight += H_ITEM_DISCOUNT;
         }
-        totalHeight += 25; // Padding and dashed line after item
+        if (item.options) {
+            totalHeight += Object.keys(item.options).length * H_ITEM_OPTION;
+        }
+        totalHeight += 25;
     });
-    totalHeight += 15; // Extra padding after last item
+    totalHeight += 15;
 
-    // Totals
-    totalHeight += 85;
+    const totalSavings = calculateTotalSavings(order.items);
+    if(totalSavings > 0) totalHeight += H_TOTAL_LINE * 2;
+    totalHeight += H_TOTAL_LINE + 35;
 
-    // Payment
     totalHeight += 80;
-
-    // Footer
     totalHeight += 60;
 
     canvas.width = width;
     canvas.height = totalHeight;
     
-    // --- Drawing Pass ---
     ctx.fillStyle = COLORS.PAPER;
     ctx.fillRect(0, 0, width, totalHeight);
 
-    // --- Helper Functions for Drawing ---
     const x = (val: number) => isRtl ? width - val : val;
     const textAlign = (align: CanvasTextAlign): CanvasTextAlign => {
         if (!isRtl) return align;
@@ -256,21 +236,17 @@ export const generateReceiptImage = async (
         ctx.setLineDash([]);
     };
 
-    /**
-     * Draws wrapped text and returns the y-coordinate for the next element.
-     */
     const drawWrappedText = (text: string, xPos: number, yPos: number, maxWidth: number, lineHeight: number, align: CanvasTextAlign = 'start'): number => {
         ctx.textAlign = textAlign(align);
         const lines = getWrappedTextLines(ctx, text, maxWidth);
         lines.forEach((line, index) => {
             ctx.fillText(line, x(xPos), yPos + (index * lineHeight));
         });
-        return yPos + lines.length * lineHeight;
+        return yPos + (lines.length - 1) * lineHeight;
     };
     
     let y = 40;
 
-    // Header
     const logo = await loadImage(restaurantInfo.logo);
     ctx.drawImage(logo, (width / 2) - 32, y, 64, 64);
     y += 80;
@@ -286,7 +262,6 @@ export const generateReceiptImage = async (
     drawDashedLine(y);
     y += 25;
 
-    // Order Details
     ctx.font = `14px ${FONT_FAMILY_SANS}`;
     details.forEach(detail => {
         ctx.fillStyle = COLORS.TEXT_LIGHT;
@@ -295,18 +270,15 @@ export const generateReceiptImage = async (
         
         ctx.fillStyle = COLORS.TEXT_DARK;
         if (detail.label === t.address) {
-            // Draw address wrapped and update y based on its height
-            const newY = drawWrappedText(detail.value, width - padding, y, contentWidth / 2, H_DETAIL, 'end');
-            y = Math.max(y + H_DETAIL, newY); // Ensure we move down by at least one line height
+            y = drawWrappedText(detail.value, width - padding, y, contentWidth / 2, H_DETAIL, 'end');
         } else {
             ctx.textAlign = textAlign('end');
             ctx.fillText(detail.value, x(width - padding), y);
-            y += H_DETAIL;
         }
+        y += H_DETAIL;
     });
     y += 10;
     
-    // Items Section
     drawDashedLine(y);
     y += 25;
     ctx.font = `bold 14px ${FONT_FAMILY_SANS}`;
@@ -318,14 +290,38 @@ export const generateReceiptImage = async (
     y += 20;
 
     order.items.forEach(item => {
+        const itemStartY = y;
         ctx.font = `15px ${FONT_FAMILY_SANS}`;
         ctx.fillStyle = COLORS.TEXT_DARK;
-        const itemStartY = y;
-        const newY = drawWrappedText(`${item.quantity} x ${item.product.name[language]}`, padding, y, contentWidth - 80, H_ITEM_NAME);
-        y = newY;
+        y = drawWrappedText(`${item.quantity} x ${item.product.name[language]}`, padding, y, contentWidth - 100, H_ITEM_NAME);
+        y += H_ITEM_NAME;
+
+        const finalItemTotal = calculateItemTotal(item);
+        const originalItemTotal = calculateOriginalItemTotal(item);
 
         ctx.textAlign = textAlign('end');
-        ctx.fillText(calculateItemTotal(item).toFixed(2), x(width - padding), itemStartY);
+        if (item.appliedDiscountPercent) {
+            ctx.fillStyle = COLORS.TEXT_DARK;
+            ctx.fillText(finalItemTotal.toFixed(2), x(width - padding), itemStartY + H_ITEM_NAME / 2);
+            
+            ctx.font = `13px ${FONT_FAMILY_SANS}`;
+            ctx.fillStyle = COLORS.TEXT_LIGHT;
+            ctx.fillText(originalItemTotal.toFixed(2), x(width - padding), itemStartY + H_ITEM_NAME / 2 + H_ITEM_DISCOUNT);
+            
+            const textWidth = ctx.measureText(originalItemTotal.toFixed(2)).width;
+            ctx.beginPath();
+            const lineY = itemStartY + H_ITEM_NAME / 2 + H_ITEM_DISCOUNT - 5;
+            const lineXStart = isRtl ? padding : width - padding - textWidth;
+            const lineXEnd = isRtl ? padding + textWidth : width - padding;
+            ctx.moveTo(lineXStart, lineY);
+            ctx.lineTo(lineXEnd, lineY);
+            ctx.strokeStyle = COLORS.TEXT_LIGHT;
+            ctx.lineWidth = 1;
+            ctx.stroke();
+            y += H_ITEM_DISCOUNT;
+        } else {
+            ctx.fillText(finalItemTotal.toFixed(2), x(width - padding), itemStartY + H_ITEM_NAME / 2);
+        }
 
         if (item.options) {
             ctx.font = `13px ${FONT_FAMILY_SANS}`;
@@ -333,7 +329,8 @@ export const generateReceiptImage = async (
             Object.values(item.options).forEach(valueKey => {
                 const valueName = item.product.options?.flatMap(opt => opt.values).find(v => v.name.en === valueKey)?.name[language];
                 if (valueName) {
-                    y = drawWrappedText(`  + ${valueName}`, padding + 10, y, contentWidth - 90, H_OPTION);
+                    y = drawWrappedText(`+ ${valueName}`, padding + 15, y, contentWidth - 115, H_ITEM_OPTION);
+                    y += H_ITEM_OPTION;
                 }
             });
         }
@@ -341,28 +338,38 @@ export const generateReceiptImage = async (
         drawDashedLine(y);
         y += 20;
     });
-    y += 15;
     
-    // Totals
-    const totals = [
-        { label: t.subtotal, value: order.total.toFixed(2) },
-        { label: t.total, value: order.total.toFixed(2), isBold: true },
-    ];
-    totals.forEach(totalItem => {
-        ctx.font = `${totalItem.isBold ? 'bold ' : ''}16px ${FONT_FAMILY_SANS}`;
-        ctx.fillStyle = totalItem.isBold ? COLORS.TEXT_DARK : COLORS.TEXT_LIGHT;
+    const finalTotal = order.total;
+    const totalSavingsVal = calculateTotalSavings(order.items);
+    const originalTotal = finalTotal + totalSavingsVal;
+    
+    if (totalSavingsVal > 0) {
+        ctx.font = `16px ${FONT_FAMILY_SANS}`;
+        ctx.fillStyle = COLORS.TEXT_LIGHT;
         ctx.textAlign = textAlign('start');
-        ctx.fillText(totalItem.label, x(padding + 250), y);
-        ctx.fillStyle = COLORS.TEXT_DARK;
+        ctx.fillText(t.subtotal, x(padding + 250), y);
         ctx.textAlign = textAlign('end');
-        ctx.fillText(`${totalItem.value} ${t.currency}`, x(width - padding), y);
-        y += 25;
-    });
-    y += 10;
+        ctx.fillText(`${originalTotal.toFixed(2)} ${t.currency}`, x(width - padding), y);
+        y += H_TOTAL_LINE;
+
+        ctx.fillStyle = COLORS.RED;
+        ctx.textAlign = textAlign('start');
+        ctx.fillText(t.discount, x(padding + 250), y);
+        ctx.textAlign = textAlign('end');
+        ctx.fillText(`-${totalSavingsVal.toFixed(2)} ${t.currency}`, x(width - padding), y);
+        y += H_TOTAL_LINE;
+    }
+
+    ctx.font = `bold 18px ${FONT_FAMILY_SANS}`;
+    ctx.fillStyle = COLORS.TEXT_DARK;
+    ctx.textAlign = textAlign('start');
+    ctx.fillText(t.total, x(padding + 250), y);
+    ctx.textAlign = textAlign('end');
+    ctx.fillText(`${finalTotal.toFixed(2)} ${t.currency}`, x(width - padding), y);
+    y += H_TOTAL_LINE + 10;
     drawDashedLine(y);
     y += 25;
     
-    // Payment Details
     let paymentStatusText = t.paymentStatusUnpaid, paymentStatusColor = COLORS.ORANGE;
     if (order.paymentMethod) {
         if(order.paymentMethod === 'cod') { paymentStatusText = t.paymentStatusCod; paymentStatusColor = COLORS.BLUE; }
@@ -376,10 +383,20 @@ export const generateReceiptImage = async (
     ctx.fillStyle = paymentStatusColor;
     const chipWidth = ctx.measureText(paymentStatusText).width + 24;
     const chipX = isRtl ? padding : width - padding - chipWidth;
-    // A simple rect as roundRect is not universally supported
     ctx.beginPath();
-    ctx.roundRect(chipX, y - 16, chipWidth, 24, 12);
+    const chipRadius = 12;
+    ctx.moveTo(chipX + chipRadius, y - 16);
+    ctx.lineTo(chipX + chipWidth - chipRadius, y - 16);
+    ctx.quadraticCurveTo(chipX + chipWidth, y - 16, chipX + chipWidth, y - 16 + chipRadius);
+    ctx.lineTo(chipX + chipWidth, y - 16 + 24 - chipRadius);
+    ctx.quadraticCurveTo(chipX + chipWidth, y - 16 + 24, chipX + chipWidth - chipRadius, y - 16 + 24);
+    ctx.lineTo(chipX + chipRadius, y - 16 + 24);
+    ctx.quadraticCurveTo(chipX, y - 16 + 24, chipX, y - 16 + 24 - chipRadius);
+    ctx.lineTo(chipX, y - 16 + chipRadius);
+    ctx.quadraticCurveTo(chipX, y - 16, chipX + chipRadius, y - 16);
+    ctx.closePath();
     ctx.fill();
+
     ctx.fillStyle = '#FFFFFF';
     ctx.textAlign = 'center';
     ctx.fillText(paymentStatusText, chipX + chipWidth / 2, y);
@@ -394,14 +411,168 @@ export const generateReceiptImage = async (
     ctx.fillText(order.paymentDetail || (order.paymentMethod === 'cod' ? t.cash : 'N/A'), x(width - padding), y);
     y += 40;
 
-    // Footer
     ctx.font = `16px ${FONT_FAMILY_SANS}`;
     ctx.fillStyle = COLORS.TEXT_LIGHT;
     ctx.textAlign = 'center';
-    ctx.fillText('!شكراً لطلبك', width / 2, y);
+    ctx.fillText(t.language === 'ar' ? 'شكراً لطلبك!' : 'Thank you for your order!', width / 2, y);
 
     return canvas.toDataURL('image/png');
 };
+
+const generateGenericInvoiceImage = async (
+  invoice: PurchaseInvoice | SalesInvoice,
+  type: 'purchase' | 'sales',
+  restaurantInfo: RestaurantInfo,
+  t: typeof translations['en'],
+  language: Language
+): Promise<string> => {
+    const canvas = document.createElement('canvas');
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return '';
+
+    const isRtl = language === 'ar';
+    const FONT_FAMILY_SANS = isRtl ? 'Cairo, sans-serif' : 'Inter, sans-serif';
+    const width = 500;
+    const padding = 25;
+    const contentWidth = width - (padding * 2);
+    const COLORS = { PAPER: '#FFFFFF', TEXT_DARK: '#1E293B', TEXT_LIGHT: '#64748B', BORDER: '#E2E8F0' };
+    
+    const H_DETAIL = 22;
+    const H_ITEM_NAME = 24;
+    const H_TOTAL_LINE = 28;
+
+    let totalHeight = 0;
+    totalHeight += 215; // Header space
+
+    const details = [
+        { label: type === 'purchase' ? t.invoiceId : t.invoiceNumber, value: String(type === 'purchase' ? invoice.id : (invoice as SalesInvoice).invoice_number) },
+        { label: t.date, value: formatDateTime(invoice.invoice_date) },
+    ];
+    if (type === 'purchase') {
+        details.push({ label: t.supplier, value: (invoice as PurchaseInvoice).supplier_name });
+    } else {
+        details.push({ label: t.customer, value: (invoice as SalesInvoice).customer_name });
+        details.push({ label: t.mobileNumber, value: (invoice as SalesInvoice).customer_mobile });
+    }
+    
+    totalHeight += details.length * H_DETAIL;
+    totalHeight += 10; // Padding after details
+
+    totalHeight += 45; // Items header
+    invoice.items.forEach(item => {
+        ctx.font = `15px ${FONT_FAMILY_SANS}`;
+        const itemText = `${item.quantity} x ${item.product_name?.[language] || 'Item'}`;
+        const itemLines = getWrappedTextLines(ctx, itemText, contentWidth - 80);
+        totalHeight += (itemLines.length * H_ITEM_NAME) + 10; // name + padding
+    });
+    totalHeight += 15;
+
+    totalHeight += H_TOTAL_LINE + 35; // Total section
+    totalHeight += 60; // Footer
+
+    canvas.width = width;
+    canvas.height = totalHeight;
+    
+    ctx.fillStyle = COLORS.PAPER;
+    ctx.fillRect(0, 0, width, totalHeight);
+
+    const x = (val: number) => isRtl ? width - val : val;
+    const textAlign = (align: CanvasTextAlign): CanvasTextAlign => {
+        if (!isRtl) return align;
+        return align === 'start' ? 'end' : align === 'end' ? 'start' : 'center';
+    };
+    
+    const drawDashedLine = (y: number) => {
+        ctx.strokeStyle = COLORS.BORDER;
+        ctx.lineWidth = 1;
+        ctx.setLineDash([3, 4]);
+        ctx.beginPath();
+        ctx.moveTo(padding, y);
+        ctx.lineTo(width - padding, y);
+        ctx.stroke();
+        ctx.setLineDash([]);
+    };
+
+    let y = 40;
+
+    const logo = await loadImage(restaurantInfo.logo);
+    ctx.drawImage(logo, (width / 2) - 32, y, 64, 64);
+    y += 80;
+    ctx.font = `bold 24px ${FONT_FAMILY_SANS}`;
+    ctx.fillStyle = COLORS.TEXT_DARK;
+    ctx.textAlign = 'center';
+    ctx.fillText(restaurantInfo.name[language], width / 2, y);
+    y += 35;
+    ctx.font = `16px ${FONT_FAMILY_SANS}`;
+    ctx.fillStyle = COLORS.TEXT_LIGHT;
+    ctx.fillText(type === 'purchase' ? t.purchaseInvoice : t.salesInvoice, width / 2, y);
+    y += 30;
+    drawDashedLine(y);
+    y += 25;
+
+    ctx.font = `14px ${FONT_FAMILY_SANS}`;
+    details.forEach(detail => {
+        ctx.fillStyle = COLORS.TEXT_LIGHT;
+        ctx.textAlign = textAlign('start');
+        ctx.fillText(detail.label, x(padding), y);
+        
+        ctx.fillStyle = COLORS.TEXT_DARK;
+        ctx.textAlign = textAlign('end');
+        ctx.fillText(detail.value, x(width - padding), y);
+        y += H_DETAIL;
+    });
+    y += 10;
+    
+    drawDashedLine(y);
+    y += 25;
+    ctx.font = `bold 14px ${FONT_FAMILY_SANS}`;
+    ctx.fillStyle = COLORS.TEXT_LIGHT;
+    ctx.textAlign = textAlign('start');
+    ctx.fillText(t.item, x(padding), y);
+    ctx.textAlign = textAlign('end');
+    ctx.fillText(t.subtotal, x(width - padding), y);
+    y += 20;
+
+    invoice.items.forEach(item => {
+        const itemStartY = y;
+        ctx.font = `15px ${FONT_FAMILY_SANS}`;
+        ctx.fillStyle = COLORS.TEXT_DARK;
+        const itemName = `${item.quantity} x ${item.product_name?.[language] || 'Item'}`;
+        const itemPrice = type === 'purchase' ? (item as any).purchase_price : item.sale_price;
+        const itemLineHeight = 20;
+        
+        const lines = getWrappedTextLines(ctx, itemName, contentWidth - 120);
+        lines.forEach((line, index) => {
+             ctx.textAlign = textAlign('start');
+             ctx.fillText(line, x(padding), y + (index * itemLineHeight));
+        });
+
+        ctx.textAlign = textAlign('end');
+        ctx.fillText(item.subtotal.toFixed(2), x(width - padding), itemStartY + H_ITEM_NAME / 2);
+
+        y += (lines.length * itemLineHeight) + 10;
+    });
+    
+    drawDashedLine(y);
+    y += 25;
+    
+    ctx.font = `bold 18px ${FONT_FAMILY_SANS}`;
+    ctx.fillStyle = COLORS.TEXT_DARK;
+    ctx.textAlign = textAlign('start');
+    ctx.fillText(t.total, x(padding + 250), y);
+    ctx.textAlign = textAlign('end');
+    ctx.fillText(`${invoice.total_amount.toFixed(2)} ${t.currency}`, x(width - padding), y);
+    y += H_TOTAL_LINE + 10;
+
+    return canvas.toDataURL('image/png');
+};
+
+export const generatePurchaseInvoiceImage = (invoice: PurchaseInvoice, restaurantInfo: RestaurantInfo, t: typeof translations['en'], language: Language) => 
+    generateGenericInvoiceImage(invoice, 'purchase', restaurantInfo, t, language);
+
+export const generateSalesInvoiceImage = (invoice: SalesInvoice, restaurantInfo: RestaurantInfo, t: typeof translations['en'], language: Language) =>
+    generateGenericInvoiceImage(invoice, 'sales', restaurantInfo, t, language);
+
 
 export const getStartAndEndDates = (dateRange: string, customStart?: string, customEnd?: string): { startDate: Date, endDate: Date } => {
     const now = new Date();
@@ -422,7 +593,7 @@ export const getStartAndEndDates = (dateRange: string, customStart?: string, cus
             return { startDate: yesterdayStart, endDate: yesterdayEnd };
         case 'last7days':
             const last7Start = new Date();
-            last7Start.setDate(now.getDate() - 6); // Including today
+            last7Start.setDate(now.getDate() - 6);
             last7Start.setHours(0, 0, 0, 0);
             return { startDate: last7Start, endDate: todayEnd };
         case 'thisMonth':
@@ -430,7 +601,7 @@ export const getStartAndEndDates = (dateRange: string, customStart?: string, cus
             return { startDate: thisMonthStart, endDate: todayEnd };
         case 'last30days':
              const last30Start = new Date();
-            last30Start.setDate(now.getDate() - 29); // Including today
+            last30Start.setDate(now.getDate() - 29);
             last30Start.setHours(0, 0, 0, 0);
             return { startDate: last30Start, endDate: todayEnd };
         case 'custom':
@@ -449,7 +620,6 @@ export const getStartAndEndDates = (dateRange: string, customStart?: string, cus
 export const getDescendantCategoryIds = (categoryId: number, categories: Category[]): number[] => {
     const ids: number[] = [];
 
-    // Helper to find a category by its ID in the tree
     const findCategory = (cats: Category[], id: number): Category | null => {
         for (const cat of cats) {
             if (cat.id === id) {
@@ -465,7 +635,6 @@ export const getDescendantCategoryIds = (categoryId: number, categories: Categor
         return null;
     };
 
-    // Helper to recursively collect all child IDs, including the parent's
     const collectAllIds = (category: Category) => {
         ids.push(category.id);
         if (category.children) {

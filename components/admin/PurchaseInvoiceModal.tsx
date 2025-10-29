@@ -77,19 +77,43 @@ export const PurchaseInvoiceModal: React.FC<PurchaseInvoiceModalProps> = ({ invo
         setItems(prev => {
             const newItems = [...prev];
             const currentItem = { ...newItems[index] };
-            
+    
             if (field === 'product_id') {
                 const productId = typeof value === 'string' ? parseInt(value, 10) : value;
-                const product = products.find(p => p.id === productId);
-                currentItem.product_id = productId;
-                currentItem.purchase_price = product?.cost_price || 0;
+                if (!productId) { // Handle case where product is deselected
+                    currentItem.product_id = undefined;
+                    currentItem.purchase_price = 0;
+                    newItems[index] = currentItem;
+                    return newItems;
+                }
+    
+                const duplicateIndex = newItems.findIndex((item, i) => i !== index && item.product_id === productId);
+    
+                if (duplicateIndex !== -1) {
+                    const duplicateItem = { ...newItems[duplicateIndex] };
+                    const currentQuantity = currentItem.quantity || 1;
+                    
+                    duplicateItem.quantity = (duplicateItem.quantity || 0) + currentQuantity;
+                    duplicateItem.subtotal = (duplicateItem.quantity || 0) * (duplicateItem.purchase_price || 0);
+                    
+                    newItems[duplicateIndex] = duplicateItem;
+                    newItems.splice(index, 1);
+                    
+                    return newItems;
+                } else {
+                    const product = products.find(p => p.id === productId);
+                    currentItem.product_id = productId;
+                    currentItem.purchase_price = product?.cost_price || 0;
+                    currentItem.subtotal = (currentItem.quantity || 1) * (currentItem.purchase_price || 0);
+                    newItems[index] = currentItem;
+                    return newItems;
+                }
             } else {
                 (currentItem as any)[field] = parseFloat(value) || 0;
+                currentItem.subtotal = (currentItem.quantity || 0) * (currentItem.purchase_price || 0);
+                newItems[index] = currentItem;
+                return newItems;
             }
-
-            currentItem.subtotal = (currentItem.quantity || 0) * (currentItem.purchase_price || 0);
-            newItems[index] = currentItem;
-            return newItems;
         });
     };
 

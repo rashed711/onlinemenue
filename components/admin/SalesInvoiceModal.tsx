@@ -108,12 +108,45 @@ export const SalesInvoiceModal: React.FC<SalesInvoiceModalProps> = ({ invoiceToE
         setItems(prev => {
             const newItems = [...prev];
             const currentItem = { ...newItems[index] };
-            
+    
             if (field === 'product_id') {
                 const productId = typeof value === 'string' ? parseInt(value, 10) : value;
-                const product = products.find(p => p.id === productId);
-                currentItem.product_id = productId;
-                currentItem.sale_price = product?.price || 0;
+                if (!productId) {
+                    currentItem.product_id = undefined;
+                    currentItem.sale_price = 0;
+                    newItems[index] = currentItem;
+                    return newItems;
+                }
+    
+                const duplicateIndex = newItems.findIndex((item, i) => i !== index && item.product_id === productId);
+                
+                if (duplicateIndex !== -1) {
+                    const duplicateItem = { ...newItems[duplicateIndex] };
+                    const currentQuantity = currentItem.quantity || 1;
+                    const product = products.find(p => p.id === productId);
+                    const stock = product?.stock_quantity || 0;
+    
+                    const newTotalQuantity = (duplicateItem.quantity || 0) + currentQuantity;
+                    duplicateItem.quantity = Math.min(newTotalQuantity, stock);
+    
+                    duplicateItem.subtotal = (duplicateItem.quantity || 0) * (duplicateItem.sale_price || 0);
+                    
+                    newItems[duplicateIndex] = duplicateItem;
+                    newItems.splice(index, 1);
+                    
+                    return newItems;
+                } else {
+                    const product = products.find(p => p.id === productId);
+                    currentItem.product_id = productId;
+                    currentItem.sale_price = product?.price || 0;
+                    
+                    const quantity = currentItem.quantity || 1;
+                    currentItem.quantity = Math.min(quantity, product?.stock_quantity || 0);
+    
+                    currentItem.subtotal = (currentItem.quantity || 0) * (currentItem.sale_price || 0);
+                    newItems[index] = currentItem;
+                    return newItems;
+                }
             } else if (field === 'quantity') {
                  const productId = currentItem.product_id;
                  const product = products.find(p => p.id === productId);
@@ -122,7 +155,7 @@ export const SalesInvoiceModal: React.FC<SalesInvoiceModalProps> = ({ invoiceToE
             } else {
                 (currentItem as any)[field] = parseFloat(value) || 0;
             }
-
+    
             currentItem.subtotal = (currentItem.quantity || 0) * (currentItem.sale_price || 0);
             newItems[index] = currentItem;
             return newItems;

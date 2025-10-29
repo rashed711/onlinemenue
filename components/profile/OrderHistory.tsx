@@ -8,9 +8,10 @@ interface OrderHistoryProps {
     activeOrders: Order[];
     pastOrders: Order[];
     onLeaveFeedback: (order: Order) => void;
+    onShareInvoice: (order: Order) => void;
 }
 
-export const OrderHistory: React.FC<OrderHistoryProps> = ({ activeOrders, pastOrders, onLeaveFeedback }) => {
+export const OrderHistory: React.FC<OrderHistoryProps> = ({ activeOrders, pastOrders, onLeaveFeedback, onShareInvoice }) => {
     const { t } = useUI();
     const [activeTab, setActiveTab] = useState<'active' | 'past'>('active');
 
@@ -50,7 +51,7 @@ export const OrderHistory: React.FC<OrderHistoryProps> = ({ activeOrders, pastOr
 
                 {activeTab === 'past' && (
                     pastOrders.length > 0
-                        ? pastOrders.map(order => <PastOrderCard key={order.id} order={order} onLeaveFeedback={onLeaveFeedback} />)
+                        ? pastOrders.map(order => <PastOrderCard key={order.id} order={order} onLeaveFeedback={onLeaveFeedback} onShareInvoice={onShareInvoice} />)
                         : <p className="text-slate-500 text-center py-8">You have no past orders.</p>
                 )}
             </div>
