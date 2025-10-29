@@ -4,7 +4,9 @@ import { UIProvider, useUI } from './contexts/UIContext';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { DataProvider, useData } from './contexts/DataContext';
 import { CartProvider } from './contexts/CartContext';
-import { AdminProvider, useAdmin } from './contexts/AdminContext';
+import { OrderProvider } from './contexts/OrderContext';
+import { UserManagementProvider } from './contexts/UserManagementContext';
+import { InventoryProvider } from './contexts/InventoryContext';
 import { APP_CONFIG } from './utils/config';
 
 // Lazy load page components for better performance
@@ -43,7 +45,6 @@ const AppContent: React.FC = () => {
   const {
     language,
     toast,
-    showToast,
     isChangePasswordModalOpen,
     setIsChangePasswordModalOpen,
     isLoading,
@@ -54,7 +55,6 @@ const AppContent: React.FC = () => {
   } = useUI();
   const { currentUser, roles, isCompletingProfile } = useAuth();
   const { restaurantInfo } = useData();
-  const { users, resetUserPassword } = useAdmin();
 
   // Routing State
   const hash = useSyncExternalStore(subscribe, getSnapshot, () => '');
@@ -132,9 +132,13 @@ const App: React.FC = () => {
       <AuthProvider>
         <DataProvider>
           <CartProvider>
-            <AdminProvider>
-              <AppContent />
-            </AdminProvider>
+            <OrderProvider>
+              <UserManagementProvider>
+                <InventoryProvider>
+                  <AppContent />
+                </InventoryProvider>
+              </UserManagementProvider>
+            </OrderProvider>
           </CartProvider>
         </DataProvider>
       </AuthProvider>

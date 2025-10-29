@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { useUI } from '../../../contexts/UIContext';
-import { useAdmin } from '../../../contexts/AdminContext';
+import { useOrders } from '../../../contexts/OrderContext';
 import { useData } from '../../../contexts/DataContext';
 import { useAuth } from '../../../contexts/AuthContext';
 import { formatNumber, calculateTotal, getStartAndEndDates } from '../../../utils/helpers';
@@ -119,7 +119,7 @@ const tailwindColorMap: { [key: string]: string } = {
 
 export const DashboardPage: React.FC = () => {
     const { language, t } = useUI();
-    const { orders: allOrders } = useAdmin();
+    const { orders: allOrders } = useOrders();
     const { products: allProducts, restaurantInfo } = useData();
     const { currentUser, hasPermission } = useAuth();
     const [dateRange, setDateRange] = useState('last7days');

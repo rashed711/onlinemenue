@@ -4,7 +4,7 @@ import { useUI } from '../../contexts/UIContext';
 import { useAuth } from '../../contexts/AuthContext';
 import { useData } from '../../contexts/DataContext';
 import { useCart } from '../../contexts/CartContext';
-import { useAdmin } from '../../contexts/AdminContext';
+import { useOrders } from '../../contexts/OrderContext';
 
 import type { Order, OrderType, PaymentMethod, OnlinePaymentMethod } from '../../types';
 
@@ -100,7 +100,7 @@ export const CheckoutPage: React.FC = () => {
     const { currentUser } = useAuth();
     const { restaurantInfo } = useData();
     const { cartItems, clearCart } = useCart();
-    const { placeOrder } = useAdmin();
+    const { placeOrder } = useOrders();
 
     const [step, setStep] = useState<CheckoutStep>('delivery');
     const [name, setName] = useState('');

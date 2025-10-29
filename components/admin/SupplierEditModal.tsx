@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import type { Supplier } from '../../types';
 import { Modal } from '../Modal';
 import { useUI } from '../../contexts/UIContext';
-import { useAdmin } from '../../contexts/AdminContext';
+import { useInventory } from '../../contexts/InventoryContext';
 
 interface SupplierEditModalProps {
     supplier: Supplier | null;
@@ -19,7 +19,7 @@ const emptySupplier: Omit<Supplier, 'id'> = {
 
 export const SupplierEditModal: React.FC<SupplierEditModalProps> = ({ supplier, onClose }) => {
     const { t } = useUI();
-    const { addSupplier, updateSupplier } = useAdmin();
+    const { addSupplier, updateSupplier } = useInventory();
     const [formData, setFormData] = useState(emptySupplier);
 
     useEffect(() => {

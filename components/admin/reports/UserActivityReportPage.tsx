@@ -2,14 +2,18 @@ import React, { useState, useMemo } from 'react';
 import { ReportHeader } from './ReportHeader';
 import { DataTable } from './DataTable';
 import { useUI } from '../../../contexts/UIContext';
-import { useAdmin } from '../../../contexts/AdminContext';
+import { useOrders } from '../../../contexts/OrderContext';
+import { useUserManagement } from '../../../contexts/UserManagementContext';
+import { useAuth } from '../../../contexts/AuthContext';
 import { getStartAndEndDates } from '../../../utils/helpers';
 import type { User } from '../../../types';
 
 
 export const UserActivityReportPage: React.FC = () => {
     const { t, language } = useUI();
-    const { orders, users, roles } = useAdmin();
+    const { orders } = useOrders();
+    const { users } = useUserManagement();
+    const { roles } = useAuth();
     const [dateRange, setDateRange] = useState('thisMonth');
     const [customStartDate, setCustomStartDate] = useState('');
     const [customEndDate, setCustomEndDate] = useState('');

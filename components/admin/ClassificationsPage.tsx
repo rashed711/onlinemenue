@@ -3,7 +3,6 @@ import type { Category, Tag } from '../../types';
 import { PlusIcon, PencilIcon, TrashIcon, ChevronRightIcon, GripVerticalIcon } from '../icons/Icons';
 import { useUI } from '../../contexts/UIContext';
 import { useData } from '../../contexts/DataContext';
-import { useAdmin } from '../../contexts/AdminContext';
 import { useAuth } from '../../contexts/AuthContext';
 
 interface CategoryRowProps {
@@ -129,8 +128,7 @@ export const ClassificationsPage: React.FC<ClassificationsPageProps> = (props) =
     const { onAddCategory, onEditCategory, onAddTag, onEditTag } = props;
     
     const { language, t } = useUI();
-    const { categories, tags } = useData();
-    const { deleteCategory, deleteTag, updateCategoryOrder } = useAdmin();
+    const { categories, tags, deleteCategory, deleteTag, updateCategoryOrder } = useData();
     const { hasPermission } = useAuth();
 
     const [orderedCategories, setOrderedCategories] = useState<Category[]>([]);

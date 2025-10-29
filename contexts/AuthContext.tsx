@@ -16,9 +16,9 @@ import {
     reauthenticateWithCredential,
     EmailAuthProvider,
     updatePassword,
-    // @FIX: Corrected import syntax for the FirebaseUser type to resolve a module declaration error.
-    type FirebaseUser
 } from '../firebase';
+// @FIX: Corrected import syntax for the FirebaseUser type to resolve a module declaration error.
+import type { FirebaseUser } from '../firebase';
 
 
 interface AuthContextType {

@@ -5,7 +5,7 @@ import { FeedbackModal } from './FeedbackModal';
 import { useUI } from '../../contexts/UIContext';
 import { useAuth } from '../../contexts/AuthContext';
 import { useData } from '../../contexts/DataContext';
-import { useAdmin } from '../../contexts/AdminContext';
+import { useOrders } from '../../contexts/OrderContext';
 import { OrderHistory } from './OrderHistory';
 import { Header } from '../Header'; // Import the main header
 import { optimizeImage } from '../../utils/imageOptimizer';
@@ -14,7 +14,7 @@ export const ProfilePage: React.FC = () => {
     const { language, t, setIsChangePasswordModalOpen, setIsProcessing, showToast } = useUI();
     const { currentUser, logout, updateUserProfile } = useAuth();
     const { restaurantInfo } = useData();
-    const { orders, updateOrder } = useAdmin();
+    const { orders, updateOrder } = useOrders();
     
     const [feedbackOrder, setFeedbackOrder] = useState<Order | null>(null);
     

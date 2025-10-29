@@ -4,6 +4,8 @@ import { restaurantInfo as fallbackRestaurantInfo, initialCategories, initialTag
 import { APP_CONFIG } from '../utils/config';
 import { useUI } from './UIContext';
 import { resolveImageUrl } from '../utils/helpers';
+// DataContext now needs useAuth for permissions checks
+import { useAuth } from './AuthContext';
 
 interface DataContextType {
     restaurantInfo: RestaurantInfo | null;
@@ -17,6 +19,19 @@ interface DataContextType {
     setTags: React.Dispatch<React.SetStateAction<Tag[]>>;
     fetchAllData: (isInitialLoad?: boolean) => Promise<void>;
     updateRestaurantInfo: (updatedInfo: Partial<RestaurantInfo>) => Promise<void>;
+    addProduct: (productData: Omit<Product, 'id' | 'rating'>, imageFile?: File | null) => Promise<void>;
+    updateProduct: (updatedProduct: Product, imageFile?: File | null) => Promise<void>;
+    deleteProduct: (productId: number) => Promise<void>;
+    addPromotion: (promotionData: Omit<Promotion, 'id'>) => Promise<void>;
+    updatePromotion: (updatedPromotion: Promotion) => Promise<void>;
+    deletePromotion: (promotionId: number) => Promise<void>;
+    addCategory: (categoryData: Omit<Category, 'id'>) => Promise<void>;
+    updateCategory: (categoryData: Category) => Promise<void>;
+    updateCategoryOrder: (orderedCategories: Category[]) => Promise<void>;
+    deleteCategory: (categoryId: number) => Promise<void>;
+    addTag: (tagData: Omit<Tag, 'id'> & { id: string }) => Promise<void>;
+    updateTag: (tagData: Tag) => Promise<void>;
+    deleteTag: (tagId: string) => Promise<void>;
 }
 
 const DataContext = createContext<DataContextType | undefined>(undefined);
@@ -38,7 +53,9 @@ const dataUrlToFile = (dataUrl: string, filename: string): File => {
 };
 
 export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-    const { setIsLoading, setShowProgress, setProgress, showToast, t, setIsProcessing } = useUI();
+    const { setIsLoading, setShowProgress, setProgress, showToast, t, setIsProcessing, language } = useUI();
+    // Getting hasPermission from useAuth
+    const { hasPermission } = useAuth();
     
     const [restaurantInfo, setRestaurantInfo] = useState<RestaurantInfo | null>(null);
     const [products, setProducts] = useState<Product[]>([]);
@@ -73,7 +90,6 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
                     if (data.activationEndDate.startsWith('0000-00-00')) {
                         data.activationEndDate = null;
                     } else {
-                        // FIX: Assume DB datetime string is UTC and append 'Z' to parse correctly, preventing timezone errors.
                         const utcDateString = data.activationEndDate.replace(' ', 'T') + 'Z';
                         const dateObj = new Date(utcDateString);
                         if (!isNaN(dateObj.getTime())) {
@@ -107,11 +123,8 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
             }
             if (promotionsRes.ok) {
                 const rawPromotions: any[] = (await promotionsRes.json()) || [];
-                // FIX: Ensure endDate from the database (which might lack timezone info) is parsed as UTC.
                 const processedPromotions = rawPromotions.map((promo) => {
-                    // Check if endDate exists and is a string before processing
                     if (promo.endDate && typeof promo.endDate === 'string' && !promo.endDate.endsWith('Z')) {
-                        // Converts "YYYY-MM-DD HH:MM:SS" to "YYYY-MM-DDTHH:MM:SSZ"
                         return { ...promo, endDate: promo.endDate.replace(' ', 'T') + 'Z' };
                     }
                     return promo;
@@ -165,7 +178,6 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 switch (key) {
                     case 'logo':
                     case 'heroImage':
-                        // FIX: Ensure value is a string before using string methods or assigning to string properties.
                         if (typeof value === 'string') {
                             if (value.startsWith('data:image')) {
                                 const file = dataUrlToFile(value, `${key}.png`);
@@ -203,46 +215,249 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
                         (uiUpdates as any)[key] = processedItems.map((item: any) => ({...item, icon: resolveImageUrl(item.icon)}));
                         break;
                     default:
-                        // @FIX: Correctly cast `dbPayload` to `any` to handle dynamic assignment of properties with different types.
-                        // This prevents TypeScript from inferring a narrow type for `dbPayload`'s values based on earlier assignments in the loop.
                         (dbPayload as any)[key] = value;
                         (uiUpdates as any)[key] = value;
                         break;
                 }
             }
             
-            if (Object.keys(dbPayload).length === 0) {
-                 setIsProcessing(false);
-                 return;
-            }
-
+            if (Object.keys(dbPayload).length === 0) { setIsProcessing(false); return; }
             const response = await fetch(`${APP_CONFIG.API_BASE_URL}update_settings.php`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(dbPayload) });
             const result = await response.json();
             if (!response.ok || !result.success) throw new Error(result.error || 'Update failed');
-
             setRestaurantInfo(prev => prev ? { ...prev, ...uiUpdates } : null);
             showToast(t.settingsUpdatedSuccess);
         } catch (error) {
             console.error("Error updating restaurant info:", error);
             showToast(t.settingsUpdateFailed);
-        } finally {
-            setIsProcessing(false);
-        }
+        } finally { setIsProcessing(false); }
     }, [restaurantInfo, showToast, t.settingsUpdatedSuccess, t.settingsUpdateFailed, setIsProcessing]);
+
+    const addProduct = useCallback(async (productData: Omit<Product, 'id' | 'rating'>, imageFile?: File | null) => {
+        if (!hasPermission('add_product')) { showToast(t.permissionDenied); return; }
+        setIsProcessing(true);
+        try {
+            let finalProductData = { ...productData };
+            if (imageFile) {
+                const formData = new FormData();
+                formData.append('image', imageFile);
+                formData.append('type', 'products');
+                const uploadRes = await fetch(`${APP_CONFIG.API_BASE_URL}upload_image.php`, { method: 'POST', body: formData });
+                const result = await uploadRes.json();
+                if (!uploadRes.ok || !result.success) throw new Error(result.error || 'Image upload failed');
+                finalProductData.image = result.url.split('?v=')[0];
+            }
+            const response = await fetch(`${APP_CONFIG.API_BASE_URL}add_product.php`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(finalProductData) });
+            const result = await response.json();
+            if (!response.ok || !result.success) throw new Error(result.error || t.productAddFailed);
+            const newProduct = { ...result.product, image: resolveImageUrl(result.product.image) };
+            setProducts(prev => [newProduct, ...prev].sort((a,b) => a.name[language].localeCompare(b.name[language])));
+            showToast(t.productAddedSuccess);
+        } catch (error: any) { showToast(error.message || t.productAddFailed); }
+        finally { setIsProcessing(false); }
+    }, [hasPermission, t, language, setProducts, showToast, setIsProcessing]);
+    
+    const updateProduct = useCallback(async (updatedProduct: Product, imageFile?: File | null) => {
+        if (!hasPermission('edit_product')) { showToast(t.permissionDenied); return; }
+        setIsProcessing(true);
+        try {
+            let finalProductData = { ...updatedProduct };
+            let serverImageUrl = '';
+            if (imageFile) {
+                const formData = new FormData();
+                formData.append('image', imageFile);
+                formData.append('type', 'products');
+                const relativeOldPath = updatedProduct.image.split('?')[0].replace(new URL(APP_CONFIG.API_BASE_URL).origin + '/', '');
+                formData.append('oldPath', relativeOldPath);
+                const uploadRes = await fetch(`${APP_CONFIG.API_BASE_URL}upload_image.php`, { method: 'POST', body: formData });
+                const result = await uploadRes.json();
+                if (!uploadRes.ok || !result.success) throw new Error(result.error || 'Image upload failed');
+                serverImageUrl = result.url;
+                finalProductData.image = serverImageUrl.split('?v=')[0];
+            } else {
+                 const domain = new URL(APP_CONFIG.API_BASE_URL).origin + '/';
+                 finalProductData.image = updatedProduct.image ? updatedProduct.image.split('?v=')[0].replace(domain, '') : '';
+            }
+            const response = await fetch(`${APP_CONFIG.API_BASE_URL}update_product.php`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(finalProductData) });
+            const result = await response.json();
+            if (!response.ok || !result.success) throw new Error(result.error || t.productUpdateFailed);
+            const resolvedImageUrl = serverImageUrl ? resolveImageUrl(serverImageUrl) : resolveImageUrl(finalProductData.image);
+            setProducts(prev => prev.map(p => p.id === updatedProduct.id ? { ...updatedProduct, image: resolvedImageUrl } : p));
+            showToast(t.productUpdatedSuccess);
+        } catch (error: any) { 
+            showToast(error.message || t.productUpdateFailed);
+            await fetchAllData(); // Revert by refetching
+        }
+        finally { setIsProcessing(false); }
+    }, [hasPermission, t, setProducts, showToast, setIsProcessing, fetchAllData]);
+
+    const deleteProduct = useCallback(async (productId: number) => {
+        if (!hasPermission('delete_product') || !window.confirm(t.confirmDelete)) return;
+        setIsProcessing(true);
+        try {
+            const response = await fetch(`${APP_CONFIG.API_BASE_URL}delete_product.php`, { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ id: productId }) });
+            if (!response.ok || !(await response.json()).success) throw new Error(t.productDeleteFailed);
+            setProducts(prev => prev.filter(p => p.id !== productId));
+            showToast(t.productDeletedSuccess);
+        } catch (error: any) { showToast(error.message || t.productDeleteFailed); }
+        finally { setIsProcessing(false); }
+    }, [hasPermission, t, setProducts, setIsProcessing, showToast]);
+    
+    const addPromotion = useCallback(async (promotionData: Omit<Promotion, 'id'>) => {
+        if (!hasPermission('add_promotion')) { showToast(t.permissionDenied); return; }
+        setIsProcessing(true);
+        try {
+            const response = await fetch(`${APP_CONFIG.API_BASE_URL}add_promotion.php`, { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(promotionData) });
+            const result = await response.json();
+            if (!response.ok || !result.success) throw new Error(result.error || t.promotionAddFailed);
+            setPromotions(prev => [...prev, result.promotion]);
+            showToast(t.promotionAddedSuccess);
+        } catch (error: any) { showToast(error.message || t.promotionAddFailed); }
+        finally { setIsProcessing(false); }
+    }, [hasPermission, t, setPromotions, showToast, setIsProcessing]);
+
+    const updatePromotion = useCallback(async (updatedPromotion: Promotion) => {
+        if (!hasPermission('edit_promotion')) { showToast(t.permissionDenied); return; }
+        setIsProcessing(true);
+        try {
+            const response = await fetch(`${APP_CONFIG.API_BASE_URL}update_promotion.php`, { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(updatedPromotion) });
+            if (!response.ok || !(await response.json()).success) throw new Error(t.promotionUpdateFailed);
+            setPromotions(prev => prev.map(p => p.id === updatedPromotion.id ? updatedPromotion : p));
+            showToast(t.promotionUpdatedSuccess);
+        } catch(error: any) {
+            showToast(error.message || t.promotionUpdateFailed);
+            await fetchAllData(); // Revert
+        } finally { setIsProcessing(false); }
+    }, [hasPermission, t, setPromotions, showToast, setIsProcessing, fetchAllData]);
+
+    const deletePromotion = useCallback(async (promotionId: number) => {
+        if (!hasPermission('delete_promotion') || !window.confirm(t.confirmDeletePromotion)) return;
+        setIsProcessing(true);
+        try {
+            const response = await fetch(`${APP_CONFIG.API_BASE_URL}delete_promotion.php`, { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ id: promotionId }) });
+            if (!response.ok || !(await response.json()).success) throw new Error(t.promotionDeleteFailed);
+            setPromotions(prev => prev.filter(p => p.id !== promotionId));
+            showToast(t.promotionDeletedSuccess);
+        } catch (error: any) { showToast(error.message || t.promotionDeleteFailed); }
+        finally { setIsProcessing(false); }
+    }, [hasPermission, t, setPromotions, showToast, setIsProcessing]);
+
+    const addCategory = useCallback(async (categoryData: Omit<Category, 'id'>) => {
+        if (!hasPermission('add_category')) { showToast(t.permissionDenied); return; }
+        setIsProcessing(true);
+        try {
+            const response = await fetch(`${APP_CONFIG.API_BASE_URL}add_category.php`, { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(categoryData) });
+            if (!response.ok || !(await response.json()).success) throw new Error(t.categoryAddFailed);
+            await fetchAllData();
+            showToast(t.categoryAddedSuccess);
+        } catch(error: any) { showToast(error.message || t.categoryAddFailed); }
+        finally { setIsProcessing(false); }
+    }, [hasPermission, t, fetchAllData, showToast, setIsProcessing]);
+    
+    const updateCategory = useCallback(async (categoryData: Category) => {
+        if (!hasPermission('edit_category')) { showToast(t.permissionDenied); return; }
+        setIsProcessing(true);
+        try {
+            const response = await fetch(`${APP_CONFIG.API_BASE_URL}update_category.php`, { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(categoryData) });
+            if (!response.ok || !(await response.json()).success) throw new Error(t.categoryUpdateFailed);
+            await fetchAllData();
+            showToast(t.categoryUpdatedSuccess);
+        } catch (error: any) {
+            showToast(error.message || t.categoryUpdateFailed);
+            await fetchAllData(); // Revert
+        } finally { setIsProcessing(false); }
+    }, [hasPermission, t, fetchAllData, showToast, setIsProcessing]);
+
+    const updateCategoryOrder = useCallback(async (orderedCategories: Category[]) => {
+        if (!hasPermission('edit_category')) { showToast(t.permissionDenied); return; }
+        setIsProcessing(true);
+        try {
+            const payload: { id: number, display_order: number }[] = [];
+            const buildPayload = (cats: Category[]) => cats.forEach((cat, index) => {
+                payload.push({ id: cat.id, display_order: index });
+                if (cat.children?.length) buildPayload(cat.children);
+            });
+            buildPayload(orderedCategories);
+            const response = await fetch(`${APP_CONFIG.API_BASE_URL}update_category_order.php`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+            if (!response.ok || !(await response.json()).success) throw new Error(t.orderSaveFailed);
+            await fetchAllData();
+            showToast(t.orderSavedSuccess);
+        } catch (error: any) {
+            showToast(error.message || t.orderSaveFailed);
+            await fetchAllData();
+        } finally { setIsProcessing(false); }
+    }, [hasPermission, t, setIsProcessing, showToast, fetchAllData]);
+
+    const deleteCategory = useCallback(async (categoryId: number) => {
+        if (!hasPermission('delete_category') || !window.confirm(t.confirmDeleteCategory)) return;
+        setIsProcessing(true);
+        try {
+            const response = await fetch(`${APP_CONFIG.API_BASE_URL}delete_category.php`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: categoryId }) });
+            const result = await response.json();
+            if (!response.ok || !result.success) {
+                if (result.errorKey && t[result.errorKey as keyof typeof t]) throw new Error(t[result.errorKey as keyof typeof t]);
+                throw new Error(result.error || t.categoryDeleteFailed);
+            }
+            await fetchAllData();
+            showToast(t.categoryDeletedSuccess);
+        } catch (error: any) { showToast(error.message || t.categoryDeleteFailed); }
+        finally { setIsProcessing(false); }
+    }, [hasPermission, t, setIsProcessing, showToast, fetchAllData]);
+
+    const addTag = useCallback(async (tagData: Omit<Tag, 'id'> & { id: string }) => {
+        if (!hasPermission('add_tag')) { showToast(t.permissionDenied); return; }
+        setIsProcessing(true);
+        try {
+            const response = await fetch(`${APP_CONFIG.API_BASE_URL}add_tag.php`, { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(tagData) });
+            if (!response.ok || !(await response.json()).success) throw new Error(t.tagAddFailed);
+            await fetchAllData();
+            showToast(t.tagAddedSuccess);
+        } catch (error: any) { showToast(error.message || t.tagAddFailed); }
+        finally { setIsProcessing(false); }
+    }, [hasPermission, t, fetchAllData, showToast, setIsProcessing]);
+    
+    const updateTag = useCallback(async (tagData: Tag) => {
+        if (!hasPermission('edit_tag')) { showToast(t.permissionDenied); return; }
+        setIsProcessing(true);
+        try {
+            const response = await fetch(`${APP_CONFIG.API_BASE_URL}update_tag.php`, { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(tagData) });
+            if (!response.ok || !(await response.json()).success) throw new Error(t.tagUpdateFailed);
+            await fetchAllData();
+            showToast(t.tagUpdatedSuccess);
+        } catch (error: any) {
+            showToast(error.message || t.tagUpdateFailed);
+            await fetchAllData();
+        } finally { setIsProcessing(false); }
+    }, [hasPermission, t, fetchAllData, showToast, setIsProcessing]);
+
+    const deleteTag = useCallback(async (tagId: string) => {
+        if (!hasPermission('delete_tag') || !window.confirm(t.confirmDeleteTag)) return;
+        setIsProcessing(true);
+        try {
+            const response = await fetch(`${APP_CONFIG.API_BASE_URL}delete_tag.php`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: tagId }) });
+            const result = await response.json();
+            if (!response.ok || !result.success) {
+                if (result.errorKey && t[result.errorKey as keyof typeof t]) throw new Error(t[result.errorKey as keyof typeof t]);
+                throw new Error(result.error || t.tagDeleteFailed);
+            }
+            await fetchAllData();
+            showToast(t.tagDeletedSuccess);
+        } catch (error: any) { showToast(error.message || t.tagDeleteFailed); }
+        finally { setIsProcessing(false); }
+    }, [hasPermission, t, fetchAllData, setIsProcessing, showToast]);
 
 
     const value: DataContextType = {
         restaurantInfo,
-        products,
-        setProducts,
-        categories,
-        setCategories,
-        tags,
-        setTags,
-        promotions,
-        setPromotions,
-        fetchAllData,
-        updateRestaurantInfo
+        products, setProducts,
+        categories, setCategories,
+        tags, setTags,
+        promotions, setPromotions,
+        fetchAllData, updateRestaurantInfo,
+        addProduct, updateProduct, deleteProduct,
+        addPromotion, updatePromotion, deletePromotion,
+        addCategory, updateCategory, updateCategoryOrder, deleteCategory,
+        addTag, updateTag, deleteTag
     };
 
     return <DataContext.Provider value={value}>{children}</DataContext.Provider>;

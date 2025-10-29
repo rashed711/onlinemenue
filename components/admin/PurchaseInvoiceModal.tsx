@@ -2,7 +2,7 @@ import React, { useState, useMemo, useEffect, useRef } from 'react';
 import type { PurchaseInvoiceItem, Supplier, Product, PurchaseInvoice } from '../../types';
 import { Modal } from '../Modal';
 import { useUI } from '../../contexts/UIContext';
-import { useAdmin } from '../../contexts/AdminContext';
+import { useInventory } from '../../contexts/InventoryContext';
 import { useData } from '../../contexts/DataContext';
 import { PlusIcon, TrashIcon } from '../icons/Icons';
 import { SearchableSelect } from './SearchableSelect';
@@ -14,7 +14,7 @@ interface PurchaseInvoiceModalProps {
 
 export const PurchaseInvoiceModal: React.FC<PurchaseInvoiceModalProps> = ({ invoiceToEdit, onClose }) => {
     const { t, language } = useUI();
-    const { suppliers, addPurchaseInvoice, updatePurchaseInvoice } = useAdmin();
+    const { suppliers, addPurchaseInvoice, updatePurchaseInvoice } = useInventory();
     const { products } = useData();
     
     const [supplierId, setSupplierId] = useState<number | ''>('');

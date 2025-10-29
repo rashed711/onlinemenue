@@ -4,7 +4,6 @@ import { ClipboardListIcon, CollectionIcon, UsersIcon, CloseIcon, ShieldCheckIco
 import { useUI } from '../../contexts/UIContext';
 import { useAuth } from '../../contexts/AuthContext';
 import { useData } from '../../contexts/DataContext';
-import { useAdmin } from '../../contexts/AdminContext';
 
 type AdminTab = 'orders' | 'cashier' | 'reports' | 'inventory' | 'productList' | 'classifications' | 'promotions' | 'users' | 'roles' | 'settings';
 
@@ -19,9 +18,8 @@ interface AdminSidebarProps {
 export const AdminSidebar: React.FC<AdminSidebarProps> = (props) => {
     const { activeTab, setActiveTab, isOpen, setIsOpen, onChangePasswordClick } = props;
     const { language, t } = useUI();
-    const { currentUser, logout, hasPermission } = useAuth();
+    const { currentUser, logout, hasPermission, roles } = useAuth();
     const { restaurantInfo } = useData();
-    const { roles } = useAdmin();
 
     const navItems = {
         operations: [

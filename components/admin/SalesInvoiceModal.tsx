@@ -2,20 +2,25 @@ import React, { useState, useMemo, useEffect } from 'react';
 import type { SalesInvoiceItem, User, Product, SalesInvoice } from '../../types';
 import { Modal } from '../Modal';
 import { useUI } from '../../contexts/UIContext';
-import { useAdmin } from '../../contexts/AdminContext';
+import { useInventory } from '../../contexts/InventoryContext';
+import { useUserManagement } from '../../contexts/UserManagementContext';
+import { useAuth } from '../../contexts/AuthContext';
 import { useData } from '../../contexts/DataContext';
 import { PlusIcon, TrashIcon } from '../icons/Icons';
 import { SearchableSelect } from './SearchableSelect';
 
 interface SalesInvoiceModalProps {
+    invoiceToEdit?: SalesInvoice | null;
     onClose: () => void;
 }
 
 type CustomerType = 'guest' | 'registered';
 
-export const SalesInvoiceModal: React.FC<SalesInvoiceModalProps> = ({ onClose }) => {
+export const SalesInvoiceModal: React.FC<SalesInvoiceModalProps> = ({ invoiceToEdit, onClose }) => {
     const { t, language } = useUI();
-    const { users, roles, addSalesInvoice } = useAdmin();
+    const { users } = useUserManagement();
+    const { roles } = useAuth();
+    const { addSalesInvoice, updateSalesInvoice } = useInventory();
     const { products } = useData();
     
     const [customerType, setCustomerType] = useState<CustomerType>('guest');
@@ -24,6 +29,29 @@ export const SalesInvoiceModal: React.FC<SalesInvoiceModalProps> = ({ onClose })
     const [customerMobile, setCustomerMobile] = useState('');
     const [items, setItems] = useState<Partial<SalesInvoiceItem>[]>([{ product_id: undefined, quantity: 1, sale_price: 0 }]);
     const [notes, setNotes] = useState('');
+
+    useEffect(() => {
+        if (invoiceToEdit) {
+            setCustomerType(invoiceToEdit.customer_id ? 'registered' : 'guest');
+            setCustomerId(invoiceToEdit.customer_id || '');
+            setCustomerName(invoiceToEdit.customer_name);
+            setCustomerMobile(invoiceToEdit.customer_mobile);
+            setNotes(invoiceToEdit.notes || '');
+            setItems(invoiceToEdit.items.map(item => ({
+                product_id: item.product_id,
+                quantity: item.quantity,
+                sale_price: item.sale_price,
+                subtotal: item.subtotal
+            })));
+        } else {
+            setCustomerType('guest');
+            setCustomerId('');
+            setCustomerName('');
+            setCustomerMobile('');
+            setItems([{ product_id: undefined, quantity: 1, sale_price: 0 }]);
+            setNotes('');
+        }
+    }, [invoiceToEdit]);
 
     const customerUsers = useMemo(() => {
         const customerRole = roles.find(r => r.name.en.toLowerCase() === 'customer');
@@ -113,46 +141,58 @@ export const SalesInvoiceModal: React.FC<SalesInvoiceModalProps> = ({ onClose })
             subtotal: (item.quantity || 0) * (item.sale_price || 0)
         })) as SalesInvoiceItem[];
 
-        addSalesInvoice({
-            customer_id: customerId || null,
-            customer_name: customerName,
-            customer_mobile: customerMobile,
-            total_amount: totalAmount,
-            notes,
-            items: finalItems,
-        });
+        if (invoiceToEdit) {
+            updateSalesInvoice({
+                ...invoiceToEdit,
+                customer_id: customerId || null,
+                customer_name: customerName,
+                customer_mobile: customerMobile,
+                total_amount: totalAmount,
+                notes,
+                items: finalItems,
+            });
+        } else {
+            addSalesInvoice({
+                customer_id: customerId || null,
+                customer_name: customerName,
+                customer_mobile: customerMobile,
+                total_amount: totalAmount,
+                notes,
+                items: finalItems,
+            });
+        }
         
         onClose();
     };
     
-    const formInputClasses = "w-full p-2 border border-slate-300 rounded-md dark:bg-slate-700 dark:border-slate-600 dark:text-slate-100 focus:ring-2 focus:ring-primary-500 focus:border-primary-500";
+    const formInputClasses = "w-full p-2 border border-slate-300 rounded-md dark:bg-slate-700 dark:border-slate-600 dark:text-slate-100 focus:ring-2 focus:ring-primary-500 focus:border-primary-500 disabled:opacity-70 disabled:bg-slate-100 dark:disabled:bg-slate-800";
 
     return (
-        <Modal title={t.addNewSalesInvoice} onClose={onClose} size="3xl">
+        <Modal title={invoiceToEdit ? t.editSalesInvoice : t.addNewSalesInvoice} onClose={onClose} size="3xl">
             <form onSubmit={handleSubmit}>
                 <div className="p-5 space-y-6 max-h-[80vh] overflow-y-auto">
                     {/* Customer Section */}
                     <div className="space-y-4">
                         <h3 className="text-lg font-semibold">{t.customerInfo}</h3>
                         <div className="flex items-center gap-4">
-                            <label className="flex items-center gap-2"><input type="radio" name="customerType" value="guest" checked={customerType === 'guest'} onChange={() => handleCustomerTypeChange('guest')} /> {t.guestCustomer}</label>
-                            <label className="flex items-center gap-2"><input type="radio" name="customerType" value="registered" checked={customerType === 'registered'} onChange={() => handleCustomerTypeChange('registered')} /> {t.registeredCustomer}</label>
+                            <label className="flex items-center gap-2"><input type="radio" name="customerType" value="guest" checked={customerType === 'guest'} onChange={() => handleCustomerTypeChange('guest')} disabled={!!invoiceToEdit} /> {t.guestCustomer}</label>
+                            <label className="flex items-center gap-2"><input type="radio" name="customerType" value="registered" checked={customerType === 'registered'} onChange={() => handleCustomerTypeChange('registered')} disabled={!!invoiceToEdit} /> {t.registeredCustomer}</label>
                         </div>
                         {customerType === 'guest' ? (
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <div>
                                     <label className="block text-sm font-medium mb-1">{t.name}</label>
-                                    <input type="text" value={customerName} onChange={(e) => setCustomerName(e.target.value)} className={formInputClasses} required />
+                                    <input type="text" value={customerName} onChange={(e) => setCustomerName(e.target.value)} className={formInputClasses} required disabled={!!invoiceToEdit} />
                                 </div>
                                 <div>
                                     <label className="block text-sm font-medium mb-1">{t.mobileNumber}</label>
-                                    <input type="tel" value={customerMobile} onChange={(e) => setCustomerMobile(e.target.value)} className={formInputClasses} required />
+                                    <input type="tel" value={customerMobile} onChange={(e) => setCustomerMobile(e.target.value)} className={formInputClasses} required disabled={!!invoiceToEdit} />
                                 </div>
                             </div>
                         ) : (
                              <div>
                                 <label className="block text-sm font-medium mb-1">{t.selectCustomer}</label>
-                                <SearchableSelect options={customerOptions} value={customerId} onChange={handleCustomerSelect} placeholder={t.selectCustomer} />
+                                <SearchableSelect options={customerOptions} value={customerId} onChange={handleCustomerSelect} placeholder={t.selectCustomer} disabled={!!invoiceToEdit} />
                             </div>
                         )}
                     </div>

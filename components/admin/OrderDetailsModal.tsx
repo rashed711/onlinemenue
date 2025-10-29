@@ -6,7 +6,7 @@ import { formatDateTime, formatNumber, generateReceiptImage, calculateItemTotal,
 import { Modal } from '../Modal';
 import { useUI } from '../../contexts/UIContext';
 import { useData } from '../../contexts/DataContext';
-import { useAdmin } from '../../contexts/AdminContext';
+import { useOrders } from '../../contexts/OrderContext';
 import { useAuth } from '../../contexts/AuthContext';
 
 interface OrderDetailsModalProps {
@@ -46,7 +46,7 @@ export const OrderDetailsModal: React.FC<OrderDetailsModalProps> = ({ order, onC
     // @FIX: Refactored to get translations `t` directly from the `useUI` hook.
     const { language, t, isProcessing, setIsProcessing } = useUI();
     const { restaurantInfo } = useData();
-    const { updateOrder } = useAdmin();
+    const { updateOrder } = useOrders();
     const { hasPermission } = useAuth();
     
     const [isReceiptViewerOpen, setIsReceiptViewerOpen] = useState(false);

@@ -6,7 +6,7 @@ import { OrderStatusEditModal } from './OrderStatusEditModal';
 import { OnlinePaymentMethodEditModal } from './OnlinePaymentMethodEditModal';
 import { useUI } from '../../contexts/UIContext';
 import { useData } from '../../contexts/DataContext';
-import { useAdmin } from '../../contexts/AdminContext';
+import { useOrders } from '../../contexts/OrderContext';
 import { useAuth } from '../../contexts/AuthContext';
 import { formatDateTime } from '../../utils/helpers';
 import { useCountdown } from '../../hooks/useCountdown';
@@ -52,7 +52,7 @@ const formatDateForInput = (isoDate: string | null | undefined): string => {
 export const SettingsPage: React.FC = () => {
     const { language, t, showToast } = useUI();
     const { restaurantInfo, updateRestaurantInfo } = useData();
-    const { orders: allOrders } = useAdmin();
+    const { orders: allOrders } = useOrders();
     const { hasPermission } = useAuth();
     
     const [localInfo, setLocalInfo] = useState<RestaurantInfo | null>(restaurantInfo);

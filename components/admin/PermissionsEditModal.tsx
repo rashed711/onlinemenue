@@ -4,7 +4,7 @@ import type { Permission, Language, UserRole, RestaurantInfo, Role } from '../..
 import { CloseIcon, ClipboardListIcon } from '../icons/Icons';
 import { PERMISSION_GROUPS, PermissionGroup } from '../../data/permissions';
 import { useUI } from '../../contexts/UIContext';
-import { useAdmin } from '../../contexts/AdminContext';
+import { useUserManagement } from '../../contexts/UserManagementContext';
 import { useData } from '../../contexts/DataContext';
 import { useAuth } from '../../contexts/AuthContext';
 import { translations } from '../../i18n/translations';
@@ -67,7 +67,7 @@ interface PermissionsEditModalProps {
 export const PermissionsEditModal: React.FC<PermissionsEditModalProps> = ({ roleId, onClose, onSave }) => {
   const { language, t } = useUI();
   const { restaurantInfo } = useData();
-  const { roles } = useAdmin();
+  const { roles } = useAuth(); // AuthContext holds the roles list
   const { currentUser, rolePermissions } = useAuth();
   const currentPermissions = rolePermissions[roleId] || [];
 
