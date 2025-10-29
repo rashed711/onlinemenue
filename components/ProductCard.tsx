@@ -65,7 +65,7 @@ export const ProductCard: React.FC<ProductCardProps> = React.memo(({ product, on
         <div className="mt-4">
             <button 
                 onClick={handleAddToCart} 
-                className="w-full bg-primary-500 text-white font-bold py-2 px-4 rounded-lg hover:bg-primary-600 transition-all duration-200 flex items-center justify-center gap-2 shadow-lg hover:shadow-xl transform hover:-translate-y-px" 
+                className="w-full bg-primary-500 text-white font-bold text-sm py-2 px-4 rounded-lg hover:bg-primary-600 transition-all duration-200 flex items-center justify-center gap-2 shadow-lg hover:shadow-xl transform hover:-translate-y-px" 
                 aria-label={t.addToCart}
             >
                 <PlusIcon className="w-5 h-5" />
