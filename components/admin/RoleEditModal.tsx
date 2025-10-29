@@ -58,14 +58,14 @@ export const RoleEditModal: React.FC<RoleEditModalProps> = ({ role, onClose, onS
     };
 
     return (
-        <Modal title={role ? 'Edit Role' : 'Add New Role'} onClose={onClose} size="md">
+        <Modal title={role ? t.editRole : t.addNewRole} onClose={onClose} size="md">
              <form onSubmit={handleSubmit} className="p-5 space-y-4">
                  <div>
-                    <label className="block text-sm font-medium mb-1">Role Name (English)</label>
+                    <label className="block text-sm font-medium mb-1">{t.roleNameEn}</label>
                     <input type="text" name="name.en" value={formData.name.en} onChange={handleChange} className="w-full p-2 border rounded-md dark:bg-gray-700 dark:border-gray-600" required />
                 </div>
                 <div>
-                    <label className="block text-sm font-medium mb-1">Role Name (Arabic)</label>
+                    <label className="block text-sm font-medium mb-1">{t.roleNameAr}</label>
                     <input type="text" name="name.ar" value={formData.name.ar} onChange={handleChange} className="w-full p-2 border rounded-md dark:bg-gray-700 dark:border-gray-600" required />
                 </div>
                  {error && <p className="text-sm text-red-500">{error}</p>}

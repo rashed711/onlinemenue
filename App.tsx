@@ -1,3 +1,4 @@
+
 import React, { useSyncExternalStore, useMemo, useEffect, lazy, Suspense } from 'react';
 import { UIProvider, useUI } from './contexts/UIContext';
 import { AuthProvider, useAuth } from './contexts/AuthContext';

@@ -1,3 +1,4 @@
+
 import React from 'react';
 import ReactDOM from 'react-dom';
 import type { CartItem, Language, OrderType, RestaurantInfo } from '../types';

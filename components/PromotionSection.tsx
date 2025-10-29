@@ -1,3 +1,4 @@
+
 import React, { useRef, useCallback, useEffect, useMemo, useState } from 'react';
 import type { Promotion, Product } from '../types';
 import { useCountdown } from '../hooks/useCountdown';

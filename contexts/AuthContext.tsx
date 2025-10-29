@@ -237,7 +237,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const userRoleDetails = useMemo(() => roles.find(r => r.key === currentUser?.role), [roles, currentUser]);
     
     const isAdmin = useMemo(() => {
-        if (!userRoleDetails) return false;
+        if (!userRoleDetails?.name?.en || typeof userRoleDetails.name.en !== 'string') {
+            return false;
+        }
         const roleName = userRoleDetails.name.en.toLowerCase();
         return roleName !== 'customer';
     }, [userRoleDetails]);

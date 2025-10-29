@@ -12,46 +12,7 @@ import { useUI } from '../contexts/UIContext';
 import { useAuth } from '../contexts/AuthContext';
 import { useData } from '../contexts/DataContext';
 import { useCart } from '../contexts/CartContext';
-import { normalizeArabic } from '../utils/helpers';
-
-const getDescendantCategoryIds = (categoryId: number, categories: Category[]): number[] => {
-    const ids: number[] = [];
-
-    // Helper to find a category by its ID in the tree
-    const findCategory = (cats: Category[], id: number): Category | null => {
-        for (const cat of cats) {
-            if (cat.id === id) {
-                return cat;
-            }
-            if (cat.children) {
-                const foundInChildren = findCategory(cat.children, id);
-                if (foundInChildren) {
-                    return foundInChildren;
-                }
-            }
-        }
-        return null;
-    };
-
-    // Helper to recursively collect all child IDs, including the parent's
-    const collectAllIds = (category: Category) => {
-        ids.push(category.id);
-        if (category.children) {
-            for (const child of category.children) {
-                collectAllIds(child);
-            }
-        }
-    };
-
-    const startCategory = findCategory(categories, categoryId);
-
-    if (startCategory) {
-        collectAllIds(startCategory);
-    }
-    
-    return ids;
-};
-
+import { normalizeArabic, getDescendantCategoryIds } from '../utils/helpers';
 
 export const MenuPage: React.FC = () => {
     const { language, setIsProcessing, t } = useUI();

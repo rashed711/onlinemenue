@@ -1,10 +1,12 @@
-import React, { createContext, useState, useCallback, useContext, useEffect } from 'react';
+import React, { createContext, useState, useCallback, useContext, useEffect, useRef } from 'react';
 import type { Order, Product, Promotion, User, Permission, UserRole, Role, Category, Tag, Supplier, PurchaseInvoice, SalesInvoice } from '../types';
 import { APP_CONFIG } from '../utils/config';
 import { useUI } from './UIContext';
 import { useAuth } from './AuthContext';
 import { useData } from './DataContext';
 import { calculateTotal } from '../utils/helpers';
+// FIX: Import the missing `usePersistentState` hook to resolve the "Cannot find name" error.
+import { usePersistentState } from '../hooks/usePersistentState';
 
 interface AdminContextType {
     orders: Order[];
@@ -74,6 +76,104 @@ export const AdminProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     const [viewingOrder, setViewingOrder] = useState<Order | null>(null);
     const [refusingOrder, setRefusingOrder] = useState<Order | null>(null);
 
+    // --- Sound Notification Logic ---
+    const audioCtxRef = useRef<AudioContext | null>(null);
+    const audioBufferRef = useRef<AudioBuffer | null>(null);
+
+    useEffect(() => {
+        const initAudio = async () => {
+            try {
+                if (!audioCtxRef.current) {
+                    const AudioContext = window.AudioContext || (window as any).webkitAudioContext;
+                    if (AudioContext) {
+                        audioCtxRef.current = new AudioContext();
+                    } else {
+                        console.error("Web Audio API is not supported in this browser.");
+                        return;
+                    }
+                }
+                const audioCtx = audioCtxRef.current;
+                const response = await fetch('https://cdn.jsdelivr.net/gh/cosmo-project/cosmo-ui/assets/sounds/notify.mp3');
+                if (!response.ok) {
+                    throw new Error(`Sound file not found (status: ${response.status})`);
+                }
+                const arrayBuffer = await response.arrayBuffer();
+                const audioBuffer = await audioCtx.decodeAudioData(arrayBuffer);
+                audioBufferRef.current = audioBuffer;
+            } catch (e) {
+                console.error("Failed to load sound for Web Audio API:", e);
+            }
+        };
+        initAudio();
+        return () => {
+            if (audioCtxRef.current && audioCtxRef.current.state !== 'closed') {
+                audioCtxRef.current.close().catch(e => console.error("Error closing AudioContext:", e));
+            }
+        };
+    }, []);
+
+    const playNotificationSound = useCallback(() => {
+        const audioCtx = audioCtxRef.current;
+        const audioBuffer = audioBufferRef.current;
+
+        if (audioCtx && audioBuffer) {
+            if (audioCtx.state === 'suspended') {
+                audioCtx.resume();
+            }
+            const source = audioCtx.createBufferSource();
+            source.buffer = audioBuffer;
+            source.connect(audioCtx.destination);
+            source.start(0);
+        } else {
+            // Fallback to simple audio if Web Audio API failed
+            console.log("Falling back to simple Audio playback for notification.");
+            const audio = new Audio('https://cdn.jsdelivr.net/gh/cosmo-project/cosmo-ui/assets/sounds/notify.mp3');
+            audio.play().catch(e => console.error("Could not play notification sound (fallback):", e));
+        }
+    }, []);
+
+    const [isSoundEnabled] = usePersistentState<boolean>('admin_sound_enabled', true);
+    const orderStatusMapRef = useRef<Map<string, string>>(new Map());
+    const isInitialLoadRef = useRef(true);
+
+    useEffect(() => {
+        if (!restaurantInfo || !hasPermission('view_orders_page')) return;
+    
+        if (isInitialLoadRef.current) {
+            const initialMap = new Map<string, string>();
+            if (orders.length > 0) {
+                orders.forEach(o => initialMap.set(o.id, o.status));
+            }
+            orderStatusMapRef.current = initialMap;
+            isInitialLoadRef.current = false;
+            return;
+        }
+    
+        let soundShouldBePlayed = false;
+    
+        for (const order of orders) {
+            const oldStatus = orderStatusMapRef.current.get(order.id);
+            const newStatus = order.status;
+    
+            if (oldStatus !== newStatus) {
+                const statusConfig = restaurantInfo.orderStatusColumns.find(col => col.id === newStatus);
+                if (statusConfig?.playSound) {
+                    soundShouldBePlayed = true;
+                    break; // Found one sound-triggering event, no need to check further
+                }
+            }
+        }
+    
+        if (soundShouldBePlayed && isSoundEnabled) {
+            playNotificationSound();
+        }
+    
+        // Update the map for the next render cycle with the current state of all orders
+        const newStatusMap = new Map<string, string>();
+        orders.forEach(o => newStatusMap.set(o.id, o.status));
+        orderStatusMapRef.current = newStatusMap;
+    }, [orders, restaurantInfo, isSoundEnabled, hasPermission, playNotificationSound]);
+
     const fetchAdminData = useCallback(async () => {
         if (!currentUser) {
             setOrders([]);
@@ -83,49 +183,69 @@ export const AdminProvider: React.FC<{ children: React.ReactNode }> = ({ childre
             setSalesInvoices([]);
             return;
         }
-
-        const isAdmin = hasPermission('view_orders_page'); // A good proxy for admin-level access
-
+    
+        const canViewAllOrders = hasPermission('view_orders_page');
+        const canViewUsers = hasPermission('view_users_page');
+        const canViewInventory = hasPermission('view_inventory_page');
+        const fetchOptions = { method: 'GET' };
+    
         try {
-            const fetchOptions = { method: 'GET', credentials: 'include' as RequestCredentials };
             const ordersRes = await fetch(`${APP_CONFIG.API_BASE_URL}get_orders.php`, fetchOptions);
             if (!ordersRes.ok) throw new Error('Failed to fetch orders');
-            const allOrders = (await ordersRes.json() || []).map((o: any) => ({ ...o, paymentReceiptUrl: resolveImageUrl(o.paymentReceiptUrl)}));
-
-            if (isAdmin) {
+            const allOrders = (await ordersRes.json() || []).map((o: any) => ({ ...o, paymentReceiptUrl: resolveImageUrl(o.paymentReceiptUrl) }));
+            
+            if (canViewAllOrders) {
                 setOrders(allOrders);
-                const [usersRes, suppliersRes, invoicesRes, salesInvoicesRes] = await Promise.all([
-                    fetch(`${APP_CONFIG.API_BASE_URL}get_users.php`, fetchOptions),
-                    fetch(`${APP_CONFIG.API_BASE_URL}get_suppliers.php`, fetchOptions),
-                    fetch(`${APP_CONFIG.API_BASE_URL}get_purchase_invoices.php`, fetchOptions),
-                    fetch(`${APP_CONFIG.API_BASE_URL}get_sales_invoices.php`, fetchOptions),
-                ]);
-
-                if (usersRes.ok) {
-                    setUsers((await usersRes.json() || []).map((u: any) => ({ 
-                        id: Number(u.id), 
-                        name: u.name, 
-                        mobile: u.mobile, 
-                        email: u.email,
-                        password: '', 
-                        role: String(u.role_id), 
-                        profilePicture: resolveImageUrl(u.profile_picture) || `https://placehold.co/512x512/60a5fa/white?text=${u.name.charAt(0).toUpperCase()}` 
-                    })));
-                }
-                if (suppliersRes.ok) setSuppliers(await suppliersRes.json() || []);
-                if (invoicesRes.ok) setPurchaseInvoices(await invoicesRes.json() || []);
-                if (salesInvoicesRes.ok) setSalesInvoices(await salesInvoicesRes.json() || []);
-
             } else {
                 setOrders(allOrders.filter((o: Order) => o.customer.userId === currentUser.id));
+            }
+            
+            if (canViewUsers) {
+                try {
+                    const usersRes = await fetch(`${APP_CONFIG.API_BASE_URL}get_users.php`, fetchOptions);
+                    if (usersRes.ok) {
+                        setUsers((await usersRes.json() || []).map((u: any) => ({ 
+                            id: Number(u.id), 
+                            name: u.name, 
+                            mobile: u.mobile, 
+                            email: u.email,
+                            password: '', 
+                            role: String(u.role_id), 
+                            profilePicture: resolveImageUrl(u.profile_picture) || `https://placehold.co/512x512/60a5fa/white?text=${u.name.charAt(0).toUpperCase()}` 
+                        })));
+                    } else { console.error('Failed to fetch users:', await usersRes.text()); }
+                } catch (e) { console.error('Error fetching users:', e); }
+            } else {
                 setUsers([]);
+            }
+    
+            if (canViewInventory) {
+                try {
+                    const suppliersRes = await fetch(`${APP_CONFIG.API_BASE_URL}get_suppliers.php`, fetchOptions);
+                    if (suppliersRes.ok) setSuppliers(await suppliersRes.json() || []);
+                    else { console.error('Failed to fetch suppliers:', await suppliersRes.text()); }
+                } catch (e) { console.error('Error fetching suppliers:', e); }
+    
+                try {
+                    const invoicesRes = await fetch(`${APP_CONFIG.API_BASE_URL}get_purchase_invoices.php`, fetchOptions);
+                    if (invoicesRes.ok) setPurchaseInvoices(await invoicesRes.json() || []);
+                    else { console.error('Failed to fetch purchase invoices:', await invoicesRes.text()); }
+                } catch (e) { console.error('Error fetching purchase invoices:', e); }
+    
+                try {
+                    const salesInvoicesRes = await fetch(`${APP_CONFIG.API_BASE_URL}get_sales_invoices.php`, fetchOptions);
+                    if (salesInvoicesRes.ok) setSalesInvoices(await salesInvoicesRes.json() || []);
+                    else { console.error('Failed to fetch sales invoices:', await salesInvoicesRes.text()); }
+                } catch (e) { console.error('Error fetching sales invoices:', e); }
+            } else {
                 setSuppliers([]);
                 setPurchaseInvoices([]);
                 setSalesInvoices([]);
             }
+    
         } catch (error) {
             console.error("Failed to load admin data:", error);
-            showToast("Failed to load user data.");
+            showToast("Failed to load some user or order data.");
         }
     }, [currentUser, hasPermission, showToast]);
 
@@ -144,7 +264,7 @@ export const AdminProvider: React.FC<{ children: React.ReactNode }> = ({ childre
                 const formData = new FormData();
                 formData.append('image', blob, 'receipt.png');
                 formData.append('type', 'payment');
-                const uploadRes = await fetch(`${APP_CONFIG.API_BASE_URL}upload_image.php`, { method: 'POST', body: formData, credentials: 'include' });
+                const uploadRes = await fetch(`${APP_CONFIG.API_BASE_URL}upload_image.php`, { method: 'POST', body: formData });
                 const result = await uploadRes.json();
                 if (result.success && result.url) {
                     orderForDb.paymentReceiptUrl = result.url.split('?v=')[0];
@@ -161,7 +281,7 @@ export const AdminProvider: React.FC<{ children: React.ReactNode }> = ({ childre
                 createdBy: currentUser?.id,
             };
 
-            const response = await fetch(`${APP_CONFIG.API_BASE_URL}add_order.php`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload), credentials: 'include' });
+            const response = await fetch(`${APP_CONFIG.API_BASE_URL}add_order.php`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
             const result = await response.json();
             if (!result.success) throw new Error(result.error || 'Failed to place order.');
             const newOrder = { ...result.order, paymentReceiptUrl: resolveImageUrl(result.order.paymentReceiptUrl) };
@@ -193,7 +313,7 @@ export const AdminProvider: React.FC<{ children: React.ReactNode }> = ({ childre
                 let dbPayload = { ...payload };
                 if (dbPayload.items) dbPayload.total = calculateTotal(dbPayload.items);
                 
-                const res = await fetch(`${APP_CONFIG.API_BASE_URL}update_order.php`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ orderId, payload: dbPayload }), credentials: 'include' });
+                const res = await fetch(`${APP_CONFIG.API_BASE_URL}update_order.php`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ orderId, payload: dbPayload }) });
                 if (!res.ok || !(await res.json()).success) throw new Error('Failed to update order.');
                 showToast(t.orderUpdatedSuccess);
             } catch (error: any) { 
@@ -216,7 +336,7 @@ export const AdminProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     
         setIsProcessing(true);
         try {
-            const res = await fetch(`${APP_CONFIG.API_BASE_URL}delete_order.php`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: orderId }), credentials: 'include' });
+            const res = await fetch(`${APP_CONFIG.API_BASE_URL}delete_order.php`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: orderId }) });
             if (!res.ok || !(await res.json()).success) throw new Error(t.orderDeleteFailed);
             showToast(t.orderDeletedSuccess);
         } catch (error: any) {
@@ -236,14 +356,14 @@ export const AdminProvider: React.FC<{ children: React.ReactNode }> = ({ childre
                 const formData = new FormData();
                 formData.append('image', imageFile);
                 formData.append('type', 'products');
-                const uploadRes = await fetch(`${APP_CONFIG.API_BASE_URL}upload_image.php`, { method: 'POST', body: formData, credentials: 'include' });
+                const uploadRes = await fetch(`${APP_CONFIG.API_BASE_URL}upload_image.php`, { method: 'POST', body: formData });
                 const result = await uploadRes.json();
                 if (!uploadRes.ok || !result.success) throw new Error(result.error || 'Image upload failed');
                 
                 finalProductData.image = result.url.split('?v=')[0];
             }
 
-            const response = await fetch(`${APP_CONFIG.API_BASE_URL}add_product.php`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(finalProductData), credentials: 'include' });
+            const response = await fetch(`${APP_CONFIG.API_BASE_URL}add_product.php`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(finalProductData) });
             const result = await response.json();
             if (!response.ok || !result.success) throw new Error(result.error || t.productAddFailed);
             
@@ -272,7 +392,7 @@ export const AdminProvider: React.FC<{ children: React.ReactNode }> = ({ childre
                 formData.append('type', 'products');
                 const relativeOldPath = updatedProduct.image.split('?')[0].replace(new URL(APP_CONFIG.API_BASE_URL).origin + '/', '');
                 formData.append('oldPath', relativeOldPath);
-                const uploadRes = await fetch(`${APP_CONFIG.API_BASE_URL}upload_image.php`, { method: 'POST', body: formData, credentials: 'include' });
+                const uploadRes = await fetch(`${APP_CONFIG.API_BASE_URL}upload_image.php`, { method: 'POST', body: formData });
                 const result = await uploadRes.json();
                 if (!uploadRes.ok || !result.success) throw new Error(result.error || 'Image upload failed');
                 
@@ -283,7 +403,7 @@ export const AdminProvider: React.FC<{ children: React.ReactNode }> = ({ childre
                  finalProductData.image = updatedProduct.image ? updatedProduct.image.split('?v=')[0].replace(domain, '') : '';
             }
             
-            const response = await fetch(`${APP_CONFIG.API_BASE_URL}update_product.php`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(finalProductData), credentials: 'include' });
+            const response = await fetch(`${APP_CONFIG.API_BASE_URL}update_product.php`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(finalProductData) });
             const result = await response.json();
             if (!response.ok || !result.success) throw new Error(result.error || t.productUpdateFailed);
 
@@ -305,7 +425,7 @@ export const AdminProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         
         setIsProcessing(true);
         try {
-            const response = await fetch(`${APP_CONFIG.API_BASE_URL}delete_product.php`, { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ id: productId }), credentials: 'include' });
+            const response = await fetch(`${APP_CONFIG.API_BASE_URL}delete_product.php`, { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ id: productId }) });
             const result = await response.json();
             if (!response.ok || !result.success) throw new Error(result.error || t.productDeleteFailed);
             showToast(t.productDeletedSuccess);
@@ -321,7 +441,7 @@ export const AdminProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         if (!hasPermission('add_promotion')) { showToast(t.permissionDenied); return; }
         setIsProcessing(true);
         try {
-            const response = await fetch(`${APP_CONFIG.API_BASE_URL}add_promotion.php`, { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(promotionData), credentials: 'include' });
+            const response = await fetch(`${APP_CONFIG.API_BASE_URL}add_promotion.php`, { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(promotionData) });
             const result = await response.json();
             if (!response.ok || !result.success) throw new Error(result.error || t.promotionAddFailed);
             setPromotions(prev => [...prev, result.promotion]);
@@ -340,7 +460,7 @@ export const AdminProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         
         setIsProcessing(true);
         try {
-            const response = await fetch(`${APP_CONFIG.API_BASE_URL}update_promotion.php`, { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(updatedPromotion), credentials: 'include' });
+            const response = await fetch(`${APP_CONFIG.API_BASE_URL}update_promotion.php`, { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(updatedPromotion) });
             if (!response.ok || !(await response.json()).success) throw new Error(t.promotionUpdateFailed);
             showToast(t.promotionUpdatedSuccess);
         } catch(error: any) {
@@ -358,7 +478,7 @@ export const AdminProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
         setIsProcessing(true);
         try {
-            const response = await fetch(`${APP_CONFIG.API_BASE_URL}delete_promotion.php`, { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ id: promotionId }), credentials: 'include' });
+            const response = await fetch(`${APP_CONFIG.API_BASE_URL}delete_promotion.php`, { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ id: promotionId }) });
             if (!response.ok || !(await response.json()).success) throw new Error(t.promotionDeleteFailed);
             showToast(t.promotionDeletedSuccess);
         } catch (error: any) {
@@ -377,7 +497,7 @@ export const AdminProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         setIsProcessing(true);
         try {
             const payload = { name: userData.name, mobile: userData.mobile, password: userData.password, role: roleName };
-            const response = await fetch(`${APP_CONFIG.API_BASE_URL}add_user.php`, { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(payload), credentials: 'include' });
+            const response = await fetch(`${APP_CONFIG.API_BASE_URL}add_user.php`, { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(payload) });
             const result = await response.json();
             if (!response.ok || !result.success) throw new Error(result.error || t.userAddFailed);
             
@@ -409,7 +529,7 @@ export const AdminProvider: React.FC<{ children: React.ReactNode }> = ({ childre
             const payload: any = { id: updatedUser.id, name: updatedUser.name, mobile: updatedUser.mobile, role: roleName };
             if (updatedUser.password) payload.password = updatedUser.password;
             
-            const response = await fetch(`${APP_CONFIG.API_BASE_URL}update_user.php`, { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(payload), credentials: 'include' });
+            const response = await fetch(`${APP_CONFIG.API_BASE_URL}update_user.php`, { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(payload) });
             if (!response.ok || !(await response.json()).success) throw new Error(t.userUpdateFailed);
             showToast(t.userUpdatedSuccess);
         } catch (error: any) {
@@ -435,7 +555,7 @@ export const AdminProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
         setIsProcessing(true);
         try {
-            const response = await fetch(`${APP_CONFIG.API_BASE_URL}delete_user.php`, { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ id: userId }), credentials: 'include' });
+            const response = await fetch(`${APP_CONFIG.API_BASE_URL}delete_user.php`, { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ id: userId }) });
             if (!response.ok || !(await response.json()).success) throw new Error(t.userDeleteFailed);
             showToast(t.userDeletedSuccess);
         } catch(error: any) {
@@ -449,7 +569,7 @@ export const AdminProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     const resetUserPassword = useCallback(async (user: User, newPassword: string): Promise<boolean> => {
         setIsProcessing(true);
         try {
-            const response = await fetch(`${APP_CONFIG.API_BASE_URL}update_user.php`, { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ id: user.id, password: newPassword }), credentials: 'include' });
+            const response = await fetch(`${APP_CONFIG.API_BASE_URL}update_user.php`, { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ id: user.id, password: newPassword }) });
             if (!response.ok || !(await response.json()).success) throw new Error(t.passwordResetFailed);
             showToast(t.passwordResetSuccess);
             return true;
@@ -467,7 +587,7 @@ export const AdminProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         // This function now only needs to make the API call. The state is in AuthContext.
         setIsProcessing(true);
         try {
-            const response = await fetch(`${APP_CONFIG.API_BASE_URL}update_permissions.php`, { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ roleName: roleKey, permissions }), credentials: 'include' });
+            const response = await fetch(`${APP_CONFIG.API_BASE_URL}update_permissions.php`, { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ roleName: roleKey, permissions }) });
             if (!response.ok || !(await response.json()).success) throw new Error(t.permissionsUpdateFailed);
             await refetchAuthData(); // Refetch permissions into AuthContext
             showToast(t.permissionsUpdatedSuccess);
@@ -483,7 +603,7 @@ export const AdminProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         if (!hasPermission('add_category')) { showToast(t.permissionDenied); return; }
         setIsProcessing(true);
         try {
-            const response = await fetch(`${APP_CONFIG.API_BASE_URL}add_category.php`, { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(categoryData), credentials: 'include' });
+            const response = await fetch(`${APP_CONFIG.API_BASE_URL}add_category.php`, { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(categoryData) });
             const result = await response.json();
             if (!response.ok || !result.success) throw new Error(result.error || t.categoryAddFailed);
             await fetchAllData(); // Refetch all to rebuild tree
@@ -501,7 +621,7 @@ export const AdminProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         // Local update requires complex tree manipulation. Refetching is simpler here.
         setIsProcessing(true);
         try {
-            const response = await fetch(`${APP_CONFIG.API_BASE_URL}update_category.php`, { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(categoryData), credentials: 'include' });
+            const response = await fetch(`${APP_CONFIG.API_BASE_URL}update_category.php`, { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(categoryData) });
             if (!response.ok || !(await response.json()).success) throw new Error(t.categoryUpdateFailed);
             await fetchAllData();
             showToast(t.categoryUpdatedSuccess);
@@ -537,7 +657,6 @@ export const AdminProvider: React.FC<{ children: React.ReactNode }> = ({ childre
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(payload),
-                credentials: 'include'
             });
 
             if (!response.ok) {
@@ -571,7 +690,6 @@ export const AdminProvider: React.FC<{ children: React.ReactNode }> = ({ childre
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ id: categoryId }),
-                credentials: 'include'
             });
             const result = await response.json();
             if (!response.ok || !result.success) {
@@ -593,7 +711,7 @@ export const AdminProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         if (!hasPermission('add_tag')) { showToast(t.permissionDenied); return; }
         setIsProcessing(true);
         try {
-            const response = await fetch(`${APP_CONFIG.API_BASE_URL}add_tag.php`, { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(tagData), credentials: 'include' });
+            const response = await fetch(`${APP_CONFIG.API_BASE_URL}add_tag.php`, { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(tagData) });
             const result = await response.json();
             if (!response.ok || !result.success) throw new Error(result.error || t.tagAddFailed);
             setTags(prev => [...prev, result.tag]);
@@ -612,7 +730,7 @@ export const AdminProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         
         setIsProcessing(true);
         try {
-            const response = await fetch(`${APP_CONFIG.API_BASE_URL}update_tag.php`, { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(tagData), credentials: 'include' });
+            const response = await fetch(`${APP_CONFIG.API_BASE_URL}update_tag.php`, { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(tagData) });
             if (!response.ok || !(await response.json()).success) throw new Error(t.tagUpdateFailed);
             showToast(t.tagUpdatedSuccess);
         } catch (error: any) {
@@ -630,7 +748,7 @@ export const AdminProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         
         setIsProcessing(true);
         try {
-            const response = await fetch(`${APP_CONFIG.API_BASE_URL}delete_tag.php`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: tagId }), credentials: 'include' });
+            const response = await fetch(`${APP_CONFIG.API_BASE_URL}delete_tag.php`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: tagId }) });
             const result = await response.json();
             if (!response.ok || !result.success) {
                 if (result.errorKey && t[result.errorKey as keyof typeof t]) throw new Error(t[result.errorKey as keyof typeof t]);
@@ -656,7 +774,6 @@ export const AdminProvider: React.FC<{ children: React.ReactNode }> = ({ childre
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(roleData),
-                credentials: 'include'
             });
             const result = await response.json();
             if (!response.ok || !result.success) {
@@ -682,7 +799,6 @@ export const AdminProvider: React.FC<{ children: React.ReactNode }> = ({ childre
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(roleData),
-                credentials: 'include'
             });
             const result = await response.json();
             if (!response.ok || !result.success) {
@@ -717,7 +833,6 @@ export const AdminProvider: React.FC<{ children: React.ReactNode }> = ({ childre
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ key: roleKey }),
-                credentials: 'include'
             });
             const result = await response.json();
     
@@ -746,7 +861,6 @@ export const AdminProvider: React.FC<{ children: React.ReactNode }> = ({ childre
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(supplierData),
-                credentials: 'include'
             });
             const result = await response.json();
             if (!response.ok || !result.success) throw new Error(result.error || t.supplierAddFailed);
@@ -769,7 +883,6 @@ export const AdminProvider: React.FC<{ children: React.ReactNode }> = ({ childre
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(supplierData),
-                credentials: 'include'
             });
             const result = await response.json();
             if (!response.ok || !result.success) throw new Error(result.error || t.supplierUpdateFailed);
@@ -792,7 +905,6 @@ export const AdminProvider: React.FC<{ children: React.ReactNode }> = ({ childre
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ id: supplierId }),
-                credentials: 'include'
             });
             const result = await response.json();
             if (!response.ok || !result.success) {
@@ -819,7 +931,6 @@ export const AdminProvider: React.FC<{ children: React.ReactNode }> = ({ childre
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(payload),
-                credentials: 'include'
             });
             const result = await response.json();
             if (!response.ok || !result.success) throw new Error(result.error || t.invoiceAddFailed);
@@ -846,7 +957,6 @@ export const AdminProvider: React.FC<{ children: React.ReactNode }> = ({ childre
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(invoiceData),
-                credentials: 'include'
             });
             const result = await response.json();
             if (!response.ok || !result.success) {
@@ -874,7 +984,6 @@ export const AdminProvider: React.FC<{ children: React.ReactNode }> = ({ childre
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ id: invoiceId }),
-                credentials: 'include'
             });
             const result = await response.json();
             if (!response.ok || !result.success) throw new Error(result.error || t.invoiceDeleteFailed);
@@ -899,17 +1008,16 @@ export const AdminProvider: React.FC<{ children: React.ReactNode }> = ({ childre
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(payload),
-                credentials: 'include'
             });
             const result = await response.json();
-            if (!response.ok || !result.success) throw new Error(result.error || t.invoiceAddFailed);
+            if (!response.ok || !result.success) throw new Error(result.error || t.salesInvoiceAddFailed);
             
-            showToast(t.invoiceAddedSuccess);
+            showToast(t.salesInvoiceAddedSuccess);
             await fetchAdminData();
             await fetchAllData();
             
         } catch (error: any) {
-            showToast(error.message || t.invoiceAddFailed);
+            showToast(error.message || t.salesInvoiceAddFailed);
         } finally {
             setIsProcessing(false);
         }
@@ -927,7 +1035,6 @@ export const AdminProvider: React.FC<{ children: React.ReactNode }> = ({ childre
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ id: invoiceId }),
-                credentials: 'include'
             });
             const result = await response.json();
             if (!response.ok || !result.success) throw new Error(result.error || t.invoiceDeleteFailed);

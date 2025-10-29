@@ -1,4 +1,4 @@
-import type { CartItem, Order, RestaurantInfo, Language, Product, Promotion } from '../types';
+import type { CartItem, Order, RestaurantInfo, Language, Product, Promotion, Category } from '../types';
 import { translations } from '../i18n/translations';
 // @FIX: Import APP_CONFIG to resolve 'Cannot find name' error.
 import { APP_CONFIG } from './config';
@@ -445,3 +445,41 @@ export const getStartAndEndDates = (dateRange: string, customStart?: string, cus
             return { startDate: defaultStart, endDate: todayEnd };
     }
 }
+
+export const getDescendantCategoryIds = (categoryId: number, categories: Category[]): number[] => {
+    const ids: number[] = [];
+
+    // Helper to find a category by its ID in the tree
+    const findCategory = (cats: Category[], id: number): Category | null => {
+        for (const cat of cats) {
+            if (cat.id === id) {
+                return cat;
+            }
+            if (cat.children) {
+                const foundInChildren = findCategory(cat.children, id);
+                if (foundInChildren) {
+                    return foundInChildren;
+                }
+            }
+        }
+        return null;
+    };
+
+    // Helper to recursively collect all child IDs, including the parent's
+    const collectAllIds = (category: Category) => {
+        ids.push(category.id);
+        if (category.children) {
+            for (const child of category.children) {
+                collectAllIds(child);
+            }
+        }
+    };
+
+    const startCategory = findCategory(categories, categoryId);
+
+    if (startCategory) {
+        collectAllIds(startCategory);
+    }
+    
+    return ids;
+};

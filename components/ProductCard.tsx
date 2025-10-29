@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import type { Product, Language, Promotion } from '../types';
 import { useUI } from '../contexts/UIContext';

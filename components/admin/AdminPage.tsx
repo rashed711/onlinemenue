@@ -16,7 +16,7 @@ import { CashierPage } from './CashierPage';
 import { SettingsPage } from './SettingsPage';
 import { NotificationsPage } from './NotificationsPage';
 import { InventoryPage } from './InventoryPage'; // New Import
-import { formatDate, formatNumber, normalizeArabic } from '../../utils/helpers';
+import { formatDate, formatNumber, normalizeArabic, getDescendantCategoryIds } from '../../utils/helpers';
 import { OrderCard } from './OrderCard';
 import { RoleEditModal } from './RoleEditModal';
 import { ReportsRootPage } from './reports/ReportsRootPage';
@@ -48,45 +48,6 @@ const NAV_ITEMS_WITH_PERMS = [
     { id: 'roles', permission: 'view_roles_page' },
     { id: 'settings', permission: 'view_settings_page' },
 ];
-
-const getDescendantCategoryIds = (categoryId: number, categories: Category[]): number[] => {
-    const ids: number[] = [];
-
-    // Helper to find a category by its ID in the tree
-    const findCategory = (cats: Category[], id: number): Category | null => {
-        for (const cat of cats) {
-            if (cat.id === id) {
-                return cat;
-            }
-            if (cat.children) {
-                const foundInChildren = findCategory(cat.children, id);
-                if (foundInChildren) {
-                    return foundInChildren;
-                }
-            }
-        }
-        return null;
-    };
-
-    // Helper to recursively collect all child IDs, including the parent's
-    const collectAllIds = (category: Category) => {
-        ids.push(category.id);
-        if (category.children) {
-            for (const child of category.children) {
-                collectAllIds(child);
-            }
-        }
-    };
-
-    const startCategory = findCategory(categories, categoryId);
-
-    if (startCategory) {
-        collectAllIds(startCategory);
-    }
-    
-    return ids;
-};
-
 
 export const AdminPage: React.FC<AdminPageProps> = ({ activeSubRoute, reportSubRoute }) => {
     const { language, t, showToast, setProgress, setShowProgress, setIsChangePasswordModalOpen } = useUI();
@@ -803,228 +764,188 @@ export const AdminPage: React.FC<AdminPageProps> = ({ activeSubRoute, reportSubR
                         </div>
                     </div>
                 );
-            case 'classifications': return hasPermission('view_classifications_page') ? <ClassificationsPage onEditCategory={setEditingCategory} onAddCategory={() => setEditingCategory('new')} onEditTag={setEditingTag} onAddTag={() => setEditingTag('new')} /> : <PermissionDeniedComponent />;
+            case 'classifications':
+                if (!hasPermission('view_classifications_page')) return <PermissionDeniedComponent />;
+                return <ClassificationsPage onAddCategory={() => setEditingCategory('new')} onEditCategory={setEditingCategory} onAddTag={() => setEditingTag('new')} onEditTag={setEditingTag} />;
             case 'promotions':
                  if (!hasPermission('view_promotions_page')) return <PermissionDeniedComponent />;
-                 return (
+                return (
                     <div>
-                        <div className="flex justify-between items-center mb-6"><h2 className="text-2xl font-bold text-slate-800 dark:text-slate-100">{t.managePromotions}</h2>{hasPermission('add_promotion') && <button onClick={() => setEditingPromotion('new')} className="bg-green-500 text-white font-bold py-2 px-4 rounded-lg hover:bg-green-600 transition-colors flex items-center gap-2"><PlusIcon className="w-5 h-5" /> {t.addNewPromotion}</button>}</div>
-                        {/* Desktop Table */}
-                        <div className="hidden md:block bg-white dark:bg-slate-800 rounded-lg shadow-md overflow-x-auto border border-slate-200 dark:border-slate-700">
-                            <table className="min-w-full divide-y divide-slate-200 dark:divide-slate-700">
-                                <thead className="bg-slate-50 dark:bg-slate-700/50"><tr><th className="px-6 py-4 text-start text-xs font-medium text-slate-500 dark:text-slate-300 uppercase tracking-wider">{t.product}</th><th className="px-6 py-4 text-start text-xs font-medium text-slate-500 dark:text-slate-300 uppercase tracking-wider">{t.discountPercent}</th><th className="px-6 py-4 text-start text-xs font-medium text-slate-500 dark:text-slate-300 uppercase tracking-wider hidden sm:table-cell">{t.endDate}</th><th className="px-6 py-4 text-center text-xs font-medium text-slate-500 dark:text-slate-300 uppercase tracking-wider">{t.isActive}</th>{(hasPermission('edit_promotion') || hasPermission('delete_promotion')) && <th className="px-6 py-4 text-start text-xs font-medium text-slate-500 dark:text-slate-300 uppercase tracking-wider">{t.actions}</th>}</tr></thead>
-                                <tbody className="divide-y divide-slate-200 dark:divide-slate-700">{allPromotions.map((promo) => (<tr key={promo.id} className="odd:bg-white even:bg-slate-50 dark:odd:bg-slate-800 dark:even:bg-slate-800/50 hover:bg-slate-100 dark:hover:bg-slate-700/50 transition-colors"><td className="px-6 py-4 whitespace-nowrap"><div className="text-sm font-semibold text-slate-900 dark:text-slate-100">{promo.title[language]}</div><div className="text-xs text-slate-500 dark:text-slate-400">{allProducts.find(p => p.id === promo.productId)?.name[language] || 'N/A'}</div></td><td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-red-600 dark:text-red-400">{formatNumber(promo.discountPercent)}%</td><td className="px-6 py-4 whitespace-nowrap text-sm text-slate-600 dark:text-slate-300 hidden sm:table-cell">{formatDate(promo.endDate)}</td><td className="px-6 py-4 whitespace-nowrap text-center"><label className="relative inline-flex items-center cursor-pointer"><input type="checkbox" checked={promo.isActive} onChange={() => hasPermission('edit_promotion') && handleTogglePromotionStatus(promo)} disabled={!hasPermission('edit_promotion')} className="sr-only peer" /><div className="w-11 h-6 bg-slate-200 rounded-full peer dark:bg-slate-700 peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-green-600"></div></label></td>{(hasPermission('edit_promotion') || hasPermission('delete_promotion')) && <td className="px-6 py-4 whitespace-nowrap text-sm font-medium"><div className="flex items-center gap-4">{hasPermission('edit_promotion') && <button onClick={() => setEditingPromotion(promo)} className="text-indigo-600 hover:text-indigo-900 dark:text-indigo-400 dark:hover:text-indigo-200 flex items-center gap-1"><PencilIcon className="w-4 h-4" /> {t.edit}</button>}{hasPermission('delete_promotion') && <button onClick={() => deletePromotion(promo.id)} className="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-200 flex items-center gap-1"><TrashIcon className="w-4 h-4" /> {t.delete}</button>}</div></td>}</tr>))}</tbody>
-                            </table>
+                        <div className="flex justify-between items-center mb-6">
+                            <h2 className="text-2xl font-bold text-slate-800 dark:text-slate-100">{t.managePromotions}</h2>
+                            {hasPermission('add_promotion') && <button onClick={() => setEditingPromotion('new')} className="bg-green-500 text-white font-bold py-2 px-4 rounded-lg hover:bg-green-600 transition-colors flex items-center gap-2"><PlusIcon className="w-5 h-5" />{t.addNewPromotion}</button>}
                         </div>
-                        {/* Mobile Cards */}
-                        <div className="md:hidden space-y-4">
-                            {allPromotions.map(promo => (
-                                <div key={promo.id} className="bg-white dark:bg-slate-800 rounded-lg shadow p-4 space-y-3">
-                                    <div>
-                                        <p className="font-bold text-slate-900 dark:text-slate-100">{promo.title[language]}</p>
-                                        <p className="text-sm text-slate-500 dark:text-slate-400">{allProducts.find(p => p.id === promo.productId)?.name[language] || 'N/A'}</p>
-                                    </div>
-                                    <div className="flex justify-between items-center text-sm">
-                                        <span className="font-bold text-red-600 dark:text-red-400">{formatNumber(promo.discountPercent)}% OFF</span>
-                                        <span className="text-slate-600 dark:text-slate-300">{formatDate(promo.endDate)}</span>
-                                    </div>
-                                    <div className="border-t border-slate-100 dark:border-slate-700 pt-3 flex justify-between items-center">
-                                        <label className="flex items-center gap-2 cursor-pointer">
-                                            <input type="checkbox" checked={promo.isActive} onChange={() => hasPermission('edit_promotion') && handleTogglePromotionStatus(promo)} disabled={!hasPermission('edit_promotion')} className="sr-only peer" />
-                                            <div className="w-11 h-6 bg-slate-200 rounded-full peer dark:bg-slate-700 peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-green-600"></div>
-                                            <span className="text-sm font-medium">{t.isActive}</span>
-                                        </label>
-                                        {(hasPermission('edit_promotion') || hasPermission('delete_promotion')) && (
-                                            <div className="flex items-center gap-2">
-                                                {hasPermission('edit_promotion') && <button onClick={() => setEditingPromotion(promo)} className="text-indigo-600 dark:text-indigo-400"><PencilIcon className="w-5 h-5" /></button>}
-                                                {hasPermission('delete_promotion') && <button onClick={() => deletePromotion(promo.id)} className="text-red-600 dark:text-red-400"><TrashIcon className="w-5 h-5" /></button>}
-                                            </div>
-                                        )}
-                                    </div>
-                                </div>
-                            ))}
+                        <div className="bg-white dark:bg-slate-800 rounded-lg shadow-md overflow-hidden border border-slate-200 dark:border-slate-700">
+                            <table className="min-w-full divide-y divide-slate-200 dark:divide-slate-700">
+                                <thead className="bg-slate-50 dark:bg-slate-700/50">
+                                    <tr>
+                                        <th scope="col" className="px-6 py-3 text-start text-xs font-medium text-slate-500 dark:text-slate-300 uppercase tracking-wider">{t.promotionTitleEn}</th>
+                                        <th scope="col" className="px-6 py-3 text-start text-xs font-medium text-slate-500 dark:text-slate-300 uppercase tracking-wider">{t.linkedProduct}</th>
+                                        <th scope="col" className="px-6 py-3 text-start text-xs font-medium text-slate-500 dark:text-slate-300 uppercase tracking-wider">{t.discountPercent}</th>
+                                        <th scope="col" className="px-6 py-3 text-start text-xs font-medium text-slate-500 dark:text-slate-300 uppercase tracking-wider">{t.endDate}</th>
+                                        <th scope="col" className="px-6 py-3 text-start text-xs font-medium text-slate-500 dark:text-slate-300 uppercase tracking-wider">{t.isActive}</th>
+                                        {(hasPermission('edit_promotion') || hasPermission('delete_promotion')) && <th scope="col" className="px-6 py-3 text-start text-xs font-medium text-slate-500 dark:text-slate-300 uppercase tracking-wider">{t.actions}</th>}
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-slate-200 dark:divide-slate-700">
+                                    {allPromotions.map(promo => {
+                                        const product = allProducts.find(p => p.id === promo.productId);
+                                        return (
+                                        <tr key={promo.id} className="hover:bg-slate-50 dark:hover:bg-slate-700/50">
+                                            <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-slate-900 dark:text-slate-100">{promo.title[language]}</td>
+                                            <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-600 dark:text-slate-300">{product?.name[language] || 'N/A'}</td>
+                                            <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-600 dark:text-slate-300">{promo.discountPercent}%</td>
+                                            <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-600 dark:text-slate-300">{formatDate(promo.endDate)}</td>
+                                            <td className="px-6 py-4 whitespace-nowrap"><label className="relative inline-flex items-center cursor-pointer"><input type="checkbox" checked={promo.isActive} onChange={() => hasPermission('edit_promotion') && handleTogglePromotionStatus(promo)} disabled={!hasPermission('edit_promotion')} className="sr-only peer" /><div className="w-11 h-6 bg-slate-200 rounded-full peer dark:bg-slate-700 peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full after:content-[''] after:absolute after:top-0.5 after:start-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div></label></td>
+                                            {(hasPermission('edit_promotion') || hasPermission('delete_promotion')) && <td className="px-6 py-4 whitespace-nowrap text-sm font-medium"><div className="flex items-center gap-4">{hasPermission('edit_promotion') && <button onClick={() => setEditingPromotion(promo)} className="text-indigo-600 hover:text-indigo-900 dark:text-indigo-400 dark:hover:text-indigo-200 flex items-center gap-1"><PencilIcon className="w-4 h-4" /> {t.edit}</button>}{hasPermission('delete_promotion') && <button onClick={() => deletePromotion(promo.id)} className="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-200 flex items-center gap-1"><TrashIcon className="w-4 h-4" /> {t.delete}</button>}</div></td>}
+                                        </tr>
+                                    )})}
+                                </tbody>
+                            </table>
                         </div>
                     </div>
                 );
-             case 'users':
+            case 'users':
                 if (!hasPermission('view_users_page')) return <PermissionDeniedComponent />;
                 return (
                     <div>
-                        <div className="flex justify-between items-center mb-6"><h2 className="text-2xl font-bold text-slate-800 dark:text-slate-100">{t.manageUsers}</h2>{hasPermission('add_user') && <button onClick={() => setEditingUser('new')} className="bg-green-500 text-white font-bold py-2 px-4 rounded-lg hover:bg-green-600 transition-colors flex items-center gap-2"><PlusIcon className="w-5 h-5" />{t.addNewUser}</button>}</div>
-                        
-                        <div className="mb-6 border-b border-slate-200 dark:border-slate-700">
-                            <nav className="-mb-px flex space-x-6 rtl:space-x-reverse" aria-label="Tabs">
-                                <button
-                                    onClick={() => setUserTab('customers')}
-                                    className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition-colors ${userTab === 'customers' ? 'border-primary-500 text-primary-600 dark:text-primary-400' : 'border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300 dark:text-slate-400 dark:hover:text-slate-200 dark:hover:border-slate-600'}`}
-                                >
-                                    {t.customers}
-                                </button>
-                                <button
-                                    onClick={() => setUserTab('staff')}
-                                    className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition-colors ${userTab === 'staff' ? 'border-primary-500 text-primary-600 dark:text-primary-400' : 'border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300 dark:text-slate-400 dark:hover:text-slate-200 dark:hover:border-slate-600'}`}
-                                >
-                                    {t.staff}
-                                </button>
-                            </nav>
+                        <div className="flex justify-between items-center mb-6">
+                            <h2 className="text-2xl font-bold text-slate-800 dark:text-slate-100">{t.manageUsers}</h2>
+                            {hasPermission('add_user') && <button onClick={() => setEditingUser('new')} className="bg-green-500 text-white font-bold py-2 px-4 rounded-lg hover:bg-green-600 transition-colors flex items-center gap-2"><PlusIcon className="w-5 h-5" />{t.addNewUser}</button>}
                         </div>
 
-                        <div className="mb-6">
-                            <div className="relative">
-                                <input
-                                    type="text"
-                                    placeholder={`${t.search} ${t.name}, ${t.mobileNumber}, ${t.email}...`}
-                                    value={userSearchTerm}
-                                    onChange={(e) => setUserSearchTerm(e.target.value)}
-                                    className="w-full p-2 ps-10 rounded-lg border-slate-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 sm:text-sm dark:bg-slate-700 dark:border-slate-600 dark:text-white dark:placeholder:text-slate-400"
-                                />
-                                <div className="absolute top-1/2 -translate-y-1/2 start-3 text-slate-400"><SearchIcon className="w-5 h-5" /></div>
-                            </div>
+                        <div className="border-b border-slate-200 dark:border-slate-700">
+                            <nav className="-mb-px flex space-x-6" aria-label="Tabs">
+                                {['customers', 'staff'].map(tab => (
+                                    <button
+                                        key={tab}
+                                        onClick={() => setUserTab(tab as UserTab)}
+                                        className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm ${
+                                            userTab === tab
+                                                ? 'border-primary-500 text-primary-600 dark:text-primary-400'
+                                                : 'border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300 dark:text-slate-400 dark:hover:text-slate-200 dark:hover:border-slate-600'
+                                        }`}
+                                    >
+                                        {t[tab as 'customers' | 'staff']}
+                                    </button>
+                                ))}
+                            </nav>
                         </div>
-                        {/* Desktop Table */}
-                        <div className="hidden md:block bg-white dark:bg-slate-800 rounded-lg shadow-md overflow-x-auto border border-slate-200 dark:border-slate-700">
-                           <table className="min-w-full divide-y divide-slate-200 dark:divide-slate-700">
-                               <thead className="bg-slate-50 dark:bg-slate-700/50">
-                                <tr>
-                                    <th className="px-6 py-4 text-start text-xs font-medium text-slate-500 dark:text-slate-300 uppercase tracking-wider">{t.user}</th>
-                                    <th className="px-6 py-4 text-start text-xs font-medium text-slate-500 dark:text-slate-300 uppercase tracking-wider hidden sm:table-cell">{t.mobileNumber}</th>
-                                    {userTab === 'customers' && <th className="px-6 py-4 text-start text-xs font-medium text-slate-500 dark:text-slate-300 uppercase tracking-wider hidden sm:table-cell">{t.email}</th>}
-                                    <th className="px-6 py-4 text-start text-xs font-medium text-slate-500 dark:text-slate-300 uppercase tracking-wider">{t.role}</th>
-                                    {(hasPermission('edit_user') || hasPermission('delete_user')) && <th className="px-6 py-4 text-start text-xs font-medium text-slate-500 dark:text-slate-300 uppercase tracking-wider">{t.actions}</th>}
-                                </tr>
-                               </thead>
-                                <tbody className="divide-y divide-slate-200 dark:divide-slate-700">{usersToDisplay.map((user) => {
-                                    const userRole = roles.find(r => r.key === user.role);
-                                    return (
-                                    <tr key={user.id} className="odd:bg-white even:bg-slate-50 dark:odd:bg-slate-800 dark:even:bg-slate-800/50 hover:bg-slate-100 dark:hover:bg-slate-700/50 transition-colors">
-                                        <td className="px-6 py-4 whitespace-nowrap text-sm font-semibold text-slate-900 dark:text-slate-100">{user.name}</td>
-                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-600 dark:text-slate-300 hidden sm:table-cell">{user.mobile}</td>
-                                        {userTab === 'customers' && <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-600 dark:text-slate-300 hidden sm:table-cell">{user.email || 'N/A'}</td>}
-                                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-slate-600 dark:text-slate-300">{userRole?.name[language] || user.role}</td>
-                                        {(hasPermission('edit_user') || hasPermission('delete_user')) && <td className="px-6 py-4 whitespace-nowrap text-sm font-medium"><div className="flex items-center gap-4">{hasPermission('edit_user') && <button onClick={() => setEditingUser(user)} className="text-indigo-600 hover:text-indigo-900 dark:text-indigo-400 dark:hover:text-indigo-200 flex items-center gap-1"><PencilIcon className="w-4 h-4" /> {t.edit}</button>}{hasPermission('delete_user') && <button onClick={() => deleteUser(user.id)} className="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-200 flex items-center gap-1"><TrashIcon className="w-4 h-4" /> {t.delete}</button>}</div></td>}</tr>
-                                )})}</tbody>
-                           </table>
-                       </div>
-                        {/* Mobile Cards */}
-                        <div className="md:hidden space-y-4">
-                            {usersToDisplay.map(user => {
-                                const userRole = roles.find(r => r.key === user.role);
-                                return (
-                                <div key={user.id} className="bg-white dark:bg-slate-800 rounded-lg shadow p-4 space-y-3">
-                                    <div className="flex justify-between items-start">
-                                        <div>
-                                            <p className="font-bold text-slate-900 dark:text-slate-100">{user.name}</p>
-                                            <p className="text-sm text-slate-500 dark:text-slate-400">{user.mobile}</p>
-                                            {userTab === 'customers' && user.email && (
-                                                <p className="text-xs text-slate-500 dark:text-slate-400 truncate">{user.email}</p>
-                                            )}
-                                        </div>
-                                        <span className="text-xs font-semibold bg-primary-100 text-primary-800 px-2 py-1 rounded-full dark:bg-primary-900/50 dark:text-primary-300">{userRole?.name[language] || user.role}</span>
-                                    </div>
-                                    {(hasPermission('edit_user') || hasPermission('delete_user')) && (
-                                    <div className="border-t border-slate-100 dark:border-slate-700 pt-3 flex items-center justify-end gap-4">
-                                        {hasPermission('edit_user') && <button onClick={() => setEditingUser(user)} className="text-indigo-600 dark:text-indigo-400 font-semibold flex items-center gap-1"><PencilIcon className="w-4 h-4" /> {t.edit}</button>}
-                                        {hasPermission('delete_user') && <button onClick={() => deleteUser(user.id)} className="text-red-600 dark:text-red-400 font-semibold flex items-center gap-1"><TrashIcon className="w-4 h-4" /> {t.delete}</button>}
-                                    </div>
-                                    )}
-                                </div>
-                            )})}
+                         <div className="relative my-4">
+                            <input type="text" placeholder={`${t.name}, ${t.mobileNumber}...`} value={userSearchTerm} onChange={(e) => setUserSearchTerm(e.target.value)} className="w-full p-2 ps-10 rounded-lg border-slate-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 sm:text-sm dark:bg-slate-700 dark:border-slate-600 dark:text-white dark:placeholder:text-slate-400"/>
+                            <div className="absolute top-1/2 -translate-y-1/2 start-3 text-slate-400"><SearchIcon className="w-5 h-5" /></div>
+                        </div>
+
+                        <div className="bg-white dark:bg-slate-800 rounded-lg shadow-md overflow-hidden border border-slate-200 dark:border-slate-700">
+                            <table className="min-w-full divide-y divide-slate-200 dark:divide-slate-700">
+                                <thead className="bg-slate-50 dark:bg-slate-700/50">
+                                    <tr>
+                                        <th scope="col" className="px-6 py-3 text-start text-xs font-medium text-slate-500 dark:text-slate-300 uppercase tracking-wider">{t.name}</th>
+                                        <th scope="col" className="px-6 py-3 text-start text-xs font-medium text-slate-500 dark:text-slate-300 uppercase tracking-wider">{t.mobileNumber}</th>
+                                        <th scope="col" className="px-6 py-3 text-start text-xs font-medium text-slate-500 dark:text-slate-300 uppercase tracking-wider">{t.role}</th>
+                                        {(hasPermission('edit_user') || hasPermission('delete_user')) && <th scope="col" className="px-6 py-3 text-start text-xs font-medium text-slate-500 dark:text-slate-300 uppercase tracking-wider">{t.actions}</th>}
+                                    </tr>
+                                </thead>
+                                 <tbody className="divide-y divide-slate-200 dark:divide-slate-700">
+                                    {usersToDisplay.map((user) => (
+                                        <tr key={user.id} className="hover:bg-slate-50 dark:hover:bg-slate-700/50">
+                                            <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-slate-900 dark:text-slate-100">{user.name}</td>
+                                            <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-600 dark:text-slate-300">{user.mobile}</td>
+                                            <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-600 dark:text-slate-300">{roles.find(r => r.key === user.role)?.name[language] || user.role}</td>
+                                            {(hasPermission('edit_user') || hasPermission('delete_user')) && <td className="px-6 py-4 whitespace-nowrap text-sm font-medium"><div className="flex items-center gap-4">{hasPermission('edit_user') && <button onClick={() => setEditingUser(user)} className="text-indigo-600 hover:text-indigo-900 dark:text-indigo-400 dark:hover:text-indigo-200 flex items-center gap-1"><PencilIcon className="w-4 h-4" /> {t.edit}</button>}{hasPermission('delete_user') && <button onClick={() => deleteUser(user.id)} className="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-200 flex items-center gap-1"><TrashIcon className="w-4 h-4" /> {t.delete}</button>}</div></td>}
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
                         </div>
                     </div>
                 );
             case 'roles':
                 if (!hasPermission('view_roles_page')) return <PermissionDeniedComponent />;
-                const superAdminRole = roles.find(r => r.name.en.toLowerCase() === 'superadmin');
-                const currentUserIsSuperAdmin = currentUser?.role === superAdminRole?.key;
-                const rolesToDisplay = currentUserIsSuperAdmin ? roles : roles.filter(r => r.name.en.toLowerCase() !== 'superadmin');
-                
                 return (
                     <div>
-                        <div className="flex justify-between items-center mb-6"><h2 className="text-2xl font-bold text-slate-800 dark:text-slate-100">{t.manageRoles}</h2>{hasPermission('add_role') && <button onClick={() => setEditingRole('new')} className="bg-green-500 text-white font-bold py-2 px-4 rounded-lg hover:bg-green-600 transition-colors flex items-center gap-2"><PlusIcon className="w-5 h-5" />Add New Role</button>}</div>
-                        {/* Desktop Table */}
-                        <div className="hidden md:block bg-white dark:bg-slate-800 rounded-lg shadow-md overflow-x-auto border border-slate-200 dark:border-slate-700">
-                           <table className="min-w-full divide-y divide-slate-200 dark:divide-slate-700">
-                               <thead className="bg-slate-50 dark:bg-slate-700/50">
-                                   <tr>
-                                       <th className="px-6 py-4 text-start text-xs font-medium text-slate-500 dark:text-slate-300 uppercase tracking-wider">{t.role}</th><th className="px-6 py-4 text-start text-xs font-medium text-slate-500 dark:text-slate-300 uppercase tracking-wider">Role Key</th>
-                                       {(hasPermission('manage_permissions') || hasPermission('edit_role') || hasPermission('delete_role')) && <th className="px-6 py-4 text-start text-xs font-medium text-slate-500 dark:text-slate-300 uppercase tracking-wider">{t.actions}</th>}
-                                   </tr>
-                               </thead>
-                                <tbody className="divide-y divide-slate-200 dark:divide-slate-700">
-                                   {rolesToDisplay.map((role) => (
-                                       <tr key={role.key} className="odd:bg-white even:bg-slate-50 dark:odd:bg-slate-800 dark:even:bg-slate-800/50 hover:bg-slate-100 dark:hover:bg-slate-700/50 transition-colors">
-                                           <td className="px-6 py-4 whitespace-nowrap text-sm font-semibold text-slate-900 dark:text-slate-100">{role.name[language]}</td><td className="px-6 py-4 whitespace-nowrap text-sm font-mono text-slate-500 dark:text-slate-400">{role.key}</td>
-                                            {(hasPermission('manage_permissions') || hasPermission('edit_role') || hasPermission('delete_role')) && (<td className="px-6 py-4 whitespace-nowrap text-sm font-medium"><div className="flex items-center gap-4">{hasPermission('manage_permissions') && <button onClick={() => setEditingPermissionsForRole(role.key)} className="text-green-600 hover:text-green-900 dark:text-green-400 dark:hover:text-green-200 flex items-center gap-1"><ShieldCheckIcon className="w-4 h-4" /> {t.editPermissions}</button>}{hasPermission('edit_role') && <button onClick={() => setEditingRole(role)} disabled={role.isSystem} className="text-indigo-600 hover:text-indigo-900 dark:text-indigo-400 dark:hover:text-indigo-200 flex items-center gap-1 disabled:opacity-50 disabled:cursor-not-allowed"><PencilIcon className="w-4 h-4" /> {t.edit}</button>}{hasPermission('delete_role') && <button onClick={() => deleteRole(role.key)} disabled={role.isSystem} className="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-200 flex items-center gap-1 disabled:opacity-50 disabled:cursor-not-allowed"><TrashIcon className="w-4 h-4" /> {t.delete}</button>}</div></td>)}
-                                       </tr>
-                                   ))}
-                               </tbody>
-                           </table>
-                       </div>
-                       {/* Mobile Cards */}
-                       <div className="md:hidden space-y-4">
-                           {rolesToDisplay.map(role => (
-                               <div key={role.key} className="bg-white dark:bg-slate-800 rounded-lg shadow p-4 space-y-3">
-                                   <div>
-                                       <p className="font-bold text-slate-900 dark:text-slate-100">{role.name[language]}</p>
-                                       <p className="text-sm font-mono text-slate-500 dark:text-slate-400">{role.key}</p>
-                                   </div>
-                                    {(hasPermission('manage_permissions') || hasPermission('edit_role') || hasPermission('delete_role')) && (
-                                        <div className="border-t border-slate-100 dark:border-slate-700 pt-3 flex items-center justify-end flex-wrap gap-x-4 gap-y-2">
-                                            {hasPermission('manage_permissions') && <button onClick={() => setEditingPermissionsForRole(role.key)} className="text-green-600 dark:text-green-400 font-semibold flex items-center gap-1 text-sm"><ShieldCheckIcon className="w-4 h-4" /> {t.editPermissions}</button>}
-                                            {hasPermission('edit_role') && <button onClick={() => setEditingRole(role)} disabled={role.isSystem} className="text-indigo-600 dark:text-indigo-400 font-semibold flex items-center gap-1 text-sm disabled:opacity-50"><PencilIcon className="w-4 h-4" /> {t.edit}</button>}
-                                            {hasPermission('delete_role') && <button onClick={() => deleteRole(role.key)} disabled={role.isSystem} className="text-red-600 dark:text-red-400 font-semibold flex items-center gap-1 text-sm disabled:opacity-50"><TrashIcon className="w-4 h-4" /> {t.delete}</button>}
-                                        </div>
-                                    )}
-                               </div>
-                           ))}
-                       </div>
+                        <div className="flex justify-between items-center mb-6">
+                            <h2 className="text-2xl font-bold text-slate-800 dark:text-slate-100">{t.manageRoles}</h2>
+                            {/* FIX: Use the correct translation key 'addNewRole' instead of 'addRole'. */}
+                            {hasPermission('add_role') && <button onClick={() => setEditingRole('new')} className="bg-green-500 text-white font-bold py-2 px-4 rounded-lg hover:bg-green-600 transition-colors flex items-center gap-2"><PlusIcon className="w-5 h-5" />{t.addNewRole}</button>}
+                        </div>
+                         <div className="bg-white dark:bg-slate-800 rounded-lg shadow-md overflow-hidden border border-slate-200 dark:border-slate-700">
+                            <table className="min-w-full divide-y divide-slate-200 dark:divide-slate-700">
+                                <thead className="bg-slate-50 dark:bg-slate-700/50">
+                                    <tr>
+                                        <th scope="col" className="px-6 py-3 text-start text-xs font-medium text-slate-500 dark:text-slate-300 uppercase tracking-wider">{t.role}</th>
+                                        <th scope="col" className="px-6 py-3 text-start text-xs font-medium text-slate-500 dark:text-slate-300 uppercase tracking-wider">{t.actions}</th>
+                                    </tr>
+                                </thead>
+                                 <tbody className="divide-y divide-slate-200 dark:divide-slate-700">
+                                    {roles.map(role => (
+                                        <tr key={role.key} className="hover:bg-slate-50 dark:hover:bg-slate-700/50">
+                                            <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-slate-900 dark:text-slate-100">{role.name[language]}</td>
+                                            <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                                                <div className="flex items-center gap-4">
+                                                    {hasPermission('manage_permissions') && <button onClick={() => setEditingPermissionsForRole(role.key)} className="text-green-600 hover:text-green-900 dark:text-green-400 dark:hover:text-green-200 flex items-center gap-1"><ShieldCheckIcon className="w-4 h-4" /> {t.editPermissions}</button>}
+                                                    {hasPermission('edit_role') && !role.isSystem && <button onClick={() => setEditingRole(role)} className="text-indigo-600 hover:text-indigo-900 dark:text-indigo-400 dark:hover:text-indigo-200 flex items-center gap-1"><PencilIcon className="w-4 h-4" /> {t.edit}</button>}
+                                                    {hasPermission('delete_role') && !role.isSystem && <button onClick={() => deleteRole(role.key)} className="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-200 flex items-center gap-1"><TrashIcon className="w-4 h-4" /> {t.delete}</button>}
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                         </div>
                     </div>
                 );
-             case 'settings': return hasPermission('view_settings_page') ? <SettingsPage /> : <PermissionDeniedComponent />;
-            default: return null;
+            case 'settings': return hasPermission('view_settings_page') ? <SettingsPage /> : <PermissionDeniedComponent />;
+            default: return <div>Select a tab</div>;
         }
-    }
-    
+    };
+
     return (
-        <div className={`relative min-h-screen bg-slate-100 dark:bg-slate-900`}>
-            <AdminSidebar activeTab={activeTab} setActiveTab={setTab} isOpen={isSidebarOpen} setIsOpen={setSidebarOpen} onChangePasswordClick={onChangePasswordClick} />
-            <div className={`flex flex-col min-h-screen transition-all duration-300 ${language === 'ar' ? 'md:mr-64' : 'md:ml-64'}`}>
-                <header className="bg-white/80 dark:bg-slate-900/80 backdrop-blur-lg shadow-sm sticky top-0 z-20 border-b border-slate-200 dark:border-slate-700" id="admin-header">
-                    <div className="px-4 h-20 flex justify-between items-center">
-                        <div className="flex items-center gap-3">
-                            <button className="p-2 md:hidden rounded-full hover:bg-slate-200/60 dark:hover:bg-slate-700/60 transition-colors" onClick={() => setSidebarOpen(true)}><MenuAlt2Icon className="w-6 h-6 text-slate-600 dark:text-slate-300" /></button>
-                            <h1 className="text-xl font-bold text-slate-800 dark:text-slate-100">{t.adminPanel}</h1>
-                        </div>
-                        {isPushSupported && (
-                             <button
-                                onClick={togglePushSubscription}
-                                disabled={isPushLoading}
-                                className="p-2 rounded-full hover:bg-slate-200/60 dark:hover:bg-slate-700/60 transition-colors disabled:opacity-50 disabled:cursor-wait"
-                                title={isPushSubscribed ? t.disablePushNotifications : t.enablePushNotifications}
-                            >
-                                {isPushSubscribed 
-                                    ? <BellIcon className="w-6 h-6 text-green-500" /> 
-                                    : <BellSlashIcon className="w-6 h-6 text-slate-500 dark:text-slate-400" />
-                                }
-                            </button>
-                        )}
-                    </div>
-                </header>
-                <main className="container mx-auto max-w-full px-4 sm:px-6 lg:px-8 pt-[15px] pb-8 flex-1">
-                     <div className={`transition-opacity duration-300 ease-in-out ${transitionStage === 'out' ? 'opacity-0' : 'opacity-100'}`}>{renderContent()}</div>
+        <div className="h-screen flex flex-col">
+            <header className="flex items-center justify-between px-4 h-20 bg-white dark:bg-slate-800 border-b dark:border-slate-700 z-20 shrink-0">
+                <div className="flex items-center gap-4">
+                    <button onClick={() => setSidebarOpen(true)} className="p-2 md:hidden">
+                        <MenuAlt2Icon className="w-6 h-6"/>
+                    </button>
+                    <h1 className="text-xl font-bold text-slate-800 dark:text-slate-100">{t.adminPanel}</h1>
+                </div>
+                <div className="flex items-center gap-4">
+                    { isPushSupported && (
+                        <button 
+                            onClick={togglePushSubscription}
+                            disabled={isPushLoading}
+                            className={`p-2 rounded-full transition-colors ${isPushSubscribed ? 'bg-green-100 dark:bg-green-900/50' : 'hover:bg-slate-100 dark:hover:bg-slate-700'}`}
+                            title={isPushSubscribed ? t.disablePushNotifications : t.enablePushNotifications}
+                        >
+                            { isPushSubscribed ? <BellIcon className="w-6 h-6 text-green-600 dark:text-green-400"/> : <BellSlashIcon className="w-6 h-6 text-slate-500 dark:text-slate-400"/> }
+                        </button>
+                    )}
+                    <a href="#/profile" onClick={(e) => { e.preventDefault(); window.location.hash = '#/profile';}} className="flex items-center gap-2 text-sm font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700 p-2 rounded-lg transition-colors">
+                        <img src={currentUser.profilePicture} alt="User" className="w-8 h-8 rounded-full" />
+                        <span className="hidden sm:inline">{currentUser.name}</span>
+                    </a>
+                </div>
+            </header>
+
+            <div className="flex flex-1 overflow-hidden">
+                <AdminSidebar activeTab={activeTab} setActiveTab={setTab} isOpen={isSidebarOpen} setIsOpen={setSidebarOpen} onChangePasswordClick={onChangePasswordClick} />
+                <main className={`flex-1 transition-all duration-300 overflow-y-auto p-4 sm:p-6 lg:p-8 ${language === 'ar' ? 'md:mr-64' : 'md:ml-64'}`}>
+                   <div className={`transition-opacity duration-300 ${transitionStage === 'in' ? 'opacity-100' : 'opacity-0'}`}>
+                        {renderContent()}
+                   </div>
                 </main>
             </div>
-            
-            {viewingOrder && hasPermission('view_orders_page') && <OrderDetailsModal order={viewingOrder} onClose={() => setViewingOrder(null)} canEdit={hasPermission('edit_order_content')} onEdit={setEditingOrder} canDelete={hasPermission('delete_order')} onDelete={deleteOrder} creatorName={viewingOrderCreatorName} />}
-            {editingProduct && (hasPermission('add_product') || hasPermission('edit_product')) && <ProductEditModal product={editingProduct === 'new' ? null : editingProduct} onClose={() => setEditingProduct(null)} onSave={handleSaveProduct} />}
-            {editingPromotion && (hasPermission('add_promotion') || hasPermission('edit_promotion')) && <PromotionEditModal promotion={editingPromotion === 'new' ? null : editingPromotion} onClose={() => setEditingPromotion(null)} onSave={handleSavePromotion} />}
-            {editingUser && (hasPermission('add_user') || hasPermission('edit_user')) && <UserEditModal user={editingUser === 'new' ? null : editingUser} onClose={() => setEditingUser(null)} onSave={handleSaveUser} />}
-            {editingPermissionsForRole && hasPermission('manage_permissions') && <PermissionsEditModal roleId={editingPermissionsForRole} onClose={() => setEditingPermissionsForRole(null)} onSave={handleSavePermissions} />}
-            {editingRole && (hasPermission('add_role') || hasPermission('edit_role')) && <RoleEditModal role={editingRole === 'new' ? null : editingRole} onClose={() => setEditingRole(null)} onSave={handleSaveRole} />}
-            {editingCategory && (hasPermission('add_category') || hasPermission('edit_category')) && <CategoryEditModal category={editingCategory === 'new' ? null : editingCategory} categories={categories} onClose={() => setEditingCategory(null)} onSave={handleSaveCategory} />}
-            {editingTag && (hasPermission('add_tag') || hasPermission('edit_tag')) && <TagEditModal tag={editingTag === 'new' ? null : editingTag} onClose={() => setEditingTag(null)} onSave={handleSaveTag} />}
-            {refusingOrder && hasPermission('manage_order_status') && <RefusalReasonModal order={refusingOrder} onClose={() => setRefusingOrder(null)} onSave={(reason) => { updateOrder(refusingOrder.id, { status: 'refused', refusalReason: reason }); setRefusingOrder(null); }} />}
-            {editingOrder && hasPermission('edit_order_content') && <OrderEditModal order={editingOrder} onClose={() => setEditingOrder(null)} onSave={handleSaveOrder} />}
+
+            {viewingOrder && <OrderDetailsModal order={viewingOrder} onClose={() => setViewingOrder(null)} canEdit={hasPermission('edit_order_content')} onEdit={setEditingOrder} canDelete={hasPermission('delete_order')} onDelete={deleteOrder} creatorName={viewingOrderCreatorName} />}
+            {editingProduct !== null && <ProductEditModal product={editingProduct === 'new' ? null : editingProduct} onClose={() => setEditingProduct(null)} onSave={handleSaveProduct} />}
+            {editingPromotion !== null && <PromotionEditModal promotion={editingPromotion === 'new' ? null : editingPromotion} onClose={() => setEditingPromotion(null)} onSave={handleSavePromotion} />}
+            {editingUser !== null && <UserEditModal user={editingUser === 'new' ? null : editingUser} onClose={() => setEditingUser(null)} onSave={handleSaveUser} />}
+            {editingPermissionsForRole !== null && <PermissionsEditModal roleId={editingPermissionsForRole} onClose={() => setEditingPermissionsForRole(null)} onSave={handleSavePermissions} />}
+            {editingRole !== null && <RoleEditModal role={editingRole === 'new' ? null : editingRole} onClose={() => setEditingRole(null)} onSave={handleSaveRole} />}
+            {refusingOrder && <RefusalReasonModal order={refusingOrder} onClose={() => setRefusingOrder(null)} onSave={(reason) => { updateOrder(refusingOrder.id, { status: 'refused', refusalReason: reason }); setRefusingOrder(null); }} />}
+            {editingOrder && <OrderEditModal order={editingOrder} onClose={() => setEditingOrder(null)} onSave={handleSaveOrder} />}
+            {editingCategory !== null && <CategoryEditModal category={editingCategory === 'new' ? null : editingCategory} categories={categories} onClose={() => setEditingCategory(null)} onSave={handleSaveCategory} />}
+            {editingTag !== null && <TagEditModal tag={editingTag === 'new' ? null : editingTag} onClose={() => setEditingTag(null)} onSave={handleSaveTag} />}
         </div>
     );
 };

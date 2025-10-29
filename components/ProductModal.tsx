@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useMemo } from 'react';
 import type { Product, Promotion } from '../types';
 import { StarIcon, PlusIcon } from './icons/Icons';

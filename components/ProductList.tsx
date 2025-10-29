@@ -1,3 +1,4 @@
+
 import React, { useRef, useCallback, useEffect } from 'react';
 import type { Product, Language, CartItem, Promotion } from '../types';
 import { ProductCard } from './ProductCard';

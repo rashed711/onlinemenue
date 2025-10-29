@@ -179,14 +179,16 @@ export const InventoryPage: React.FC = () => {
                )}
            </div>
            
-           <div className="bg-white dark:bg-slate-800 rounded-lg shadow-md overflow-hidden border border-slate-200 dark:border-slate-700">
+           {/* Desktop Table View */}
+           <div className="hidden md:block bg-white dark:bg-slate-800 rounded-lg shadow-md overflow-hidden border border-slate-200 dark:border-slate-700">
                <table className="min-w-full divide-y divide-slate-200 dark:divide-slate-700">
                     <thead className="bg-slate-50 dark:bg-slate-700/50">
                        <tr>
                            <th scope="col" className="px-6 py-3 text-start text-xs font-medium text-slate-500 dark:text-slate-300 uppercase tracking-wider">ID</th>
                            <th scope="col" className="px-6 py-3 text-start text-xs font-medium text-slate-500 dark:text-slate-300 uppercase tracking-wider">{t.customer}</th>
-                           <th scope="col" className="px-6 py-3 text-start text-xs font-medium text-slate-500 dark:text-slate-300 uppercase tracking-wider hidden sm:table-cell">{t.invoiceDate}</th>
+                           <th scope="col" className="px-6 py-3 text-start text-xs font-medium text-slate-500 dark:text-slate-300 uppercase tracking-wider">{t.invoiceDate}</th>
                            <th scope="col" className="px-6 py-3 text-start text-xs font-medium text-slate-500 dark:text-slate-300 uppercase tracking-wider">{t.totalAmount}</th>
+                           <th scope="col" className="px-6 py-3 text-start text-xs font-medium text-slate-500 dark:text-slate-300 uppercase tracking-wider">{t.items}</th>
                            <th scope="col" className="px-6 py-3 text-start text-xs font-medium text-slate-500 dark:text-slate-300 uppercase tracking-wider">{t.actions}</th>
                        </tr>
                    </thead>
@@ -195,8 +197,9 @@ export const InventoryPage: React.FC = () => {
                            <tr key={invoice.id} onClick={() => setViewingSalesInvoice(invoice)} className="hover:bg-slate-50 dark:hover:bg-slate-700/50 cursor-pointer">
                                <td className="px-6 py-4 whitespace-nowrap text-sm font-mono text-slate-500">{invoice.invoice_number}</td>
                                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-slate-900 dark:text-slate-100">{invoice.customer_name}</td>
-                               <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-600 dark:text-slate-300 hidden sm:table-cell">{formatDateTime(invoice.invoice_date)}</td>
-                               <td className="px-6 py-4 whitespace-nowrap text-sm font-semibold text-primary-700 dark:text-primary-400">{invoice.total_amount.toFixed(2)} {t.currency}</td>
+                               <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-600 dark:text-slate-300">{formatDateTime(invoice.invoice_date)}</td>
+                               <td className="px-6 py-4 whitespace-nowrap text-sm font-semibold text-green-700 dark:text-green-400">{invoice.total_amount.toFixed(2)} {t.currency}</td>
+                               <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-600 dark:text-slate-300">{invoice.items.length}</td>
                                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                                    <div onClick={e => e.stopPropagation()} className="flex items-center gap-4">
                                        {canManageSalesInvoices && <button onClick={() => handleDeleteSalesInvoice(invoice.id)} className="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-200 flex items-center gap-1"><TrashIcon className="w-4 h-4" /> {t.delete}</button>}
@@ -205,11 +208,39 @@ export const InventoryPage: React.FC = () => {
                            </tr>
                        )) : (
                            <tr>
-                               <td colSpan={5} className="text-center py-10 text-slate-500">{t.noInvoicesFound}</td>
+                               <td colSpan={6} className="text-center py-10 text-slate-500">{t.noInvoicesFound}</td>
                            </tr>
                        )}
                    </tbody>
                </table>
+           </div>
+
+            {/* Mobile Card View */}
+            <div className="md:hidden space-y-4">
+               {salesInvoices.length > 0 ? salesInvoices.map(invoice => (
+                   <div key={invoice.id} onClick={() => setViewingSalesInvoice(invoice)} className="bg-white dark:bg-slate-800 rounded-lg shadow p-4 space-y-3 border-l-4 border-green-500">
+                       <div className="flex justify-between items-start">
+                            <div>
+                               <p className="font-bold text-slate-900 dark:text-slate-100">{invoice.customer_name}</p>
+                               <p className="text-sm text-slate-500 dark:text-slate-400">ID: {invoice.invoice_number}</p>
+                           </div>
+                           <div className="text-end">
+                               <p className="font-semibold text-lg text-green-600 dark:text-green-400">{invoice.total_amount.toFixed(2)}</p>
+                               <p className="text-xs text-slate-400">{formatDateTime(invoice.invoice_date)}</p>
+                           </div>
+                       </div>
+                        <div className="border-t border-slate-100 dark:border-slate-700 pt-3 flex justify-between items-center">
+                           <span className="text-sm font-medium text-slate-600 dark:text-slate-300">{invoice.items.length} {t.items}</span>
+                           {canManageSalesInvoices && (
+                               <div onClick={e => e.stopPropagation()} className="flex items-center gap-4">
+                                   <button onClick={() => handleDeleteSalesInvoice(invoice.id)} className="text-red-600 dark:text-red-400 font-semibold flex items-center gap-1"><TrashIcon className="w-4 h-4" /> {t.delete}</button>
+                               </div>
+                           )}
+                       </div>
+                   </div>
+               )) : (
+                   <div className="text-center py-10 text-slate-500 bg-white dark:bg-slate-800 rounded-lg">{t.noInvoicesFound}</div>
+               )}
            </div>
         </div>
     );

@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef } from 'react';
 import { SunIcon, MoonIcon, CartIcon, LanguageIcon, UserIcon, FullscreenIcon, ExitFullscreenIcon, ShieldCheckIcon, LogoutIcon, InstallIcon } from './icons/Icons';
 import { formatNumber } from '../utils/helpers';
