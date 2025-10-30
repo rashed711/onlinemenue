@@ -175,7 +175,6 @@ export default {
   "pushUnsubscriptionSuccess": "Notifications disabled.",
   "pushUnsubscriptionFailed": "Failed to disable notifications.",
   "editRole": "Edit Role",
-  "addNewRole": "Add New Role",
   "roleNameEn": "Role Name (English)",
   "roleNameAr": "Role Name (Arabic)",
   "confirmDeleteRole": "Are you sure you want to delete this role?",
