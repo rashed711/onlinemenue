@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import type { Supplier, PurchaseInvoice, SalesInvoice } from '../../types';
 import { useUI } from '../../contexts/UIContext';
 import { useInventory } from '../../contexts/InventoryContext';
@@ -31,6 +31,40 @@ export const InventoryPage: React.FC = () => {
     const canManageSuppliers = hasPermission('manage_suppliers');
     const canManagePurchaseInvoices = hasPermission('add_purchase_invoice');
     const canManageSalesInvoices = hasPermission('manage_sales_invoices');
+
+    // Effect to handle deep-linking from Treasury page
+    useEffect(() => {
+        const checkUrlForInvoice = () => {
+            const hash = window.location.hash;
+            const params = new URLSearchParams(hash.split('?')[1]);
+            const purchaseId = params.get('view_purchase');
+            const salesId = params.get('view_sales');
+
+            // Ensure data is loaded before trying to find the invoice
+            if (purchaseId && purchaseInvoices.length > 0) {
+                const invoiceToView = purchaseInvoices.find(inv => inv.id === parseInt(purchaseId, 10));
+                if (invoiceToView) {
+                    setActiveTab('invoices');
+                    setViewingInvoice(invoiceToView);
+                    // Clean up URL to prevent modal from re-opening on every render
+                    window.history.replaceState(null, '', '#/admin/inventory');
+                }
+            } else if (salesId && salesInvoices.length > 0) {
+                const invoiceToView = salesInvoices.find(inv => inv.id === parseInt(salesId, 10));
+                if (invoiceToView) {
+                    setActiveTab('salesInvoices');
+                    setViewingSalesInvoice(invoiceToView);
+                    // Clean up URL
+                    window.history.replaceState(null, '', '#/admin/inventory');
+                }
+            }
+        };
+
+        // Run only after the initial data load is likely complete
+        if (!isInventoryLoading) {
+            checkUrlForInvoice();
+        }
+    }, [isInventoryLoading, purchaseInvoices, salesInvoices, setViewingInvoice, setViewingSalesInvoice]);
     
     const handleDeletePurchaseInvoice = (invoiceId: number) => {
         if (window.confirm(t.confirmDeleteInvoice)) {

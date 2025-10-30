@@ -1,9 +1,11 @@
 
+
 export default {
   "adminPanel": "Admin Panel",
   "disablePushNotifications": "Disable Push Notifications",
   "enablePushNotifications": "Enable Push Notifications",
   "permissionsUpdatedRedirect": "Permissions updated. Redirecting you to an accessible page.",
+  "permissionDenied": "Permission Denied.",
   "manageOrders": "Orders",
   "startDate": "Start Date",
   "endDate": "End Date",
