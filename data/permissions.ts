@@ -1,3 +1,4 @@
+
 import React from 'react';
 import type { Permission } from '../types';
 import { translations } from '../i18n/translations';
@@ -72,6 +73,14 @@ export const PERMISSION_GROUPS: Record<string, PermissionGroup> = {
       { id: 'view_delivery_report', nameKey: 'permission_view_delivery_report' },
       { id: 'view_user_activity_report', nameKey: 'permission_view_user_activity_report' },
     ],
+  },
+  treasury: {
+      nameKey: 'treasury',
+      icon: CurrencyDollarIcon,
+      permissions: [
+          { id: 'view_treasury_page', nameKey: 'permission_view_treasury_page' },
+          { id: 'add_manual_transaction', nameKey: 'permission_add_manual_transaction' },
+      ]
   },
   inventory: {
     nameKey: 'inventory',

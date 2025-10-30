@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import type { SalesInvoiceItem, User, Product, SalesInvoice } from '../../types';
+import type { SalesInvoiceItem, User, Product, SalesInvoice, Promotion } from '../../types';
 import { Modal } from '../Modal';
 import { useUI } from '../../contexts/UIContext';
 import { useInventory } from '../../contexts/InventoryContext';
@@ -8,6 +8,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { useData } from '../../contexts/DataContext';
 import { PlusIcon, TrashIcon } from '../icons/Icons';
 import { SearchableSelect } from './SearchableSelect';
+import { getActivePromotionForProduct } from '../../utils/helpers';
 
 interface SalesInvoiceModalProps {
     invoiceToEdit?: SalesInvoice | null;
@@ -16,18 +17,24 @@ interface SalesInvoiceModalProps {
 
 type CustomerType = 'guest' | 'registered';
 
+type FormSalesItem = Partial<Omit<SalesInvoiceItem, 'quantity' | 'sale_price'>> & {
+    quantity: string | number;
+    sale_price: string | number;
+    original_price?: number;
+};
+
 export const SalesInvoiceModal: React.FC<SalesInvoiceModalProps> = ({ invoiceToEdit, onClose }) => {
     const { t, language } = useUI();
     const { users } = useUserManagement();
     const { roles } = useAuth();
     const { addSalesInvoice, updateSalesInvoice } = useInventory();
-    const { products } = useData();
+    const { products, promotions } = useData();
     
     const [customerType, setCustomerType] = useState<CustomerType>('guest');
     const [customerId, setCustomerId] = useState<number | ''>('');
     const [customerName, setCustomerName] = useState('');
     const [customerMobile, setCustomerMobile] = useState('');
-    const [items, setItems] = useState<Partial<SalesInvoiceItem>[]>([{ product_id: undefined, quantity: 1, sale_price: 0 }]);
+    const [items, setItems] = useState<FormSalesItem[]>([{ product_id: undefined, quantity: 1, sale_price: 0 }]);
     const [notes, setNotes] = useState('');
 
     useEffect(() => {
@@ -37,12 +44,16 @@ export const SalesInvoiceModal: React.FC<SalesInvoiceModalProps> = ({ invoiceToE
             setCustomerName(invoiceToEdit.customer_name);
             setCustomerMobile(invoiceToEdit.customer_mobile);
             setNotes(invoiceToEdit.notes || '');
-            setItems(invoiceToEdit.items.map(item => ({
-                product_id: item.product_id,
-                quantity: item.quantity,
-                sale_price: item.sale_price,
-                subtotal: item.subtotal
-            })));
+            setItems(invoiceToEdit.items.map(item => {
+                const product = products.find(p => p.id === item.product_id);
+                return {
+                    product_id: item.product_id,
+                    quantity: item.quantity,
+                    sale_price: item.sale_price,
+                    subtotal: item.subtotal,
+                    original_price: product?.price
+                }
+            }));
         } else {
             setCustomerType('guest');
             setCustomerId('');
@@ -51,7 +62,7 @@ export const SalesInvoiceModal: React.FC<SalesInvoiceModalProps> = ({ invoiceToE
             setItems([{ product_id: undefined, quantity: 1, sale_price: 0 }]);
             setNotes('');
         }
-    }, [invoiceToEdit]);
+    }, [invoiceToEdit, products]);
 
     const customerUsers = useMemo(() => {
         const customerRole = roles.find(r => r.name.en.toLowerCase() === 'customer');
@@ -74,7 +85,9 @@ export const SalesInvoiceModal: React.FC<SalesInvoiceModalProps> = ({ invoiceToE
 
     const totalAmount = useMemo(() => {
         return items.reduce((total, item) => {
-            const subtotal = (item.quantity || 0) * (item.sale_price || 0);
+            const quantity = parseFloat(String(item.quantity)) || 0;
+            const price = parseFloat(String(item.sale_price)) || 0;
+            const subtotal = quantity * price;
             return total + subtotal;
         }, 0);
     }, [items]);
@@ -104,7 +117,7 @@ export const SalesInvoiceModal: React.FC<SalesInvoiceModalProps> = ({ invoiceToE
         setItems(prev => prev.filter((_, i) => i !== index));
     };
 
-    const handleItemChange = (index: number, field: keyof SalesInvoiceItem, value: any) => {
+    const handleItemChange = (index: number, field: 'product_id' | 'quantity' | 'sale_price', value: any) => {
         setItems(prev => {
             const newItems = [...prev];
             const currentItem = { ...newItems[index] };
@@ -114,6 +127,7 @@ export const SalesInvoiceModal: React.FC<SalesInvoiceModalProps> = ({ invoiceToE
                 if (!productId) {
                     currentItem.product_id = undefined;
                     currentItem.sale_price = 0;
+                    currentItem.original_price = undefined;
                     newItems[index] = currentItem;
                     return newItems;
                 }
@@ -122,14 +136,14 @@ export const SalesInvoiceModal: React.FC<SalesInvoiceModalProps> = ({ invoiceToE
                 
                 if (duplicateIndex !== -1) {
                     const duplicateItem = { ...newItems[duplicateIndex] };
-                    const currentQuantity = currentItem.quantity || 1;
+                    const currentQuantity = parseFloat(String(currentItem.quantity)) || 1;
                     const product = products.find(p => p.id === productId);
                     const stock = product?.stock_quantity || 0;
     
-                    const newTotalQuantity = (duplicateItem.quantity || 0) + currentQuantity;
+                    const newTotalQuantity = (parseFloat(String(duplicateItem.quantity)) || 0) + currentQuantity;
                     duplicateItem.quantity = Math.min(newTotalQuantity, stock);
     
-                    duplicateItem.subtotal = (duplicateItem.quantity || 0) * (duplicateItem.sale_price || 0);
+                    duplicateItem.subtotal = (parseFloat(String(duplicateItem.quantity)) || 0) * (parseFloat(String(duplicateItem.sale_price)) || 0);
                     
                     newItems[duplicateIndex] = duplicateItem;
                     newItems.splice(index, 1);
@@ -137,26 +151,43 @@ export const SalesInvoiceModal: React.FC<SalesInvoiceModalProps> = ({ invoiceToE
                     return newItems;
                 } else {
                     const product = products.find(p => p.id === productId);
-                    currentItem.product_id = productId;
-                    currentItem.sale_price = product?.price || 0;
+                    if (!product) return newItems;
+
+                    const promotion = getActivePromotionForProduct(product.id, promotions);
+                    let salePrice = product.price;
+                    if (promotion) {
+                        salePrice = product.price * (1 - promotion.discountPercent / 100);
+                    }
                     
-                    const quantity = currentItem.quantity || 1;
+                    currentItem.product_id = productId;
+                    currentItem.sale_price = salePrice;
+                    currentItem.original_price = product.price;
+                    
+                    const quantity = parseFloat(String(currentItem.quantity)) || 1;
                     currentItem.quantity = Math.min(quantity, product?.stock_quantity || 0);
     
-                    currentItem.subtotal = (currentItem.quantity || 0) * (currentItem.sale_price || 0);
+                    currentItem.subtotal = (parseFloat(String(currentItem.quantity)) || 0) * (parseFloat(String(currentItem.sale_price)) || 0);
                     newItems[index] = currentItem;
                     return newItems;
                 }
             } else if (field === 'quantity') {
                  const productId = currentItem.product_id;
                  const product = products.find(p => p.id === productId);
-                 const newQuantity = Math.max(0, parseInt(value, 10) || 0);
-                 currentItem.quantity = Math.min(newQuantity, product?.stock_quantity || 0);
-            } else {
-                (currentItem as any)[field] = parseFloat(value) || 0;
+                 const stock = product?.stock_quantity || Infinity;
+
+                if (value === '') {
+                    currentItem.quantity = '';
+                } else {
+                    const newQuantity = parseFloat(value);
+                    if (!isNaN(newQuantity)) {
+                        currentItem.quantity = Math.min(Math.max(0, newQuantity), stock);
+                    }
+                }
+            } else if (field === 'sale_price') {
+                currentItem.sale_price = value;
             }
     
-            currentItem.subtotal = (currentItem.quantity || 0) * (currentItem.sale_price || 0);
+            currentItem.subtotal = (parseFloat(String(currentItem.quantity)) || 0) * (parseFloat(String(currentItem.sale_price)) || 0);
             newItems[index] = currentItem;
             return newItems;
         });
@@ -169,10 +200,16 @@ export const SalesInvoiceModal: React.FC<SalesInvoiceModalProps> = ({ invoiceToE
             return;
         }
 
-        const finalItems = items.map(item => ({
-            ...item,
-            subtotal: (item.quantity || 0) * (item.sale_price || 0)
-        })) as SalesInvoiceItem[];
+        const finalItems: SalesInvoiceItem[] = items.map(item => {
+            const quantity = parseFloat(String(item.quantity)) || 0;
+            const sale_price = parseFloat(String(item.sale_price)) || 0;
+            return {
+                product_id: item.product_id!,
+                quantity,
+                sale_price,
+                subtotal: quantity * sale_price
+            };
+        }).filter(item => item.product_id && item.quantity > 0);
 
         if (invoiceToEdit) {
             updateSalesInvoice({
@@ -197,6 +234,8 @@ export const SalesInvoiceModal: React.FC<SalesInvoiceModalProps> = ({ invoiceToE
         
         onClose();
     };
+    
+    const handleFocus = (e: React.FocusEvent<HTMLInputElement>) => e.target.select();
     
     const formInputClasses = "w-full p-2 border border-slate-300 rounded-md dark:bg-slate-700 dark:border-slate-600 dark:text-slate-100 focus:ring-2 focus:ring-primary-500 focus:border-primary-500 disabled:opacity-70 disabled:bg-slate-100 dark:disabled:bg-slate-800";
 
@@ -249,15 +288,22 @@ export const SalesInvoiceModal: React.FC<SalesInvoiceModalProps> = ({ invoiceToE
                                     </div>
                                     <div className="w-full md:col-span-2">
                                         <label className="text-xs font-medium text-slate-500 md:hidden">{t.quantity}</label>
-                                        <input type="number" value={item.quantity} onChange={(e) => handleItemChange(index, 'quantity', e.target.value)} className={formInputClasses + " text-sm"} min="1" required />
+                                        <input type="number" value={item.quantity} onFocus={handleFocus} onChange={(e) => handleItemChange(index, 'quantity', e.target.value)} className={formInputClasses + " text-sm"} min="0" step="any" required />
                                     </div>
                                     <div className="w-full md:col-span-2">
                                         <label className="text-xs font-medium text-slate-500 md:hidden">{t.salePrice}</label>
-                                        <input type="number" value={item.sale_price} className={formInputClasses + " text-sm bg-slate-100 dark:bg-slate-800"} step="0.01" min="0" required readOnly />
+                                        <div className="flex items-center gap-2">
+                                            <input type="number" value={item.sale_price} onFocus={handleFocus} onChange={(e) => handleItemChange(index, 'sale_price', e.target.value)} className={formInputClasses + " text-sm"} step="0.01" min="0" required />
+                                            {item.original_price && parseFloat(String(item.sale_price)) < item.original_price && (
+                                                <span className="text-xs text-slate-500 line-through whitespace-nowrap">
+                                                    {item.original_price.toFixed(2)}
+                                                </span>
+                                            )}
+                                        </div>
                                     </div>
                                     <div className="w-full md:col-span-2 text-start md:text-center">
                                         <label className="text-xs font-medium text-slate-500 md:hidden">{t.subtotal}</label>
-                                        <p className="font-semibold text-sm text-slate-700 dark:text-slate-200 mt-1 md:mt-0">{((item.quantity || 0) * (item.sale_price || 0)).toFixed(2)}</p>
+                                        <p className="font-semibold text-sm text-slate-700 dark:text-slate-200 mt-1 md:mt-0">{((parseFloat(String(item.quantity)) || 0) * (parseFloat(String(item.sale_price)) || 0)).toFixed(2)}</p>
                                     </div>
                                     <div className="w-full md:w-auto md:col-span-1 text-end md:text-center">
                                         <button type="button" onClick={() => handleRemoveItem(index)} className="p-2 text-red-500 hover:bg-red-100 dark:hover:bg-red-900/50 rounded-full"><TrashIcon className="w-5 h-5" /></button>

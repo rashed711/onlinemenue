@@ -226,3 +226,24 @@ export interface SalesInvoice {
     created_by?: number;
     created_by_name?: string; // For display
 }
+
+// Treasury Types
+export interface Treasury {
+    id: number;
+    name: string;
+    current_balance: number;
+}
+
+export interface TreasuryTransaction {
+    id: number;
+    treasury_id: number;
+    transaction_type: 'deposit' | 'withdrawal' | 'sales' | 'purchase';
+    amount: number;
+    balance_after: number;
+    related_invoice_id?: number | null;
+    invoice_type?: 'sales' | 'purchase' | null;
+    description?: string | null;
+    created_by?: number | null;
+    created_at: string;
+    created_by_name?: string | null;
+}

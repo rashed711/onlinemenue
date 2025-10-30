@@ -424,7 +424,8 @@ const generateGenericInvoiceImage = async (
   type: 'purchase' | 'sales',
   restaurantInfo: RestaurantInfo,
   t: typeof translations['en'],
-  language: Language
+  language: Language,
+  products?: Product[]
 ): Promise<string> => {
     const canvas = document.createElement('canvas');
     const ctx = canvas.getContext('2d');
@@ -435,11 +436,26 @@ const generateGenericInvoiceImage = async (
     const width = 500;
     const padding = 25;
     const contentWidth = width - (padding * 2);
-    const COLORS = { PAPER: '#FFFFFF', TEXT_DARK: '#1E293B', TEXT_LIGHT: '#64748B', BORDER: '#E2E8F0' };
+    const COLORS = { PAPER: '#FFFFFF', TEXT_DARK: '#1E293B', TEXT_LIGHT: '#64748B', BORDER: '#E2E8F0', RED: '#EF4444' };
     
     const H_DETAIL = 22;
     const H_ITEM_NAME = 24;
+    const H_ITEM_DISCOUNT = 18;
     const H_TOTAL_LINE = 28;
+
+    const getWrappedTextLines = (ctx: CanvasRenderingContext2D, text: string, maxWidth: number): string[] => {
+        const words = text.split(' ');
+        if (words.length === 0) return [];
+        const lines: string[] = [];
+        let currentLine = words[0] || '';
+        for (let i = 1; i < words.length; i++) {
+            const word = words[i];
+            const width = ctx.measureText(currentLine + " " + word).width;
+            if (width < maxWidth) { currentLine += " " + word; } else { lines.push(currentLine); currentLine = word; }
+        }
+        lines.push(currentLine);
+        return lines;
+    };
 
     let totalHeight = 0;
     totalHeight += 215; // Header space
@@ -463,7 +479,15 @@ const generateGenericInvoiceImage = async (
         ctx.font = `15px ${FONT_FAMILY_SANS}`;
         const itemText = `${item.quantity} x ${item.product_name?.[language] || 'Item'}`;
         const itemLines = getWrappedTextLines(ctx, itemText, contentWidth - 80);
-        totalHeight += (itemLines.length * H_ITEM_NAME) + 10; // name + padding
+        totalHeight += (itemLines.length * H_ITEM_NAME);
+        
+        if (type === 'sales' && products) {
+            const product = products.find(p => p.id === item.product_id);
+            if (product && product.price > item.sale_price) {
+                totalHeight += H_ITEM_DISCOUNT;
+            }
+        }
+        totalHeight += 25;
     });
     totalHeight += 15;
 
@@ -491,6 +515,15 @@ const generateGenericInvoiceImage = async (
         ctx.lineTo(width - padding, y);
         ctx.stroke();
         ctx.setLineDash([]);
+    };
+
+    const drawWrappedText = (text: string, xPos: number, yPos: number, maxWidth: number, lineHeight: number, align: CanvasTextAlign = 'start'): number => {
+        ctx.textAlign = textAlign(align);
+        const lines = getWrappedTextLines(ctx, text, maxWidth);
+        lines.forEach((line, index) => {
+            ctx.fillText(line, x(xPos), yPos + (index * lineHeight));
+        });
+        return yPos + (lines.length - 1) * lineHeight;
     };
 
     let y = 40;
@@ -538,23 +571,57 @@ const generateGenericInvoiceImage = async (
         ctx.font = `15px ${FONT_FAMILY_SANS}`;
         ctx.fillStyle = COLORS.TEXT_DARK;
         const itemName = `${item.quantity} x ${item.product_name?.[language] || 'Item'}`;
-        const itemPrice = type === 'purchase' ? (item as any).purchase_price : item.sale_price;
-        const itemLineHeight = 20;
         
-        const lines = getWrappedTextLines(ctx, itemName, contentWidth - 120);
-        lines.forEach((line, index) => {
-             ctx.textAlign = textAlign('start');
-             ctx.fillText(line, x(padding), y + (index * itemLineHeight));
-        });
+        y = drawWrappedText(itemName, padding, y, contentWidth - 100, H_ITEM_NAME, 'start');
+        y += H_ITEM_NAME;
 
         ctx.textAlign = textAlign('end');
-        ctx.fillText(item.subtotal.toFixed(2), x(width - padding), itemStartY + H_ITEM_NAME / 2);
+        let priceY = itemStartY + H_ITEM_NAME / 2;
 
-        y += (lines.length * itemLineHeight) + 10;
+        if (type === 'sales' && products) {
+            const product = products.find(p => p.id === item.product_id);
+            const originalPrice = product ? product.price : item.sale_price;
+            const isDiscounted = originalPrice > item.sale_price;
+
+            if (isDiscounted) {
+                const originalSubtotal = originalPrice * item.quantity;
+                ctx.fillStyle = COLORS.TEXT_DARK;
+                ctx.font = `15px ${FONT_FAMILY_SANS}`;
+                ctx.fillText(item.subtotal.toFixed(2), x(width - padding), priceY);
+                
+                priceY += H_ITEM_DISCOUNT;
+                ctx.font = `13px ${FONT_FAMILY_SANS}`;
+                ctx.fillStyle = COLORS.TEXT_LIGHT;
+                ctx.fillText(originalSubtotal.toFixed(2), x(width - padding), priceY);
+                
+                const textWidth = ctx.measureText(originalSubtotal.toFixed(2)).width;
+                ctx.beginPath();
+                const lineY = priceY - 5;
+                const lineXStart = isRtl ? padding : width - padding - textWidth;
+                const lineXEnd = isRtl ? padding + textWidth : width - padding;
+                ctx.moveTo(lineXStart, lineY);
+                ctx.lineTo(lineXEnd, lineY);
+                ctx.strokeStyle = COLORS.TEXT_LIGHT;
+                ctx.lineWidth = 1;
+                ctx.stroke();
+
+                y = Math.max(y, priceY + H_ITEM_NAME / 2);
+
+            } else {
+                ctx.font = `15px ${FONT_FAMILY_SANS}`;
+                ctx.fillStyle = COLORS.TEXT_DARK;
+                ctx.fillText(item.subtotal.toFixed(2), x(width - padding), priceY);
+            }
+        } else {
+            ctx.font = `15px ${FONT_FAMILY_SANS}`;
+            ctx.fillStyle = COLORS.TEXT_DARK;
+            ctx.fillText(item.subtotal.toFixed(2), x(width - padding), priceY);
+        }
+
+        y += 5;
+        drawDashedLine(y);
+        y += 20;
     });
-    
-    drawDashedLine(y);
-    y += 25;
     
     ctx.font = `bold 18px ${FONT_FAMILY_SANS}`;
     ctx.fillStyle = COLORS.TEXT_DARK;
@@ -570,8 +637,8 @@ const generateGenericInvoiceImage = async (
 export const generatePurchaseInvoiceImage = (invoice: PurchaseInvoice, restaurantInfo: RestaurantInfo, t: typeof translations['en'], language: Language) => 
     generateGenericInvoiceImage(invoice, 'purchase', restaurantInfo, t, language);
 
-export const generateSalesInvoiceImage = (invoice: SalesInvoice, restaurantInfo: RestaurantInfo, t: typeof translations['en'], language: Language) =>
-    generateGenericInvoiceImage(invoice, 'sales', restaurantInfo, t, language);
+export const generateSalesInvoiceImage = (invoice: SalesInvoice, restaurantInfo: RestaurantInfo, t: typeof translations['en'], language: Language, products: Product[], promotions: Promotion[]) =>
+    generateGenericInvoiceImage(invoice, 'sales', restaurantInfo, t, language, products);
 
 
 export const getStartAndEndDates = (dateRange: string, customStart?: string, customEnd?: string): { startDate: Date, endDate: Date } => {

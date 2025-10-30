@@ -16,13 +16,13 @@ interface SalesInvoiceDetailsModalProps {
 
 export const SalesInvoiceDetailsModal: React.FC<SalesInvoiceDetailsModalProps> = ({ invoice, onClose, onEdit, onDelete, canManage }) => {
     const { t, language, setIsProcessing, isProcessing, showToast } = useUI();
-    const { restaurantInfo } = useData();
+    const { restaurantInfo, products, promotions } = useData();
     
     const handleShare = async () => {
         if (!restaurantInfo) return;
         setIsProcessing(true);
         try {
-            const imageUrl = await generateSalesInvoiceImage(invoice, restaurantInfo, t, language);
+            const imageUrl = await generateSalesInvoiceImage(invoice, restaurantInfo, t, language, products, promotions);
             const response = await fetch(imageUrl);
             const blob = await response.blob();
             const file = new File([blob], `sales-invoice-${invoice.invoice_number}.png`, { type: 'image/png' });

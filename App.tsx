@@ -7,6 +7,7 @@ import { CartProvider } from './contexts/CartContext';
 import { OrderProvider } from './contexts/OrderContext';
 import { UserManagementProvider } from './contexts/UserManagementContext';
 import { InventoryProvider } from './contexts/InventoryContext';
+import { TreasuryProvider } from './contexts/TreasuryContext';
 import { APP_CONFIG } from './utils/config';
 
 // Lazy load page components for better performance
@@ -135,7 +136,9 @@ const App: React.FC = () => {
             <OrderProvider>
               <UserManagementProvider>
                 <InventoryProvider>
-                  <AppContent />
+                  <TreasuryProvider>
+                    <AppContent />
+                  </TreasuryProvider>
                 </InventoryProvider>
               </UserManagementProvider>
             </OrderProvider>

@@ -1,3 +1,4 @@
+
 export default {
   "adminPanel": "لوحة التحكم",
   "disablePushNotifications": "إيقاف الإشعارات",
@@ -95,6 +96,7 @@ export default {
   "inventory": "المخزن",
   "settings": "الإعدادات",
   "permission_group_operations": "العمليات",
+  "permission_group_financials": "المالية",
   "permission_group_management": "الإدارة",
   "permission_group_administration": "الإدارة العامة",
   "dashboard": "لوحة المعلومات",
@@ -313,5 +315,28 @@ export default {
   "purchaseInvoice": "فاتورة شراء",
   "salesInvoice": "فاتورة بيع",
   "invoiceNumber": "رقم الفاتورة",
-  "invoiceId": "معرف الفاتورة"
+  "invoiceId": "معرف الفاتورة",
+  "treasury": "الخزنة",
+  "treasuryBalance": "الأرصدة",
+  "treasuryTransactions": "الحركات المالية",
+  "addNewTransaction": "إضافة حركة جديدة",
+  "deposit": "إيداع",
+  "withdrawal": "سحب",
+  "sales": "مبيعات",
+  "purchase": "مشتريات",
+  "transactionType": "النوع",
+  "amount": "المبلغ",
+  "balanceAfter": "الرصيد بعد الحركة",
+  "details": "التفاصيل",
+  "invoiceLink": "فاتورة رقم",
+  "manualEntry": "إدخال يدوي",
+  "createdBy": "بواسطة",
+  "transactionDescription": "الوصف",
+  "confirm": "تأكيد",
+  "optional": "اختياري",
+  "noTransactionsFound": "لا توجد حركات.",
+  "transactionAddedSuccess": "تمت إضافة الحركة بنجاح.",
+  "transactionAddFailed": "فشلت إضافة الحركة.",
+  "permission_view_treasury_page": "عرض صفحة الخزنة",
+  "permission_add_manual_transaction": "إضافة حركات يدوية"
 };

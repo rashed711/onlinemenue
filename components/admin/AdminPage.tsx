@@ -1,4 +1,5 @@
-import React, { useState, useMemo, useEffect, useRef, useCallback } from 'react';
+
+import React, { useState, useMemo, useEffect, useRef, useCallback, lazy, Suspense } from 'react';
 import type { Language, Product, RestaurantInfo, Order, OrderStatus, User, UserRole, Promotion, Permission, Category, Tag, CartItem, SocialLink, LocalizedString, OrderStatusColumn, OrderType, Role } from '../../types';
 import { MenuAlt2Icon, BellIcon, BellSlashIcon } from '../icons/Icons';
 import { OrderDetailsModal } from './OrderDetailsModal';
@@ -24,6 +25,8 @@ import { CashierPage } from './CashierPage';
 import { SettingsPage } from './SettingsPage';
 import { InventoryPage } from './InventoryPage';
 import { ReportsRootPage } from './reports/ReportsRootPage';
+const TreasuryPage = lazy(() => import('./pages/TreasuryPage').then(module => ({ default: module.TreasuryPage })));
+
 
 import { normalizeArabic, getDescendantCategoryIds } from '../../utils/helpers';
 import { useUI } from '../../contexts/UIContext';
@@ -38,13 +41,14 @@ interface AdminPageProps {
     reportSubRoute?: string;
 }
 
-type AdminTab = 'orders' | 'cashier' | 'reports' | 'inventory' | 'productList' | 'classifications' | 'promotions' | 'users' | 'roles' | 'settings';
+type AdminTab = 'orders' | 'cashier' | 'reports' | 'inventory' | 'productList' | 'classifications' | 'promotions' | 'users' | 'roles' | 'settings' | 'treasury';
 type DateFilter = 'today' | 'yesterday' | 'week' | 'month' | 'custom';
 type UserTab = 'customers' | 'staff';
 
 const NAV_ITEMS_WITH_PERMS = [
     { id: 'orders', permission: 'view_orders_page' },
     { id: 'reports', permission: 'view_reports_page' },
+    { id: 'treasury', permission: 'view_treasury_page' },
     { id: 'inventory', permission: 'view_inventory_page' },
     { id: 'productList', permission: 'view_products_page' },
     { id: 'classifications', permission: 'view_classifications_page' },
@@ -503,6 +507,7 @@ export const AdminPage: React.FC<AdminPageProps> = ({ activeSubRoute, reportSubR
                 );
             case 'cashier': return hasPermission('use_cashier_page') ? <CashierPage /> : <PermissionDeniedComponent />;
             case 'reports': return hasPermission('view_reports_page') ? <ReportsRootPage activeSubRoute={reportSubRoute} /> : <PermissionDeniedComponent />;
+            case 'treasury': return hasPermission('view_treasury_page') ? <Suspense fallback={<div>Loading...</div>}><TreasuryPage /></Suspense> : <PermissionDeniedComponent />;
             case 'inventory': return hasPermission('view_inventory_page') ? <InventoryPage /> : <PermissionDeniedComponent />;
             case 'classifications':
                 if (!hasPermission('view_classifications_page')) return <PermissionDeniedComponent />;

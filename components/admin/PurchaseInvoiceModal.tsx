@@ -7,6 +7,11 @@ import { useData } from '../../contexts/DataContext';
 import { PlusIcon, TrashIcon } from '../icons/Icons';
 import { SearchableSelect } from './SearchableSelect';
 
+type FormItem = Partial<Omit<PurchaseInvoiceItem, 'quantity' | 'purchase_price'>> & {
+    quantity: string | number;
+    purchase_price: string | number;
+};
+
 interface PurchaseInvoiceModalProps {
     invoiceToEdit?: PurchaseInvoice | null;
     onClose: () => void;
@@ -18,12 +23,10 @@ export const PurchaseInvoiceModal: React.FC<PurchaseInvoiceModalProps> = ({ invo
     const { products } = useData();
     
     const [supplierId, setSupplierId] = useState<number | ''>('');
-    const [items, setItems] = useState<Partial<PurchaseInvoiceItem>[]>([{ product_id: undefined, quantity: 1, purchase_price: 0 }]);
+    const [items, setItems] = useState<FormItem[]>([{ product_id: undefined, quantity: 1, purchase_price: 0 }]);
     const [notes, setNotes] = useState('');
 
     useEffect(() => {
-        // This effect runs only when the modal is opened with a new invoice to edit.
-        // It sets the initial state from the prop.
         if (invoiceToEdit) {
             setSupplierId(invoiceToEdit.supplier_id);
             setNotes(invoiceToEdit.notes || '');
@@ -34,8 +37,6 @@ export const PurchaseInvoiceModal: React.FC<PurchaseInvoiceModalProps> = ({ invo
                 subtotal: item.subtotal,
             })));
         } else {
-            // Reset to a clean slate only when opening for a "new" invoice.
-            // A separate effect will handle setting the default supplier when the list loads.
             setSupplierId('');
             setItems([{ product_id: undefined, quantity: 1, purchase_price: 0 }]);
             setNotes('');
@@ -43,8 +44,6 @@ export const PurchaseInvoiceModal: React.FC<PurchaseInvoiceModalProps> = ({ invo
     }, [invoiceToEdit]);
 
     useEffect(() => {
-        // This effect specifically handles setting the default supplier for a *new* invoice
-        // once the suppliers list is available, without resetting the entire form state.
         if (!invoiceToEdit && !supplierId && suppliers.length > 0) {
             setSupplierId(suppliers[0].id);
         }
@@ -60,7 +59,9 @@ export const PurchaseInvoiceModal: React.FC<PurchaseInvoiceModalProps> = ({ invo
 
     const totalAmount = useMemo(() => {
         return items.reduce((total, item) => {
-            const subtotal = (item.quantity || 0) * (item.purchase_price || 0);
+            const quantity = parseFloat(String(item.quantity)) || 0;
+            const price = parseFloat(String(item.purchase_price)) || 0;
+            const subtotal = quantity * price;
             return total + subtotal;
         }, 0);
     }, [items]);
@@ -73,7 +74,7 @@ export const PurchaseInvoiceModal: React.FC<PurchaseInvoiceModalProps> = ({ invo
         setItems(prev => prev.filter((_, i) => i !== index));
     };
 
-    const handleItemChange = (index: number, field: keyof PurchaseInvoiceItem, value: any) => {
+    const handleItemChange = (index: number, field: 'product_id' | 'quantity' | 'purchase_price', value: any) => {
         setItems(prev => {
             const newItems = [...prev];
             const currentItem = { ...newItems[index] };
@@ -91,10 +92,10 @@ export const PurchaseInvoiceModal: React.FC<PurchaseInvoiceModalProps> = ({ invo
     
                 if (duplicateIndex !== -1) {
                     const duplicateItem = { ...newItems[duplicateIndex] };
-                    const currentQuantity = currentItem.quantity || 1;
+                    const currentQuantity = parseFloat(String(currentItem.quantity)) || 1;
                     
-                    duplicateItem.quantity = (duplicateItem.quantity || 0) + currentQuantity;
-                    duplicateItem.subtotal = (duplicateItem.quantity || 0) * (duplicateItem.purchase_price || 0);
+                    duplicateItem.quantity = (parseFloat(String(duplicateItem.quantity)) || 0) + currentQuantity;
+                    duplicateItem.subtotal = (parseFloat(String(duplicateItem.quantity)) || 0) * (parseFloat(String(duplicateItem.purchase_price)) || 0);
                     
                     newItems[duplicateIndex] = duplicateItem;
                     newItems.splice(index, 1);
@@ -104,13 +105,20 @@ export const PurchaseInvoiceModal: React.FC<PurchaseInvoiceModalProps> = ({ invo
                     const product = products.find(p => p.id === productId);
                     currentItem.product_id = productId;
                     currentItem.purchase_price = product?.cost_price || 0;
-                    currentItem.subtotal = (currentItem.quantity || 1) * (currentItem.purchase_price || 0);
+                    
+                    const quantity = parseFloat(String(currentItem.quantity)) || 1;
+                    const price = parseFloat(String(currentItem.purchase_price)) || 0;
+                    currentItem.subtotal = quantity * price;
                     newItems[index] = currentItem;
                     return newItems;
                 }
-            } else {
-                (currentItem as any)[field] = parseFloat(value) || 0;
-                currentItem.subtotal = (currentItem.quantity || 0) * (currentItem.purchase_price || 0);
+            } else { // For quantity and purchase_price
+                (currentItem as any)[field] = value; // Keep it as a string
+                
+                const quantity = parseFloat(String(currentItem.quantity)) || 0;
+                const price = parseFloat(String(currentItem.purchase_price)) || 0;
+                currentItem.subtotal = quantity * price;
+                
                 newItems[index] = currentItem;
                 return newItems;
             }
@@ -124,10 +132,16 @@ export const PurchaseInvoiceModal: React.FC<PurchaseInvoiceModalProps> = ({ invo
             return;
         }
 
-        const finalItems = items.map(item => ({
-            ...item,
-            subtotal: (item.quantity || 0) * (item.purchase_price || 0)
-        })) as PurchaseInvoiceItem[];
+        const finalItems: PurchaseInvoiceItem[] = items.map(item => {
+            const quantity = parseFloat(String(item.quantity)) || 0;
+            const purchase_price = parseFloat(String(item.purchase_price)) || 0;
+            return {
+                product_id: item.product_id!,
+                quantity,
+                purchase_price,
+                subtotal: quantity * purchase_price,
+            };
+        }).filter(item => item.product_id && item.quantity > 0);
 
         if (invoiceToEdit) {
             updatePurchaseInvoice({
@@ -148,6 +162,8 @@ export const PurchaseInvoiceModal: React.FC<PurchaseInvoiceModalProps> = ({ invo
         onClose();
     };
     
+    const handleFocus = (e: React.FocusEvent<HTMLInputElement>) => e.target.select();
+
     const formInputClasses = "w-full p-2 border border-slate-300 rounded-md dark:bg-slate-700 dark:border-slate-600 dark:text-slate-100 focus:ring-2 focus:ring-primary-500 focus:border-primary-500";
 
 
@@ -196,16 +212,16 @@ export const PurchaseInvoiceModal: React.FC<PurchaseInvoiceModalProps> = ({ invo
                                     </div>
                                     <div className="w-full md:col-span-2">
                                         <label className="text-xs font-medium text-slate-500 md:hidden">{t.quantity}</label>
-                                        <input type="number" value={item.quantity} onChange={(e) => handleItemChange(index, 'quantity', e.target.value)} className={formInputClasses + " text-sm"} min="1" required />
+                                        <input type="number" value={item.quantity} onFocus={handleFocus} onChange={(e) => handleItemChange(index, 'quantity', e.target.value)} className={formInputClasses + " text-sm"} min="0" step="any" required />
                                     </div>
                                     <div className="w-full md:col-span-2">
                                         <label className="text-xs font-medium text-slate-500 md:hidden">{t.purchasePrice}</label>
-                                        <input type="number" value={item.purchase_price} onChange={(e) => handleItemChange(index, 'purchase_price', e.target.value)} className={formInputClasses + " text-sm"} step="0.01" min="0" required />
+                                        <input type="number" value={item.purchase_price} onFocus={handleFocus} onChange={(e) => handleItemChange(index, 'purchase_price', e.target.value)} className={formInputClasses + " text-sm"} step="0.01" min="0" required />
                                     </div>
                                     <div className="w-full md:col-span-2 text-start md:text-center">
                                         <label className="text-xs font-medium text-slate-500 md:hidden">{t.subtotal}</label>
                                         <p className="font-semibold text-sm text-slate-700 dark:text-slate-200 mt-1 md:mt-0">
-                                            {((item.quantity || 0) * (item.purchase_price || 0)).toFixed(2)}
+                                            {((parseFloat(String(item.quantity)) || 0) * (parseFloat(String(item.purchase_price)) || 0)).toFixed(2)}
                                         </p>
                                     </div>
                                     <div className="w-full md:w-auto md:col-span-1 text-end md:text-center">
