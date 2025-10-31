@@ -1,15 +1,13 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import type { User, Role } from '../../../types';
 import { PlusIcon, PencilIcon, TrashIcon, SearchIcon } from '../../icons/Icons';
 import { useUI } from '../../../contexts/UIContext';
-
-type UserTab = 'customers' | 'staff';
+import { useAuth } from '../../../contexts/AuthContext';
 
 interface UsersPageProps {
+    pageType: 'customers' | 'staff';
     hasPermission: (permission: string) => boolean;
     setEditingUser: (user: User | 'new') => void;
-    userTab: UserTab;
-    setUserTab: (tab: UserTab) => void;
     userSearchTerm: string;
     setUserSearchTerm: (term: string) => void;
     usersToDisplay: User[];
@@ -19,35 +17,46 @@ interface UsersPageProps {
 
 export const UsersPage: React.FC<UsersPageProps> = (props) => {
     const { t, language } = useUI();
+    const { currentUser } = useAuth();
     const {
-        hasPermission, setEditingUser, userTab, setUserTab,
-        userSearchTerm, setUserSearchTerm, usersToDisplay, roles, deleteUser
+        pageType, hasPermission, setEditingUser,
+        userSearchTerm, setUserSearchTerm, usersToDisplay: allUsers, roles, deleteUser
     } = props;
+
+    const pageTitle = pageType === 'customers' ? t.customers : t.staff;
+
+    const usersToDisplay = useMemo(() => {
+        if (!currentUser) return [];
+        const superAdminRole = roles.find(r => r.name.en.toLowerCase() === 'superadmin');
+        const customerRole = roles.find(r => r.name.en.toLowerCase() === 'customer');
+        
+        const currentUserIsSuperAdmin = currentUser.role === superAdminRole?.key;
+        const customerRoleKey = customerRole ? customerRole.key : '___non_existent_key___';
+
+        let baseUsers = currentUserIsSuperAdmin
+            ? allUsers
+            : allUsers.filter(user => user.role !== superAdminRole?.key);
+
+        if (pageType === 'customers') {
+            return baseUsers.filter(user => user.role === customerRoleKey);
+        } else { // staff
+            return baseUsers.filter(user => user.role !== customerRoleKey);
+        }
+
+    }, [allUsers, currentUser, roles, pageType]);
 
     return (
         <div>
             <div className="flex justify-between items-center mb-6">
-                <h2 className="text-2xl font-bold text-slate-800 dark:text-slate-100">{t.manageUsers}</h2>
-                {hasPermission('add_user') && <button onClick={() => setEditingUser('new')} className="bg-green-500 text-white font-bold py-2 px-4 rounded-lg hover:bg-green-600 transition-colors flex items-center gap-2"><PlusIcon className="w-5 h-5" />{t.addNewUser}</button>}
+                <h2 className="text-2xl font-bold text-slate-800 dark:text-slate-100">{pageTitle}</h2>
+                {hasPermission('add_user') && pageType === 'staff' && (
+                    <button onClick={() => setEditingUser('new')} className="bg-green-500 text-white font-bold py-2 px-4 rounded-lg hover:bg-green-600 transition-colors flex items-center gap-2">
+                        <PlusIcon className="w-5 h-5" />
+                        {t.addNewUser}
+                    </button>
+                )}
             </div>
 
-            <div className="border-b border-slate-200 dark:border-slate-700">
-                <nav className="-mb-px flex space-x-6" aria-label="Tabs">
-                    {['customers', 'staff'].map(tab => (
-                        <button
-                            key={tab}
-                            onClick={() => setUserTab(tab as UserTab)}
-                            className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm ${
-                                userTab === tab
-                                    ? 'border-primary-500 text-primary-600 dark:text-primary-400'
-                                    : 'border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300 dark:text-slate-400 dark:hover:text-slate-200 dark:hover:border-slate-600'
-                            }`}
-                        >
-                            {t[tab as 'customers' | 'staff']}
-                        </button>
-                    ))}
-                </nav>
-            </div>
             <div className="relative my-4">
                 <input type="text" placeholder={`${t.name}, ${t.mobileNumber}...`} value={userSearchTerm} onChange={(e) => setUserSearchTerm(e.target.value)} className="w-full p-2 ps-10 rounded-lg border-slate-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 sm:text-sm dark:bg-slate-700 dark:border-slate-600 dark:text-white dark:placeholder:text-slate-400"/>
                 <div className="absolute top-1/2 -translate-y-1/2 start-3 text-slate-400"><SearchIcon className="w-5 h-5" /></div>

@@ -11,14 +11,15 @@ import { SalesInvoiceModal } from './SalesInvoiceModal';
 import { SalesInvoiceDetailsModal } from './SalesInvoiceDetailsModal';
 import { formatDateTime } from '../../utils/helpers';
 
-type InventoryTab = 'suppliers' | 'invoices' | 'salesInvoices';
+interface InventoryPageProps {
+    pageType: 'suppliers' | 'purchaseInvoices' | 'salesInvoices';
+}
 
-export const InventoryPage: React.FC = () => {
+export const InventoryPage: React.FC<InventoryPageProps> = ({ pageType }) => {
     const { t, language } = useUI();
     const { hasPermission } = useAuth();
     const { suppliers, purchaseInvoices, salesInvoices, deleteSupplier, deletePurchaseInvoice, deleteSalesInvoice, isInventoryLoading } = useInventory();
 
-    const [activeTab, setActiveTab] = useState<InventoryTab>('suppliers');
     const [editingSupplier, setEditingSupplier] = useState<Supplier | 'new' | null>(null);
     const [isInvoiceModalOpen, setIsInvoiceModalOpen] = useState(false);
     const [editingInvoice, setEditingInvoice] = useState<PurchaseInvoice | null>(null);
@@ -44,18 +45,16 @@ export const InventoryPage: React.FC = () => {
             if (purchaseId && purchaseInvoices.length > 0) {
                 const invoiceToView = purchaseInvoices.find(inv => inv.id === parseInt(purchaseId, 10));
                 if (invoiceToView) {
-                    setActiveTab('invoices');
                     setViewingInvoice(invoiceToView);
                     // Clean up URL to prevent modal from re-opening on every render
-                    window.history.replaceState(null, '', '#/admin/inventory');
+                    window.history.replaceState(null, '', `#/admin/${pageType}`);
                 }
             } else if (salesId && salesInvoices.length > 0) {
                 const invoiceToView = salesInvoices.find(inv => inv.id === parseInt(salesId, 10));
                 if (invoiceToView) {
-                    setActiveTab('salesInvoices');
                     setViewingSalesInvoice(invoiceToView);
                     // Clean up URL
-                    window.history.replaceState(null, '', '#/admin/inventory');
+                    window.history.replaceState(null, '', `#/admin/${pageType}`);
                 }
             }
         };
@@ -64,7 +63,7 @@ export const InventoryPage: React.FC = () => {
         if (!isInventoryLoading) {
             checkUrlForInvoice();
         }
-    }, [isInventoryLoading, purchaseInvoices, salesInvoices, setViewingInvoice, setViewingSalesInvoice]);
+    }, [isInventoryLoading, purchaseInvoices, salesInvoices, setViewingInvoice, setViewingSalesInvoice, pageType]);
     
     const handleDeletePurchaseInvoice = (invoiceId: number) => {
         if (window.confirm(t.confirmDeleteInvoice)) {
@@ -275,40 +274,15 @@ export const InventoryPage: React.FC = () => {
        </div>
    );
 
-    const tabs = [
-        { id: 'suppliers', label: t.suppliers, icon: UsersIcon, permission: 'manage_suppliers' },
-        { id: 'invoices', label: 'فواتير الشراء', icon: ClipboardListIcon, permission: 'add_purchase_invoice' },
-        { id: 'salesInvoices', label: 'فواتير البيع', icon: CashRegisterIcon, permission: 'manage_sales_invoices' },
-    ];
-
     return (
         <div className="animate-fade-in-up">
-            <h2 className="text-2xl font-bold mb-6 text-slate-800 dark:text-slate-100">{t.inventory}</h2>
+            {pageType === 'suppliers' && <h2 className="text-2xl font-bold mb-6 text-slate-800 dark:text-slate-100">{t.suppliers}</h2>}
+            {pageType === 'purchaseInvoices' && <h2 className="text-2xl font-bold mb-6 text-slate-800 dark:text-slate-100">{t.purchaseInvoices}</h2>}
+            {pageType === 'salesInvoices' && <h2 className="text-2xl font-bold mb-6 text-slate-800 dark:text-slate-100">{t.salesInvoices}</h2>}
 
-            <div className="border-b border-slate-200 dark:border-slate-700 mb-6">
-                <nav className="-mb-px flex space-x-6 rtl:space-x-reverse overflow-x-auto" aria-label="Tabs">
-                    {tabs.map(tab => (
-                        hasPermission(tab.permission) && (
-                            <button
-                                key={tab.id}
-                                onClick={() => setActiveTab(tab.id as InventoryTab)}
-                                className={`whitespace-nowrap flex items-center gap-2 py-4 px-1 border-b-2 font-medium text-sm ${
-                                    activeTab === tab.id
-                                        ? 'border-primary-500 text-primary-600 dark:text-primary-400'
-                                        : 'border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300 dark:text-slate-400 dark:hover:text-slate-200 dark:hover:border-slate-600'
-                                }`}
-                            >
-                                <tab.icon className="w-5 h-5" />
-                                {tab.label}
-                            </button>
-                        )
-                    ))}
-                </nav>
-            </div>
-
-            {activeTab === 'suppliers' && renderSuppliers()}
-            {activeTab === 'invoices' && renderPurchaseInvoices()}
-            {activeTab === 'salesInvoices' && renderSalesInvoices()}
+            {pageType === 'suppliers' && renderSuppliers()}
+            {pageType === 'purchaseInvoices' && renderPurchaseInvoices()}
+            {pageType === 'salesInvoices' && renderSalesInvoices()}
             
             {editingSupplier && <SupplierEditModal supplier={editingSupplier === 'new' ? null : editingSupplier} onClose={() => setEditingSupplier(null)} />}
             

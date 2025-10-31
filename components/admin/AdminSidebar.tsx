@@ -1,12 +1,11 @@
-
 import React from 'react';
 import type { Permission, User, UserRole, Role } from '../../types';
-import { ClipboardListIcon, CollectionIcon, UsersIcon, CloseIcon, ShieldCheckIcon, BookmarkAltIcon, ChartBarIcon, TagIcon, CogIcon, CashRegisterIcon, LogoutIcon, HomeIcon, BellIcon, ArchiveIcon, CurrencyDollarIcon } from '../icons/Icons';
+import { ClipboardListIcon, CollectionIcon, UsersIcon, CloseIcon, ShieldCheckIcon, BookmarkAltIcon, ChartBarIcon, TagIcon, CogIcon, CashRegisterIcon, LogoutIcon, HomeIcon, BellIcon, ArchiveIcon, CurrencyDollarIcon, UserGroupIcon } from '../icons/Icons';
 import { useUI } from '../../contexts/UIContext';
 import { useAuth } from '../../contexts/AuthContext';
 import { useData } from '../../contexts/DataContext';
 
-type AdminTab = 'orders' | 'cashier' | 'reports' | 'inventory' | 'productList' | 'classifications' | 'promotions' | 'users' | 'roles' | 'settings' | 'treasury';
+type AdminTab = 'orders' | 'cashier' | 'reports' | 'productList' | 'classifications' | 'promotions' | 'staff' | 'roles' | 'settings' | 'treasury' | 'customers' | 'suppliers' | 'purchaseInvoices' | 'salesInvoices';
 
 interface AdminSidebarProps {
     activeTab: AdminTab;
@@ -28,16 +27,19 @@ export const AdminSidebar: React.FC<AdminSidebarProps> = (props) => {
             { id: 'reports', label: t.reports, icon: ChartBarIcon, permission: 'view_reports_page' as Permission },
         ],
         financials: [
+            { id: 'customers', label: t.customers, icon: UserGroupIcon, permission: 'view_users_page' as Permission },
+            { id: 'suppliers', label: t.suppliers, icon: UsersIcon, permission: 'manage_suppliers' as Permission },
+            { id: 'salesInvoices', label: t.salesInvoices, icon: CashRegisterIcon, permission: 'manage_sales_invoices' as Permission },
+            { id: 'purchaseInvoices', label: t.purchaseInvoices, icon: ClipboardListIcon, permission: 'add_purchase_invoice' as Permission },
             { id: 'treasury', label: t.treasury, icon: CurrencyDollarIcon, permission: 'view_treasury_page' as Permission },
         ],
         management: [
-            { id: 'inventory', label: t.inventory, icon: ArchiveIcon, permission: 'view_inventory_page' as Permission },
             { id: 'productList', label: t.productList, icon: CollectionIcon, permission: 'view_products_page' as Permission },
             { id: 'classifications', label: t.classifications, icon: BookmarkAltIcon, permission: 'view_classifications_page' as Permission },
             { id: 'promotions', label: t.managePromotions, icon: TagIcon, permission: 'view_promotions_page' as Permission },
         ],
         administration: [
-            { id: 'users', label: t.manageUsers, icon: UsersIcon, permission: 'view_users_page' as Permission },
+            { id: 'staff', label: t.staff, icon: UsersIcon, permission: 'view_users_page' as Permission },
             { id: 'roles', label: t.manageRoles, icon: ShieldCheckIcon, permission: 'view_roles_page' as Permission },
             { id: 'settings', label: t.settings, icon: CogIcon, permission: 'view_settings_page' as Permission },
         ]

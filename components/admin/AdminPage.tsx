@@ -1,4 +1,3 @@
-
 import React, { useState, useMemo, useEffect, useRef, useCallback, lazy, Suspense } from 'react';
 import type { Language, Product, RestaurantInfo, Order, OrderStatus, User, UserRole, Promotion, Permission, Category, Tag, CartItem, SocialLink, LocalizedString, OrderStatusColumn, OrderType, Role } from '../../types';
 import { MenuAlt2Icon, BellIcon, BellSlashIcon } from '../icons/Icons';
@@ -41,19 +40,22 @@ interface AdminPageProps {
     reportSubRoute?: string;
 }
 
-type AdminTab = 'orders' | 'cashier' | 'reports' | 'inventory' | 'productList' | 'classifications' | 'promotions' | 'users' | 'roles' | 'settings' | 'treasury';
+type AdminTab = 'orders' | 'cashier' | 'reports' | 'productList' | 'classifications' | 'promotions' | 'staff' | 'roles' | 'settings' | 'treasury' | 'customers' | 'suppliers' | 'purchaseInvoices' | 'salesInvoices';
+
 type DateFilter = 'today' | 'yesterday' | 'week' | 'month' | 'custom';
-type UserTab = 'customers' | 'staff';
 
 const NAV_ITEMS_WITH_PERMS = [
     { id: 'orders', permission: 'view_orders_page' },
     { id: 'reports', permission: 'view_reports_page' },
+    { id: 'customers', permission: 'view_users_page' },
+    { id: 'suppliers', permission: 'manage_suppliers' },
+    { id: 'salesInvoices', permission: 'manage_sales_invoices' },
+    { id: 'purchaseInvoices', permission: 'add_purchase_invoice' },
     { id: 'treasury', permission: 'view_treasury_page' },
-    { id: 'inventory', permission: 'view_inventory_page' },
     { id: 'productList', permission: 'view_products_page' },
     { id: 'classifications', permission: 'view_classifications_page' },
     { id: 'promotions', permission: 'view_promotions_page' },
-    { id: 'users', permission: 'view_users_page' },
+    { id: 'staff', permission: 'view_users_page' },
     { id: 'roles', permission: 'view_roles_page' },
     { id: 'settings', permission: 'view_settings_page' },
 ];
@@ -115,7 +117,6 @@ export const AdminPage: React.FC<AdminPageProps> = ({ activeSubRoute, reportSubR
     
     // User Filters
     const [userSearchTerm, setUserSearchTerm] = useState('');
-    const [userTab, setUserTab] = useState<UserTab>('customers');
 
 
     const [transitionStage, setTransitionStage] = useState<'in' | 'out'>('in');
@@ -323,22 +324,7 @@ export const AdminPage: React.FC<AdminPageProps> = ({ activeSubRoute, reportSubR
 
     const usersToDisplay = useMemo(() => {
         if (!currentUser) return [];
-        const superAdminRole = roles.find(r => r.name.en.toLowerCase() === 'superadmin');
-        const customerRole = roles.find(r => r.name.en.toLowerCase() === 'customer');
-        
-        const currentUserIsSuperAdmin = currentUser.role === superAdminRole?.key;
-        const customerRoleKey = customerRole ? customerRole.key : '___non_existent_key___';
-
-        let baseUsers = currentUserIsSuperAdmin
-            ? allUsers
-            : allUsers.filter(user => user.role !== superAdminRole?.key);
-
-        // Tab filtering
-        if (userTab === 'customers') {
-            baseUsers = baseUsers.filter(user => user.role === customerRoleKey);
-        } else { // staff
-            baseUsers = baseUsers.filter(user => user.role !== customerRoleKey);
-        }
+        let baseUsers = allUsers;
 
         const lowercasedTerm = userSearchTerm.toLowerCase();
         if (lowercasedTerm) {
@@ -350,7 +336,7 @@ export const AdminPage: React.FC<AdminPageProps> = ({ activeSubRoute, reportSubR
         }
         
         return baseUsers.sort((a, b) => a.name.localeCompare(b.name, language));
-    }, [allUsers, currentUser, roles, userSearchTerm, language, userTab]);
+    }, [allUsers, currentUser, userSearchTerm, language]);
 
     const viewingOrderCreatorName = useMemo(() => {
         if (!viewingOrder || !viewingOrder.createdBy) return undefined;
@@ -467,14 +453,27 @@ export const AdminPage: React.FC<AdminPageProps> = ({ activeSubRoute, reportSubR
                         deleteProduct={deleteProduct}
                     />
                 );
-            case 'users':
+            case 'staff':
                 if (!hasPermission('view_users_page')) return <PermissionDeniedComponent />;
                 return (
                     <UsersPage
+                        pageType="staff"
                         hasPermission={hasPermission}
                         setEditingUser={setEditingUser}
-                        userTab={userTab}
-                        setUserTab={setUserTab}
+                        userSearchTerm={userSearchTerm}
+                        setUserSearchTerm={setUserSearchTerm}
+                        usersToDisplay={usersToDisplay}
+                        roles={roles}
+                        deleteUser={deleteUser}
+                    />
+                );
+            case 'customers':
+                if (!hasPermission('view_users_page')) return <PermissionDeniedComponent />;
+                return (
+                    <UsersPage
+                        pageType="customers"
+                        hasPermission={hasPermission}
+                        setEditingUser={setEditingUser}
                         userSearchTerm={userSearchTerm}
                         setUserSearchTerm={setUserSearchTerm}
                         usersToDisplay={usersToDisplay}
@@ -508,7 +507,9 @@ export const AdminPage: React.FC<AdminPageProps> = ({ activeSubRoute, reportSubR
             case 'cashier': return hasPermission('use_cashier_page') ? <CashierPage /> : <PermissionDeniedComponent />;
             case 'reports': return hasPermission('view_reports_page') ? <ReportsRootPage activeSubRoute={reportSubRoute} /> : <PermissionDeniedComponent />;
             case 'treasury': return hasPermission('view_treasury_page') ? <Suspense fallback={<div>Loading...</div>}><TreasuryPage /></Suspense> : <PermissionDeniedComponent />;
-            case 'inventory': return hasPermission('view_inventory_page') ? <InventoryPage /> : <PermissionDeniedComponent />;
+            case 'suppliers': return hasPermission('manage_suppliers') ? <InventoryPage pageType="suppliers" /> : <PermissionDeniedComponent />;
+            case 'purchaseInvoices': return hasPermission('add_purchase_invoice') ? <InventoryPage pageType="purchaseInvoices" /> : <PermissionDeniedComponent />;
+            case 'salesInvoices': return hasPermission('manage_sales_invoices') ? <InventoryPage pageType="salesInvoices" /> : <PermissionDeniedComponent />;
             case 'classifications':
                 if (!hasPermission('view_classifications_page')) return <PermissionDeniedComponent />;
                 return <ClassificationsPage onAddCategory={() => setEditingCategory('new')} onEditCategory={setEditingCategory} onAddTag={() => setEditingTag('new')} onEditTag={setEditingTag} />;

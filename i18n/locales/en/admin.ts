@@ -1,5 +1,3 @@
-
-
 export default {
   "adminPanel": "Admin Panel",
   "disablePushNotifications": "Disable Push Notifications",
@@ -19,9 +17,10 @@ export default {
   "stockQuantity": "Stock",
   "costPrice": "Cost Price",
   "visibleInMenu": "Visible",
-  "manageUsers": "Users",
+  "manageStaff": "Staff",
   "addNewUser": "Add New User",
   "customers": "Customers",
+  "customer": "Customer",
   "staff": "Staff",
   "role": "Role",
   "manageRoles": "Roles & Permissions",
@@ -100,6 +99,7 @@ export default {
   "permission_group_financials": "Financials",
   "permission_group_management": "Management",
   "permission_group_administration": "Administration",
+  "roles": "Roles & Permissions",
   "dashboard": "Dashboard",
   "salesReport": "Sales",
   "ordersReport": "Orders",
@@ -150,7 +150,6 @@ export default {
   "totalAmount": "Total Amount",
   "noInvoicesFound": "No invoices found for this period.",
   "addNewSalesInvoice": "New Sales Invoice",
-  "customer": "Customer",
   "suppliers": "Suppliers",
   "purchaseInvoices": "Purchase Invoices",
   "salesInvoices": "Sales Invoices",
@@ -298,6 +297,7 @@ export default {
   "permission_add_promotion": "Add Promotions",
   "permission_edit_promotion": "Edit Promotions",
   "permission_delete_promotion": "Delete Promotions",
+  "manageUsers": "User Management",
   "permission_view_users_page": "View Users Page",
   "permission_add_user": "Add Users",
   "permission_edit_user": "Edit Users",
@@ -339,5 +339,17 @@ export default {
   "transactionAddedSuccess": "Transaction added successfully.",
   "transactionAddFailed": "Failed to add transaction.",
   "permission_view_treasury_page": "View Treasury Page",
-  "permission_add_manual_transaction": "Add Manual Transactions"
+  "permission_add_manual_transaction": "Add Manual Transactions",
+  "addNewTreasury": "Add New Treasury",
+  "editTreasury": "Edit Treasury",
+  "treasuryName": "Treasury Name",
+  "initialBalance": "Initial Balance",
+  "confirmDeleteTreasury": "Are you sure you want to delete this treasury? This cannot be undone if the balance is zero.",
+  "treasuryAddedSuccess": "Treasury added successfully.",
+  "treasuryAddFailed": "Failed to add treasury.",
+  "treasuryUpdatedSuccess": "Treasury updated successfully.",
+  "treasuryUpdateFailed": "Failed to update treasury.",
+  "treasuryDeletedSuccess": "Treasury deleted successfully.",
+  "treasuryDeleteFailed": "Failed to delete treasury.",
+  "permission_manage_treasuries": "Manage Treasuries"
 };

@@ -13,7 +13,7 @@ interface InventoryContextType {
     addSupplier: (supplierData: Omit<Supplier, 'id'>) => Promise<void>;
     updateSupplier: (supplierData: Supplier) => Promise<void>;
     deleteSupplier: (supplierId: number) => Promise<void>;
-    addPurchaseInvoice: (invoiceData: Omit<PurchaseInvoice, 'id'|'invoice_number'|'supplier_name'|'invoice_date'>) => Promise<void>;
+    addPurchaseInvoice: (invoiceData: Omit<PurchaseInvoice, 'id'|'invoice_number'|'supplier_name'|'invoice_date'> & { treasury_id: number }) => Promise<void>;
     updatePurchaseInvoice: (invoiceData: PurchaseInvoice) => Promise<void>;
     deletePurchaseInvoice: (invoiceId: number) => Promise<void>;
     addSalesInvoice: (invoiceData: Omit<SalesInvoice, 'id' | 'invoice_number' | 'created_by_name' | 'invoice_date' | 'created_by'>) => Promise<void>;
@@ -81,7 +81,8 @@ export const InventoryProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         setIsProcessing(true);
         try {
             const response = await fetch(`${APP_CONFIG.API_BASE_URL}update_supplier.php`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(supplierData) });
-            if (!response.ok || !(await response.json()).success) throw new Error(t.supplierUpdateFailed);
+            const result = await response.json();
+            if (!response.ok || !result.success) throw new Error(result.error || t.supplierUpdateFailed);
             setSuppliers(prev => prev.map(s => s.id === supplierData.id ? supplierData : s));
             showToast(t.supplierUpdatedSuccess);
         } catch (error: any) {
@@ -105,17 +106,18 @@ export const InventoryProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         finally { setIsProcessing(false); }
     }, [hasPermission, showToast, t, setIsProcessing]);
     
-    const addPurchaseInvoice = useCallback(async (invoiceData: Omit<PurchaseInvoice, 'id' | 'invoice_number' | 'supplier_name' | 'invoice_date'>) => {
+    const addPurchaseInvoice = useCallback(async (invoiceData: Omit<PurchaseInvoice, 'id' | 'invoice_number' | 'supplier_name' | 'invoice_date'> & { treasury_id: number }) => {
         if (!hasPermission('add_purchase_invoice')) { showToast(t.permissionDenied); return; }
         setIsProcessing(true);
         try {
             const payload = { ...invoiceData, created_by: currentUser?.id };
             const response = await fetch(`${APP_CONFIG.API_BASE_URL}add_purchase_invoice.php`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
-            if (!response.ok || !(await response.json()).success) throw new Error(t.invoiceAddFailed);
+            const result = await response.json();
+            if (!response.ok || !result.success) throw new Error(result.error || t.invoiceAddFailed);
             showToast(t.invoiceAddedSuccess);
             await fetchInventoryData();
             await fetchAllData();
-        } catch (error: any) { showToast(error.message || t.invoiceAddFailed); }
+        } catch (error: any) { showToast(error.message || t.invoiceAddFailed, { isError: true }); }
         finally { setIsProcessing(false); }
     }, [hasPermission, showToast, t, setIsProcessing, currentUser, fetchAllData, fetchInventoryData]);
 
@@ -124,11 +126,12 @@ export const InventoryProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         setIsProcessing(true);
         try {
             const response = await fetch(`${APP_CONFIG.API_BASE_URL}update_purchase_invoice.php`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(invoiceData) });
-            if (!response.ok || !(await response.json()).success) throw new Error(t.invoiceUpdateFailed);
+            const result = await response.json();
+            if (!response.ok || !result.success) throw new Error(result.error || t.invoiceUpdateFailed);
             showToast(t.invoiceUpdatedSuccess);
             await fetchInventoryData();
             await fetchAllData();
-        } catch (error: any) { showToast(error.message || t.invoiceUpdateFailed); }
+        } catch (error: any) { showToast(error.message || t.invoiceUpdateFailed, { isError: true }); }
         finally { setIsProcessing(false); }
     }, [hasPermission, showToast, t, setIsProcessing, fetchInventoryData, fetchAllData]);
 
@@ -137,11 +140,12 @@ export const InventoryProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         setIsProcessing(true);
         try {
             const response = await fetch(`${APP_CONFIG.API_BASE_URL}delete_purchase_invoice.php`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: invoiceId }) });
-            if (!response.ok || !(await response.json()).success) throw new Error(t.invoiceDeleteFailed);
+            const result = await response.json();
+            if (!response.ok || !result.success) throw new Error(result.error || t.invoiceDeleteFailed);
             showToast(t.invoiceDeletedSuccess);
             await fetchInventoryData();
             await fetchAllData();
-        } catch (error: any) { showToast(error.message || t.invoiceDeleteFailed); }
+        } catch (error: any) { showToast(error.message || t.invoiceDeleteFailed, { isError: true }); }
         finally { setIsProcessing(false); }
     }, [hasPermission, showToast, t, setIsProcessing, fetchInventoryData, fetchAllData]);
     
@@ -151,11 +155,12 @@ export const InventoryProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         try {
             const payload = { ...invoiceData, created_by: currentUser?.id };
             const response = await fetch(`${APP_CONFIG.API_BASE_URL}add_sales_invoice.php`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
-            if (!response.ok || !(await response.json()).success) throw new Error(t.salesInvoiceAddFailed);
+            const result = await response.json();
+            if (!response.ok || !result.success) throw new Error(result.error || t.salesInvoiceAddFailed);
             showToast(t.salesInvoiceAddedSuccess);
             await fetchInventoryData();
             await fetchAllData();
-        } catch (error: any) { showToast(error.message || t.salesInvoiceAddFailed); }
+        } catch (error: any) { showToast(error.message || t.salesInvoiceAddFailed, { isError: true }); }
         finally { setIsProcessing(false); }
     }, [hasPermission, showToast, t, setIsProcessing, currentUser, fetchAllData, fetchInventoryData]);
 
@@ -164,11 +169,12 @@ export const InventoryProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         setIsProcessing(true);
         try {
             const response = await fetch(`${APP_CONFIG.API_BASE_URL}update_sales_invoice.php`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(invoiceData) });
-            if (!response.ok || !(await response.json()).success) throw new Error(t.salesInvoiceUpdateFailed);
+            const result = await response.json();
+            if (!response.ok || !result.success) throw new Error(result.error || t.salesInvoiceUpdateFailed);
             showToast(t.salesInvoiceUpdatedSuccess);
             await fetchInventoryData();
             await fetchAllData();
-        } catch (error: any) { showToast(error.message || t.salesInvoiceUpdateFailed); }
+        } catch (error: any) { showToast(error.message || t.salesInvoiceUpdateFailed, { isError: true }); }
         finally { setIsProcessing(false); }
     }, [hasPermission, showToast, t, setIsProcessing, fetchInventoryData, fetchAllData]);
 
@@ -177,11 +183,12 @@ export const InventoryProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         setIsProcessing(true);
         try {
             const response = await fetch(`${APP_CONFIG.API_BASE_URL}delete_sales_invoice.php`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: invoiceId }) });
-            if (!response.ok || !(await response.json()).success) throw new Error(t.invoiceDeleteFailed);
+            const result = await response.json();
+            if (!response.ok || !result.success) throw new Error(result.error || t.invoiceDeleteFailed);
             showToast(t.invoiceDeletedSuccess);
             await fetchInventoryData();
             await fetchAllData();
-        } catch (error: any) { showToast(error.message || t.invoiceDeleteFailed); }
+        } catch (error: any) { showToast(error.message || t.invoiceDeleteFailed, { isError: true }); }
         finally { setIsProcessing(false); }
     }, [hasPermission, showToast, t, setIsProcessing, fetchInventoryData, fetchAllData]);
     

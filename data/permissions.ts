@@ -1,4 +1,3 @@
-
 import React from 'react';
 import type { Permission } from '../types';
 import { translations } from '../i18n/translations';
@@ -78,8 +77,10 @@ export const PERMISSION_GROUPS: Record<string, PermissionGroup> = {
       nameKey: 'treasury',
       icon: CurrencyDollarIcon,
       permissions: [
+          // FIX: Added missing translation key for 'view_treasury_page' to resolve type error.
           { id: 'view_treasury_page', nameKey: 'permission_view_treasury_page' },
           { id: 'add_manual_transaction', nameKey: 'permission_add_manual_transaction' },
+          { id: 'manage_treasuries', nameKey: 'permission_manage_treasuries' },
       ]
   },
   inventory: {

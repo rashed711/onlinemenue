@@ -4,6 +4,7 @@ import { Modal } from '../Modal';
 import { useUI } from '../../contexts/UIContext';
 import { useInventory } from '../../contexts/InventoryContext';
 import { useData } from '../../contexts/DataContext';
+import { useTreasury } from '../../contexts/TreasuryContext'; // Import useTreasury
 import { PlusIcon, TrashIcon } from '../icons/Icons';
 import { SearchableSelect } from './SearchableSelect';
 
@@ -21,15 +22,26 @@ export const PurchaseInvoiceModal: React.FC<PurchaseInvoiceModalProps> = ({ invo
     const { t, language } = useUI();
     const { suppliers, addPurchaseInvoice, updatePurchaseInvoice } = useInventory();
     const { products } = useData();
+    const { treasuries, fetchTreasuryData } = useTreasury(); // Get treasuries
     
     const [supplierId, setSupplierId] = useState<number | ''>('');
+    const [treasuryId, setTreasuryId] = useState<number | ''>(''); // State for selected treasury
     const [items, setItems] = useState<FormItem[]>([{ product_id: undefined, quantity: 1, purchase_price: 0 }]);
     const [notes, setNotes] = useState('');
+
+    useEffect(() => {
+        fetchTreasuryData(); // Fetch treasuries when modal opens
+    }, []);
 
     useEffect(() => {
         if (invoiceToEdit) {
             setSupplierId(invoiceToEdit.supplier_id);
             setNotes(invoiceToEdit.notes || '');
+            // Treasury ID would need to be part of PurchaseInvoice type if we want to edit it
+            // For now, we assume it defaults on edit or isn't editable.
+            if (treasuries.length > 0) {
+                setTreasuryId(treasuries[0].id);
+            }
             setItems(invoiceToEdit.items.map(item => ({
                 product_id: item.product_id,
                 quantity: item.quantity,
@@ -40,8 +52,11 @@ export const PurchaseInvoiceModal: React.FC<PurchaseInvoiceModalProps> = ({ invo
             setSupplierId('');
             setItems([{ product_id: undefined, quantity: 1, purchase_price: 0 }]);
             setNotes('');
+            if (treasuries.length > 0) {
+                setTreasuryId(treasuries[0].id);
+            }
         }
-    }, [invoiceToEdit]);
+    }, [invoiceToEdit, treasuries]);
 
     useEffect(() => {
         if (!invoiceToEdit && !supplierId && suppliers.length > 0) {
@@ -127,8 +142,8 @@ export const PurchaseInvoiceModal: React.FC<PurchaseInvoiceModalProps> = ({ invo
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
-        if (!supplierId || items.some(item => !item.product_id)) {
-            alert("Please select a supplier and ensure all items have a product selected.");
+        if (!supplierId || !treasuryId || items.some(item => !item.product_id)) {
+            alert("Please select a supplier, a treasury, and ensure all items have a product selected.");
             return;
         }
 
@@ -144,6 +159,8 @@ export const PurchaseInvoiceModal: React.FC<PurchaseInvoiceModalProps> = ({ invo
         }).filter(item => item.product_id && item.quantity > 0);
 
         if (invoiceToEdit) {
+            // Note: updating treasury for an existing invoice is complex and not implemented here.
+            // This would require reversing the old transaction and creating a new one.
             updatePurchaseInvoice({
                 ...invoiceToEdit,
                 supplier_id: supplierId,
@@ -154,6 +171,7 @@ export const PurchaseInvoiceModal: React.FC<PurchaseInvoiceModalProps> = ({ invo
         } else {
             addPurchaseInvoice({
                 supplier_id: supplierId,
+                treasury_id: treasuryId, // Pass treasury ID
                 total_amount: totalAmount,
                 notes,
                 items: finalItems,
@@ -176,8 +194,15 @@ export const PurchaseInvoiceModal: React.FC<PurchaseInvoiceModalProps> = ({ invo
                             <div>
                                 <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">{t.supplier}</label>
                                 <select value={supplierId} onChange={(e) => setSupplierId(parseInt(e.target.value, 10))} className={formInputClasses} required>
-                                    <option value="" disabled>Select a supplier</option>
+                                    <option value="" disabled>{t.select + '...'}</option>
                                     {suppliers.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+                                </select>
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">{t.treasury}</label>
+                                <select value={treasuryId} onChange={(e) => setTreasuryId(parseInt(e.target.value, 10))} className={formInputClasses} required disabled={!!invoiceToEdit}>
+                                    <option value="" disabled>{t.select + '...'}</option>
+                                    {treasuries.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
                                 </select>
                             </div>
                         </div>

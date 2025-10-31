@@ -1,24 +1,37 @@
-
 import React, { useState, useEffect } from 'react';
 import { useTreasury } from '../../../contexts/TreasuryContext';
 import { useUI } from '../../../contexts/UIContext';
 import { useAuth } from '../../../contexts/AuthContext';
 import { formatNumber, formatDateTime } from '../../../utils/helpers';
-import { PlusIcon, CurrencyDollarIcon } from '../../icons/Icons';
+import { PlusIcon, CurrencyDollarIcon, PencilIcon, TrashIcon } from '../../icons/Icons';
 import { ManualTransactionModal } from '../ManualTransactionModal';
+import { TreasuryEditModal } from '../TreasuryEditModal';
 import type { TreasuryTransaction } from '../../../types';
 
 export const TreasuryPage: React.FC = () => {
     const { t } = useUI();
     const { hasPermission } = useAuth();
-    const { treasuries, transactions, isTreasuryLoading, fetchTreasuryData } = useTreasury();
-    const [isModalOpen, setIsModalOpen] = useState(false);
+    const { treasuries, transactions, isTreasuryLoading, fetchTreasuryData, deleteTreasury } = useTreasury();
+    const [isTransactionModalOpen, setIsTransactionModalOpen] = useState(false);
+    const [isTreasuryModalOpen, setIsTreasuryModalOpen] = useState(false);
+    const [editingTreasury, setEditingTreasury] = useState<any | null>(null);
 
     useEffect(() => {
         fetchTreasuryData();
     }, [fetchTreasuryData]);
     
     const canAddTransaction = hasPermission('add_manual_transaction');
+    const canManageTreasuries = hasPermission('manage_treasuries');
+
+    const handleEditTreasury = (treasury: any) => {
+        setEditingTreasury(treasury);
+        setIsTreasuryModalOpen(true);
+    };
+
+    const handleAddNewTreasury = () => {
+        setEditingTreasury(null);
+        setIsTreasuryModalOpen(true);
+    };
 
     const getTransactionTypeTranslation = (type: TreasuryTransaction['transaction_type']) => {
         const key = type as 'deposit' | 'withdrawal' | 'sales' | 'purchase';
@@ -27,20 +40,28 @@ export const TreasuryPage: React.FC = () => {
     
     return (
         <div className="animate-fade-in-up">
-            <div className="flex justify-between items-center mb-6">
+            <div className="flex justify-between items-center mb-6 flex-wrap gap-4">
                 <h2 className="text-2xl font-bold text-slate-800 dark:text-slate-100">{t.treasury}</h2>
-                {canAddTransaction && (
-                     <button onClick={() => setIsModalOpen(true)} className="bg-green-500 text-white font-bold py-2 px-4 rounded-lg hover:bg-green-600 transition-colors flex items-center gap-2">
-                        <PlusIcon className="w-5 h-5" />
-                        {t.addNewTransaction}
-                    </button>
-                )}
+                <div className="flex items-center gap-2 flex-wrap">
+                    {canManageTreasuries && (
+                        <button onClick={handleAddNewTreasury} className="bg-blue-500 text-white font-bold py-2 px-4 rounded-lg hover:bg-blue-600 transition-colors flex items-center gap-2">
+                            <PlusIcon className="w-5 h-5" />
+                            {t.addNewTreasury}
+                        </button>
+                    )}
+                     {canAddTransaction && (
+                         <button onClick={() => setIsTransactionModalOpen(true)} className="bg-green-500 text-white font-bold py-2 px-4 rounded-lg hover:bg-green-600 transition-colors flex items-center gap-2">
+                            <PlusIcon className="w-5 h-5" />
+                            {t.addNewTransaction}
+                        </button>
+                    )}
+                </div>
             </div>
 
             {/* Balances */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
                 {treasuries.map(treasury => (
-                    <div key={treasury.id} className="bg-white dark:bg-slate-800 p-5 rounded-xl shadow-lg border border-slate-200 dark:border-slate-700">
+                    <div key={treasury.id} className="bg-white dark:bg-slate-800 p-5 rounded-xl shadow-lg border border-slate-200 dark:border-slate-700 relative group">
                         <div className="flex items-center gap-3">
                             <div className="p-3 bg-primary-100 dark:bg-primary-900/50 rounded-full">
                                 <CurrencyDollarIcon className="w-6 h-6 text-primary-600 dark:text-primary-400"/>
@@ -50,6 +71,12 @@ export const TreasuryPage: React.FC = () => {
                                 <p className="text-2xl font-extrabold text-slate-800 dark:text-slate-100">{formatNumber(treasury.current_balance)} <span className="text-base font-semibold">{t.currency}</span></p>
                             </div>
                         </div>
+                        {canManageTreasuries && (
+                            <div className="absolute top-2 right-2 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                <button onClick={() => handleEditTreasury(treasury)} className="p-2 text-indigo-600 hover:bg-indigo-100 dark:hover:bg-indigo-900/50 rounded-full"><PencilIcon className="w-5 h-5" /></button>
+                                <button onClick={() => deleteTreasury(treasury.id)} className="p-2 text-red-600 hover:bg-red-100 dark:hover:bg-red-900/50 rounded-full"><TrashIcon className="w-5 h-5" /></button>
+                            </div>
+                        )}
                     </div>
                 ))}
             </div>
@@ -88,7 +115,7 @@ export const TreasuryPage: React.FC = () => {
                                     <td className="px-4 py-3 text-sm text-end font-mono text-slate-600 dark:text-slate-300">{formatNumber(tx.balance_after)}</td>
                                     <td className="px-4 py-3 text-sm text-slate-600 dark:text-slate-300">
                                         {tx.related_invoice_id ? (
-                                            <a href={`#/admin/inventory?view_${tx.invoice_type}=${tx.related_invoice_id}`} className="text-blue-600 hover:underline">
+                                            <a href={`#/admin/${tx.invoice_type === 'purchase' ? 'purchaseInvoices' : 'salesInvoices'}?view_${tx.invoice_type}=${tx.related_invoice_id}`} className="text-blue-600 hover:underline">
                                                 {t.invoiceLink} #{tx.related_invoice_id}
                                             </a>
                                         ) : tx.description || <span className="text-slate-400">{t.manualEntry}</span>}
@@ -103,7 +130,8 @@ export const TreasuryPage: React.FC = () => {
                 </div>
             </div>
 
-            {isModalOpen && canAddTransaction && <ManualTransactionModal onClose={() => setIsModalOpen(false)} />}
+            {isTransactionModalOpen && canAddTransaction && <ManualTransactionModal onClose={() => setIsTransactionModalOpen(false)} />}
+            {isTreasuryModalOpen && canManageTreasuries && <TreasuryEditModal treasuryToEdit={editingTreasury} onClose={() => setIsTreasuryModalOpen(false)} />}
         </div>
     );
 };
