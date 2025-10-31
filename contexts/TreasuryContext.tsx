@@ -137,7 +137,9 @@ export const TreasuryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
             setTreasuries(prev => prev.filter(t => t.id !== id));
             showToast(t.treasuryDeletedSuccess);
         } catch (error: any) {
-            showToast(error.message || t.treasuryDeleteFailed);
+            const errorMessageKey = error.message as keyof typeof t;
+            const localizedError = t[errorMessageKey] || error.message || t.treasuryDeleteFailed;
+            showToast(localizedError);
         } finally {
             setIsProcessing(false);
         }

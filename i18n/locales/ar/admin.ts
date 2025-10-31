@@ -351,5 +351,7 @@ export default {
   "treasuryUpdateFailed": "فشل في تحديث الخزنة.",
   "treasuryDeletedSuccess": "تم حذف الخزنة بنجاح.",
   "treasuryDeleteFailed": "فشل في حذف الخزنة.",
-  "permission_manage_treasuries": "إدارة الخزائن"
+  "permission_manage_treasuries": "إدارة الخزائن",
+  "treasuryDeleteErrorBalanceNotZero": "لا يمكن حذف خزنة رصيدها لا يساوي صفرًا.",
+  "treasuryDeleteErrorHasTransactions": "لا يمكن حذف الخزنة. إنها مرتبطة بحركات مالية."
 };
