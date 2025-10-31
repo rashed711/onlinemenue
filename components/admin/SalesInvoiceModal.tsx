@@ -6,6 +6,7 @@ import { useInventory } from '../../contexts/InventoryContext';
 import { useUserManagement } from '../../contexts/UserManagementContext';
 import { useAuth } from '../../contexts/AuthContext';
 import { useData } from '../../contexts/DataContext';
+import { useTreasury } from '../../contexts/TreasuryContext';
 import { PlusIcon, TrashIcon } from '../icons/Icons';
 import { SearchableSelect } from './SearchableSelect';
 import { getActivePromotionForProduct } from '../../utils/helpers';
@@ -29,13 +30,19 @@ export const SalesInvoiceModal: React.FC<SalesInvoiceModalProps> = ({ invoiceToE
     const { roles } = useAuth();
     const { addSalesInvoice, updateSalesInvoice } = useInventory();
     const { products, promotions } = useData();
+    const { treasuries, fetchTreasuryData } = useTreasury();
     
     const [customerType, setCustomerType] = useState<CustomerType>('guest');
     const [customerId, setCustomerId] = useState<number | ''>('');
     const [customerName, setCustomerName] = useState('');
     const [customerMobile, setCustomerMobile] = useState('');
+    const [treasuryId, setTreasuryId] = useState<number | ''>('');
     const [items, setItems] = useState<FormSalesItem[]>([{ product_id: undefined, quantity: 1, sale_price: 0 }]);
     const [notes, setNotes] = useState('');
+
+    useEffect(() => {
+        fetchTreasuryData();
+    }, []);
 
     useEffect(() => {
         if (invoiceToEdit) {
@@ -44,6 +51,9 @@ export const SalesInvoiceModal: React.FC<SalesInvoiceModalProps> = ({ invoiceToE
             setCustomerName(invoiceToEdit.customer_name);
             setCustomerMobile(invoiceToEdit.customer_mobile);
             setNotes(invoiceToEdit.notes || '');
+            if (treasuries.length > 0) {
+                 setTreasuryId(treasuries[0].id); // Placeholder for edited invoices
+            }
             setItems(invoiceToEdit.items.map(item => {
                 const product = products.find(p => p.id === item.product_id);
                 return {
@@ -61,8 +71,11 @@ export const SalesInvoiceModal: React.FC<SalesInvoiceModalProps> = ({ invoiceToE
             setCustomerMobile('');
             setItems([{ product_id: undefined, quantity: 1, sale_price: 0 }]);
             setNotes('');
+            if (treasuries.length > 0 && !treasuryId) {
+                setTreasuryId(treasuries[0].id);
+            }
         }
-    }, [invoiceToEdit, products]);
+    }, [invoiceToEdit, products, treasuries, treasuryId]);
 
     const customerUsers = useMemo(() => {
         const customerRole = roles.find(r => r.name.en.toLowerCase() === 'customer');
@@ -195,8 +208,8 @@ export const SalesInvoiceModal: React.FC<SalesInvoiceModalProps> = ({ invoiceToE
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
-        if ((!customerId && customerType === 'registered') || (!customerName && customerType === 'guest') || items.some(item => !item.product_id || !item.quantity)) {
-            alert("Please fill all required fields: customer and all product items.");
+        if (!treasuryId || (!customerId && customerType === 'registered') || (!customerName && customerType === 'guest') || items.some(item => !item.product_id || !item.quantity)) {
+            alert("Please fill all required fields: treasury, customer, and all product items.");
             return;
         }
 
@@ -226,6 +239,7 @@ export const SalesInvoiceModal: React.FC<SalesInvoiceModalProps> = ({ invoiceToE
                 customer_id: customerId || null,
                 customer_name: customerName,
                 customer_mobile: customerMobile,
+                treasury_id: treasuryId,
                 total_amount: totalAmount,
                 notes,
                 items: finalItems,
@@ -246,10 +260,27 @@ export const SalesInvoiceModal: React.FC<SalesInvoiceModalProps> = ({ invoiceToE
                     {/* Customer Section */}
                     <div className="space-y-4">
                         <h3 className="text-lg font-semibold">{t.customerInfo}</h3>
-                        <div className="flex items-center gap-4">
-                            <label className="flex items-center gap-2"><input type="radio" name="customerType" value="guest" checked={customerType === 'guest'} onChange={() => handleCustomerTypeChange('guest')} disabled={!!invoiceToEdit} /> {t.guestCustomer}</label>
-                            <label className="flex items-center gap-2"><input type="radio" name="customerType" value="registered" checked={customerType === 'registered'} onChange={() => handleCustomerTypeChange('registered')} disabled={!!invoiceToEdit} /> {t.registeredCustomer}</label>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">{t.treasury}</label>
+                                <select
+                                    value={treasuryId}
+                                    onChange={(e) => setTreasuryId(Number(e.target.value))}
+                                    className={formInputClasses}
+                                    required
+                                    disabled={!!invoiceToEdit || treasuries.length === 0}
+                                >
+                                    <option value="" disabled>{t.select + '...'}</option>
+                                    {treasuries.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
+                                </select>
+                                {treasuries.length === 0 && !invoiceToEdit && <p className="text-xs text-red-500 mt-1">{t.noTreasuriesFound}</p>}
+                            </div>
+                            <div className="flex items-center gap-4 self-end">
+                                <label className="flex items-center gap-2"><input type="radio" name="customerType" value="guest" checked={customerType === 'guest'} onChange={() => handleCustomerTypeChange('guest')} disabled={!!invoiceToEdit} /> {t.guestCustomer}</label>
+                                <label className="flex items-center gap-2"><input type="radio" name="customerType" value="registered" checked={customerType === 'registered'} onChange={() => handleCustomerTypeChange('registered')} disabled={!!invoiceToEdit} /> {t.registeredCustomer}</label>
+                            </div>
                         </div>
+
                         {customerType === 'guest' ? (
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <div>

@@ -62,7 +62,8 @@ export const UsersPage: React.FC<UsersPageProps> = (props) => {
                 <div className="absolute top-1/2 -translate-y-1/2 start-3 text-slate-400"><SearchIcon className="w-5 h-5" /></div>
             </div>
 
-            <div className="bg-white dark:bg-slate-800 rounded-lg shadow-md overflow-hidden border border-slate-200 dark:border-slate-700">
+            {/* Desktop Table View */}
+            <div className="hidden md:block bg-white dark:bg-slate-800 rounded-lg shadow-md overflow-hidden border border-slate-200 dark:border-slate-700">
                 <table className="min-w-full divide-y divide-slate-200 dark:divide-slate-700">
                     <thead className="bg-slate-50 dark:bg-slate-700/50">
                         <tr>
@@ -83,6 +84,29 @@ export const UsersPage: React.FC<UsersPageProps> = (props) => {
                         ))}
                     </tbody>
                 </table>
+            </div>
+
+            {/* Mobile Card View */}
+            <div className="md:hidden space-y-4">
+                {usersToDisplay.map((user) => (
+                    <div key={user.id} className="bg-white dark:bg-slate-800 rounded-lg shadow p-4 space-y-3">
+                        <div className="flex justify-between items-start">
+                            <div>
+                                <p className="font-bold text-slate-900 dark:text-slate-100">{user.name}</p>
+                                <p className="text-sm text-slate-500 dark:text-slate-400 font-mono">{user.mobile}</p>
+                            </div>
+                            <span className="px-2 py-1 text-xs font-semibold rounded-full bg-primary-100 text-primary-800 dark:bg-primary-900/50 dark:text-primary-300">
+                                {roles.find(r => r.key === user.role)?.name[language] || user.role}
+                            </span>
+                        </div>
+                        {(hasPermission('edit_user') || hasPermission('delete_user')) && (
+                            <div className="border-t border-slate-100 dark:border-slate-700 pt-3 flex justify-end items-center gap-4">
+                                {hasPermission('edit_user') && <button onClick={() => setEditingUser(user)} className="text-indigo-600 dark:text-indigo-400 font-semibold flex items-center gap-1 text-sm"><PencilIcon className="w-4 h-4" /> {t.edit}</button>}
+                                {hasPermission('delete_user') && <button onClick={() => deleteUser(user.id)} className="text-red-600 dark:text-red-400 font-semibold flex items-center gap-1 text-sm"><TrashIcon className="w-4 h-4" /> {t.delete}</button>}
+                            </div>
+                        )}
+                    </div>
+                ))}
             </div>
         </div>
     );

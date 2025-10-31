@@ -353,5 +353,6 @@ export default {
   "treasuryDeleteFailed": "Failed to delete treasury.",
   "permission_manage_treasuries": "Manage Treasuries",
   "treasuryDeleteErrorBalanceNotZero": "Cannot delete a treasury with a non-zero balance.",
-  "treasuryDeleteErrorHasTransactions": "Cannot delete treasury. It has associated transactions."
+  "treasuryDeleteErrorHasTransactions": "Cannot delete treasury. It has associated transactions.",
+  "noTreasuriesFound": "No treasuries found. Please add a treasury first."
 };

@@ -83,7 +83,9 @@ export const TreasuryPage: React.FC = () => {
 
             {/* Transactions Table */}
             <h3 className="text-xl font-bold mb-4 text-slate-800 dark:text-slate-100">{t.treasuryTransactions}</h3>
-            <div className="bg-white dark:bg-slate-800 rounded-lg shadow-md overflow-hidden border border-slate-200 dark:border-slate-700">
+            
+            {/* Desktop Table View */}
+            <div className="hidden md:block bg-white dark:bg-slate-800 rounded-lg shadow-md overflow-hidden border border-slate-200 dark:border-slate-700">
                 <div className="overflow-x-auto">
                     <table className="min-w-full divide-y divide-slate-200 dark:divide-slate-700">
                         <thead className="bg-slate-50 dark:bg-slate-700/50">
@@ -128,6 +130,38 @@ export const TreasuryPage: React.FC = () => {
                          </tbody>
                     </table>
                 </div>
+            </div>
+
+            {/* Mobile Card View */}
+            <div className="md:hidden space-y-4">
+                 {isTreasuryLoading ? (
+                    <div className="text-center py-10 text-slate-500 bg-white dark:bg-slate-800 rounded-lg">{t.loading}</div>
+                ) : transactions.length > 0 ? transactions.map(tx => (
+                    <div key={tx.id} className="bg-white dark:bg-slate-800 rounded-lg shadow p-4 space-y-3">
+                        <div className="flex justify-between items-start">
+                            <div>
+                                <span className={`px-2 py-1 text-xs rounded-full font-medium ${
+                                    tx.transaction_type === 'deposit' || tx.transaction_type === 'sales' ? 'bg-green-100 text-green-800 dark:bg-green-900/50 dark:text-green-300' : 'bg-red-100 text-red-800 dark:bg-red-900/50 dark:text-red-300'
+                                }`}>
+                                    {getTransactionTypeTranslation(tx.transaction_type)}
+                                </span>
+                                <p className="text-xs text-slate-500 mt-2">{formatDateTime(tx.created_at)}</p>
+                            </div>
+                            <div className="text-end">
+                                <p className={`text-lg font-bold ${tx.transaction_type === 'deposit' || tx.transaction_type === 'sales' ? 'text-green-600' : 'text-red-600'}`}>
+                                    {tx.transaction_type === 'deposit' || tx.transaction_type === 'sales' ? '+' : '-'} {formatNumber(tx.amount)}
+                                </p>
+                                <p className="text-xs text-slate-500">{t.balanceAfter}: {formatNumber(tx.balance_after)}</p>
+                            </div>
+                        </div>
+                        <div className="border-t border-slate-100 dark:border-slate-700 pt-3 text-sm text-slate-600 dark:text-slate-300">
+                            <p><strong>{t.details}:</strong> {tx.related_invoice_id ? <a href={`#/admin/${tx.invoice_type === 'purchase' ? 'purchaseInvoices' : 'salesInvoices'}?view_${tx.invoice_type}=${tx.related_invoice_id}`} className="text-blue-600 hover:underline">{t.invoiceLink} #{tx.related_invoice_id}</a> : tx.description || <span className="text-slate-400">{t.manualEntry}</span>}</p>
+                            <p><strong>{t.createdBy}:</strong> {tx.created_by_name || 'System'}</p>
+                        </div>
+                    </div>
+                )) : (
+                    <div className="text-center py-10 text-slate-500 bg-white dark:bg-slate-800 rounded-lg">{t.noTransactionsFound}</div>
+                )}
             </div>
 
             {isTransactionModalOpen && canAddTransaction && <ManualTransactionModal onClose={() => setIsTransactionModalOpen(false)} />}

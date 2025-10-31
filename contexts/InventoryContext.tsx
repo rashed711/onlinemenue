@@ -16,7 +16,7 @@ interface InventoryContextType {
     addPurchaseInvoice: (invoiceData: Omit<PurchaseInvoice, 'id'|'invoice_number'|'supplier_name'|'invoice_date'> & { treasury_id: number }) => Promise<void>;
     updatePurchaseInvoice: (invoiceData: PurchaseInvoice) => Promise<void>;
     deletePurchaseInvoice: (invoiceId: number) => Promise<void>;
-    addSalesInvoice: (invoiceData: Omit<SalesInvoice, 'id' | 'invoice_number' | 'created_by_name' | 'invoice_date' | 'created_by'>) => Promise<void>;
+    addSalesInvoice: (invoiceData: Omit<SalesInvoice, 'id' | 'invoice_number' | 'created_by_name' | 'invoice_date' | 'created_by'> & { treasury_id: number }) => Promise<void>;
     updateSalesInvoice: (invoiceData: SalesInvoice) => Promise<void>;
     deleteSalesInvoice: (invoiceId: number) => Promise<void>;
 }
@@ -149,7 +149,7 @@ export const InventoryProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         finally { setIsProcessing(false); }
     }, [hasPermission, showToast, t, setIsProcessing, fetchInventoryData, fetchAllData]);
     
-    const addSalesInvoice = useCallback(async (invoiceData: Omit<SalesInvoice, 'id' | 'invoice_number' | 'invoice_date' | 'created_by' | 'created_by_name'>) => {
+    const addSalesInvoice = useCallback(async (invoiceData: Omit<SalesInvoice, 'id' | 'invoice_number' | 'invoice_date' | 'created_by' | 'created_by_name'> & { treasury_id: number }) => {
         if (!hasPermission('manage_sales_invoices')) { showToast(t.permissionDenied); return; }
         setIsProcessing(true);
         try {
