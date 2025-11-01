@@ -1,6 +1,6 @@
 import React from 'react';
 import type { Permission, User, UserRole, Role } from '../../types';
-import { ClipboardListIcon, CollectionIcon, UsersIcon, CloseIcon, ShieldCheckIcon, BookmarkAltIcon, ChartBarIcon, TagIcon, CogIcon, CashRegisterIcon, LogoutIcon, HomeIcon, BellIcon, ArchiveIcon, CurrencyDollarIcon, UserGroupIcon } from '../icons/Icons';
+import { ClipboardListIcon, CollectionIcon, UsersIcon, CloseIcon, ShieldCheckIcon, BookmarkAltIcon, ChartBarIcon, TagIcon, CogIcon, CashRegisterIcon, LogoutIcon, HomeIcon, BellIcon, ArchiveIcon, CurrencyDollarIcon, UserGroupIcon, BankIcon } from '../icons/Icons';
 import { useUI } from '../../contexts/UIContext';
 import { useAuth } from '../../contexts/AuthContext';
 import { useData } from '../../contexts/DataContext';
@@ -32,7 +32,7 @@ export const AdminSidebar: React.FC<AdminSidebarProps> = (props) => {
             { id: 'suppliers', label: t.suppliers, icon: UsersIcon, permission: 'manage_suppliers' as Permission },
             { id: 'salesInvoices', label: t.salesInvoices, icon: CashRegisterIcon, permission: 'manage_sales_invoices' as Permission },
             { id: 'purchaseInvoices', label: t.purchaseInvoices, icon: ClipboardListIcon, permission: 'add_purchase_invoice' as Permission },
-            { id: 'treasury', label: t.treasury, icon: CurrencyDollarIcon, permission: 'view_treasury_page' as Permission },
+            { id: 'treasury', label: t.treasury, icon: BankIcon, permission: 'view_treasury_page' as Permission },
         ],
         management: [
             { id: 'productList', label: t.productList, icon: CollectionIcon, permission: 'view_products_page' as Permission },
@@ -109,28 +109,6 @@ export const AdminSidebar: React.FC<AdminSidebarProps> = (props) => {
                             );
                         })}
                     </nav>
-                </div>
-
-                <div className="p-4 border-t dark:border-slate-700">
-                     <a href="#/profile" onClick={(e) => handleNav(e, '/profile')} className="block w-full text-start p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors">
-                        <div className="flex items-center gap-3">
-                            <img src={currentUser.profilePicture} alt="User" className="w-10 h-10 rounded-full bg-slate-200 object-cover" />
-                            <div>
-                                <p className="font-semibold text-sm text-slate-800 dark:text-slate-100">{currentUser.name}</p>
-                                <p className="text-xs text-slate-500 dark:text-slate-400">{userRoleName}</p>
-                            </div>
-                        </div>
-                     </a>
-                     <div className="mt-2 space-y-1">
-                        <a href="#/" onClick={(e) => handleNav(e, '/')} className="w-full flex items-center p-3 rounded-lg text-sm font-medium text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors">
-                            <HomeIcon className="w-5 h-5"/>
-                            <span className="mx-4">{t.backToMenu}</span>
-                        </a>
-                        <button onClick={logout} className="w-full flex items-center p-3 rounded-lg text-sm font-medium text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/40 transition-colors">
-                            <LogoutIcon className="w-5 h-5"/>
-                            <span className="mx-4">{t.logout}</span>
-                        </button>
-                    </div>
                 </div>
             </aside>
         </>

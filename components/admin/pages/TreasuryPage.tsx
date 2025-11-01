@@ -3,7 +3,7 @@ import { useTreasury } from '../../../contexts/TreasuryContext';
 import { useUI } from '../../../contexts/UIContext';
 import { useAuth } from '../../../contexts/AuthContext';
 import { formatNumber, formatDateTime } from '../../../utils/helpers';
-import { PlusIcon, CurrencyDollarIcon, PencilIcon, TrashIcon } from '../../icons/Icons';
+import { PlusIcon, BankIcon, PencilIcon, TrashIcon } from '../../icons/Icons';
 import { ManualTransactionModal } from '../ManualTransactionModal';
 import { TreasuryEditModal } from '../TreasuryEditModal';
 import type { TreasuryTransaction } from '../../../types';
@@ -64,7 +64,7 @@ export const TreasuryPage: React.FC = () => {
                     <div key={treasury.id} className="bg-white dark:bg-slate-800 p-5 rounded-xl shadow-lg border border-slate-200 dark:border-slate-700 relative group">
                         <div className="flex items-center gap-3">
                             <div className="p-3 bg-primary-100 dark:bg-primary-900/50 rounded-full">
-                                <CurrencyDollarIcon className="w-6 h-6 text-primary-600 dark:text-primary-400"/>
+                                <BankIcon className="w-6 h-6 text-primary-600 dark:text-primary-400"/>
                             </div>
                             <div>
                                 <h3 className="text-sm font-semibold text-slate-500 dark:text-slate-400">{treasury.name}</h3>

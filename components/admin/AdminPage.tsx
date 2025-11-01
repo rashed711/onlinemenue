@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useEffect, useRef, useCallback, lazy, Suspense } from 'react';
 import type { Language, Product, RestaurantInfo, Order, OrderStatus, User, UserRole, Promotion, Permission, Category, Tag, CartItem, SocialLink, LocalizedString, OrderStatusColumn, OrderType, Role } from '../../types';
-import { MenuAlt2Icon, BellIcon, BellSlashIcon, ShieldCheckIcon } from '../icons/Icons';
+import { MenuAlt2Icon, BellIcon, BellSlashIcon, ShieldCheckIcon, UserIcon, HomeIcon, LogoutIcon } from '../icons/Icons';
 import { OrderDetailsModal } from './OrderDetailsModal';
 import { ProductEditModal } from './ProductEditModal';
 import { PromotionEditModal } from './PromotionEditModal';
@@ -64,7 +64,7 @@ const NAV_ITEMS_WITH_PERMS = [
 
 export const AdminPage: React.FC<AdminPageProps> = ({ activeSubRoute, reportSubRoute }) => {
     const { language, t, showToast, setProgress, setShowProgress, setIsChangePasswordModalOpen } = useUI();
-    const { currentUser, hasPermission, roles } = useAuth();
+    const { currentUser, hasPermission, roles, logout } = useAuth();
     const { 
         products: allProducts, 
         promotions: allPromotions, 
@@ -100,6 +100,8 @@ export const AdminPage: React.FC<AdminPageProps> = ({ activeSubRoute, reportSubR
     const [editingRole, setEditingRole] = useState<Role | 'new' | null>(null);
     const [editingCategory, setEditingCategory] = useState<Category | 'new' | null>(null);
     const [editingTag, setEditingTag] = useState<Tag | 'new' | null>(null);
+    const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
+    const userMenuRef = useRef<HTMLDivElement>(null);
 
     // Order Filters
     const [orderSearchTerm, setOrderSearchTerm] = useState('');
@@ -123,6 +125,12 @@ export const AdminPage: React.FC<AdminPageProps> = ({ activeSubRoute, reportSubR
 
     const [transitionStage, setTransitionStage] = useState<'in' | 'out'>('in');
     const [displayedTab, setDisplayedTab] = useState(activeTab);
+
+     const handleNav = (e: React.MouseEvent, path: string) => {
+        e.preventDefault();
+        setIsUserMenuOpen(false); // Close menu on navigation
+        window.location.hash = path;
+    };
 
 
     // Handle viewing order from notification click
@@ -151,6 +159,9 @@ export const AdminPage: React.FC<AdminPageProps> = ({ activeSubRoute, reportSubR
         const handleClickOutside = (event: MouseEvent) => {
           if (categoryDropdownRef.current && !categoryDropdownRef.current.contains(event.target as Node)) {
             setOpenCategoryDropdown(null);
+          }
+          if (userMenuRef.current && !userMenuRef.current.contains(event.target as Node)) {
+            setIsUserMenuOpen(false);
           }
         };
         document.addEventListener('mousedown', handleClickOutside);
@@ -544,10 +555,32 @@ export const AdminPage: React.FC<AdminPageProps> = ({ activeSubRoute, reportSubR
                             { isPushSubscribed ? <BellIcon className="w-6 h-6 text-green-600 dark:text-green-400"/> : <BellSlashIcon className="w-6 h-6 text-slate-500 dark:text-slate-400"/> }
                         </button>
                     )}
-                    <a href="#/profile" onClick={(e) => { e.preventDefault(); window.location.hash = '#/profile';}} className="flex items-center gap-2 text-sm font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700 p-2 rounded-lg transition-colors">
-                        <img src={currentUser.profilePicture} alt="User" className="w-8 h-8 rounded-full" />
-                        <span className="hidden sm:inline">{currentUser.name}</span>
-                    </a>
+                     <div className="relative" ref={userMenuRef}>
+                        <button 
+                            onClick={() => setIsUserMenuOpen(prev => !prev)}
+                            className="flex items-center gap-2 text-sm font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700 p-2 rounded-lg transition-colors"
+                        >
+                            <img src={currentUser.profilePicture} alt="User" className="w-8 h-8 rounded-full object-cover" />
+                            <span className="hidden sm:inline">{currentUser.name}</span>
+                        </button>
+                        {isUserMenuOpen && (
+                             <div className="absolute top-full mt-2 end-0 w-56 bg-white dark:bg-slate-800 rounded-lg shadow-xl border border-slate-200 dark:border-slate-700 overflow-hidden animate-fade-in py-1">
+                                <a href="#/profile" onClick={(e) => handleNav(e, '/profile')} className="flex items-center gap-3 w-full text-start px-3 py-2 text-sm text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors">
+                                    <UserIcon className="w-5 h-5 text-slate-500 dark:text-slate-400" />
+                                    <span>{t.myProfile}</span>
+                                </a>
+                                <a href="#/" onClick={(e) => handleNav(e, '/')} className="flex items-center gap-3 w-full text-start px-3 py-2 text-sm text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors">
+                                    <HomeIcon className="w-5 h-5 text-slate-500 dark:text-slate-400" />
+                                    <span>{t.backToMenu}</span>
+                                </a>
+                                <div className="my-1 border-t border-slate-200 dark:border-slate-700"></div>
+                                <button onClick={() => { logout(); setIsUserMenuOpen(false); }} className="flex items-center gap-3 w-full text-start px-3 py-2 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/50 transition-colors">
+                                    <LogoutIcon className="w-5 h-5" />
+                                    <span>{t.logout}</span>
+                                </button>
+                            </div>
+                        )}
+                    </div>
                 </div>
             </header>
 

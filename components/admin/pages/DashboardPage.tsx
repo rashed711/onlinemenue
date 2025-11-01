@@ -15,7 +15,8 @@ import {
     ShieldCheckIcon,
     CashRegisterIcon,
     UserGroupIcon,
-    CurrencyDollarIcon
+    CurrencyDollarIcon,
+    BankIcon
 } from '../../icons/Icons';
 import type { Order, Permission } from '../../../types';
 
@@ -53,7 +54,7 @@ export const DashboardPage: React.FC = () => {
             { id: 'suppliers', label: t.suppliers, icon: UsersIcon, permission: 'manage_suppliers' as Permission },
             { id: 'salesInvoices', label: t.salesInvoices, icon: CashRegisterIcon, permission: 'manage_sales_invoices' as Permission },
             { id: 'purchaseInvoices', label: t.purchaseInvoices, icon: ClipboardListIcon, permission: 'add_purchase_invoice' as Permission },
-            { id: 'treasury', label: t.treasury, icon: CurrencyDollarIcon, permission: 'view_treasury_page' as Permission },
+            { id: 'treasury', label: t.treasury, icon: BankIcon, permission: 'view_treasury_page' as Permission },
         ],
         management: [
             { id: 'productList', label: t.productList, icon: CollectionIcon, permission: 'view_products_page' as Permission },
@@ -78,7 +79,6 @@ export const DashboardPage: React.FC = () => {
             
             {/* Quick Actions - Cards Enlarged */}
             <div>
-                <h2 className="text-xl font-bold text-slate-800 dark:text-slate-100 mb-4">{t.quickActions}</h2>
                 <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-6">
                     {allNavItems.map(item => (
                         item.id !== 'dashboard' && hasPermission(item.permission) && (

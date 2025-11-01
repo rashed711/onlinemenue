@@ -17,6 +17,7 @@ import {
   TruckIcon,
   UserIcon,
   BellIcon,
+  BankIcon,
   // New Icon
   ArchiveIcon,
 } from '../components/icons/Icons';
@@ -75,7 +76,7 @@ export const PERMISSION_GROUPS: Record<string, PermissionGroup> = {
   },
   financials: {
     nameKey: 'permission_group_financials',
-    icon: CurrencyDollarIcon,
+    icon: BankIcon,
     permissions: [
         { id: 'view_treasury_page', nameKey: 'permission_view_treasury_page' },
         { id: 'add_manual_transaction', nameKey: 'permission_add_manual_transaction' },
