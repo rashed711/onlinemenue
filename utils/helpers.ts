@@ -438,19 +438,27 @@ const generateGenericInvoiceImage = async (
     const ctx = canvas.getContext('2d');
     if (!ctx) return '';
 
+    // --- SETUP ---
     const isRtl = language === 'ar';
     ctx.direction = isRtl ? 'rtl' : 'ltr';
-    const FONT_FAMILY_SANS = isRtl ? 'Cairo, sans-serif' : 'sans-serif';
+    const FONT_SANS = isRtl ? 'Cairo, sans-serif' : 'sans-serif';
+    const FONT_MONO = 'monospace';
+    
     const width = 500;
     const padding = 25;
     const contentWidth = width - (padding * 2);
-    const COLORS = { PAPER: '#FFFFFF', TEXT_DARK: '#1E293B', TEXT_LIGHT: '#64748B', BORDER: '#E2E8F0', RED: '#EF4444' };
     
-    const H_DETAIL = 22;
-    const H_ITEM_NAME = 24;
-    const H_ITEM_DISCOUNT = 18;
-    const H_TOTAL_LINE = 28;
+    const COLORS = { 
+        PAPER: '#FFFFFF', 
+        TEXT_DARK: '#111827', 
+        TEXT_MEDIUM: '#4B5563', 
+        TEXT_LIGHT: '#9CA3AF', 
+        BORDER: '#E5E7EB', 
+        RED: '#EF4444',
+        PRIMARY: '#F59E0B'
+    };
 
+    // --- HELPERS ---
     const getWrappedTextLines = (ctx: CanvasRenderingContext2D, text: string, maxWidth: number): string[] => {
         const words = text.split(' ');
         if (words.length === 0) return [];
@@ -458,243 +466,275 @@ const generateGenericInvoiceImage = async (
         let currentLine = words[0] || '';
         for (let i = 1; i < words.length; i++) {
             const word = words[i];
-            const width = ctx.measureText(currentLine + " " + word).width;
-            if (width < maxWidth) { currentLine += " " + word; } else { lines.push(currentLine); currentLine = word; }
+            if (!word) continue;
+            const testLine = currentLine + " " + word;
+            const metrics = ctx.measureText(testLine);
+            const testWidth = metrics.width;
+            if (testWidth > maxWidth && i > 0) {
+                lines.push(currentLine);
+                currentLine = word;
+            } else {
+                currentLine = testLine;
+            }
         }
         lines.push(currentLine);
         return lines;
     };
 
-    let totalHeight = 0;
-    totalHeight += 215; // Header space
+    // --- HEIGHT CALCULATION ---
+    let y = 0;
 
-    const details = [
-        { label: type === 'purchase' ? t.invoiceId : t.invoiceNumber, value: String(type === 'purchase' ? invoice.id : (invoice as SalesInvoice).invoice_number) },
-        { label: t.date, value: formatDateTime(invoice.invoice_date) },
-    ];
-    if (type === 'purchase') {
-        details.push({ label: t.supplier, value: (invoice as PurchaseInvoice).supplier_name });
-    } else {
-        details.push({ label: t.customer, value: (invoice as SalesInvoice).customer_name });
-        details.push({ label: t.mobileNumber, value: (invoice as SalesInvoice).customer_mobile });
-    }
-    
-    totalHeight += details.length * H_DETAIL;
-    totalHeight += 10; // Padding after details
+    y += 160; // Header
 
-    totalHeight += 45; // Items header
-    invoice.items.forEach(item => {
-        ctx.font = `bold 15px ${FONT_FAMILY_SANS}`;
-        const itemText = `${item.quantity} x ${item.product_name?.[language] || 'Item'}`;
-        const itemLines = getWrappedTextLines(ctx, itemText, contentWidth - 120);
-        totalHeight += (itemLines.length * H_ITEM_NAME);
-        
-        let isDiscounted = false;
-        if (type === 'sales') {
-            const salesItem = item as SalesInvoiceItem;
-            const originalPrice = salesItem.original_price ?? salesItem.price;
-            if (originalPrice > salesItem.price) {
-                isDiscounted = true;
-                totalHeight += H_ITEM_DISCOUNT;
-                if (salesItem.discount_percent && salesItem.discount_percent > 0) {
-                     totalHeight += H_ITEM_DISCOUNT;
-                }
-            }
+    const details = [];
+    if (type === 'sales') {
+        const si = invoice as SalesInvoice;
+        details.push({ label: t.invoiceNumber, value: si.invoice_number });
+        details.push({ label: t.date, value: formatDateTime(si.invoice_date) });
+        details.push({ label: t.customer, value: si.customer_name });
+        details.push({ label: t.mobileNumber, value: si.customer_mobile });
+        if (si.created_by_name) {
+            details.push({ label: t.createdBy, value: si.created_by_name });
         }
-        totalHeight += 25;
-    });
-    totalHeight += 15;
+    } else {
+        const pi = invoice as PurchaseInvoice;
+        details.push({ label: t.invoiceId, value: String(pi.id) });
+        details.push({ label: t.date, value: formatDateTime(pi.invoice_date) });
+        details.push({ label: t.supplier, value: pi.supplier_name });
+    }
+    y += details.length * 24;
+    y += 25;
 
-    let totalSavingsVal = 0;
+    y += 60; // Header height + spacing
+
+    (invoice.items as SalesInvoiceItem[]).forEach((item: SalesInvoiceItem) => {
+        const productName = item.product_name?.[language] || `Product ID: ${item.product_id}`;
+        ctx.font = `14px ${FONT_SANS}`;
+        const lines = getWrappedTextLines(ctx, productName, 200);
+        let itemHeight = lines.length * 18;
+        
+        if (type === 'sales' && (item.discount_percent || 0) > 0) {
+            itemHeight += 16;
+        }
+        y += Math.max(itemHeight, 18); // Min height of one line
+        y += 25;
+    });
+    
+    y += 20;
+    let totalSavings = 0;
     if (type === 'sales') {
         const salesInvoice = invoice as SalesInvoice;
         const originalTotal = salesInvoice.items.reduce((sum, item) => {
             const originalPrice = item.original_price ?? item.price;
             return sum + (originalPrice * item.quantity);
         }, 0);
-        totalSavingsVal = originalTotal - salesInvoice.total_amount;
+        totalSavings = originalTotal - salesInvoice.total_amount;
     }
-    if (totalSavingsVal > 0.01) {
-        totalHeight += H_TOTAL_LINE * 2;
+    if (totalSavings > 0.01) {
+        y += 28 * 2;
     }
+    y += 36;
+    y += 20;
 
-    totalHeight += H_TOTAL_LINE + 35; // Total section
-    totalHeight += 60; // Footer
+    y += 40;
 
+    // --- DRAWING ---
     canvas.width = width;
-    canvas.height = totalHeight;
-    
+    canvas.height = y;
+    const finalHeight = y;
+    y = 0;
+
     ctx.fillStyle = COLORS.PAPER;
-    ctx.fillRect(0, 0, width, totalHeight);
+    ctx.fillRect(0, 0, width, finalHeight);
 
-    const x = (val: number) => isRtl ? width - val : val;
-    
-    const drawDashedLine = (y: number) => {
-        ctx.strokeStyle = COLORS.BORDER;
-        ctx.lineWidth = 1;
-        ctx.setLineDash([3, 4]);
-        ctx.beginPath();
-        ctx.moveTo(padding, y);
-        ctx.lineTo(width - padding, y);
-        ctx.stroke();
-        ctx.setLineDash([]);
-    };
-
-    const drawWrappedText = (text: string, xPos: number, yPos: number, maxWidth: number, lineHeight: number, align: CanvasTextAlign = 'start'): number => {
-        ctx.textAlign = align;
-        const lines = getWrappedTextLines(ctx, text, maxWidth);
-        lines.forEach((line, index) => {
-            ctx.fillText(line, x(xPos), yPos + (index * lineHeight));
-        });
-        return yPos + (lines.length - 1) * lineHeight;
-    };
-
-    let y = 40;
-
+    y = 40;
     const logo = await loadImage(restaurantInfo.logo);
-    ctx.drawImage(logo, (width / 2) - 32, y, 64, 64);
-    y += 80;
-    ctx.font = `bold 24px ${FONT_FAMILY_SANS}`;
+    ctx.drawImage(logo, (width / 2) - 30, y, 60, 60);
+    y += 70;
+    ctx.font = `bold 22px ${FONT_SANS}`;
     ctx.fillStyle = COLORS.TEXT_DARK;
     ctx.textAlign = 'center';
     ctx.fillText(restaurantInfo.name[language], width / 2, y);
-    y += 35;
-    ctx.font = `16px ${FONT_FAMILY_SANS}`;
-    ctx.fillStyle = COLORS.TEXT_LIGHT;
-    ctx.fillText(type === 'purchase' ? t.purchaseInvoice : t.salesInvoice, width / 2, y);
+    y += 20;
+    ctx.font = `16px ${FONT_SANS}`;
+    ctx.fillStyle = COLORS.TEXT_MEDIUM;
+    const invoiceTitle = type === 'sales' ? t.salesInvoice : t.purchaseInvoice;
+    ctx.fillText(invoiceTitle, width / 2, y);
     y += 30;
-    drawDashedLine(y);
-    y += 25;
-
-    ctx.font = `14px ${FONT_FAMILY_SANS}`;
+    
+    ctx.font = `14px ${FONT_SANS}`;
     details.forEach(detail => {
-        ctx.fillStyle = COLORS.TEXT_LIGHT;
+        ctx.fillStyle = COLORS.TEXT_MEDIUM;
         ctx.textAlign = isRtl ? 'right' : 'left';
-        ctx.fillText(detail.label, x(padding), y);
+        ctx.fillText(detail.label, isRtl ? width - padding : padding, y);
         
         ctx.fillStyle = COLORS.TEXT_DARK;
         ctx.textAlign = isRtl ? 'left' : 'right';
-        ctx.fillText(detail.value, x(width - padding), y);
-        y += H_DETAIL;
+        ctx.fillText(detail.value, isRtl ? padding : width - padding, y);
+        y += 24;
     });
     y += 10;
     
-    drawDashedLine(y);
-    y += 25;
-    ctx.font = `bold 14px ${FONT_FAMILY_SANS}`;
-    ctx.fillStyle = COLORS.TEXT_LIGHT;
-    ctx.textAlign = isRtl ? 'right' : 'left';
-    ctx.fillText(t.item, x(padding), y);
-    ctx.textAlign = isRtl ? 'left' : 'right';
-    ctx.fillText(t.subtotal, x(width - padding), y);
-    y += 20;
+    // --- ITEM TABLE HEADER ---
+    const headerY = y;
+    const headerHeight = 50; // Increased height for two lines
+    ctx.fillStyle = COLORS.TEXT_DARK;
+    ctx.fillRect(padding, headerY, contentWidth, headerHeight);
 
-    invoice.items.forEach(item => {
-        const itemStartY = y;
-        ctx.font = `bold 15px ${FONT_FAMILY_SANS}`;
-        ctx.fillStyle = COLORS.TEXT_DARK;
-        const itemName = `${item.quantity} x ${item.product_name?.[language] || 'Item'}`;
-        
-        const newY = drawWrappedText(itemName, padding, itemStartY, contentWidth - 120, H_ITEM_NAME, 'start');
-        y = newY + H_ITEM_NAME;
-        
-        ctx.textAlign = isRtl ? 'left' : 'right';
-        const priceY = itemStartY + H_ITEM_NAME / 2;
-        
-        let isDiscounted = false;
-        let originalSubtotal = 0;
-        
-        if (type === 'sales') {
-            const salesItem = item as SalesInvoiceItem;
-            const originalPrice = salesItem.original_price ?? salesItem.price;
-            if (originalPrice > salesItem.price) {
-                isDiscounted = true;
-                originalSubtotal = originalPrice * salesItem.quantity;
-            }
-        }
-        
-        if (isDiscounted) {
-            // Draw final price
-            ctx.font = `15px ${FONT_FAMILY_SANS}`;
-            ctx.fillStyle = COLORS.TEXT_DARK;
-            ctx.fillText(item.subtotal.toFixed(2), x(width - padding), priceY);
-            
-            // Draw original price (struck through)
-            const originalPriceY = priceY + H_ITEM_DISCOUNT;
-            ctx.font = `13px ${FONT_FAMILY_SANS}`;
-            ctx.fillStyle = COLORS.TEXT_LIGHT;
-            ctx.fillText(originalSubtotal.toFixed(2), x(width - padding), originalPriceY);
-            
-            // Strikethrough line
-            const textWidth = ctx.measureText(originalSubtotal.toFixed(2)).width;
-            ctx.beginPath();
-            const lineY = originalPriceY - 5;
-            const lineXStart = isRtl ? padding : width - padding - textWidth;
-            const lineXEnd = isRtl ? padding + textWidth : width - padding;
-            ctx.moveTo(lineXStart, lineY);
-            ctx.lineTo(lineXEnd, lineY);
-            ctx.strokeStyle = COLORS.TEXT_LIGHT;
-            ctx.lineWidth = 1;
-            ctx.stroke();
-            
-            y = Math.max(y, originalPriceY - H_ITEM_NAME / 2 + H_ITEM_DISCOUNT);
+    ctx.font = `bold 13px ${FONT_SANS}`;
+    ctx.fillStyle = COLORS.PAPER;
 
-            const salesItem = item as SalesInvoiceItem;
-            if (salesItem.discount_percent && salesItem.discount_percent > 0) {
-                ctx.font = `bold 12px ${FONT_FAMILY_SANS}`;
-                ctx.fillStyle = COLORS.RED;
-                ctx.textAlign = isRtl ? 'right' : 'left';
-                ctx.fillText(`(${salesItem.discount_percent.toFixed(0)}% ${t.discount})`, x(padding), y);
-                y += H_ITEM_DISCOUNT;
-            }
-
+    // Helper to draw header text (potentially multi-line)
+    const drawHeaderText = (text: string, x: number, align: CanvasTextAlign) => {
+        ctx.textAlign = align;
+        const words = text.split(' ');
+        if (words.length > 1) {
+            const line1 = words[0];
+            const line2 = words.slice(1).join(' ');
+            ctx.fillText(line1, x, headerY + 20); // y position for line 1
+            ctx.fillText(line2, x, headerY + 38); // y position for line 2
         } else {
-            ctx.font = `15px ${FONT_FAMILY_SANS}`;
-            ctx.fillStyle = COLORS.TEXT_DARK;
-            ctx.fillText(item.subtotal.toFixed(2), x(width - padding), priceY);
+            // Draw single-line text centered vertically
+            ctx.fillText(text, x, headerY + 30);
         }
+    };
 
-        y += 5;
-        drawDashedLine(y);
-        y += 20;
-    });
-    
-    const finalTotal = invoice.total_amount;
-    
-    if (totalSavingsVal > 0.01) {
-        const originalTotal = finalTotal + totalSavingsVal;
-        ctx.font = `16px ${FONT_FAMILY_SANS}`;
-        ctx.fillStyle = COLORS.TEXT_LIGHT;
-        ctx.textAlign = isRtl ? 'right' : 'left';
-        ctx.fillText(t.subtotal, x(padding), y);
-        ctx.textAlign = isRtl ? 'left' : 'right';
-        ctx.fillText(`${originalTotal.toFixed(2)} ${t.currency}`, x(width - padding), y);
-        y += H_TOTAL_LINE;
+    // Column widths
+    const subtotalColWidth = 85;
+    const priceColWidth = 85;
+    const qtyColWidth = 50;
+    const itemColWidth = contentWidth - subtotalColWidth - priceColWidth - qtyColWidth;
+    const colPadding = 10;
 
-        ctx.fillStyle = COLORS.RED;
-        ctx.textAlign = isRtl ? 'right' : 'left';
-        ctx.fillText(t.discount, x(padding), y);
-        ctx.textAlign = isRtl ? 'left' : 'right';
-        ctx.fillText(`-${totalSavingsVal.toFixed(2)} ${t.currency}`, x(width - padding), y);
-        y += H_TOTAL_LINE;
+    // Draw headers
+    const priceHeader = type === 'sales' ? t.salePrice : t.purchasePrice;
+    if (isRtl) {
+        drawHeaderText(t.item, width - padding - colPadding, 'right');
+        drawHeaderText(t.quantity, width - padding - itemColWidth - (qtyColWidth / 2), 'center');
+        drawHeaderText(priceHeader, width - padding - itemColWidth - qtyColWidth - (priceColWidth / 2), 'center');
+        drawHeaderText(t.subtotal, padding + colPadding, 'left');
+    } else {
+        drawHeaderText(t.item, padding + colPadding, 'left');
+        drawHeaderText(t.quantity, padding + itemColWidth + (qtyColWidth / 2), 'center');
+        drawHeaderText(priceHeader, padding + itemColWidth + qtyColWidth + (priceColWidth / 2), 'center');
+        drawHeaderText(t.subtotal, width - padding - colPadding, 'right');
     }
 
-    ctx.font = `bold 18px ${FONT_FAMILY_SANS}`;
+    y = headerY + headerHeight; // Move y to the bottom of the header rect
+    y += 20; // Increased space between header and first item
+
+    // --- ITEM ROWS ---
+    (invoice.items as SalesInvoiceItem[]).forEach((item: SalesInvoiceItem) => {
+        const itemStartY = y;
+
+        const price = item.price ?? 0;
+        const subtotal = item.subtotal;
+
+        // Numbers
+        ctx.font = `14px ${FONT_MONO}`;
+        ctx.fillStyle = COLORS.TEXT_MEDIUM;
+        
+        if (isRtl) {
+            const qtyX = width - padding - itemColWidth - (qtyColWidth / 2);
+            const priceX = qtyX - (qtyColWidth / 2) - (priceColWidth / 2);
+
+            ctx.textAlign = 'center';
+            ctx.fillText(String(item.quantity), qtyX, y);
+            ctx.fillText(Number(price).toFixed(2), priceX, y);
+            
+            ctx.textAlign = 'left';
+            ctx.font = `bold 14px ${FONT_MONO}`;
+            ctx.fillStyle = COLORS.TEXT_DARK;
+            ctx.fillText(Number(subtotal).toFixed(2), padding + colPadding, y);
+        } else {
+            const qtyX = padding + itemColWidth + (qtyColWidth / 2);
+            const priceX = qtyX + (qtyColWidth / 2) + (priceColWidth / 2);
+
+            ctx.textAlign = 'center';
+            ctx.fillText(String(item.quantity), qtyX, y);
+            ctx.fillText(Number(price).toFixed(2), priceX, y);
+
+            ctx.font = `bold 14px ${FONT_MONO}`;
+            ctx.fillStyle = COLORS.TEXT_DARK;
+            ctx.textAlign = 'right';
+            ctx.fillText(Number(subtotal).toFixed(2), width - padding - colPadding, y);
+        }
+
+        // Product Name (can wrap)
+        const productName = item.product_name?.[language] || `Product ID: ${item.product_id}`;
+        ctx.font = `14px ${FONT_SANS}`;
+        ctx.fillStyle = COLORS.TEXT_DARK;
+        ctx.textAlign = isRtl ? 'right' : 'left';
+        const lines = getWrappedTextLines(ctx, productName, itemColWidth - (colPadding * 2));
+        let lineY = y;
+        lines.forEach(line => {
+            ctx.fillText(line, isRtl ? width - padding - colPadding : padding + colPadding, lineY);
+            lineY += 18;
+        });
+        const itemNameHeight = (lines.length * 18);
+        
+        let itemHeight = itemNameHeight;
+
+        if (type === 'sales' && (item.discount_percent || 0) > 0) {
+            const currentY = itemStartY + Math.max(itemNameHeight - 18, 0) + 16;
+            itemHeight = Math.max(itemHeight, currentY - itemStartY + 16);
+            ctx.font = `12px ${FONT_SANS}`;
+            ctx.fillStyle = COLORS.RED;
+            ctx.textAlign = isRtl ? 'right' : 'left';
+            ctx.fillText(`(${item.discount_percent?.toFixed(0)}% ${t.discount})`, isRtl ? width - padding - colPadding : padding + colPadding, currentY);
+        }
+        
+        y = itemStartY + Math.max(itemHeight, 18);
+
+        y += 10;
+        ctx.beginPath();
+        ctx.moveTo(padding, y);
+        ctx.lineTo(width - padding, y);
+        ctx.strokeStyle = COLORS.BORDER;
+        ctx.lineWidth = 1;
+        ctx.stroke();
+        y += 10;
+    });
+
+    y += 10;
+    
+    if (totalSavings > 0.01) {
+        const originalTotal = invoice.total_amount + totalSavings;
+        ctx.font = `15px ${FONT_SANS}`;
+        ctx.fillStyle = COLORS.TEXT_MEDIUM;
+        ctx.textAlign = isRtl ? 'right' : 'left';
+        ctx.fillText(t.subtotal, isRtl ? width - padding : padding, y);
+        ctx.textAlign = isRtl ? 'left' : 'right';
+        ctx.fillText(`${originalTotal.toFixed(2)} ${t.currency}`, isRtl ? padding : width - padding, y);
+        y += 28;
+
+        ctx.font = `15px ${FONT_SANS}`;
+        ctx.fillStyle = COLORS.RED;
+        ctx.textAlign = isRtl ? 'right' : 'left';
+        ctx.fillText(t.discount, isRtl ? width - padding : padding, y);
+        ctx.textAlign = isRtl ? 'left' : 'right';
+        ctx.fillText(`-${totalSavings.toFixed(2)} ${t.currency}`, isRtl ? padding : width - padding, y);
+        y += 28;
+    }
+    
+    ctx.font = `bold 18px ${FONT_SANS}`;
     ctx.fillStyle = COLORS.TEXT_DARK;
     ctx.textAlign = isRtl ? 'right' : 'left';
-    ctx.fillText(t.total, x(padding), y);
+    ctx.fillText(t.total, isRtl ? width - padding : padding, y);
     ctx.textAlign = isRtl ? 'left' : 'right';
-    ctx.fillText(`${finalTotal.toFixed(2)} ${t.currency}`, x(width - padding), y);
-    y += H_TOTAL_LINE + 10;
-    
-    ctx.font = `16px ${FONT_FAMILY_SANS}`;
-    ctx.fillStyle = COLORS.TEXT_LIGHT;
+    ctx.font = `bold 22px ${FONT_SANS}`;
+    ctx.fillStyle = COLORS.PRIMARY;
+    ctx.fillText(`${invoice.total_amount.toFixed(2)} ${t.currency}`, isRtl ? padding : width - padding, y);
+    y += 40;
+
+    ctx.font = `14px ${FONT_SANS}`;
+    ctx.fillStyle = COLORS.TEXT_MEDIUM;
     ctx.textAlign = 'center';
     ctx.fillText(language === 'ar' ? 'شكراً لتعاملكم معنا!' : 'Thank you for your business!', width / 2, y);
 
-
     return canvas.toDataURL('image/png');
 };
+
 
 export const generatePurchaseInvoiceImage = (invoice: PurchaseInvoice, restaurantInfo: RestaurantInfo, t: typeof translations['en'], language: Language) => 
     generateGenericInvoiceImage(invoice, 'purchase', restaurantInfo, t, language);

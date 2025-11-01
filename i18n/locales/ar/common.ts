@@ -16,6 +16,7 @@ export default {
   "search": "بحث",
   "filter": "تصفية",
   "all": "الكل",
+  "item": "الصنف",
   "items": "عناصر",
   "share": "مشاركة",
   "print": "طباعة",
@@ -112,7 +113,6 @@ export default {
   "deleteStatusError": "لا يمكن الحذف: هذه الحالة مستخدمة حاليًا في طلب واحد أو أكثر.",
   "deleteSupplierError": "لا يمكن حذف المورد: إنه مرتبط بمنتجات أو فواتير شراء حالية.",
   "addTagError": "لا يمكن إضافة الوسم: يوجد وسم بنفس الاسم الإنجليزي (وبالتالي نفس المعرف) بالفعل.",
-  // FIX: Added missing keys to sync with English translations.
   "confirmDelete": "هل أنت متأكد من الحذف؟ لا يمكن التراجع عن هذا الإجراء.",
   "confirmDeleteOrder": "هل أنت متأكد من حذف هذا الطلب نهائياً؟",
   "confirmDeletePromotion": "هل أنت متأكد من حذف هذا العرض؟",
@@ -127,6 +127,5 @@ export default {
   "addToCart": "إضافة للسلة",
   "date": "التاريخ",
   "orderType": "نوع الطلب",
-  "item": "الصنف",
   "orderId": "رقم الطلب"
 };
