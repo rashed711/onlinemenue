@@ -101,6 +101,7 @@ export default {
   "permission_group_administration": "الإدارة العامة",
   "roles": "الأدوار والصلاحيات",
   "dashboard": "لوحة التحكم",
+  "reportsDashboard": "نظرة عامة",
   "totalSales": "إجمالي المبيعات",
   "newOrders": "الطلبات الجديدة",
   "totalCustomers": "إجمالي العملاء",

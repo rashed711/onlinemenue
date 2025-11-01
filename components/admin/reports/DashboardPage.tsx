@@ -229,7 +229,7 @@ export const DashboardPage: React.FC = () => {
     return (
         <div className="space-y-6 animate-fade-in">
              <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-4 mb-6 flex-wrap">
-                <h1 className="text-2xl font-bold text-slate-800 dark:text-slate-100 shrink-0">{t.dashboard}</h1>
+                <h1 className="text-2xl font-bold text-slate-800 dark:text-slate-100 shrink-0">{t.reportsDashboard}</h1>
                 <div className="flex items-center gap-2 flex-wrap justify-start sm:justify-end">
                     {[
                         { id: 'today', label: t.today },

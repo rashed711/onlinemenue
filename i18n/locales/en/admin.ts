@@ -101,6 +101,7 @@ export default {
   "permission_group_administration": "Administration",
   "roles": "Roles & Permissions",
   "dashboard": "Dashboard",
+  "reportsDashboard": "Overview",
   "totalSales": "Total Sales",
   "newOrders": "New Orders",
   "totalCustomers": "Total Customers",

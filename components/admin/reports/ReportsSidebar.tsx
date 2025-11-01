@@ -8,7 +8,7 @@ import type { Permission } from '../../../types';
 const PlaceholderIcon: React.FC<{className?: string}> = ({className}) => <div className={`w-5 h-5 bg-slate-300 rounded ${className}`} />;
 
 const navItems: { id: string, labelKey: string, icon: React.FC<any>, permission: Permission }[] = [
-    { id: 'dashboard', labelKey: 'dashboard', icon: ChartBarIcon, permission: 'view_reports_page' },
+    { id: 'dashboard', labelKey: 'reportsDashboard', icon: ChartBarIcon, permission: 'view_reports_page' },
     { id: 'sales', labelKey: 'salesReport', icon: CurrencyDollarIcon, permission: 'view_sales_report' },
     { id: 'orders', labelKey: 'ordersReport', icon: ShoppingCartIcon, permission: 'view_orders_report' },
     { id: 'profit', labelKey: 'profitReport', icon: PlaceholderIcon, permission: 'view_profit_report' },
