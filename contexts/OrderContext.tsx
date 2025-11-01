@@ -6,6 +6,8 @@ import { useAuth } from './AuthContext';
 import { useData } from './DataContext';
 import { calculateTotal, resolveImageUrl } from '../utils/helpers';
 import { usePersistentState } from '../hooks/usePersistentState';
+import { useInventory } from './InventoryContext';
+import { useTreasury } from './TreasuryContext';
 
 interface OrderContextType {
     orders: Order[];
@@ -25,6 +27,8 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     const { setIsProcessing, showToast, t, language } = useUI();
     const { currentUser, hasPermission } = useAuth();
     const { restaurantInfo } = useData();
+    const { fetchInventoryData } = useInventory();
+    const { fetchTreasuryData } = useTreasury();
 
     const [orders, setOrders] = useState<Order[]>([]);
     const [viewingOrder, setViewingOrder] = useState<Order | null>(null);
@@ -169,13 +173,24 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
                 const res = await fetch(`${APP_CONFIG.API_BASE_URL}update_order.php`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ orderId, payload: dbPayload }) });
                 if (!res.ok || !(await res.json()).success) throw new Error('Failed to update order.');
                 showToast(t.orderUpdatedSuccess);
+                
+                const oldStatus = order.status;
+                const newStatus = payload.status;
+                const completedStatusId = restaurantInfo?.orderStatusColumns.find(col => col.color === 'green')?.id || 'completed';
+        
+                if (newStatus && newStatus !== oldStatus) {
+                    if (newStatus === completedStatusId || oldStatus === completedStatusId) {
+                        await Promise.all([fetchInventoryData(), fetchTreasuryData()]);
+                    }
+                }
+
             } catch (error: any) {
                 showToast(error.message);
                 setOrders(originalOrders);
                 setViewingOrder(prev => (prev && prev.id === orderId) ? order : prev);
             } finally { setIsProcessing(false); }
         } else { showToast(t.permissionDenied); }
-    }, [orders, currentUser, hasPermission, showToast, t, setIsProcessing]);
+    }, [orders, currentUser, hasPermission, showToast, t, setIsProcessing, restaurantInfo, fetchInventoryData, fetchTreasuryData]);
 
     const deleteOrder = useCallback(async (orderId: string) => {
         if (!hasPermission('delete_order') || !window.confirm(t.confirmDeleteOrder)) return;

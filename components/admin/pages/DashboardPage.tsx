@@ -3,37 +3,33 @@ import { useUI } from '../../../contexts/UIContext';
 import { useAuth } from '../../../contexts/AuthContext';
 import { useOrders } from '../../../contexts/OrderContext';
 import { useData } from '../../../contexts/DataContext';
-import { useUserManagement } from '../../../contexts/UserManagementContext';
-import { useTreasury } from '../../../contexts/TreasuryContext';
-import { formatNumber } from '../../../utils/helpers';
-import { CurrencyDollarIcon, ShoppingCartIcon, UserGroupIcon, ClipboardListIcon, CollectionIcon, UsersIcon, CogIcon } from '../../icons/Icons';
-import type { Order } from '../../../types';
+import { 
+    ClipboardListIcon, 
+    CollectionIcon, 
+    UsersIcon, 
+    CogIcon,
+    HomeIcon,
+    ChartBarIcon,
+    BookmarkAltIcon,
+    TagIcon,
+    ShieldCheckIcon,
+    CashRegisterIcon,
+    UserGroupIcon,
+    CurrencyDollarIcon
+} from '../../icons/Icons';
+import type { Order, Permission } from '../../../types';
 
-// KPI Card Component
-const KpiCard: React.FC<{ title: string; value: string; icon: React.FC<any>; color: string }> = ({ title, value, icon: Icon, color }) => {
-    return (
-        <div className="bg-white dark:bg-slate-800 p-5 rounded-xl shadow-lg border border-slate-200 dark:border-slate-700 flex items-center gap-4 transition-transform transform hover:-translate-y-1">
-            <div className={`p-3 rounded-full bg-${color}-100 dark:bg-${color}-900/50`}>
-                <Icon className={`w-7 h-7 text-${color}-600 dark:text-${color}-400`} />
-            </div>
-            <div>
-                <h3 className="text-sm font-semibold text-slate-500 dark:text-slate-400">{title}</h3>
-                <p className="text-2xl font-extrabold text-slate-800 dark:text-slate-100">{value}</p>
-            </div>
-        </div>
-    );
-};
 
-// Quick Link Component
+// Quick Link Component - Updated for larger size
 const QuickLink: React.FC<{ title: string; path: string; icon: React.FC<any>; }> = ({ title, path, icon: Icon }) => {
     const handleNav = (e: React.MouseEvent) => {
         e.preventDefault();
         window.location.hash = path;
     };
     return (
-        <a href={path} onClick={handleNav} className="bg-white dark:bg-slate-800 p-4 rounded-xl shadow-lg border border-slate-200 dark:border-slate-700 flex flex-col items-center justify-center text-center gap-2 hover:bg-slate-50 dark:hover:bg-slate-700/50 hover:shadow-xl transition-all transform hover:-translate-y-1">
-            <Icon className="w-8 h-8 text-primary-500" />
-            <span className="font-semibold text-sm text-slate-700 dark:text-slate-200">{title}</span>
+        <a href={path} onClick={handleNav} className="bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-lg border border-slate-200 dark:border-slate-700 flex flex-col items-center justify-center text-center gap-3 hover:bg-slate-50 dark:hover:bg-slate-700/50 hover:shadow-xl transition-all transform hover:-translate-y-1.5">
+            <Icon className="w-10 h-10 text-primary-500" />
+            <span className="font-semibold text-base text-slate-700 dark:text-slate-200">{title}</span>
         </a>
     );
 };
@@ -41,20 +37,37 @@ const QuickLink: React.FC<{ title: string; path: string; icon: React.FC<any>; }>
 // Main Dashboard Component
 export const DashboardPage: React.FC = () => {
     const { t, language } = useUI();
-    const { hasPermission, roles } = useAuth();
+    const { hasPermission } = useAuth();
     const { orders, setViewingOrder } = useOrders();
-    const { users } = useUserManagement();
-    const { treasuries } = useTreasury();
     const { restaurantInfo } = useData();
 
-    // Memoized KPI Calculations
-    const totalSales = useMemo(() => orders.filter(o => o.status === 'completed').reduce((sum, order) => sum + order.total, 0), [orders]);
-    const newOrdersCount = useMemo(() => orders.filter(o => o.status === 'pending').length, [orders]);
-    const totalCustomers = useMemo(() => {
-        const customerRole = roles.find(r => r.name.en.toLowerCase() === 'customer');
-        return users.filter(u => u.role === customerRole?.key).length;
-    }, [users, roles]);
-    const totalBalance = useMemo(() => treasuries.reduce((sum, t) => sum + t.current_balance, 0), [treasuries]);
+    // Replicating navItems structure for use in Quick Actions
+    const navItems = {
+        operations: [
+            { id: 'dashboard', label: t.dashboard, icon: HomeIcon, permission: 'view_reports_page' as Permission },
+            { id: 'orders', label: t.manageOrders, icon: ClipboardListIcon, permission: 'view_orders_page' as Permission },
+            { id: 'reports', label: t.reports, icon: ChartBarIcon, permission: 'view_reports_page' as Permission },
+        ],
+        financials: [
+            { id: 'customers', label: t.customers, icon: UserGroupIcon, permission: 'view_users_page' as Permission },
+            { id: 'suppliers', label: t.suppliers, icon: UsersIcon, permission: 'manage_suppliers' as Permission },
+            { id: 'salesInvoices', label: t.salesInvoices, icon: CashRegisterIcon, permission: 'manage_sales_invoices' as Permission },
+            { id: 'purchaseInvoices', label: t.purchaseInvoices, icon: ClipboardListIcon, permission: 'add_purchase_invoice' as Permission },
+            { id: 'treasury', label: t.treasury, icon: CurrencyDollarIcon, permission: 'view_treasury_page' as Permission },
+        ],
+        management: [
+            { id: 'productList', label: t.productList, icon: CollectionIcon, permission: 'view_products_page' as Permission },
+            { id: 'classifications', label: t.classifications, icon: BookmarkAltIcon, permission: 'view_classifications_page' as Permission },
+            { id: 'promotions', label: t.managePromotions, icon: TagIcon, permission: 'view_promotions_page' as Permission },
+        ],
+        administration: [
+            { id: 'staff', label: t.staff, icon: UsersIcon, permission: 'view_users_page' as Permission },
+            { id: 'roles', label: t.manageRoles, icon: ShieldCheckIcon, permission: 'view_roles_page' as Permission },
+            { id: 'settings', label: t.settings, icon: CogIcon, permission: 'view_settings_page' as Permission },
+        ]
+    };
+
+    const allNavItems = useMemo(() => Object.values(navItems).flat(), [t]);
 
     // Recent Orders
     const recentOrders = useMemo(() => [...orders].sort((a,b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()).slice(0, 5), [orders]);
@@ -63,22 +76,20 @@ export const DashboardPage: React.FC = () => {
         <div className="space-y-8">
             <h1 className="text-3xl font-bold text-slate-800 dark:text-slate-100">{t.dashboard}</h1>
             
-            {/* KPI Cards */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-                {hasPermission('view_sales_report') && <KpiCard title={t.totalSales} value={`${totalSales.toFixed(2)} ${t.currency}`} icon={CurrencyDollarIcon} color="green" />}
-                {hasPermission('view_orders_page') && <KpiCard title={t.newOrders} value={formatNumber(newOrdersCount)} icon={ShoppingCartIcon} color="blue" />}
-                {hasPermission('view_users_page') && <KpiCard title={t.totalCustomers} value={formatNumber(totalCustomers)} icon={UserGroupIcon} color="indigo" />}
-                {hasPermission('view_treasury_page') && <KpiCard title={t.currentBalance} value={`${totalBalance.toFixed(2)} ${t.currency}`} icon={CurrencyDollarIcon} color="amber" />}
-            </div>
-
-            {/* Quick Actions */}
+            {/* Quick Actions - Cards Enlarged */}
             <div>
                 <h2 className="text-xl font-bold text-slate-800 dark:text-slate-100 mb-4">{t.quickActions}</h2>
-                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
-                    {hasPermission('view_orders_page') && <QuickLink title={t.manageOrders} path="#/admin/orders" icon={ClipboardListIcon} />}
-                    {hasPermission('view_products_page') && <QuickLink title={t.productList} path="#/admin/productList" icon={CollectionIcon} />}
-                    {hasPermission('view_users_page') && <QuickLink title={t.staff} path="#/admin/staff" icon={UsersIcon} />}
-                    {hasPermission('view_settings_page') && <QuickLink title={t.settings} path="#/admin/settings" icon={CogIcon} />}
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-6">
+                    {allNavItems.map(item => (
+                        item.id !== 'dashboard' && hasPermission(item.permission) && (
+                            <QuickLink 
+                                key={item.id}
+                                title={item.label} 
+                                path={`#/admin/${item.id}`} 
+                                icon={item.icon} 
+                            />
+                        )
+                    ))}
                 </div>
             </div>
 

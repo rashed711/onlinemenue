@@ -4,12 +4,14 @@ import { APP_CONFIG } from '../utils/config';
 import { useUI } from './UIContext';
 import { useAuth } from './AuthContext';
 import { useData } from './DataContext';
+import { useTreasury } from './TreasuryContext';
 
 interface InventoryContextType {
     suppliers: Supplier[];
     purchaseInvoices: PurchaseInvoice[];
     salesInvoices: SalesInvoice[];
     isInventoryLoading: boolean;
+    fetchInventoryData: () => Promise<void>;
     addSupplier: (supplierData: Omit<Supplier, 'id'>) => Promise<void>;
     updateSupplier: (supplierData: Supplier) => Promise<void>;
     deleteSupplier: (supplierId: number) => Promise<void>;
@@ -27,6 +29,7 @@ export const InventoryProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     const { setIsProcessing, showToast, t } = useUI();
     const { currentUser, hasPermission } = useAuth();
     const { fetchAllData } = useData();
+    const { fetchTreasuryData } = useTreasury();
 
     const [suppliers, setSuppliers] = useState<Supplier[]>([]);
     const [purchaseInvoices, setPurchaseInvoices] = useState<PurchaseInvoice[]>([]);
@@ -115,11 +118,10 @@ export const InventoryProvider: React.FC<{ children: React.ReactNode }> = ({ chi
             const result = await response.json();
             if (!response.ok || !result.success) throw new Error(result.error || t.invoiceAddFailed);
             showToast(t.invoiceAddedSuccess);
-            await fetchInventoryData();
-            await fetchAllData();
+            await Promise.all([fetchInventoryData(), fetchAllData(), fetchTreasuryData()]);
         } catch (error: any) { showToast(error.message || t.invoiceAddFailed, { isError: true }); }
         finally { setIsProcessing(false); }
-    }, [hasPermission, showToast, t, setIsProcessing, currentUser, fetchAllData, fetchInventoryData]);
+    }, [hasPermission, showToast, t, setIsProcessing, currentUser, fetchAllData, fetchInventoryData, fetchTreasuryData]);
 
     const updatePurchaseInvoice = useCallback(async (invoiceData: PurchaseInvoice) => {
         if (!hasPermission('add_purchase_invoice')) { showToast(t.permissionDenied); return; }
@@ -129,11 +131,10 @@ export const InventoryProvider: React.FC<{ children: React.ReactNode }> = ({ chi
             const result = await response.json();
             if (!response.ok || !result.success) throw new Error(result.error || t.invoiceUpdateFailed);
             showToast(t.invoiceUpdatedSuccess);
-            await fetchInventoryData();
-            await fetchAllData();
+            await Promise.all([fetchInventoryData(), fetchAllData(), fetchTreasuryData()]);
         } catch (error: any) { showToast(error.message || t.invoiceUpdateFailed, { isError: true }); }
         finally { setIsProcessing(false); }
-    }, [hasPermission, showToast, t, setIsProcessing, fetchInventoryData, fetchAllData]);
+    }, [hasPermission, showToast, t, setIsProcessing, fetchInventoryData, fetchAllData, fetchTreasuryData]);
 
     const deletePurchaseInvoice = useCallback(async (invoiceId: number) => {
         if (!hasPermission('add_purchase_invoice') || !window.confirm(t.confirmDeleteInvoice)) return;
@@ -143,11 +144,10 @@ export const InventoryProvider: React.FC<{ children: React.ReactNode }> = ({ chi
             const result = await response.json();
             if (!response.ok || !result.success) throw new Error(result.error || t.invoiceDeleteFailed);
             showToast(t.invoiceDeletedSuccess);
-            await fetchInventoryData();
-            await fetchAllData();
+            await Promise.all([fetchInventoryData(), fetchAllData(), fetchTreasuryData()]);
         } catch (error: any) { showToast(error.message || t.invoiceDeleteFailed, { isError: true }); }
         finally { setIsProcessing(false); }
-    }, [hasPermission, showToast, t, setIsProcessing, fetchInventoryData, fetchAllData]);
+    }, [hasPermission, showToast, t, setIsProcessing, fetchInventoryData, fetchAllData, fetchTreasuryData]);
     
     const addSalesInvoice = useCallback(async (invoiceData: Omit<SalesInvoice, 'id' | 'invoice_number' | 'invoice_date' | 'created_by' | 'created_by_name'> & { treasury_id: number }) => {
         if (!hasPermission('manage_sales_invoices')) { showToast(t.permissionDenied); return; }
@@ -158,11 +158,10 @@ export const InventoryProvider: React.FC<{ children: React.ReactNode }> = ({ chi
             const result = await response.json();
             if (!response.ok || !result.success) throw new Error(result.error || t.salesInvoiceAddFailed);
             showToast(t.salesInvoiceAddedSuccess);
-            await fetchInventoryData();
-            await fetchAllData();
+            await Promise.all([fetchInventoryData(), fetchAllData(), fetchTreasuryData()]);
         } catch (error: any) { showToast(error.message || t.salesInvoiceAddFailed, { isError: true }); }
         finally { setIsProcessing(false); }
-    }, [hasPermission, showToast, t, setIsProcessing, currentUser, fetchAllData, fetchInventoryData]);
+    }, [hasPermission, showToast, t, setIsProcessing, currentUser, fetchAllData, fetchInventoryData, fetchTreasuryData]);
 
     const updateSalesInvoice = useCallback(async (invoiceData: SalesInvoice) => {
         if (!hasPermission('manage_sales_invoices')) { showToast(t.permissionDenied); return; }
@@ -172,11 +171,10 @@ export const InventoryProvider: React.FC<{ children: React.ReactNode }> = ({ chi
             const result = await response.json();
             if (!response.ok || !result.success) throw new Error(result.error || t.salesInvoiceUpdateFailed);
             showToast(t.salesInvoiceUpdatedSuccess);
-            await fetchInventoryData();
-            await fetchAllData();
+            await Promise.all([fetchInventoryData(), fetchAllData(), fetchTreasuryData()]);
         } catch (error: any) { showToast(error.message || t.salesInvoiceUpdateFailed, { isError: true }); }
         finally { setIsProcessing(false); }
-    }, [hasPermission, showToast, t, setIsProcessing, fetchInventoryData, fetchAllData]);
+    }, [hasPermission, showToast, t, setIsProcessing, fetchInventoryData, fetchAllData, fetchTreasuryData]);
 
     const deleteSalesInvoice = useCallback(async (invoiceId: number) => {
         if (!hasPermission('manage_sales_invoices') || !window.confirm(t.confirmDeleteSalesInvoice)) return;
@@ -186,13 +184,12 @@ export const InventoryProvider: React.FC<{ children: React.ReactNode }> = ({ chi
             const result = await response.json();
             if (!response.ok || !result.success) throw new Error(result.error || t.invoiceDeleteFailed);
             showToast(t.invoiceDeletedSuccess);
-            await fetchInventoryData();
-            await fetchAllData();
+            await Promise.all([fetchInventoryData(), fetchAllData(), fetchTreasuryData()]);
         } catch (error: any) { showToast(error.message || t.invoiceDeleteFailed, { isError: true }); }
         finally { setIsProcessing(false); }
-    }, [hasPermission, showToast, t, setIsProcessing, fetchInventoryData, fetchAllData]);
+    }, [hasPermission, showToast, t, setIsProcessing, fetchInventoryData, fetchAllData, fetchTreasuryData]);
     
-    const value: InventoryContextType = { suppliers, purchaseInvoices, salesInvoices, isInventoryLoading, addSupplier, updateSupplier, deleteSupplier, addPurchaseInvoice, updatePurchaseInvoice, deletePurchaseInvoice, addSalesInvoice, updateSalesInvoice, deleteSalesInvoice };
+    const value: InventoryContextType = { suppliers, purchaseInvoices, salesInvoices, isInventoryLoading, fetchInventoryData, addSupplier, updateSupplier, deleteSupplier, addPurchaseInvoice, updatePurchaseInvoice, deletePurchaseInvoice, addSalesInvoice, updateSalesInvoice, deleteSalesInvoice };
     
     return <InventoryContext.Provider value={value}>{children}</InventoryContext.Provider>;
 };

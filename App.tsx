@@ -91,7 +91,7 @@ const AppContent: React.FC = () => {
     }
 
     if (baseRoute.startsWith('#/admin')) {
-        const adminSubRoute = routeParts[2] || 'orders';
+        const adminSubRoute = routeParts[2] || 'dashboard'; // For /admin/ or /admin
         const reportSubRoute = routeParts[3] || 'dashboard'; // For /reports/dashboard etc.
         return <AdminPage activeSubRoute={adminSubRoute} reportSubRoute={reportSubRoute} />;
     }
@@ -132,17 +132,17 @@ const App: React.FC = () => {
     <UIProvider>
       <AuthProvider>
         <DataProvider>
-          <CartProvider>
-            <OrderProvider>
-              <UserManagementProvider>
-                <InventoryProvider>
-                  <TreasuryProvider>
+          <UserManagementProvider>
+            <TreasuryProvider>
+              <InventoryProvider>
+                <CartProvider>
+                  <OrderProvider>
                     <AppContent />
-                  </TreasuryProvider>
-                </InventoryProvider>
-              </UserManagementProvider>
-            </OrderProvider>
-          </CartProvider>
+                  </OrderProvider>
+                </CartProvider>
+              </InventoryProvider>
+            </TreasuryProvider>
+          </UserManagementProvider>
         </DataProvider>
       </AuthProvider>
     </UIProvider>
