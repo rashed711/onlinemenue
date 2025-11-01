@@ -1,4 +1,3 @@
-
 import React, { useRef, useCallback, useEffect, useMemo, useState } from 'react';
 import type { Promotion, Product } from '../types';
 import { useCountdown } from '../hooks/useCountdown';
@@ -117,7 +116,7 @@ export const PromotionSection: React.FC<PromotionSectionProps> = ({ promotions, 
 
   const startAutoPlay = useCallback(() => {
     if (intervalRef.current) clearInterval(intervalRef.current);
-    intervalRef.current = window.setInterval(scrollNext, 3500);
+    intervalRef.current = window.setInterval(scrollNext, 3000);
   }, [scrollNext]);
 
   const stopAutoPlay = () => {
@@ -125,9 +124,11 @@ export const PromotionSection: React.FC<PromotionSectionProps> = ({ promotions, 
   };
 
   useEffect(() => {
-    startAutoPlay();
+    if (displayablePromotions.length > 1) {
+        startAutoPlay();
+    }
     return () => stopAutoPlay();
-  }, [startAutoPlay]);
+  }, [startAutoPlay, displayablePromotions.length]);
   
   if (displayablePromotions.length === 0) {
     return null;
@@ -146,7 +147,7 @@ export const PromotionSection: React.FC<PromotionSectionProps> = ({ promotions, 
                     );
                 })}
             </div>
-            {displayablePromotions.length > 2 && (
+            {displayablePromotions.length > 1 && (
                 <>
                     <button
                         onClick={() => handleScroll('prev')}

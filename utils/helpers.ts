@@ -1,4 +1,4 @@
-import type { CartItem, Order, RestaurantInfo, Language, Product, Promotion, Category, PurchaseInvoice, SalesInvoice } from '../types';
+import type { CartItem, Order, RestaurantInfo, Language, Product, Promotion, Category, PurchaseInvoice, SalesInvoice, SalesInvoiceItem } from '../types';
 import { translations } from '../i18n/translations';
 import { APP_CONFIG } from './config';
 
@@ -82,22 +82,30 @@ export const formatDateTime = (isoString: string): string => {
 };
 
 const loadImage = (src: string): Promise<HTMLImageElement> => {
-    return new Promise((resolve, reject) => {
-        if (!src) {
-            const placeholder = new Image();
-            placeholder.src = 'data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=';
+    return new Promise((resolve) => {
+        const img = new Image();
+
+        const resolveWithPlaceholder = () => {
+            const placeholder = new Image(1, 1);
             placeholder.onload = () => resolve(placeholder);
+            placeholder.src = 'data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=';
+        };
+
+        img.onload = () => resolve(img);
+        img.onerror = (err) => {
+            console.error(`Failed to load image: ${src}`, err);
+            resolveWithPlaceholder();
+        };
+
+        if (!src) {
+            resolveWithPlaceholder();
             return;
         }
-        const img = new Image();
-        img.crossOrigin = 'anonymous';
-        img.onload = () => resolve(img);
-        img.onerror = (e) => {
-            console.error(`Failed to load image: ${src}`, e);
-            const placeholder = new Image();
-            placeholder.src = 'data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=';
-            placeholder.onload = () => resolve(placeholder);
-        };
+
+        if (!src.startsWith('data:')) {
+            img.crossOrigin = 'Anonymous';
+        }
+
         img.src = src;
     });
 };
@@ -147,12 +155,15 @@ export const generateReceiptImage = async (
   language: Language,
   creatorName?: string
 ): Promise<string> => {
+    await document.fonts.ready;
+
     const canvas = document.createElement('canvas');
     const ctx = canvas.getContext('2d');
     if (!ctx) return '';
 
     const isRtl = language === 'ar';
-    const FONT_FAMILY_SANS = isRtl ? 'Cairo, sans-serif' : 'Inter, sans-serif';
+    ctx.direction = isRtl ? 'rtl' : 'ltr';
+    const FONT_FAMILY_SANS = isRtl ? 'Cairo, sans-serif' : 'sans-serif';
     const width = 500;
     const padding = 25;
     const contentWidth = width - (padding * 2);
@@ -191,7 +202,7 @@ export const generateReceiptImage = async (
     order.items.forEach(item => {
         ctx.font = `15px ${FONT_FAMILY_SANS}`;
         const itemText = `${item.quantity} x ${item.product.name[language]}`;
-        const itemLines = getWrappedTextLines(ctx, itemText, contentWidth - 80);
+        const itemLines = getWrappedTextLines(ctx, itemText, contentWidth - 120);
         totalHeight += itemLines.length * H_ITEM_NAME;
         
         if (item.appliedDiscountPercent) {
@@ -218,12 +229,6 @@ export const generateReceiptImage = async (
     ctx.fillRect(0, 0, width, totalHeight);
 
     const x = (val: number) => isRtl ? width - val : val;
-    const textAlign = (align: CanvasTextAlign): CanvasTextAlign => {
-        if (!isRtl) return align;
-        if (align === 'start') return 'end';
-        if (align === 'end') return 'start';
-        return 'center';
-    };
     
     const drawDashedLine = (y: number) => {
         ctx.strokeStyle = COLORS.BORDER;
@@ -237,7 +242,7 @@ export const generateReceiptImage = async (
     };
 
     const drawWrappedText = (text: string, xPos: number, yPos: number, maxWidth: number, lineHeight: number, align: CanvasTextAlign = 'start'): number => {
-        ctx.textAlign = textAlign(align);
+        ctx.textAlign = align;
         const lines = getWrappedTextLines(ctx, text, maxWidth);
         lines.forEach((line, index) => {
             ctx.fillText(line, x(xPos), yPos + (index * lineHeight));
@@ -265,14 +270,14 @@ export const generateReceiptImage = async (
     ctx.font = `14px ${FONT_FAMILY_SANS}`;
     details.forEach(detail => {
         ctx.fillStyle = COLORS.TEXT_LIGHT;
-        ctx.textAlign = textAlign('start');
+        ctx.textAlign = 'start';
         ctx.fillText(detail.label, x(padding), y);
         
         ctx.fillStyle = COLORS.TEXT_DARK;
         if (detail.label === t.address) {
             y = drawWrappedText(detail.value, width - padding, y, contentWidth / 2, H_DETAIL, 'end');
         } else {
-            ctx.textAlign = textAlign('end');
+            ctx.textAlign = 'end';
             ctx.fillText(detail.value, x(width - padding), y);
         }
         y += H_DETAIL;
@@ -283,9 +288,9 @@ export const generateReceiptImage = async (
     y += 25;
     ctx.font = `bold 14px ${FONT_FAMILY_SANS}`;
     ctx.fillStyle = COLORS.TEXT_LIGHT;
-    ctx.textAlign = textAlign('start');
+    ctx.textAlign = 'start';
     ctx.fillText(t.item, x(padding), y);
-    ctx.textAlign = textAlign('end');
+    ctx.textAlign = 'end';
     ctx.fillText(t.price, x(width - padding), y);
     y += 20;
 
@@ -293,13 +298,13 @@ export const generateReceiptImage = async (
         const itemStartY = y;
         ctx.font = `15px ${FONT_FAMILY_SANS}`;
         ctx.fillStyle = COLORS.TEXT_DARK;
-        y = drawWrappedText(`${item.quantity} x ${item.product.name[language]}`, padding, y, contentWidth - 100, H_ITEM_NAME);
+        y = drawWrappedText(`${item.quantity} x ${item.product.name[language]}`, padding, y, contentWidth - 120, H_ITEM_NAME, 'start');
         y += H_ITEM_NAME;
 
         const finalItemTotal = calculateItemTotal(item);
         const originalItemTotal = calculateOriginalItemTotal(item);
 
-        ctx.textAlign = textAlign('end');
+        ctx.textAlign = 'end';
         if (item.appliedDiscountPercent) {
             ctx.fillStyle = COLORS.TEXT_DARK;
             ctx.fillText(finalItemTotal.toFixed(2), x(width - padding), itemStartY + H_ITEM_NAME / 2);
@@ -329,7 +334,7 @@ export const generateReceiptImage = async (
             Object.values(item.options).forEach(valueKey => {
                 const valueName = item.product.options?.flatMap(opt => opt.values).find(v => v.name.en === valueKey)?.name[language];
                 if (valueName) {
-                    y = drawWrappedText(`+ ${valueName}`, padding + 15, y, contentWidth - 115, H_ITEM_OPTION);
+                    y = drawWrappedText(`+ ${valueName}`, padding + 15, y, contentWidth - 135, H_ITEM_OPTION, 'start');
                     y += H_ITEM_OPTION;
                 }
             });
@@ -346,25 +351,25 @@ export const generateReceiptImage = async (
     if (totalSavingsVal > 0) {
         ctx.font = `16px ${FONT_FAMILY_SANS}`;
         ctx.fillStyle = COLORS.TEXT_LIGHT;
-        ctx.textAlign = textAlign('start');
-        ctx.fillText(t.subtotal, x(padding + 250), y);
-        ctx.textAlign = textAlign('end');
+        ctx.textAlign = 'start';
+        ctx.fillText(t.subtotal, x(padding), y);
+        ctx.textAlign = 'end';
         ctx.fillText(`${originalTotal.toFixed(2)} ${t.currency}`, x(width - padding), y);
         y += H_TOTAL_LINE;
 
         ctx.fillStyle = COLORS.RED;
-        ctx.textAlign = textAlign('start');
-        ctx.fillText(t.discount, x(padding + 250), y);
-        ctx.textAlign = textAlign('end');
+        ctx.textAlign = 'start';
+        ctx.fillText(t.discount, x(padding), y);
+        ctx.textAlign = 'end';
         ctx.fillText(`-${totalSavingsVal.toFixed(2)} ${t.currency}`, x(width - padding), y);
         y += H_TOTAL_LINE;
     }
 
     ctx.font = `bold 18px ${FONT_FAMILY_SANS}`;
     ctx.fillStyle = COLORS.TEXT_DARK;
-    ctx.textAlign = textAlign('start');
-    ctx.fillText(t.total, x(padding + 250), y);
-    ctx.textAlign = textAlign('end');
+    ctx.textAlign = 'start';
+    ctx.fillText(t.total, x(padding), y);
+    ctx.textAlign = 'end';
     ctx.fillText(`${finalTotal.toFixed(2)} ${t.currency}`, x(width - padding), y);
     y += H_TOTAL_LINE + 10;
     drawDashedLine(y);
@@ -378,7 +383,7 @@ export const generateReceiptImage = async (
     
     ctx.font = `bold 14px ${FONT_FAMILY_SANS}`;
     ctx.fillStyle = COLORS.TEXT_LIGHT;
-    ctx.textAlign = textAlign('start');
+    ctx.textAlign = 'start';
     ctx.fillText(t.paymentStatus, x(padding), y);
     ctx.fillStyle = paymentStatusColor;
     const chipWidth = ctx.measureText(paymentStatusText).width + 24;
@@ -404,17 +409,17 @@ export const generateReceiptImage = async (
     
     ctx.font = `14px ${FONT_FAMILY_SANS}`;
     ctx.fillStyle = COLORS.TEXT_LIGHT;
-    ctx.textAlign = textAlign('start');
+    ctx.textAlign = 'start';
     ctx.fillText(t.paymentMethod, x(padding), y);
     ctx.fillStyle = COLORS.TEXT_DARK;
-    ctx.textAlign = textAlign('end');
+    ctx.textAlign = 'end';
     ctx.fillText(order.paymentDetail || (order.paymentMethod === 'cod' ? t.cash : 'N/A'), x(width - padding), y);
     y += 40;
 
     ctx.font = `16px ${FONT_FAMILY_SANS}`;
     ctx.fillStyle = COLORS.TEXT_LIGHT;
     ctx.textAlign = 'center';
-    ctx.fillText(t.language === 'ar' ? 'شكراً لطلبك!' : 'Thank you for your order!', width / 2, y);
+    ctx.fillText(language === 'ar' ? 'شكراً لطلبك!' : 'Thank you for your order!', width / 2, y);
 
     return canvas.toDataURL('image/png');
 };
@@ -427,12 +432,15 @@ const generateGenericInvoiceImage = async (
   language: Language,
   products?: Product[]
 ): Promise<string> => {
+    await document.fonts.ready;
+    
     const canvas = document.createElement('canvas');
     const ctx = canvas.getContext('2d');
     if (!ctx) return '';
 
     const isRtl = language === 'ar';
-    const FONT_FAMILY_SANS = isRtl ? 'Cairo, sans-serif' : 'Inter, sans-serif';
+    ctx.direction = isRtl ? 'rtl' : 'ltr';
+    const FONT_FAMILY_SANS = isRtl ? 'Cairo, sans-serif' : 'sans-serif';
     const width = 500;
     const padding = 25;
     const contentWidth = width - (padding * 2);
@@ -476,20 +484,39 @@ const generateGenericInvoiceImage = async (
 
     totalHeight += 45; // Items header
     invoice.items.forEach(item => {
-        ctx.font = `15px ${FONT_FAMILY_SANS}`;
+        ctx.font = `bold 15px ${FONT_FAMILY_SANS}`;
         const itemText = `${item.quantity} x ${item.product_name?.[language] || 'Item'}`;
-        const itemLines = getWrappedTextLines(ctx, itemText, contentWidth - 80);
+        const itemLines = getWrappedTextLines(ctx, itemText, contentWidth - 120);
         totalHeight += (itemLines.length * H_ITEM_NAME);
         
-        if (type === 'sales' && products) {
-            const product = products.find(p => p.id === item.product_id);
-            if (product && product.price > item.sale_price) {
+        let isDiscounted = false;
+        if (type === 'sales') {
+            const salesItem = item as SalesInvoiceItem;
+            const originalPrice = salesItem.original_price ?? salesItem.price;
+            if (originalPrice > salesItem.price) {
+                isDiscounted = true;
                 totalHeight += H_ITEM_DISCOUNT;
+                if (salesItem.discount_percent && salesItem.discount_percent > 0) {
+                     totalHeight += H_ITEM_DISCOUNT;
+                }
             }
         }
         totalHeight += 25;
     });
     totalHeight += 15;
+
+    let totalSavingsVal = 0;
+    if (type === 'sales') {
+        const salesInvoice = invoice as SalesInvoice;
+        const originalTotal = salesInvoice.items.reduce((sum, item) => {
+            const originalPrice = item.original_price ?? item.price;
+            return sum + (originalPrice * item.quantity);
+        }, 0);
+        totalSavingsVal = originalTotal - salesInvoice.total_amount;
+    }
+    if (totalSavingsVal > 0.01) {
+        totalHeight += H_TOTAL_LINE * 2;
+    }
 
     totalHeight += H_TOTAL_LINE + 35; // Total section
     totalHeight += 60; // Footer
@@ -501,10 +528,6 @@ const generateGenericInvoiceImage = async (
     ctx.fillRect(0, 0, width, totalHeight);
 
     const x = (val: number) => isRtl ? width - val : val;
-    const textAlign = (align: CanvasTextAlign): CanvasTextAlign => {
-        if (!isRtl) return align;
-        return align === 'start' ? 'end' : align === 'end' ? 'start' : 'center';
-    };
     
     const drawDashedLine = (y: number) => {
         ctx.strokeStyle = COLORS.BORDER;
@@ -518,7 +541,7 @@ const generateGenericInvoiceImage = async (
     };
 
     const drawWrappedText = (text: string, xPos: number, yPos: number, maxWidth: number, lineHeight: number, align: CanvasTextAlign = 'start'): number => {
-        ctx.textAlign = textAlign(align);
+        ctx.textAlign = align;
         const lines = getWrappedTextLines(ctx, text, maxWidth);
         lines.forEach((line, index) => {
             ctx.fillText(line, x(xPos), yPos + (index * lineHeight));
@@ -546,11 +569,11 @@ const generateGenericInvoiceImage = async (
     ctx.font = `14px ${FONT_FAMILY_SANS}`;
     details.forEach(detail => {
         ctx.fillStyle = COLORS.TEXT_LIGHT;
-        ctx.textAlign = textAlign('start');
+        ctx.textAlign = isRtl ? 'right' : 'left';
         ctx.fillText(detail.label, x(padding), y);
         
         ctx.fillStyle = COLORS.TEXT_DARK;
-        ctx.textAlign = textAlign('end');
+        ctx.textAlign = isRtl ? 'left' : 'right';
         ctx.fillText(detail.value, x(width - padding), y);
         y += H_DETAIL;
     });
@@ -560,58 +583,71 @@ const generateGenericInvoiceImage = async (
     y += 25;
     ctx.font = `bold 14px ${FONT_FAMILY_SANS}`;
     ctx.fillStyle = COLORS.TEXT_LIGHT;
-    ctx.textAlign = textAlign('start');
+    ctx.textAlign = isRtl ? 'right' : 'left';
     ctx.fillText(t.item, x(padding), y);
-    ctx.textAlign = textAlign('end');
+    ctx.textAlign = isRtl ? 'left' : 'right';
     ctx.fillText(t.subtotal, x(width - padding), y);
     y += 20;
 
     invoice.items.forEach(item => {
         const itemStartY = y;
-        ctx.font = `15px ${FONT_FAMILY_SANS}`;
+        ctx.font = `bold 15px ${FONT_FAMILY_SANS}`;
         ctx.fillStyle = COLORS.TEXT_DARK;
         const itemName = `${item.quantity} x ${item.product_name?.[language] || 'Item'}`;
         
-        y = drawWrappedText(itemName, padding, y, contentWidth - 100, H_ITEM_NAME, 'start');
-        y += H_ITEM_NAME;
-
-        ctx.textAlign = textAlign('end');
-        let priceY = itemStartY + H_ITEM_NAME / 2;
-
-        if (type === 'sales' && products) {
-            const product = products.find(p => p.id === item.product_id);
-            const originalPrice = product ? product.price : item.sale_price;
-            const isDiscounted = originalPrice > item.sale_price;
-
-            if (isDiscounted) {
-                const originalSubtotal = originalPrice * item.quantity;
-                ctx.fillStyle = COLORS.TEXT_DARK;
-                ctx.font = `15px ${FONT_FAMILY_SANS}`;
-                ctx.fillText(item.subtotal.toFixed(2), x(width - padding), priceY);
-                
-                priceY += H_ITEM_DISCOUNT;
-                ctx.font = `13px ${FONT_FAMILY_SANS}`;
-                ctx.fillStyle = COLORS.TEXT_LIGHT;
-                ctx.fillText(originalSubtotal.toFixed(2), x(width - padding), priceY);
-                
-                const textWidth = ctx.measureText(originalSubtotal.toFixed(2)).width;
-                ctx.beginPath();
-                const lineY = priceY - 5;
-                const lineXStart = isRtl ? padding : width - padding - textWidth;
-                const lineXEnd = isRtl ? padding + textWidth : width - padding;
-                ctx.moveTo(lineXStart, lineY);
-                ctx.lineTo(lineXEnd, lineY);
-                ctx.strokeStyle = COLORS.TEXT_LIGHT;
-                ctx.lineWidth = 1;
-                ctx.stroke();
-
-                y = Math.max(y, priceY + H_ITEM_NAME / 2);
-
-            } else {
-                ctx.font = `15px ${FONT_FAMILY_SANS}`;
-                ctx.fillStyle = COLORS.TEXT_DARK;
-                ctx.fillText(item.subtotal.toFixed(2), x(width - padding), priceY);
+        const newY = drawWrappedText(itemName, padding, itemStartY, contentWidth - 120, H_ITEM_NAME, 'start');
+        y = newY + H_ITEM_NAME;
+        
+        ctx.textAlign = isRtl ? 'left' : 'right';
+        const priceY = itemStartY + H_ITEM_NAME / 2;
+        
+        let isDiscounted = false;
+        let originalSubtotal = 0;
+        
+        if (type === 'sales') {
+            const salesItem = item as SalesInvoiceItem;
+            const originalPrice = salesItem.original_price ?? salesItem.price;
+            if (originalPrice > salesItem.price) {
+                isDiscounted = true;
+                originalSubtotal = originalPrice * salesItem.quantity;
             }
+        }
+        
+        if (isDiscounted) {
+            // Draw final price
+            ctx.font = `15px ${FONT_FAMILY_SANS}`;
+            ctx.fillStyle = COLORS.TEXT_DARK;
+            ctx.fillText(item.subtotal.toFixed(2), x(width - padding), priceY);
+            
+            // Draw original price (struck through)
+            const originalPriceY = priceY + H_ITEM_DISCOUNT;
+            ctx.font = `13px ${FONT_FAMILY_SANS}`;
+            ctx.fillStyle = COLORS.TEXT_LIGHT;
+            ctx.fillText(originalSubtotal.toFixed(2), x(width - padding), originalPriceY);
+            
+            // Strikethrough line
+            const textWidth = ctx.measureText(originalSubtotal.toFixed(2)).width;
+            ctx.beginPath();
+            const lineY = originalPriceY - 5;
+            const lineXStart = isRtl ? padding : width - padding - textWidth;
+            const lineXEnd = isRtl ? padding + textWidth : width - padding;
+            ctx.moveTo(lineXStart, lineY);
+            ctx.lineTo(lineXEnd, lineY);
+            ctx.strokeStyle = COLORS.TEXT_LIGHT;
+            ctx.lineWidth = 1;
+            ctx.stroke();
+            
+            y = Math.max(y, originalPriceY - H_ITEM_NAME / 2 + H_ITEM_DISCOUNT);
+
+            const salesItem = item as SalesInvoiceItem;
+            if (salesItem.discount_percent && salesItem.discount_percent > 0) {
+                ctx.font = `bold 12px ${FONT_FAMILY_SANS}`;
+                ctx.fillStyle = COLORS.RED;
+                ctx.textAlign = isRtl ? 'right' : 'left';
+                ctx.fillText(`(${salesItem.discount_percent.toFixed(0)}% ${t.discount})`, x(padding), y);
+                y += H_ITEM_DISCOUNT;
+            }
+
         } else {
             ctx.font = `15px ${FONT_FAMILY_SANS}`;
             ctx.fillStyle = COLORS.TEXT_DARK;
@@ -623,13 +659,39 @@ const generateGenericInvoiceImage = async (
         y += 20;
     });
     
+    const finalTotal = invoice.total_amount;
+    
+    if (totalSavingsVal > 0.01) {
+        const originalTotal = finalTotal + totalSavingsVal;
+        ctx.font = `16px ${FONT_FAMILY_SANS}`;
+        ctx.fillStyle = COLORS.TEXT_LIGHT;
+        ctx.textAlign = isRtl ? 'right' : 'left';
+        ctx.fillText(t.subtotal, x(padding), y);
+        ctx.textAlign = isRtl ? 'left' : 'right';
+        ctx.fillText(`${originalTotal.toFixed(2)} ${t.currency}`, x(width - padding), y);
+        y += H_TOTAL_LINE;
+
+        ctx.fillStyle = COLORS.RED;
+        ctx.textAlign = isRtl ? 'right' : 'left';
+        ctx.fillText(t.discount, x(padding), y);
+        ctx.textAlign = isRtl ? 'left' : 'right';
+        ctx.fillText(`-${totalSavingsVal.toFixed(2)} ${t.currency}`, x(width - padding), y);
+        y += H_TOTAL_LINE;
+    }
+
     ctx.font = `bold 18px ${FONT_FAMILY_SANS}`;
     ctx.fillStyle = COLORS.TEXT_DARK;
-    ctx.textAlign = textAlign('start');
-    ctx.fillText(t.total, x(padding + 250), y);
-    ctx.textAlign = textAlign('end');
-    ctx.fillText(`${invoice.total_amount.toFixed(2)} ${t.currency}`, x(width - padding), y);
+    ctx.textAlign = isRtl ? 'right' : 'left';
+    ctx.fillText(t.total, x(padding), y);
+    ctx.textAlign = isRtl ? 'left' : 'right';
+    ctx.fillText(`${finalTotal.toFixed(2)} ${t.currency}`, x(width - padding), y);
     y += H_TOTAL_LINE + 10;
+    
+    ctx.font = `16px ${FONT_FAMILY_SANS}`;
+    ctx.fillStyle = COLORS.TEXT_LIGHT;
+    ctx.textAlign = 'center';
+    ctx.fillText(language === 'ar' ? 'شكراً لتعاملكم معنا!' : 'Thank you for your business!', width / 2, y);
+
 
     return canvas.toDataURL('image/png');
 };
