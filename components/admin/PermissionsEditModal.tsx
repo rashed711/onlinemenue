@@ -68,7 +68,7 @@ export const PermissionsEditModal: React.FC<PermissionsEditModalProps> = ({ role
   const { language, t } = useUI();
   const { restaurantInfo } = useData();
   const { roles } = useAuth(); // AuthContext holds the roles list
-  const { currentUser, rolePermissions } = useAuth();
+  const { currentUser, rolePermissions, hasPermission } = useAuth();
   const currentPermissions = rolePermissions[roleId] || [];
 
   const [selectedPermissions, setSelectedPermissions] = useState<Permission[]>(currentPermissions);
@@ -86,19 +86,14 @@ export const PermissionsEditModal: React.FC<PermissionsEditModalProps> = ({ role
 
   const role = useMemo(() => roles.find(r => r.key === roleId), [roles, roleId]);
   
-  const currentUserRoleDetails = useMemo(() => {
+  const userRoleDetails = useMemo(() => {
     if (!currentUser) return null;
     return roles.find(r => r.key === currentUser.role);
   }, [currentUser, roles]);
 
   const isCurrentUserSuperAdmin = useMemo(() => {
-    return currentUserRoleDetails?.name.en.toLowerCase() === 'superadmin';
-  }, [currentUserRoleDetails]);
-
-  const currentUserPermissions = useMemo(() => {
-    if (!currentUser || !rolePermissions) return [];
-    return rolePermissions[currentUser.role] || [];
-  }, [currentUser, rolePermissions]);
+    return userRoleDetails?.name.en.toLowerCase() === 'superadmin';
+  }, [userRoleDetails]);
   
   const availablePermissionGroups = useMemo(() => {
       if (isCurrentUserSuperAdmin) {
@@ -110,14 +105,14 @@ export const PermissionsEditModal: React.FC<PermissionsEditModalProps> = ({ role
       return Object.values(PERMISSION_GROUPS).map(group => {
           // Filter each group's permissions based on what the current user has.
           const availablePermissions = group.permissions.filter(permission => 
-              currentUserPermissions.includes(permission.id)
+              hasPermission(permission.id)
           );
           
           // Return the group but with the filtered permissions list.
           return { ...group, permissions: availablePermissions };
       }).filter(group => group.permissions.length > 0); // Hide groups that become empty after filtering.
 
-  }, [isCurrentUserSuperAdmin, currentUserPermissions]);
+  }, [isCurrentUserSuperAdmin, hasPermission]);
 
   const handleCheckboxChange = (permissionId: Permission, isChecked: boolean) => {
     if (isChecked) {

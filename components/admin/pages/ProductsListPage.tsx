@@ -181,8 +181,8 @@ export const ProductsListPage: React.FC<ProductsListPageProps> = (props) => {
                                 </label>
                                 {(hasPermission('edit_product') || hasPermission('delete_product')) && (
                                     <div className="flex items-center justify-end gap-4">
-                                        {hasPermission('edit_product') && <button onClick={() => setEditingProduct(product)} className="text-indigo-600 dark:text-indigo-400 font-semibold flex items-center gap-1"><PencilIcon className="w-4 h-4" /> {t.edit}</button>}
-                                        {hasPermission('delete_product') && <button onClick={() => deleteProduct(product.id)} className="text-red-600 dark:text-red-400 font-semibold flex items-center gap-1"><TrashIcon className="w-4 h-4" /> {t.delete}</button>}
+                                        {hasPermission('edit_product') && <button onClick={() => setEditingProduct(product)} className="text-indigo-600 dark:text-indigo-400 font-semibold flex items-center gap-1 text-sm"><PencilIcon className="w-4 h-4" /> {t.edit}</button>}
+                                        {hasPermission('delete_product') && <button onClick={() => deleteProduct(product.id)} className="text-red-600 dark:text-red-400 font-semibold flex items-center gap-1 text-sm"><TrashIcon className="w-4 h-4" /> {t.delete}</button>}
                                     </div>
                                 )}
                             </div>

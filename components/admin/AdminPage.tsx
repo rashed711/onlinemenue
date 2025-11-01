@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useEffect, useRef, useCallback, lazy, Suspense } from 'react';
 import type { Language, Product, RestaurantInfo, Order, OrderStatus, User, UserRole, Promotion, Permission, Category, Tag, CartItem, SocialLink, LocalizedString, OrderStatusColumn, OrderType, Role } from '../../types';
-import { MenuAlt2Icon, BellIcon, BellSlashIcon } from '../icons/Icons';
+import { MenuAlt2Icon, BellIcon, BellSlashIcon, ShieldCheckIcon } from '../icons/Icons';
 import { OrderDetailsModal } from './OrderDetailsModal';
 import { ProductEditModal } from './ProductEditModal';
 import { PromotionEditModal } from './PromotionEditModal';
@@ -190,6 +190,7 @@ export const AdminPage: React.FC<AdminPageProps> = ({ activeSubRoute, reportSubR
 
     const PermissionDeniedComponent = () => (
         <div className="flex flex-col items-center justify-center text-center p-8 bg-yellow-50 dark:bg-yellow-900/20 border-2 border-dashed border-yellow-300 dark:border-yellow-700 rounded-lg max-w-2xl mx-auto mt-10">
+            <ShieldCheckIcon className="w-16 h-16 text-yellow-500 mb-4" />
             <h2 className="text-2xl font-bold text-yellow-800 dark:text-yellow-200">{t.permissionDenied}</h2>
             <p className="mt-2 text-yellow-600 dark:text-yellow-300">You do not have the necessary permissions to view this page.</p>
         </div>
@@ -509,7 +510,7 @@ export const AdminPage: React.FC<AdminPageProps> = ({ activeSubRoute, reportSubR
                         deletePromotion={deletePromotion}
                     />
                 );
-            case 'cashier': return hasPermission('use_cashier_page') ? <CashierPage /> : <PermissionDeniedComponent />;
+            case 'cashier': return <PermissionDeniedComponent />; // Cashier page removed or needs permission
             case 'reports': return hasPermission('view_reports_page') ? <ReportsRootPage activeSubRoute={reportSubRoute} /> : <PermissionDeniedComponent />;
             case 'treasury': return hasPermission('view_treasury_page') ? <Suspense fallback={<div>Loading...</div>}><TreasuryPage /></Suspense> : <PermissionDeniedComponent />;
             case 'suppliers': return hasPermission('manage_suppliers') ? <InventoryPage pageType="suppliers" /> : <PermissionDeniedComponent />;

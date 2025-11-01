@@ -272,7 +272,8 @@ export const OrderDetailsModal: React.FC<OrderDetailsModalProps> = ({ order, onC
                                             </div>
                                             <img src={item.product.image} alt={item.product.name[language]} className="w-16 h-16 rounded-lg object-cover" />
                                         </div>
-                                    )})}
+                                        );
+                                    })}
                                 </div>
                             </div>
                             
