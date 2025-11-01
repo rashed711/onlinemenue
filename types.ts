@@ -209,7 +209,9 @@ export interface SalesInvoiceItem {
     product_id: number;
     product_name?: LocalizedString; // For display
     quantity: number;
-    sale_price: number;
+    price: number; // Final price per item after discount
+    original_price?: number | null; // Original price before discount
+    discount_percent?: number | null; // Discount percentage applied
     subtotal: number;
 }
 
