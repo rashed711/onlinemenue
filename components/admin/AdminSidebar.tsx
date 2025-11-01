@@ -5,7 +5,7 @@ import { useUI } from '../../contexts/UIContext';
 import { useAuth } from '../../contexts/AuthContext';
 import { useData } from '../../contexts/DataContext';
 
-type AdminTab = 'orders' | 'cashier' | 'reports' | 'productList' | 'classifications' | 'promotions' | 'staff' | 'roles' | 'settings' | 'treasury' | 'customers' | 'suppliers' | 'purchaseInvoices' | 'salesInvoices';
+type AdminTab = 'dashboard' | 'orders' | 'cashier' | 'reports' | 'productList' | 'classifications' | 'promotions' | 'staff' | 'roles' | 'settings' | 'treasury' | 'customers' | 'suppliers' | 'purchaseInvoices' | 'salesInvoices';
 
 interface AdminSidebarProps {
     activeTab: AdminTab;
@@ -23,6 +23,7 @@ export const AdminSidebar: React.FC<AdminSidebarProps> = (props) => {
 
     const navItems = {
         operations: [
+            { id: 'dashboard', label: t.dashboard, icon: HomeIcon, permission: 'view_reports_page' as Permission },
             { id: 'orders', label: t.manageOrders, icon: ClipboardListIcon, permission: 'view_orders_page' as Permission },
             { id: 'reports', label: t.reports, icon: ChartBarIcon, permission: 'view_reports_page' as Permission },
         ],

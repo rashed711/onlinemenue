@@ -13,6 +13,7 @@ import { RefusalReasonModal } from './RefusalReasonModal';
 import { OrderEditModal } from './OrderEditModal';
 import { RoleEditModal } from './RoleEditModal';
 // New page component imports
+const DashboardPage = lazy(() => import('./pages/DashboardPage').then(module => ({ default: module.DashboardPage })));
 import { OrdersPage } from './pages/OrdersPage';
 import { ProductsListPage } from './pages/ProductsListPage';
 import { UsersPage } from './pages/UsersPage';
@@ -40,11 +41,12 @@ interface AdminPageProps {
     reportSubRoute?: string;
 }
 
-type AdminTab = 'orders' | 'cashier' | 'reports' | 'productList' | 'classifications' | 'promotions' | 'staff' | 'roles' | 'settings' | 'treasury' | 'customers' | 'suppliers' | 'purchaseInvoices' | 'salesInvoices';
+type AdminTab = 'dashboard' | 'orders' | 'cashier' | 'reports' | 'productList' | 'classifications' | 'promotions' | 'staff' | 'roles' | 'settings' | 'treasury' | 'customers' | 'suppliers' | 'purchaseInvoices' | 'salesInvoices';
 
 type DateFilter = 'today' | 'yesterday' | 'week' | 'month' | 'custom';
 
 const NAV_ITEMS_WITH_PERMS = [
+    { id: 'dashboard', permission: 'view_reports_page' },
     { id: 'orders', permission: 'view_orders_page' },
     { id: 'reports', permission: 'view_reports_page' },
     { id: 'customers', permission: 'view_users_page' },
@@ -87,7 +89,7 @@ export const AdminPage: React.FC<AdminPageProps> = ({ activeSubRoute, reportSubR
     } = useUserManagement();
     const { isSubscribed: isPushSubscribed, toggleSubscription: togglePushSubscription, isLoading: isPushLoading, isSupported: isPushSupported } = usePushNotifications();
 
-    const [activeTab, setActiveTab] = useState<AdminTab>(activeSubRoute as AdminTab);
+    const [activeTab, setActiveTab] = useState<AdminTab>((activeSubRoute || 'dashboard') as AdminTab);
     const [isSidebarOpen, setSidebarOpen] = useState(false);
     
     const [editingOrder, setEditingOrder] = useState<Order | null>(null);
@@ -158,7 +160,7 @@ export const AdminPage: React.FC<AdminPageProps> = ({ activeSubRoute, reportSubR
     }, []);
 
     useEffect(() => {
-        setActiveTab(activeSubRoute as AdminTab);
+        setActiveTab((activeSubRoute || 'dashboard') as AdminTab);
     }, [activeSubRoute]);
 
     const setTab = (tab: AdminTab) => {
@@ -407,6 +409,9 @@ export const AdminPage: React.FC<AdminPageProps> = ({ activeSubRoute, reportSubR
 
     const renderContent = () => {
         switch(displayedTab) {
+            case 'dashboard':
+                if (!hasPermission('view_reports_page')) return <PermissionDeniedComponent />;
+                return <Suspense fallback={<div>Loading...</div>}><DashboardPage /></Suspense>;
             case 'orders':
                 if (!hasPermission('view_orders_page')) return <PermissionDeniedComponent />;
                 return (
@@ -514,7 +519,7 @@ export const AdminPage: React.FC<AdminPageProps> = ({ activeSubRoute, reportSubR
                 if (!hasPermission('view_classifications_page')) return <PermissionDeniedComponent />;
                 return <ClassificationsPage onAddCategory={() => setEditingCategory('new')} onEditCategory={setEditingCategory} onAddTag={() => setEditingTag('new')} onEditTag={setEditingTag} />;
             case 'settings': return hasPermission('view_settings_page') ? <SettingsPage /> : <PermissionDeniedComponent />;
-            default: return <div>Select a tab</div>;
+            default: return <Suspense fallback={<div>Loading...</div>}><DashboardPage /></Suspense>;
         }
     };
 
