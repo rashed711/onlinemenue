@@ -190,7 +190,8 @@ export const generateReceiptImage = async (
         ctx.textAlign = textAlign(align);
         const lines = getWrappedTextLines(ctx, text, maxWidth);
         lines.forEach((line, index) => {
-            ctx.fillText(line, x(xPos), yPos + (index * lineHeight));
+            const lineToRender = isRtl ? '\u200F' + line : line;
+            ctx.fillText(lineToRender, x(xPos), yPos + (index * lineHeight));
         });
         return yPos + (lines.length - 1) * lineHeight;
     };
@@ -710,7 +711,8 @@ const generateGenericInvoiceImage = async (
         const lines = getWrappedTextLines(ctx, productName, itemColWidth - (colPadding * 2));
         let lineY = y;
         lines.forEach(line => {
-            ctx.fillText(line, isRtl ? width - padding - colPadding : padding + colPadding, lineY);
+            const lineToRender = isRtl ? '\u200F' + line : line;
+            ctx.fillText(lineToRender, isRtl ? width - padding - colPadding : padding + colPadding, lineY);
             lineY += 18;
         });
         const itemNameHeight = (lines.length * 18);
