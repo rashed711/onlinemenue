@@ -163,7 +163,6 @@ export const generateReceiptImage = async (
 
     // --- SETUP ---
     const isRtl = language === 'ar';
-    ctx.direction = isRtl ? 'rtl' : 'ltr';
     const FONT_SANS = isRtl ? "'Cairo', sans-serif" : "'Cairo', sans-serif"; // Using Cairo for both for consistency
     const FONT_BOLD = `bold ${FONT_SANS}`;
     const FONT_MONO = "'Courier New', Courier, monospace";
@@ -507,7 +506,6 @@ const generateGenericInvoiceImage = async (
 
     // --- SETUP ---
     const isRtl = language === 'ar';
-    ctx.direction = isRtl ? 'rtl' : 'ltr';
     const FONT_SANS = isRtl ? 'Cairo, sans-serif' : 'sans-serif';
     const FONT_MONO = 'monospace';
     
