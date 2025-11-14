@@ -3,7 +3,7 @@ import type { PurchaseInvoice } from '../../types';
 import { Modal } from '../Modal';
 import { useUI } from '../../contexts/UIContext';
 import { useData } from '../../contexts/DataContext';
-import { formatDateTime, generatePurchaseInvoiceImage } from '../../utils/helpers';
+import { formatDateTime, generatePurchaseInvoiceImage, imageUrlToBlob } from '../../utils/helpers';
 import { PencilIcon, TrashIcon, ShareIcon } from '../icons/Icons';
 
 interface PurchaseInvoiceDetailsModalProps {
@@ -23,8 +23,7 @@ export const PurchaseInvoiceDetailsModal: React.FC<PurchaseInvoiceDetailsModalPr
         setIsProcessing(true);
         try {
             const imageUrl = await generatePurchaseInvoiceImage(invoice, restaurantInfo, t, language);
-            const response = await fetch(imageUrl);
-            const blob = await response.blob();
+            const blob = await imageUrlToBlob(imageUrl);
             const file = new File([blob], `purchase-invoice-${invoice.id}.png`, { type: 'image/png' });
 
             if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {

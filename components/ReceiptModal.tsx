@@ -4,7 +4,7 @@ import { DownloadIcon } from './icons/Icons';
 import { useCart } from '../contexts/CartContext';
 import { useData } from '../contexts/DataContext';
 import { Modal } from './Modal';
-import { dataUrlToBlob } from '../utils/helpers';
+import { imageUrlToBlob } from '../utils/helpers';
 
 interface ReceiptModalProps {
     isOpen: boolean;
@@ -41,7 +41,7 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({ isOpen, onClose, rec
         const whatsappUrl = `https://wa.me/${restaurantInfo?.whatsappNumber}?text=${encodeURIComponent(whatsAppMessage)}`;
         
         try {
-            const blob = dataUrlToBlob(receiptImageUrl);
+            const blob = await imageUrlToBlob(receiptImageUrl);
             const file = new File([blob], `receipt-${Date.now()}.png`, { type: 'image/png' });
 
             if (canShare && navigator.canShare && navigator.canShare({ files: [file] })) {

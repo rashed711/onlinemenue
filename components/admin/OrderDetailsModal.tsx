@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import type { Order, RestaurantInfo, OrderType } from '../../types';
 import { DocumentTextIcon, PencilIcon, ShareIcon, PrintIcon, TrashIcon, CloseIcon, StarIcon, UserIcon, ClockIcon, HomeIcon, TakeawayIcon, TruckIcon, UserCircleIcon, CreditCardIcon, CheckIcon, ClipboardListIcon } from '../icons/Icons';
 import { StarRating } from '../StarRating';
-import { formatDateTime, formatNumber, generateReceiptImage, calculateItemTotal, calculateOriginalItemTotal, calculateTotalSavings, dataUrlToBlob } from '../../utils/helpers';
+import { formatDateTime, formatNumber, generateReceiptImage, calculateItemTotal, calculateOriginalItemTotal, calculateTotalSavings, imageUrlToBlob } from '../../utils/helpers';
 import { Modal } from '../Modal';
 import { useUI } from '../../contexts/UIContext';
 import { useData } from '../../contexts/DataContext';
@@ -70,7 +70,7 @@ export const OrderDetailsModal: React.FC<OrderDetailsModalProps> = ({ order, onC
         try {
             if (!restaurantInfo) throw new Error("Restaurant info not available");
             const imageUrl = await generateReceiptImage(order, restaurantInfo, t, language, creatorName);
-            const blob = dataUrlToBlob(imageUrl);
+            const blob = await imageUrlToBlob(imageUrl);
             const file = new File([blob], `order-${order.id}.png`, { type: 'image/png' });
 
             if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {

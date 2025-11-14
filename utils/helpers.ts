@@ -150,21 +150,33 @@ export const normalizeArabic = (text: string): string => {
       .replace(/[\u064B-\u0652]/g, '');
 };
 
-export const dataUrlToBlob = (dataUrl: string): Blob => {
-    const [header, base64Data] = dataUrl.split(',');
-    if (!header || !base64Data) throw new Error('Invalid data URL');
-
-    const mimeMatch = header.match(/:(.*?);/);
-    if (!mimeMatch) throw new Error('Invalid data URL MIME type');
-    const mime = mimeMatch[1];
-
-    const byteCharacters = atob(base64Data);
-    const byteNumbers = new Array(byteCharacters.length);
-    for (let i = 0; i < byteCharacters.length; i++) {
-        byteNumbers[i] = byteCharacters.charCodeAt(i);
-    }
-    const byteArray = new Uint8Array(byteNumbers);
-    return new Blob([byteArray], { type: mime });
+export const imageUrlToBlob = (imageUrl: string): Promise<Blob> => {
+    return new Promise((resolve, reject) => {
+        const img = new Image();
+        img.onload = () => {
+            const canvas = document.createElement('canvas');
+            canvas.width = img.width;
+            canvas.height = img.height;
+            const ctx = canvas.getContext('2d');
+            if (ctx) {
+                ctx.drawImage(img, 0, 0);
+                canvas.toBlob((blob) => {
+                    if (blob) {
+                        resolve(blob);
+                    } else {
+                        reject(new Error('Canvas to Blob conversion failed.'));
+                    }
+                }, 'image/png');
+            } else {
+                reject(new Error('Could not get canvas context.'));
+            }
+        };
+        img.onerror = (err) => {
+            console.error("Failed to load image for blob conversion:", err);
+            reject(new Error('Failed to load image for blob conversion.'));
+        };
+        img.src = imageUrl;
+    });
 };
 
 export const generateReceiptImage = async (
@@ -242,7 +254,7 @@ export const generateReceiptImage = async (
     
     ctx.font = `14px ${FONT_SANS}`;
     const addressText = order.customer.address || '';
-    const addressForCanvas = isRtl ? bidi.getVisual(addressText, 'RTL') : addressText;
+    const addressForCanvas = isRtl && typeof bidi !== 'undefined' ? bidi.getVisual(addressText, 'RTL') : addressText;
     const addressLines = getWrappedTextLines(ctx, addressForCanvas, contentWidth / 2 - 20);
     totalHeight += 80 + (addressLines.length > 1 ? (addressLines.length - 1) * 20 : 0);
     
@@ -251,7 +263,7 @@ export const generateReceiptImage = async (
     order.items.forEach(item => {
         totalHeight += 20; // top padding
         ctx.font = `bold 16px ${FONT_SANS}`;
-        const productName = isRtl ? bidi.getVisual(item.product.name[language], 'RTL') : item.product.name[language];
+        const productName = isRtl && typeof bidi !== 'undefined' ? bidi.getVisual(item.product.name[language], 'RTL') : item.product.name[language];
         const nameLines = getWrappedTextLines(ctx, productName, contentWidth - 250);
         totalHeight += nameLines.length * 22;
 
@@ -262,7 +274,7 @@ export const generateReceiptImage = async (
                 const value = option?.values.find(v => v.name.en === valKey);
                 return value ? `+ ${value.name[language]}` : '';
             }).filter(Boolean).join(', ');
-            const optionsForCanvas = isRtl ? bidi.getVisual(optionsText, 'RTL') : optionsText;
+            const optionsForCanvas = isRtl && typeof bidi !== 'undefined' ? bidi.getVisual(optionsText, 'RTL') : optionsText;
             const optionLines = getWrappedTextLines(ctx, optionsForCanvas, contentWidth - 250);
             totalHeight += optionLines.length * 18;
         }
@@ -294,7 +306,7 @@ export const generateReceiptImage = async (
     ctx.font = `bold 32px ${FONT_SANS}`;
     ctx.fillStyle = COLORS.TEXT_DARK;
     ctx.textAlign = 'center';
-    const restaurantNameForCanvas = isRtl ? bidi.getVisual(restaurantInfo.name[language], 'RTL') : restaurantInfo.name[language];
+    const restaurantNameForCanvas = isRtl && typeof bidi !== 'undefined' ? bidi.getVisual(restaurantInfo.name[language], 'RTL') : restaurantInfo.name[language];
     ctx.fillText(restaurantNameForCanvas, width / 2, y);
     y += 30;
     
@@ -333,7 +345,7 @@ export const generateReceiptImage = async (
     ctx.font = `14px ${FONT_SANS}`;
     ctx.fillStyle = COLORS.TEXT_MEDIUM;
     y += 24;
-    const customerNameForCanvas = isRtl ? bidi.getVisual(order.customer.name || 'Guest', 'RTL') : (order.customer.name || 'Guest');
+    const customerNameForCanvas = isRtl && typeof bidi !== 'undefined' ? bidi.getVisual(order.customer.name || 'Guest', 'RTL') : (order.customer.name || 'Guest');
     ctx.fillText(customerNameForCanvas, x(col1X), y);
     y += 20;
     ctx.fillText(order.customer.mobile, x(col1X), y);
@@ -358,7 +370,7 @@ export const generateReceiptImage = async (
     }
     if (creatorName) {
         y += 20;
-        const creatorNameForCanvas = isRtl ? bidi.getVisual(creatorName, 'RTL') : creatorName;
+        const creatorNameForCanvas = isRtl && typeof bidi !== 'undefined' ? bidi.getVisual(creatorName, 'RTL') : creatorName;
         ctx.fillText(`${t.createdBy}: ${creatorNameForCanvas}`, x(col2X), y);
     }
     y += 60 + (addressLines.length > 1 ? (addressLines.length - 1) * 20 : 0);
@@ -421,7 +433,7 @@ export const generateReceiptImage = async (
         ctx.fillText(finalItemTotal.toFixed(2), x(totalX), itemStartY + 5);
 
         ctx.font = `bold 16px ${FONT_SANS}`;
-        const productNameForCanvas = isRtl ? bidi.getVisual(item.product.name[language], 'RTL') : item.product.name[language];
+        const productNameForCanvas = isRtl && typeof bidi !== 'undefined' ? bidi.getVisual(item.product.name[language], 'RTL') : item.product.name[language];
         const nameEndY = drawWrappedText(productNameForCanvas, padding + 15, itemStartY, contentWidth - 350, 22, 'start');
         
         let currentY = nameEndY;
@@ -434,7 +446,7 @@ export const generateReceiptImage = async (
                 const value = option?.values.find(v => v.name.en === valKey);
                 return value ? `+ ${value.name[language]}` : '';
             }).filter(Boolean).join(', ');
-            const optionsTextForCanvas = isRtl ? bidi.getVisual(optionsText, 'RTL') : optionsText;
+            const optionsTextForCanvas = isRtl && typeof bidi !== 'undefined' ? bidi.getVisual(optionsText, 'RTL') : optionsText;
             currentY = drawWrappedText(optionsTextForCanvas, padding + 15, currentY, contentWidth - 350, 18, 'start');
         }
         
@@ -549,18 +561,18 @@ const generateGenericInvoiceImage = async (
         const si = invoice as SalesInvoice;
         details.push({ label: t.invoiceNumber, value: si.invoice_number });
         details.push({ label: t.date, value: formatDateTime(si.invoice_date) });
-        const customerName = isRtl ? bidi.getVisual(si.customer_name, 'RTL') : si.customer_name;
+        const customerName = isRtl && typeof bidi !== 'undefined' ? bidi.getVisual(si.customer_name, 'RTL') : si.customer_name;
         details.push({ label: t.customer, value: customerName });
         details.push({ label: t.mobileNumber, value: si.customer_mobile });
         if (si.created_by_name) {
-            const creatorName = isRtl ? bidi.getVisual(si.created_by_name, 'RTL') : si.created_by_name;
+            const creatorName = isRtl && typeof bidi !== 'undefined' ? bidi.getVisual(si.created_by_name, 'RTL') : si.created_by_name;
             details.push({ label: t.createdBy, value: creatorName });
         }
     } else {
         const pi = invoice as PurchaseInvoice;
         details.push({ label: t.invoiceId, value: String(pi.id) });
         details.push({ label: t.date, value: formatDateTime(pi.invoice_date) });
-        const supplierName = isRtl ? bidi.getVisual(pi.supplier_name, 'RTL') : pi.supplier_name;
+        const supplierName = isRtl && typeof bidi !== 'undefined' ? bidi.getVisual(pi.supplier_name, 'RTL') : pi.supplier_name;
         details.push({ label: t.supplier, value: supplierName });
     }
     y += details.length * 24;
@@ -570,7 +582,7 @@ const generateGenericInvoiceImage = async (
 
     (invoice.items as SalesInvoiceItem[]).forEach((item: SalesInvoiceItem) => {
         const productNameText = item.product_name?.[language] || `Product ID: ${item.product_id}`;
-        const productName = isRtl ? bidi.getVisual(productNameText, 'RTL') : productNameText;
+        const productName = isRtl && typeof bidi !== 'undefined' ? bidi.getVisual(productNameText, 'RTL') : productNameText;
         ctx.font = `14px ${FONT_SANS}`;
         const lines = getWrappedTextLines(ctx, productName, 200);
         let itemHeight = lines.length * 18;
@@ -616,7 +628,7 @@ const generateGenericInvoiceImage = async (
     ctx.font = `bold 22px ${FONT_SANS}`;
     ctx.fillStyle = COLORS.TEXT_DARK;
     ctx.textAlign = 'center';
-    const restaurantNameForCanvas = isRtl ? bidi.getVisual(restaurantInfo.name[language], 'RTL') : restaurantInfo.name[language];
+    const restaurantNameForCanvas = isRtl && typeof bidi !== 'undefined' ? bidi.getVisual(restaurantInfo.name[language], 'RTL') : restaurantInfo.name[language];
     ctx.fillText(restaurantNameForCanvas, width / 2, y);
     y += 20;
     ctx.font = `16px ${FONT_SANS}`;
@@ -717,7 +729,7 @@ const generateGenericInvoiceImage = async (
         }
 
         const productNameText = item.product_name?.[language] || `Product ID: ${item.product_id}`;
-        const productNameForCanvas = isRtl ? bidi.getVisual(productNameText, 'RTL') : productNameText;
+        const productNameForCanvas = isRtl && typeof bidi !== 'undefined' ? bidi.getVisual(productNameText, 'RTL') : productNameText;
         ctx.font = `14px ${FONT_SANS}`;
         ctx.fillStyle = COLORS.TEXT_DARK;
         ctx.textAlign = isRtl ? 'right' : 'left';
