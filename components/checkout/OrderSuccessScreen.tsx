@@ -56,7 +56,7 @@ export const OrderSuccessScreen: React.FC<OrderSuccessScreenProps> = ({ orderId 
                 >
                     {t.trackOrder}
                 </a>
-                {currentUser && (
+                {currentUser ? (
                      <a 
                         href="#/profile"
                         onClick={(e) => handleNav(e, '/profile')}
@@ -64,8 +64,7 @@ export const OrderSuccessScreen: React.FC<OrderSuccessScreenProps> = ({ orderId 
                     >
                        <UserIcon className="w-5 h-5"/> {t.myOrders}
                     </a>
-                )}
-                 {!currentUser && (
+                ) : (
                      <a 
                         href="#/"
                         onClick={(e) => handleNav(e, '/')}

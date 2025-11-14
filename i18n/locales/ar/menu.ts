@@ -1,4 +1,3 @@
-
 export default {
   "searchPlaceholder": "ابحث عن منتجات...",
   "filterByTags": "تصفية بالوسوم",

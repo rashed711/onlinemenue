@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { useUI } from '../contexts/UIContext';
 import { APP_CONFIG } from '../utils/config';
@@ -57,7 +56,7 @@ export const OrderTrackingPage: React.FC = () => {
 
         } catch (err: any) {
             if (err.message.toLowerCase().includes('failed to fetch')) {
-                 setError(language === 'ar' ? 'فشل الاتصال بالخادم. يرجى التحقق من اتصالك بالإنترنت.' : 'Could not connect to the server. Please check your internet connection.');
+                 setError(t.networkRequestFailed);
             } else {
                 setError(err.message || t.orderNotFound);
             }

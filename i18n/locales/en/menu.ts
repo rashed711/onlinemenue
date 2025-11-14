@@ -1,4 +1,3 @@
-
 export default {
   "searchPlaceholder": "Search for products...",
   "filterByTags": "Filter by Tags",
