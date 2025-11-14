@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 
 import { useUI } from '../../contexts/UIContext';
@@ -12,8 +13,9 @@ import { Header } from '../Header';
 import { Footer } from '../Footer';
 import { CheckoutStepper } from './CheckoutStepper';
 import { OrderSummary } from './OrderSummary';
+import { OrderSuccessScreen } from './OrderSuccessScreen';
 import { calculateTotal } from '../../utils/helpers';
-import { ChevronRightIcon, UploadIcon, CopyIcon, CheckIcon, CheckCircleIcon, UserIcon } from '../icons/Icons';
+import { ChevronRightIcon, UploadIcon, CopyIcon, CheckIcon } from '../icons/Icons';
 import { GovernorateSelector } from './GovernorateSelector';
 
 type CheckoutStep = 'delivery' | 'payment' | 'confirm';
@@ -43,58 +45,6 @@ const CopiedButton: React.FC<{ textToCopy: string, children: React.ReactNode }> 
     );
 };
 
-const OrderSuccessScreen: React.FC = () => {
-    const { t, language } = useUI();
-    const { currentUser } = useAuth();
-    const { restaurantInfo } = useData();
-
-    const handleNav = (e: React.MouseEvent<HTMLAnchorElement>, path: string) => {
-        e.preventDefault();
-        window.location.hash = path;
-    };
-
-    return (
-        <div className="flex flex-col items-center justify-center text-center p-8 bg-white dark:bg-slate-800 rounded-2xl shadow-xl border border-slate-200 dark:border-slate-700 max-w-lg mx-auto animate-fade-in-up">
-            <CheckCircleIcon className="w-20 h-20 text-green-500 mb-4" />
-            <h1 className="text-3xl font-extrabold text-slate-800 dark:text-slate-100 mb-2">{t.orderReceived}</h1>
-            <p className="text-slate-600 dark:text-slate-300 mb-4">{t.willContactSoon}</p>
-            {restaurantInfo?.whatsappNumber && (
-                 <p className="text-slate-600 dark:text-slate-300 mb-8">
-                    {t.forInquiries}
-                    <a 
-                        href={`https://wa.me/${restaurantInfo.whatsappNumber}`} 
-                        target="_blank" 
-                        rel="noopener noreferrer" 
-                        className="font-bold text-primary-600 dark:text-primary-400 underline decoration-dotted ltr:ml-1 rtl:mr-1"
-                        dir="ltr"
-                    >
-                        {restaurantInfo.whatsappNumber}
-                    </a>
-                </p>
-            )}
-            <div className="flex flex-col sm:flex-row items-center justify-center gap-4 w-full">
-                <a 
-                    href="#/"
-                    onClick={(e) => handleNav(e, '/')}
-                    className="w-full sm:w-auto bg-primary-600 text-white font-bold py-3 px-6 rounded-lg hover:bg-primary-700 transition-colors shadow-md"
-                >
-                    {t.backToMenu.replace('←', '').trim()}
-                </a>
-                {currentUser && (
-                     <a 
-                        href="#/profile"
-                        onClick={(e) => handleNav(e, '/profile')}
-                        className="w-full sm:w-auto flex items-center justify-center gap-2 bg-slate-200 dark:bg-slate-700 text-slate-800 dark:text-slate-100 font-bold py-3 px-6 rounded-lg hover:bg-slate-300 dark:hover:bg-slate-600 transition-colors"
-                    >
-                       <UserIcon className="w-5 h-5"/> {t.myOrders}
-                    </a>
-                )}
-            </div>
-        </div>
-    );
-};
-
-
 export const CheckoutPage: React.FC = () => {
     const { language, t, isProcessing, setIsProcessing, showToast } = useUI();
     const { currentUser, isAuthenticating } = useAuth();
@@ -112,7 +62,7 @@ export const CheckoutPage: React.FC = () => {
     const [selectedOnlineMethod, setSelectedOnlineMethod] = useState<OnlinePaymentMethod | null>(null);
     const [receiptFile, setReceiptFile] = useState<File | null>(null);
     const [receiptPreview, setReceiptPreview] = useState<string | null>(null);
-    const [orderSuccess, setOrderSuccess] = useState(false);
+    const [completedOrderId, setCompletedOrderId] = useState<string | null>(null);
 
 
     useEffect(() => {
@@ -129,14 +79,14 @@ export const CheckoutPage: React.FC = () => {
     }, [currentUser]);
 
     useEffect(() => {
-        if (cartItems.length === 0 && !isProcessing && !orderSuccess) {
+        if (cartItems.length === 0 && !isProcessing && !completedOrderId) {
             window.location.hash = '#/';
         }
-    }, [cartItems, isProcessing, orderSuccess]);
+    }, [cartItems, isProcessing, completedOrderId]);
 
     useEffect(() => {
         window.scrollTo(0, 0);
-    }, [step, orderSuccess]);
+    }, [step, completedOrderId]);
 
     const subtotal = useMemo(() => calculateTotal(cartItems), [cartItems]);
 
@@ -203,9 +153,9 @@ export const CheckoutPage: React.FC = () => {
                 paymentReceiptUrl: receiptDataUrl,
             };
 
-            await placeOrder(orderData);
+            const newOrder = await placeOrder(orderData);
             clearCart();
-            setOrderSuccess(true);
+            setCompletedOrderId(newOrder.id);
             
         } catch (error: any) {
             console.error('Failed to place order:', error);
@@ -217,12 +167,12 @@ export const CheckoutPage: React.FC = () => {
     
     if (!restaurantInfo) return null;
 
-    if (orderSuccess) {
+    if (completedOrderId) {
         return (
             <>
                 <Header onCartClick={() => window.location.hash = '#/'} />
                 <main className="container mx-auto max-w-7xl px-4 py-16 lg:py-24">
-                    <OrderSuccessScreen />
+                    <OrderSuccessScreen orderId={completedOrderId} />
                 </main>
                 <Footer />
             </>

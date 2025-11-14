@@ -1,3 +1,4 @@
+
 export default {
   "close": "Close",
   "currency": "EGP",
@@ -132,5 +133,6 @@ export default {
   "installApp": "Install App",
   "orderUpdateFailed": "Failed to update order.",
   "thankYouForOrder": "Thank you for your order!",
-  "atTime": "at"
+  "atTime": "at",
+  "trackOrder": "Track Order"
 };

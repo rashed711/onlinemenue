@@ -1,5 +1,6 @@
 
 
+
 import React, { useSyncExternalStore, useMemo, useEffect, lazy, Suspense } from 'react';
 import { UIProvider, useUI } from './contexts/UIContext';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
@@ -15,6 +16,7 @@ const ProfilePage = lazy(() => import('./components/profile/ProfilePage').then(m
 const AdminArea = lazy(() => import('./components/admin/AdminArea'));
 const SocialPage = lazy(() => import('./components/SocialPage').then(module => ({ default: module.SocialPage })));
 const CheckoutPage = lazy(() => import('./components/checkout/CheckoutPage').then(module => ({ default: module.CheckoutPage })));
+const OrderTrackingPage = lazy(() => import('./components/OrderTrackingPage').then(module => ({ default: module.OrderTrackingPage })));
 const ForgotPasswordPage = lazy(() => import('./components/auth/ForgotPasswordPage').then(module => ({ default: module.ForgotPasswordPage })));
 const ActionHandlerPage = lazy(() => import('./components/auth/ActionHandlerPage').then(module => ({ default: module.ActionHandlerPage })));
 const CompleteProfilePage = lazy(() => import('./components/auth/CompleteProfilePage').then(module => ({ default: module.CompleteProfilePage })));
@@ -101,6 +103,7 @@ const AppContent: React.FC = () => {
     if (baseRoute.startsWith('#/forgot-password')) return <ForgotPasswordPage />;
     if (baseRoute.startsWith('#/profile')) return <ProfilePage />;
     if (baseRoute.startsWith('#/checkout')) return <CheckoutPage />;
+    if (baseRoute.startsWith('#/track')) return <OrderTrackingPage />;
     if (baseRoute.startsWith('#/social')) return <SocialPage />;
     if (baseRoute.startsWith('#/action')) return <ActionHandlerPage />;
     

@@ -1,3 +1,4 @@
+
 export default {
   "close": "إغلاق",
   "currency": "ج.م",
@@ -131,5 +132,6 @@ export default {
   "installApp": "تثبيت التطبيق",
   "orderUpdateFailed": "فشل تحديث الطلب.",
   "thankYouForOrder": "شكراً لطلبك!",
-  "atTime": "الساعة"
+  "atTime": "الساعة",
+  "trackOrder": "تتبع طلبك"
 };

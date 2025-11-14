@@ -1,3 +1,4 @@
+
 export default {
   "searchPlaceholder": "Search for products...",
   "filterByTags": "Filter by Tags",
@@ -59,5 +60,12 @@ export default {
   "leaveFeedback": "Leave Feedback",
   "orderSubmitFailed": "Failed to submit order. Please try again.",
   "shipTo": "Ship To",
-  "payWith": "Pay With"
+  "payWith": "Pay With",
+  "trackYourOrder": "Track Your Order",
+  "enterOrderId": "Enter your Order ID",
+  "orderIdPrompt": "You can find the Order ID on your success screen after placing an order.",
+  "orderNotFound": "Order not found. Please check the ID and try again.",
+  "yourOrderIdIs": "Your Order ID is:",
+  "useIdToTrack": "Use this ID to track the status of your order.",
+  "copyOrderId": "Copy ID"
 };
