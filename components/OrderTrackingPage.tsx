@@ -91,7 +91,7 @@ export const OrderTrackingPage: React.FC = () => {
                             <button
                                 type="submit"
                                 disabled={isProcessing}
-                                className="bg-primary-600 text-white font-bold py-3 px-4 rounded-lg hover:bg-primary-700 disabled:bg-slate-400 transition-colors"
+                                className="bg-primary-600 text-white font-bold py-3 px-3 rounded-lg hover:bg-primary-700 disabled:bg-slate-400 transition-colors"
                             >
                                 {isProcessing ? (language === 'ar' ? '...' : '...') : t.trackOrder}
                             </button>
