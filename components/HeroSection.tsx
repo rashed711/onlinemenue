@@ -43,25 +43,25 @@ export const HeroSection: React.FC<HeroSectionProps> = () => {
         <p className="text-lg md:text-xl max-w-3xl mx-auto mb-8" style={{ textShadow: '1px 1px 4px rgba(0,0,0,0.8)' }}>
           {restaurantInfo.description?.[language] || ''}
         </p>
-        <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
+        <div className="flex flex-row items-center justify-center gap-2 sm:gap-3">
           <a 
             href="#menu"
             onClick={handleScrollToMenu}
-            className="bg-primary-500 hover:bg-primary-600 text-white font-bold py-2.5 px-6 rounded-full text-base transition-transform transform hover:scale-105 inline-block shadow-lg shadow-primary-500/30 whitespace-nowrap"
+            className="bg-primary-500 hover:bg-primary-600 text-white font-bold py-2 px-4 sm:py-2.5 sm:px-6 rounded-full text-sm sm:text-base transition-transform transform hover:scale-105 inline-block shadow-lg shadow-primary-500/30 whitespace-nowrap"
           >
             {t.viewMenu}
           </a>
           <a 
             href="#/track"
             onClick={(e) => handleNav(e, '/track')}
-            className="bg-white/20 hover:bg-white/30 backdrop-blur-sm border-2 border-white text-white font-bold py-2.5 px-6 rounded-full text-base transition-colors transform hover:scale-105 inline-block shadow-lg whitespace-nowrap"
+            className="bg-white/20 hover:bg-white/30 backdrop-blur-sm border-2 border-white text-white font-bold py-2 px-4 sm:py-2.5 sm:px-6 rounded-full text-sm sm:text-base transition-colors transform hover:scale-105 inline-block shadow-lg whitespace-nowrap"
           >
             {t.trackOrder}
           </a>
            <a 
             href="#/social"
             onClick={(e) => handleNav(e, '/social')}
-            className="bg-white/20 hover:bg-white/30 backdrop-blur-sm border-2 border-white text-white font-bold py-2.5 px-6 rounded-full text-base transition-colors transform hover:scale-105 inline-block shadow-lg whitespace-nowrap"
+            className="bg-white/20 hover:bg-white/30 backdrop-blur-sm border-2 border-white text-white font-bold py-2 px-4 sm:py-2.5 sm:px-6 rounded-full text-sm sm:text-base transition-colors transform hover:scale-105 inline-block shadow-lg whitespace-nowrap"
           >
             {t.contactUs}
           </a>
