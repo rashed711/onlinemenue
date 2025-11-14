@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import type { Order, RestaurantInfo, OrderType } from '../../types';
-import { DocumentTextIcon, PencilIcon, ShareIcon, PrintIcon, TrashIcon, CloseIcon, StarIcon, UserIcon, ClockIcon, HomeIcon, TakeawayIcon, TruckIcon, UserCircleIcon, CreditCardIcon, CheckIcon } from '../icons/Icons';
+import { DocumentTextIcon, PencilIcon, ShareIcon, PrintIcon, TrashIcon, CloseIcon, StarIcon, UserIcon, ClockIcon, HomeIcon, TakeawayIcon, TruckIcon, UserCircleIcon, CreditCardIcon, CheckIcon, ClipboardListIcon } from '../icons/Icons';
 import { StarRating } from '../StarRating';
 import { formatDateTime, formatNumber, generateReceiptImage, calculateItemTotal, calculateOriginalItemTotal, calculateTotalSavings } from '../../utils/helpers';
 import { Modal } from '../Modal';
@@ -8,6 +8,7 @@ import { useUI } from '../../contexts/UIContext';
 import { useData } from '../../contexts/DataContext';
 import { useOrders } from '../../contexts/OrderContext';
 import { useAuth } from '../../contexts/AuthContext';
+import { CopiedButton } from '../CopiedButton';
 
 interface OrderDetailsModalProps {
     order: Order;
@@ -161,6 +162,14 @@ export const OrderDetailsModal: React.FC<OrderDetailsModalProps> = ({ order, onC
                         {/* Left Column */}
                         <div className="lg:col-span-1 space-y-5">
                             <InfoCard>
+                                <InfoItem label={t.orderId} icon={<ClipboardListIcon className="w-5 h-5 text-slate-500" />}>
+                                    <div className="flex items-center justify-between">
+                                        <span className="font-mono text-base">{order.id}</span>
+                                        <CopiedButton textToCopy={order.id} className="text-xs font-semibold py-1 px-2 rounded-md shadow-sm">
+                                            {t.copy}
+                                        </CopiedButton>
+                                    </div>
+                                </InfoItem>
                                 <InfoItem label={t.orderType} icon={<OrderTypeIcon type={order.orderType}/>}>
                                     {t[order.orderType.toLowerCase() as keyof typeof t]} {order.tableNumber && `(${t.table} ${order.tableNumber})`}
                                 </InfoItem>

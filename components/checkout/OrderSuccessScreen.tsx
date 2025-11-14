@@ -1,9 +1,9 @@
-
 import React, { useState } from 'react';
 import { useUI } from '../../contexts/UIContext';
 import { useAuth } from '../../contexts/AuthContext';
 import { useData } from '../../contexts/DataContext';
 import { CheckCircleIcon, UserIcon, CopyIcon, CheckIcon } from '../icons/Icons';
+import { CopiedButton } from '../CopiedButton';
 
 interface OrderSuccessScreenProps {
     orderId: string;
@@ -13,17 +13,10 @@ export const OrderSuccessScreen: React.FC<OrderSuccessScreenProps> = ({ orderId 
     const { t, language } = useUI();
     const { currentUser } = useAuth();
     const { restaurantInfo } = useData();
-    const [copied, setCopied] = useState(false);
 
     const handleNav = (e: React.MouseEvent<HTMLAnchorElement>, path: string) => {
         e.preventDefault();
         window.location.hash = path;
-    };
-
-    const handleCopy = () => {
-        navigator.clipboard.writeText(orderId);
-        setCopied(true);
-        setTimeout(() => setCopied(false), 2000);
     };
 
     return (
@@ -36,9 +29,7 @@ export const OrderSuccessScreen: React.FC<OrderSuccessScreenProps> = ({ orderId 
                 <p className="text-sm font-semibold text-slate-600 dark:text-slate-300 mb-2">{t.yourOrderIdIs}</p>
                 <div className="flex items-center justify-center gap-3">
                     <p className="text-lg font-bold font-mono text-primary-600 dark:text-primary-400 tracking-wider">{orderId}</p>
-                    <button onClick={handleCopy} className={`p-2 rounded-lg transition-colors ${copied ? 'bg-green-100 dark:bg-green-900/50 text-green-600' : 'bg-slate-200 dark:bg-slate-700 hover:bg-slate-300'}`}>
-                        {copied ? <CheckIcon className="w-5 h-5" /> : <CopyIcon className="w-5 h-5" />}
-                    </button>
+                    <CopiedButton textToCopy={orderId} className="p-2 rounded-lg" />
                 </div>
                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-3">{t.useIdToTrack}</p>
             </div>
