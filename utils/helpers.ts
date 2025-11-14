@@ -163,6 +163,10 @@ export const generateReceiptImage = async (
 
     // --- SETUP ---
     const isRtl = language === 'ar';
+    // Set canvas direction for BiDi text support
+    if (isRtl) {
+        ctx.direction = 'rtl';
+    }
     const FONT_SANS = isRtl ? "'Cairo', sans-serif" : "'Cairo', sans-serif"; // Using Cairo for both for consistency
     const FONT_BOLD = `bold ${FONT_SANS}`;
     const FONT_MONO = "'Courier New', Courier, monospace";
@@ -190,8 +194,7 @@ export const generateReceiptImage = async (
         ctx.textAlign = textAlign(align);
         const lines = getWrappedTextLines(ctx, text, maxWidth);
         lines.forEach((line, index) => {
-            const lineToRender = isRtl ? '\u200F' + line : line;
-            ctx.fillText(lineToRender, x(xPos), yPos + (index * lineHeight));
+            ctx.fillText(line, x(xPos), yPos + (index * lineHeight));
         });
         return yPos + (lines.length - 1) * lineHeight;
     };
@@ -507,6 +510,10 @@ const generateGenericInvoiceImage = async (
 
     // --- SETUP ---
     const isRtl = language === 'ar';
+    // Set canvas direction for BiDi text support
+    if (isRtl) {
+        ctx.direction = 'rtl';
+    }
     const FONT_SANS = isRtl ? 'Cairo, sans-serif' : 'sans-serif';
     const FONT_MONO = 'monospace';
     
@@ -711,8 +718,7 @@ const generateGenericInvoiceImage = async (
         const lines = getWrappedTextLines(ctx, productName, itemColWidth - (colPadding * 2));
         let lineY = y;
         lines.forEach(line => {
-            const lineToRender = isRtl ? '\u200F' + line : line;
-            ctx.fillText(lineToRender, isRtl ? width - padding - colPadding : padding + colPadding, lineY);
+            ctx.fillText(line, isRtl ? width - padding - colPadding : padding + colPadding, lineY);
             lineY += 18;
         });
         const itemNameHeight = (lines.length * 18);
