@@ -129,5 +129,7 @@ export default {
   "orderType": "نوع الطلب",
   "orderId": "رقم الطلب",
   "installApp": "تثبيت التطبيق",
-  "orderUpdateFailed": "فشل تحديث الطلب."
+  "orderUpdateFailed": "فشل تحديث الطلب.",
+  "thankYouForOrder": "شكراً لطلبك!",
+  "atTime": "الساعة"
 };

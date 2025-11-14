@@ -195,6 +195,23 @@ export const generateReceiptImage = async (
         });
         return yPos + (lines.length - 1) * lineHeight;
     };
+     const formatReceiptDateTime = (isoString: string): string => {
+        const date = new Date(isoString);
+        const day = String(date.getDate()).padStart(2, '0');
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        const year = date.getFullYear();
+
+        let hours = date.getHours();
+        const minutes = String(date.getMinutes()).padStart(2, '0');
+        const ampm = hours >= 12 ? (language === 'ar' ? 'م' : 'PM') : (language === 'ar' ? 'ص' : 'AM');
+        hours = hours % 12;
+        hours = hours ? hours : 12; // the hour '0' should be '12'
+        const hoursStr = String(hours).padStart(2, '0');
+        
+        const atText = t.atTime || (language === 'ar' ? 'الساعة' : 'at');
+        
+        return `${day}/${month}/${year} ${atText} ${hoursStr}:${minutes} ${ampm}`;
+    };
     
     // --- HEIGHT CALCULATION ---
     let totalHeight = 0;
@@ -279,12 +296,13 @@ export const generateReceiptImage = async (
     ctx.fillText(`${t.orderId}:`, x(padding + 20), y);
     ctx.font = `bold 14px ${FONT_MONO}`;
     ctx.fillStyle = COLORS.TEXT_DARK;
-    ctx.fillText(`${order.id}`, x(padding + (isRtl ? -60 : 100)), y);
+    ctx.fillText(`${order.id}`, x(padding + 100), y);
+
 
     ctx.font = `14px ${FONT_SANS}`;
     ctx.fillStyle = COLORS.TEXT_MEDIUM;
     ctx.textAlign = textAlign('end');
-    ctx.fillText(`${t.date}: ${formatDateTime(order.timestamp)}`, x(width - padding - 20), y);
+    ctx.fillText(`${t.date}: ${formatReceiptDateTime(order.timestamp)}`, x(width - padding - 20), y);
     y += 35;
 
     // Info columns
@@ -467,7 +485,7 @@ export const generateReceiptImage = async (
     ctx.font = `16px ${FONT_SANS}`;
     ctx.fillStyle = COLORS.TEXT_MEDIUM;
     ctx.textAlign = 'center';
-    ctx.fillText(t.language === 'ar' ? 'شكراً لطلبك!' : 'Thank you for your order!', width / 2, y);
+    ctx.fillText(t.thankYouForOrder, width / 2, y);
 
     return canvas.toDataURL('image/png');
 };
@@ -786,6 +804,11 @@ export const getStartAndEndDates = (dateRange: string, customStart?: string, cus
             const yesterdayEnd = new Date(yesterdayStart);
             yesterdayEnd.setHours(23, 59, 59, 999);
             return { startDate: yesterdayStart, endDate: yesterdayEnd };
+        case 'week':
+            const startOfWeek = new Date();
+            startOfWeek.setDate(now.getDate() - now.getDay() + (now.getDay() === 0 ? -6 : 1)); // Assuming week starts on Monday
+            startOfWeek.setHours(0, 0, 0, 0);
+            return { startDate: startOfWeek, endDate: todayEnd };
         case 'last7days':
             const last7Start = new Date();
             last7Start.setDate(now.getDate() - 6);

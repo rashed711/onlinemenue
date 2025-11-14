@@ -128,7 +128,9 @@ export default {
   // FIX: Added missing keys to fix type errors.
   "date": "Date",
   "orderType": "Order Type",
-  "orderId": "Order ID",
+  "orderId": "OID",
   "installApp": "Install App",
-  "orderUpdateFailed": "Failed to update order."
+  "orderUpdateFailed": "Failed to update order.",
+  "thankYouForOrder": "Thank you for your order!",
+  "atTime": "at"
 };
