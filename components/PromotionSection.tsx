@@ -102,13 +102,15 @@ export const PromotionSection: React.FC<PromotionSectionProps> = ({ promotions, 
       const cardWidth = (slider.children[0] as HTMLElement).offsetWidth;
       const maxScroll = slider.scrollWidth - slider.clientWidth;
 
-      const isNearEnd = isRtl
-        ? slider.scrollLeft <= 1
-        : slider.scrollLeft >= maxScroll - 1;
+      const isAtEnd = isRtl
+        ? Math.abs(slider.scrollLeft) >= maxScroll - 5
+        : slider.scrollLeft >= maxScroll - 5;
 
-      if (isNearEnd) {
-        slider.scrollTo({ left: isRtl ? maxScroll : 0, behavior: 'smooth' });
+      if (isAtEnd) {
+        // Jump instantly back to the start. This is the most reliable way to create an endless loop.
+        slider.scrollTo({ left: 0, behavior: 'instant' });
       } else {
+        // Smoothly scroll to the next item.
         slider.scrollBy({ left: isRtl ? -cardWidth : cardWidth, behavior: 'smooth' });
       }
     }
@@ -116,7 +118,7 @@ export const PromotionSection: React.FC<PromotionSectionProps> = ({ promotions, 
 
   const startAutoPlay = useCallback(() => {
     if (intervalRef.current) clearInterval(intervalRef.current);
-    intervalRef.current = window.setInterval(scrollNext, 3000);
+    intervalRef.current = window.setInterval(scrollNext, 5000); // Slower interval for a smoother experience
   }, [scrollNext]);
 
   const stopAutoPlay = () => {

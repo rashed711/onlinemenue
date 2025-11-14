@@ -128,5 +128,7 @@ export default {
   // FIX: Added missing keys to fix type errors.
   "date": "Date",
   "orderType": "Order Type",
-  "orderId": "Order ID"
+  "orderId": "Order ID",
+  "installApp": "Install App",
+  "orderUpdateFailed": "Failed to update order."
 };

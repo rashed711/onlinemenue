@@ -26,5 +26,9 @@ export default {
   "loginAsAdmin": "تسجيل دخول المسؤول",
   "profileSaveFailed": "فشل حفظ الملف الشخصي.",
   "profileUpdateFailed": "فشل تحديث الملف الشخصي.",
-  "profileUpdatedSuccess": "تم تحديث الملف الشخصي بنجاح."
+  "profileUpdatedSuccess": "تم تحديث الملف الشخصي بنجاح.",
+  "passwordResetFailed": "فشل إعادة تعيين كلمة المرور.",
+  "passwordResetSuccess": "تم إعادة تعيين كلمة المرور بنجاح.",
+  "googleSignInFailed": "فشل تسجيل الدخول عبر جوجل.",
+  "googleSignInInvalidResponse": "فشل الاتصال بالخادم. استجابة غير صالحة."
 };

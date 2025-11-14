@@ -1,4 +1,5 @@
 
+
 export type Language = 'en' | 'ar';
 export type Theme = 'light' | 'dark';
 
@@ -129,6 +130,8 @@ export interface User {
   profilePicture?: string;
   firebase_uid?: string;
   google_id?: string;
+  governorate?: string;
+  address_details?: string;
 }
 
 

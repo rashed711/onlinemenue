@@ -9,5 +9,7 @@ export default {
   "pastOrders": "الطلبات السابقة",
   "customerFeedback": "تقييمك",
   "yourRating": "تقييمك",
-  "yourComment": "تعليقك (اختياري)"
+  "yourComment": "تعليقك (اختياري)",
+  "personalInformation": "المعلومات الشخصية",
+  "orderHistory": "سجل الطلبات"
 };

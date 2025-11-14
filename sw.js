@@ -1,6 +1,6 @@
 // --- Standard Service Worker Logic (Caching) ---
 
-const CACHE_NAME = 'fresco-cache-v4';
+const CACHE_NAME = 'fresco-cache-v5';
 const URLS_TO_CACHE = [
   '/',
   '/index.html',
@@ -40,32 +40,54 @@ self.addEventListener('activate', event => {
   return self.clients.claim();
 });
 
-self.addEventListener('fetch', event => {
-  const requestUrl = new URL(event.request.url);
+self.addEventListener('fetch', (event) => {
+  const { request } = event;
+  const url = new URL(request.url);
 
-  // Bypass cache for API calls and non-GET requests.
-  if (requestUrl.pathname.startsWith('/api/') || event.request.method !== 'GET') {
-    event.respondWith(fetch(event.request));
+  // Don't cache non-GET requests or chrome-extension URLs.
+  if (request.method !== 'GET' || url.protocol.startsWith('chrome-extension')) {
+    event.respondWith(fetch(request));
     return;
   }
 
-  // For other GET requests (local assets), use a cache-first strategy.
+  // For API GET requests, use a Network-First, falling back to Cache strategy.
+  if (url.pathname.startsWith('/api/')) {
+    event.respondWith(
+      fetch(request)
+        .then(networkResponse => {
+          // If network is successful, update cache and return response
+          return caches.open(CACHE_NAME).then(cache => {
+            cache.put(request, networkResponse.clone());
+            return networkResponse;
+          });
+        })
+        .catch(() => {
+          // If network fails, return from cache if available
+          return caches.match(request);
+        })
+    );
+    return;
+  }
+
+  // For other GET requests (static assets), use a Cache-First strategy.
   event.respondWith(
-    caches.match(event.request)
-      .then(response => {
-        return response || fetch(event.request).then(fetchResponse => {
-            // Optionally cache new assets on the fly
-            return caches.open(CACHE_NAME).then(cache => {
-                // Don't cache chrome-extension:// URLs
-                if (!requestUrl.protocol.startsWith('chrome-extension')) {
-                    cache.put(event.request, fetchResponse.clone());
-                }
-                return fetchResponse;
-            });
+    caches.match(request).then((response) => {
+      // If we have a cached response, return it.
+      if (response) {
+        return response;
+      }
+      // Otherwise, fetch from the network.
+      return fetch(request).then((networkResponse) => {
+        // And cache the new response for next time.
+        return caches.open(CACHE_NAME).then((cache) => {
+          cache.put(request, networkResponse.clone());
+          return networkResponse;
         });
-      })
+      });
+    })
   );
 });
+
 
 // --- Push Notification Logic ---
 

@@ -1,32 +1,31 @@
 import React, { useState, useMemo, useEffect, useRef, useCallback, lazy, Suspense } from 'react';
 import type { Language, Product, RestaurantInfo, Order, OrderStatus, User, UserRole, Promotion, Permission, Category, Tag, CartItem, SocialLink, LocalizedString, OrderStatusColumn, OrderType, Role } from '../../types';
 import { MenuAlt2Icon, BellIcon, BellSlashIcon, ShieldCheckIcon, UserIcon, HomeIcon, LogoutIcon } from '../icons/Icons';
-import { OrderDetailsModal } from './OrderDetailsModal';
-import { ProductEditModal } from './ProductEditModal';
-import { PromotionEditModal } from './PromotionEditModal';
-import { AdminSidebar } from './AdminSidebar';
-import { UserEditModal } from './UserEditModal';
-import { PermissionsEditModal } from './PermissionsEditModal';
-import { CategoryEditModal } from './CategoryEditModal';
-import { TagEditModal } from './TagEditModal';
-import { RefusalReasonModal } from './RefusalReasonModal';
-import { OrderEditModal } from './OrderEditModal';
-import { RoleEditModal } from './RoleEditModal';
-// New page component imports
-const DashboardPage = lazy(() => import('./pages/DashboardPage').then(module => ({ default: module.DashboardPage })));
-import { OrdersPage } from './pages/OrdersPage';
-import { ProductsListPage } from './pages/ProductsListPage';
-import { UsersPage } from './pages/UsersPage';
-import { RolesPage } from './pages/RolesPage';
-import { PromotionsPage } from './pages/PromotionsPage';
-// Existing page component imports
-import { ClassificationsPage } from './ClassificationsPage';
-import { CashierPage } from './CashierPage';
-import { SettingsPage } from './SettingsPage';
-import { InventoryPage } from './InventoryPage';
-import { ReportsRootPage } from './reports/ReportsRootPage';
-const TreasuryPage = lazy(() => import('./pages/TreasuryPage').then(module => ({ default: module.TreasuryPage })));
 
+// Lazy-load all modals and sub-pages to split the code into smaller chunks
+const OrderDetailsModal = lazy(() => import('./OrderDetailsModal').then(module => ({ default: module.OrderDetailsModal })));
+const ProductEditModal = lazy(() => import('./ProductEditModal').then(module => ({ default: module.ProductEditModal })));
+const ProductDetailsModal = lazy(() => import('./ProductDetailsModal').then(module => ({ default: module.ProductDetailsModal })));
+const PromotionEditModal = lazy(() => import('./PromotionEditModal').then(module => ({ default: module.PromotionEditModal })));
+const AdminSidebar = lazy(() => import('./AdminSidebar').then(module => ({ default: module.AdminSidebar })));
+const UserEditModal = lazy(() => import('./UserEditModal').then(module => ({ default: module.UserEditModal })));
+const PermissionsEditModal = lazy(() => import('./PermissionsEditModal').then(module => ({ default: module.PermissionsEditModal })));
+const CategoryEditModal = lazy(() => import('./CategoryEditModal').then(module => ({ default: module.CategoryEditModal })));
+const TagEditModal = lazy(() => import('./TagEditModal').then(module => ({ default: module.TagEditModal })));
+const RefusalReasonModal = lazy(() => import('./RefusalReasonModal').then(module => ({ default: module.RefusalReasonModal })));
+const OrderEditModal = lazy(() => import('./OrderEditModal').then(module => ({ default: module.OrderEditModal })));
+const RoleEditModal = lazy(() => import('./RoleEditModal').then(module => ({ default: module.RoleEditModal })));
+
+// Lazy load page components
+const DashboardPage = lazy(() => import('./pages/DashboardPage').then(module => ({ default: module.DashboardPage })));
+const OrdersPage = lazy(() => import('./pages/OrdersPage').then(module => ({ default: module.OrdersPage })));
+const ProductsAndPromotionsPage = lazy(() => import('./pages/ProductsAndPromotionsPage').then(module => ({ default: module.ProductsAndPromotionsPage })));
+const StaffAndRolesPage = lazy(() => import('./pages/StaffAndRolesPage').then(module => ({ default: module.StaffAndRolesPage })));
+const UsersPage = lazy(() => import('./pages/UsersPage').then(module => ({ default: module.UsersPage })));
+const SettingsPage = lazy(() => import('./SettingsPage').then(module => ({ default: module.SettingsPage })));
+const InventoryPage = lazy(() => import('./InventoryPage').then(module => ({ default: module.InventoryPage })));
+const ReportsRootPage = lazy(() => import('./reports/ReportsRootPage').then(module => ({ default: module.ReportsRootPage })));
+const TreasuryPage = lazy(() => import('./pages/TreasuryPage').then(module => ({ default: module.TreasuryPage })));
 
 import { normalizeArabic, getDescendantCategoryIds } from '../../utils/helpers';
 import { useUI } from '../../contexts/UIContext';
@@ -62,6 +61,12 @@ const NAV_ITEMS_WITH_PERMS = [
     { id: 'settings', permission: 'view_settings_page' },
 ];
 
+const LoadingSpinner: React.FC = () => (
+    <div className="flex justify-center items-center p-20">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary-500"></div>
+    </div>
+);
+
 export const AdminPage: React.FC<AdminPageProps> = ({ activeSubRoute, reportSubRoute }) => {
     const { language, t, showToast, setProgress, setShowProgress, setIsChangePasswordModalOpen } = useUI();
     const { currentUser, hasPermission, roles, logout } = useAuth();
@@ -94,6 +99,7 @@ export const AdminPage: React.FC<AdminPageProps> = ({ activeSubRoute, reportSubR
     
     const [editingOrder, setEditingOrder] = useState<Order | null>(null);
     const [editingProduct, setEditingProduct] = useState<Product | 'new' | null>(null);
+    const [viewingProduct, setViewingProduct] = useState<Product | null>(null);
     const [editingPromotion, setEditingPromotion] = useState<Promotion | 'new' | null>(null);
     const [editingUser, setEditingUser] = useState<User | 'new' | null>(null);
     const [editingPermissionsForRole, setEditingPermissionsForRole] = useState<UserRole | null>(null);
@@ -154,6 +160,15 @@ export const AdminPage: React.FC<AdminPageProps> = ({ activeSubRoute, reportSubR
         // Run on initial load and whenever orders are updated
         checkUrlForOrder();
     }, [allOrders, setViewingOrder]);
+
+    useEffect(() => {
+        if (viewingProduct) {
+            const updatedProductInList = allProducts.find(p => p.id === viewingProduct.id);
+            if (updatedProductInList && JSON.stringify(viewingProduct) !== JSON.stringify(updatedProductInList)) {
+                setViewingProduct(updatedProductInList);
+            }
+        }
+    }, [allProducts, viewingProduct]);
 
      useEffect(() => {
         const handleClickOutside = (event: MouseEvent) => {
@@ -423,7 +438,7 @@ export const AdminPage: React.FC<AdminPageProps> = ({ activeSubRoute, reportSubR
         switch(displayedTab) {
             case 'dashboard':
                 if (!hasPermission('view_reports_page')) return <PermissionDeniedComponent />;
-                return <Suspense fallback={<div>Loading...</div>}><DashboardPage /></Suspense>;
+                return <DashboardPage />;
             case 'orders':
                 if (!hasPermission('view_orders_page')) return <PermissionDeniedComponent />;
                 return (
@@ -448,10 +463,17 @@ export const AdminPage: React.FC<AdminPageProps> = ({ activeSubRoute, reportSubR
                     />
                 );
             case 'productList':
-                if (!hasPermission('view_products_page')) return <PermissionDeniedComponent />;
+            case 'classifications':
+            case 'promotions':
+                const canViewProducts = hasPermission('view_products_page');
+                const canViewClassifications = hasPermission('view_classifications_page');
+                const canViewPromotions = hasPermission('view_promotions_page');
+                if (!canViewProducts && !canViewClassifications && !canViewPromotions) return <PermissionDeniedComponent />;
                 return (
-                    <ProductsListPage
-                        hasPermission={hasPermission}
+                    <ProductsAndPromotionsPage
+                        initialTab={displayedTab}
+                        onViewProduct={setViewingProduct}
+                        // Products Props
                         setEditingProduct={setEditingProduct}
                         productSearchTerm={productSearchTerm}
                         setProductSearchTerm={setProductSearchTerm}
@@ -468,20 +490,32 @@ export const AdminPage: React.FC<AdminPageProps> = ({ activeSubRoute, reportSubR
                         filteredProducts={filteredProducts}
                         handleToggleProductFlag={handleToggleProductFlag}
                         deleteProduct={deleteProduct}
+                        // Classifications Props
+                        onAddCategory={() => setEditingCategory('new')}
+                        onEditCategory={setEditingCategory}
+                        onAddTag={() => setEditingTag('new')}
+                        onEditTag={setEditingTag}
+                        // Promotions Props
+                        setEditingPromotion={setEditingPromotion}
+                        allPromotions={allPromotions}
+                        allProducts={allProducts}
+                        handleTogglePromotionStatus={handleTogglePromotionStatus}
+                        deletePromotion={deletePromotion}
                     />
                 );
             case 'staff':
-                if (!hasPermission('view_users_page')) return <PermissionDeniedComponent />;
+                if (!hasPermission('view_users_page') && !hasPermission('view_roles_page')) return <PermissionDeniedComponent />;
                 return (
-                    <UsersPage
-                        pageType="staff"
-                        hasPermission={hasPermission}
+                    <StaffAndRolesPage
                         setEditingUser={setEditingUser}
                         userSearchTerm={userSearchTerm}
                         setUserSearchTerm={setUserSearchTerm}
                         usersToDisplay={usersToDisplay}
-                        roles={roles}
                         deleteUser={deleteUser}
+                        setEditingRole={setEditingRole}
+                        setEditingPermissionsForRole={setEditingPermissionsForRole}
+                        roles={roles}
+                        deleteRole={deleteRole}
                     />
                 );
             case 'customers':
@@ -498,40 +532,14 @@ export const AdminPage: React.FC<AdminPageProps> = ({ activeSubRoute, reportSubR
                         deleteUser={deleteUser}
                     />
                 );
-            case 'roles':
-                if (!hasPermission('view_roles_page')) return <PermissionDeniedComponent />;
-                return (
-                    <RolesPage
-                        hasPermission={hasPermission}
-                        setEditingRole={setEditingRole}
-                        setEditingPermissionsForRole={setEditingPermissionsForRole}
-                        roles={roles}
-                        deleteRole={deleteRole}
-                    />
-                );
-            case 'promotions':
-                 if (!hasPermission('view_promotions_page')) return <PermissionDeniedComponent />;
-                return (
-                    <PromotionsPage
-                        hasPermission={hasPermission}
-                        setEditingPromotion={setEditingPromotion}
-                        allPromotions={allPromotions}
-                        allProducts={allProducts}
-                        handleTogglePromotionStatus={handleTogglePromotionStatus}
-                        deletePromotion={deletePromotion}
-                    />
-                );
             case 'cashier': return <PermissionDeniedComponent />; // Cashier page removed or needs permission
             case 'reports': return hasPermission('view_reports_page') ? <ReportsRootPage activeSubRoute={reportSubRoute} /> : <PermissionDeniedComponent />;
-            case 'treasury': return hasPermission('view_treasury_page') ? <Suspense fallback={<div>Loading...</div>}><TreasuryPage /></Suspense> : <PermissionDeniedComponent />;
+            case 'treasury': return hasPermission('view_treasury_page') ? <TreasuryPage /> : <PermissionDeniedComponent />;
             case 'suppliers': return hasPermission('manage_suppliers') ? <InventoryPage pageType="suppliers" /> : <PermissionDeniedComponent />;
             case 'purchaseInvoices': return hasPermission('add_purchase_invoice') ? <InventoryPage pageType="purchaseInvoices" /> : <PermissionDeniedComponent />;
             case 'salesInvoices': return hasPermission('manage_sales_invoices') ? <InventoryPage pageType="salesInvoices" /> : <PermissionDeniedComponent />;
-            case 'classifications':
-                if (!hasPermission('view_classifications_page')) return <PermissionDeniedComponent />;
-                return <ClassificationsPage onAddCategory={() => setEditingCategory('new')} onEditCategory={setEditingCategory} onAddTag={() => setEditingTag('new')} onEditTag={setEditingTag} />;
             case 'settings': return hasPermission('view_settings_page') ? <SettingsPage /> : <PermissionDeniedComponent />;
-            default: return <Suspense fallback={<div>Loading...</div>}><DashboardPage /></Suspense>;
+            default: return <DashboardPage />;
         }
     };
 
@@ -542,7 +550,9 @@ export const AdminPage: React.FC<AdminPageProps> = ({ activeSubRoute, reportSubR
                     <button onClick={() => setSidebarOpen(true)} className="p-2 md:hidden">
                         <MenuAlt2Icon className="w-6 h-6"/>
                     </button>
-                    <h1 className="text-xl font-bold text-slate-800 dark:text-slate-100">{t.adminPanel}</h1>
+                    <a href="#/admin" onClick={(e) => handleNav(e, '/admin')}>
+                        <h1 className="text-xl font-bold text-slate-800 dark:text-slate-100 hover:text-primary-600 dark:hover:text-primary-400 transition-colors">{t.adminPanel}</h1>
+                    </a>
                 </div>
                 <div className="flex items-center gap-4">
                     { isPushSupported && (
@@ -585,24 +595,47 @@ export const AdminPage: React.FC<AdminPageProps> = ({ activeSubRoute, reportSubR
             </header>
 
             <div className="flex flex-1 overflow-hidden">
-                <AdminSidebar activeTab={activeTab} setActiveTab={setTab} isOpen={isSidebarOpen} setIsOpen={setSidebarOpen} onChangePasswordClick={onChangePasswordClick} />
+                 <Suspense fallback={<div className="w-64 bg-white dark:bg-slate-800"></div>}>
+                    <AdminSidebar activeTab={activeTab} setActiveTab={setTab} isOpen={isSidebarOpen} setIsOpen={setSidebarOpen} onChangePasswordClick={onChangePasswordClick} />
+                </Suspense>
                 <main className={`flex-1 transition-all duration-300 overflow-y-auto p-4 sm:p-6 lg:p-8 ${language === 'ar' ? 'md:mr-64' : 'md:ml-64'}`}>
                    <div className={`transition-opacity duration-300 ${transitionStage === 'in' ? 'opacity-100' : 'opacity-0'}`}>
-                        {renderContent()}
+                        <Suspense fallback={<LoadingSpinner />}>
+                            {renderContent()}
+                        </Suspense>
                    </div>
                 </main>
             </div>
-
-            {viewingOrder && <OrderDetailsModal order={viewingOrder} onClose={() => setViewingOrder(null)} canEdit={hasPermission('edit_order_content')} onEdit={setEditingOrder} canDelete={hasPermission('delete_order')} onDelete={deleteOrder} creatorName={viewingOrderCreatorName} />}
-            {editingProduct !== null && <ProductEditModal product={editingProduct === 'new' ? null : editingProduct} onClose={() => setEditingProduct(null)} onSave={handleSaveProduct} />}
-            {editingPromotion !== null && <PromotionEditModal promotion={editingPromotion === 'new' ? null : editingPromotion} onClose={() => setEditingPromotion(null)} onSave={handleSavePromotion} />}
-            {editingUser !== null && <UserEditModal user={editingUser === 'new' ? null : editingUser} onClose={() => setEditingUser(null)} onSave={handleSaveUser} />}
-            {editingPermissionsForRole !== null && <PermissionsEditModal roleId={editingPermissionsForRole} onClose={() => setEditingPermissionsForRole(null)} onSave={handleSavePermissions} />}
-            {editingRole !== null && <RoleEditModal role={editingRole === 'new' ? null : editingRole} onClose={() => setEditingRole(null)} onSave={handleSaveRole} />}
-            {refusingOrder && <RefusalReasonModal order={refusingOrder} onClose={() => setRefusingOrder(null)} onSave={(reason) => { updateOrder(refusingOrder.id, { status: 'refused', refusalReason: reason }); setRefusingOrder(null); }} />}
-            {editingOrder && <OrderEditModal order={editingOrder} onClose={() => setEditingOrder(null)} onSave={handleSaveOrder} />}
-            {editingCategory !== null && <CategoryEditModal category={editingCategory === 'new' ? null : editingCategory} categories={categories} onClose={() => setEditingCategory(null)} onSave={handleSaveCategory} />}
-            {editingTag !== null && <TagEditModal tag={editingTag === 'new' ? null : editingTag} onClose={() => setEditingTag(null)} onSave={handleSaveTag} />}
+            
+            <Suspense fallback={<div />}>
+                {viewingOrder && <OrderDetailsModal order={viewingOrder} onClose={() => setViewingOrder(null)} canEdit={hasPermission('edit_order_content')} onEdit={setEditingOrder} canDelete={hasPermission('delete_order')} onDelete={deleteOrder} creatorName={viewingOrderCreatorName} />}
+                {editingProduct !== null && <ProductEditModal product={editingProduct === 'new' ? null : editingProduct} onClose={() => setEditingProduct(null)} onSave={handleSaveProduct} />}
+                {viewingProduct && (
+                    <ProductDetailsModal
+                        product={viewingProduct}
+                        onClose={() => setViewingProduct(null)}
+                        onEdit={(product) => {
+                            setEditingProduct(product);
+                            setViewingProduct(null);
+                        }}
+                        onDelete={(productId) => {
+                            deleteProduct(productId);
+                            setViewingProduct(null);
+                        }}
+                        onToggleFlag={handleToggleProductFlag}
+                        canEdit={hasPermission('edit_product')}
+                        canDelete={hasPermission('delete_product')}
+                    />
+                )}
+                {editingPromotion !== null && <PromotionEditModal promotion={editingPromotion === 'new' ? null : editingPromotion} onClose={() => setEditingPromotion(null)} onSave={handleSavePromotion} />}
+                {editingUser !== null && <UserEditModal user={editingUser === 'new' ? null : editingUser} onClose={() => setEditingUser(null)} onSave={handleSaveUser} />}
+                {editingPermissionsForRole !== null && <PermissionsEditModal roleId={editingPermissionsForRole} onClose={() => setEditingPermissionsForRole(null)} onSave={handleSavePermissions} />}
+                {editingRole !== null && <RoleEditModal role={editingRole === 'new' ? null : editingRole} onClose={() => setEditingRole(null)} onSave={handleSaveRole} />}
+                {refusingOrder && <RefusalReasonModal order={refusingOrder} onClose={() => setRefusingOrder(null)} onSave={(reason) => { updateOrder(refusingOrder.id, { status: 'refused', refusalReason: reason }); setRefusingOrder(null); }} />}
+                {editingOrder && <OrderEditModal order={editingOrder} onClose={() => setEditingOrder(null)} onSave={handleSaveOrder} />}
+                {editingCategory !== null && <CategoryEditModal category={editingCategory === 'new' ? null : editingCategory} categories={categories} onClose={() => setEditingCategory(null)} onSave={handleSaveCategory} />}
+                {editingTag !== null && <TagEditModal tag={editingTag === 'new' ? null : editingTag} onClose={() => setEditingTag(null)} onSave={handleSaveTag} />}
+            </Suspense>
         </div>
     );
 };

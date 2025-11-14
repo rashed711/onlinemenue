@@ -96,8 +96,8 @@ const OrderSuccessScreen: React.FC = () => {
 
 
 export const CheckoutPage: React.FC = () => {
-    const { language, t, isProcessing, setIsProcessing } = useUI();
-    const { currentUser } = useAuth();
+    const { language, t, isProcessing, setIsProcessing, showToast } = useUI();
+    const { currentUser, isAuthenticating } = useAuth();
     const { restaurantInfo } = useData();
     const { cartItems, clearCart } = useCart();
     const { placeOrder } = useOrders();
@@ -201,8 +201,9 @@ export const CheckoutPage: React.FC = () => {
             clearCart();
             setOrderSuccess(true);
             
-        } catch (error) {
+        } catch (error: any) {
             console.error('Failed to place order:', error);
+            showToast(error.message || t.orderSubmitFailed);
         } finally {
             setIsProcessing(false);
         }
@@ -383,8 +384,8 @@ export const CheckoutPage: React.FC = () => {
                                     </div>
                                     <div className="mt-8 flex justify-between">
                                         <button onClick={handlePreviousStep} className="font-bold py-3 px-6 rounded-lg text-slate-700 dark:text-slate-200">{t.previousStep}</button>
-                                        <button onClick={handleConfirmPurchase} disabled={isProcessing} className="bg-green-600 text-white font-bold py-3 px-8 rounded-lg hover:bg-green-700 disabled:bg-slate-400">
-                                            {isProcessing ? '...' : t.confirmPurchase}
+                                        <button onClick={handleConfirmPurchase} disabled={isProcessing || isAuthenticating} className="bg-green-600 text-white font-bold py-3 px-8 rounded-lg hover:bg-green-700 disabled:bg-slate-400">
+                                            {isProcessing || isAuthenticating ? (language === 'ar' ? 'جار التأكيد...' : 'Confirming...') : t.confirmPurchase}
                                         </button>
                                     </div>
                                 </div>

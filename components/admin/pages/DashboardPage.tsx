@@ -57,13 +57,10 @@ export const DashboardPage: React.FC = () => {
             { id: 'treasury', label: t.treasury, icon: BankIcon, permission: 'view_treasury_page' as Permission },
         ],
         management: [
-            { id: 'productList', label: t.productList, icon: CollectionIcon, permission: 'view_products_page' as Permission },
-            { id: 'classifications', label: t.classifications, icon: BookmarkAltIcon, permission: 'view_classifications_page' as Permission },
-            { id: 'promotions', label: t.managePromotions, icon: TagIcon, permission: 'view_promotions_page' as Permission },
+            { id: 'productList', label: t.productsAndPromotions, icon: CollectionIcon, permission: 'view_products_page' as Permission },
         ],
         administration: [
-            { id: 'staff', label: t.staff, icon: UsersIcon, permission: 'view_users_page' as Permission },
-            { id: 'roles', label: t.manageRoles, icon: ShieldCheckIcon, permission: 'view_roles_page' as Permission },
+            { id: 'staff', label: t.staffAndRoles, icon: UsersIcon, permission: 'view_users_page' as Permission },
             { id: 'settings', label: t.settings, icon: CogIcon, permission: 'view_settings_page' as Permission },
         ]
     };
@@ -80,8 +77,21 @@ export const DashboardPage: React.FC = () => {
             {/* Quick Actions - Cards Enlarged */}
             <div>
                 <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-6">
-                    {allNavItems.map(item => (
-                        item.id !== 'dashboard' && hasPermission(item.permission) && (
+                    {allNavItems.map(item => {
+                        if (item.id === 'dashboard') return null;
+
+                        let canView = hasPermission(item.permission);
+                        // Special handling for combined pages to match sidebar logic
+                        if (item.id === 'productList') {
+                            canView = hasPermission('view_products_page') || hasPermission('view_classifications_page') || hasPermission('view_promotions_page');
+                        }
+                        if (item.id === 'staff') {
+                            canView = hasPermission('view_users_page') || hasPermission('view_roles_page');
+                        }
+                        
+                        if (!canView) return null;
+
+                        return (
                             <QuickLink 
                                 key={item.id}
                                 title={item.label} 
@@ -89,7 +99,7 @@ export const DashboardPage: React.FC = () => {
                                 icon={item.icon} 
                             />
                         )
-                    ))}
+                    })}
                 </div>
             </div>
 

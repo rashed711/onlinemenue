@@ -15,7 +15,7 @@ interface OrderDetailsModalProps {
     canEdit: boolean;
     onEdit: (order: Order) => void;
     canDelete: boolean;
-    onDelete: (orderId: string) => void;
+    onDelete: (orderId: string) => Promise<boolean>;
     creatorName?: string;
 }
 
@@ -133,6 +133,13 @@ export const OrderDetailsModal: React.FC<OrderDetailsModalProps> = ({ order, onC
         }
     }
     
+    const handleDeleteAndClose = async () => {
+        const success = await onDelete(order.id);
+        if (success) {
+            onClose();
+        }
+    };
+
     const OrderTypeIcon: React.FC<{ type: Order['orderType'] }> = ({ type }) => {
         switch (type) {
             case 'Dine-in': return <HomeIcon className="w-5 h-5 text-slate-500" />;
@@ -302,7 +309,7 @@ export const OrderDetailsModal: React.FC<OrderDetailsModalProps> = ({ order, onC
                         <div className="flex justify-between items-end flex-row-reverse gap-4">
                             <div className="flex items-center gap-2">
                                 {canEdit && <button onClick={() => onEdit(order)} title={t.editOrder} className="p-2 rounded-full text-blue-600 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-900/50 transition-colors"><PencilIcon className="w-5 h-5" /></button>}
-                                {canDelete && <button onClick={() => onDelete(order.id)} title={t.deleteOrder} className="p-2 rounded-full text-red-600 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/50 transition-colors"><TrashIcon className="w-5 h-5" /></button>}
+                                {canDelete && <button onClick={handleDeleteAndClose} title={t.deleteOrder} className="p-2 rounded-full text-red-600 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/50 transition-colors"><TrashIcon className="w-5 h-5" /></button>}
                                 <button onClick={handleShare} disabled={isProcessing} title={t.share} className="p-2 rounded-full text-green-600 dark:text-green-400 hover:bg-green-100 dark:hover:bg-green-900/50 transition-colors disabled:opacity-50"><ShareIcon className="w-5 h-5" /></button>
                                 <button onClick={handlePrint} disabled={isProcessing} title={t.print} className="p-2 rounded-full text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors disabled:opacity-50"><PrintIcon className="w-5 h-5" /></button>
                             </div>

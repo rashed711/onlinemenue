@@ -26,5 +26,9 @@ export default {
   "loginAsAdmin": "Login as Admin",
   "profileSaveFailed": "Failed to save profile.",
   "profileUpdateFailed": "Failed to update profile.",
-  "profileUpdatedSuccess": "Profile updated successfully."
+  "profileUpdatedSuccess": "Profile updated successfully.",
+  "passwordResetFailed": "Failed to reset password.",
+  "passwordResetSuccess": "Password reset successfully.",
+  "googleSignInFailed": "Google Sign-In failed.",
+  "googleSignInInvalidResponse": "Failed to connect to the server. Invalid response."
 };

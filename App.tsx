@@ -1,27 +1,25 @@
 
+
 import React, { useSyncExternalStore, useMemo, useEffect, lazy, Suspense } from 'react';
 import { UIProvider, useUI } from './contexts/UIContext';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { DataProvider, useData } from './contexts/DataContext';
 import { CartProvider } from './contexts/CartContext';
 import { OrderProvider } from './contexts/OrderContext';
-import { UserManagementProvider } from './contexts/UserManagementContext';
-import { InventoryProvider } from './contexts/InventoryContext';
-import { TreasuryProvider } from './contexts/TreasuryContext';
 import { APP_CONFIG } from './utils/config';
 
 // Lazy load page components for better performance
 const MenuPage = lazy(() => import('./components/MenuPage').then(module => ({ default: module.MenuPage })));
 const LoginPage = lazy(() => import('./components/auth/LoginPage').then(module => ({ default: module.LoginPage })));
 const ProfilePage = lazy(() => import('./components/profile/ProfilePage').then(module => ({ default: module.ProfilePage })));
-const AdminPage = lazy(() => import('./components/admin/AdminPage').then(module => ({ default: module.AdminPage })));
+const AdminArea = lazy(() => import('./components/admin/AdminArea'));
 const SocialPage = lazy(() => import('./components/SocialPage').then(module => ({ default: module.SocialPage })));
 const CheckoutPage = lazy(() => import('./components/checkout/CheckoutPage').then(module => ({ default: module.CheckoutPage })));
 const ForgotPasswordPage = lazy(() => import('./components/auth/ForgotPasswordPage').then(module => ({ default: module.ForgotPasswordPage })));
 const ActionHandlerPage = lazy(() => import('./components/auth/ActionHandlerPage').then(module => ({ default: module.ActionHandlerPage })));
+const CompleteProfilePage = lazy(() => import('./components/auth/CompleteProfilePage').then(module => ({ default: module.CompleteProfilePage })));
 
 // Non-page components can be imported directly
-import { CompleteProfileModal } from './components/auth/CompleteProfileModal';
 import { ToastNotification } from './components/ToastNotification';
 import { TopProgressBar } from './components/TopProgressBar';
 import { ChangePasswordModal } from './components/profile/ChangePasswordModal';
@@ -72,6 +70,10 @@ const AppContent: React.FC = () => {
     const routeParts = displayedRoute.split('?')[0].split('/');
     const baseRoute = routeParts.slice(0, 3).join('/'); // #/admin/reports
 
+    if (isCompletingProfile) {
+        return <CompleteProfilePage />;
+    }
+
     if (isLoading || !restaurantInfo) {
       return <LoadingOverlay isVisible={true} />;
     }
@@ -93,7 +95,7 @@ const AppContent: React.FC = () => {
     if (baseRoute.startsWith('#/admin')) {
         const adminSubRoute = routeParts[2] || 'dashboard'; // For /admin/ or /admin
         const reportSubRoute = routeParts[3] || 'dashboard'; // For /reports/dashboard etc.
-        return <AdminPage activeSubRoute={adminSubRoute} reportSubRoute={reportSubRoute} />;
+        return <AdminArea activeSubRoute={adminSubRoute} reportSubRoute={reportSubRoute} />;
     }
     if (baseRoute.startsWith('#/login')) return <LoginPage />;
     if (baseRoute.startsWith('#/forgot-password')) return <ForgotPasswordPage />;
@@ -121,7 +123,6 @@ const AppContent: React.FC = () => {
               onClose={() => setIsChangePasswordModalOpen(false)}
           />
       )}
-      {isCompletingProfile && <CompleteProfileModal />}
     </>
   );
 };
@@ -132,17 +133,11 @@ const App: React.FC = () => {
     <UIProvider>
       <AuthProvider>
         <DataProvider>
-          <UserManagementProvider>
-            <TreasuryProvider>
-              <InventoryProvider>
-                <CartProvider>
-                  <OrderProvider>
-                    <AppContent />
-                  </OrderProvider>
-                </CartProvider>
-              </InventoryProvider>
-            </TreasuryProvider>
-          </UserManagementProvider>
+          <CartProvider>
+            <OrderProvider>
+              <AppContent />
+            </OrderProvider>
+          </CartProvider>
         </DataProvider>
       </AuthProvider>
     </UIProvider>

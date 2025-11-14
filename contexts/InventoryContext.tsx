@@ -119,7 +119,9 @@ export const InventoryProvider: React.FC<{ children: React.ReactNode }> = ({ chi
             if (!response.ok || !result.success) throw new Error(result.error || t.invoiceAddFailed);
             showToast(t.invoiceAddedSuccess);
             await Promise.all([fetchInventoryData(), fetchAllData(), fetchTreasuryData()]);
-        } catch (error: any) { showToast(error.message || t.invoiceAddFailed, { isError: true }); }
+        } catch (error: any) { 
+// FIX: Removed second argument from showToast call.
+showToast(error.message || t.invoiceAddFailed); }
         finally { setIsProcessing(false); }
     }, [hasPermission, showToast, t, setIsProcessing, currentUser, fetchAllData, fetchInventoryData, fetchTreasuryData]);
 
@@ -132,7 +134,9 @@ export const InventoryProvider: React.FC<{ children: React.ReactNode }> = ({ chi
             if (!response.ok || !result.success) throw new Error(result.error || t.invoiceUpdateFailed);
             showToast(t.invoiceUpdatedSuccess);
             await Promise.all([fetchInventoryData(), fetchAllData(), fetchTreasuryData()]);
-        } catch (error: any) { showToast(error.message || t.invoiceUpdateFailed, { isError: true }); }
+        } catch (error: any) { 
+// FIX: Removed second argument from showToast call.
+showToast(error.message || t.invoiceUpdateFailed); }
         finally { setIsProcessing(false); }
     }, [hasPermission, showToast, t, setIsProcessing, fetchInventoryData, fetchAllData, fetchTreasuryData]);
 
@@ -145,7 +149,9 @@ export const InventoryProvider: React.FC<{ children: React.ReactNode }> = ({ chi
             if (!response.ok || !result.success) throw new Error(result.error || t.invoiceDeleteFailed);
             showToast(t.invoiceDeletedSuccess);
             await Promise.all([fetchInventoryData(), fetchAllData(), fetchTreasuryData()]);
-        } catch (error: any) { showToast(error.message || t.invoiceDeleteFailed, { isError: true }); }
+        } catch (error: any) { 
+// FIX: Removed second argument from showToast call.
+showToast(error.message || t.invoiceDeleteFailed); }
         finally { setIsProcessing(false); }
     }, [hasPermission, showToast, t, setIsProcessing, fetchInventoryData, fetchAllData, fetchTreasuryData]);
     
@@ -159,7 +165,9 @@ export const InventoryProvider: React.FC<{ children: React.ReactNode }> = ({ chi
             if (!response.ok || !result.success) throw new Error(result.error || t.salesInvoiceAddFailed);
             showToast(t.salesInvoiceAddedSuccess);
             await Promise.all([fetchInventoryData(), fetchAllData(), fetchTreasuryData()]);
-        } catch (error: any) { showToast(error.message || t.salesInvoiceAddFailed, { isError: true }); }
+        } catch (error: any) { 
+// FIX: Removed second argument from showToast call.
+showToast(error.message || t.salesInvoiceAddFailed); }
         finally { setIsProcessing(false); }
     }, [hasPermission, showToast, t, setIsProcessing, currentUser, fetchAllData, fetchInventoryData, fetchTreasuryData]);
 
@@ -172,7 +180,9 @@ export const InventoryProvider: React.FC<{ children: React.ReactNode }> = ({ chi
             if (!response.ok || !result.success) throw new Error(result.error || t.salesInvoiceUpdateFailed);
             showToast(t.salesInvoiceUpdatedSuccess);
             await Promise.all([fetchInventoryData(), fetchAllData(), fetchTreasuryData()]);
-        } catch (error: any) { showToast(error.message || t.salesInvoiceUpdateFailed, { isError: true }); }
+        } catch (error: any) { 
+// FIX: Removed second argument from showToast call.
+showToast(error.message || t.salesInvoiceUpdateFailed); }
         finally { setIsProcessing(false); }
     }, [hasPermission, showToast, t, setIsProcessing, fetchInventoryData, fetchAllData, fetchTreasuryData]);
 
@@ -185,7 +195,9 @@ export const InventoryProvider: React.FC<{ children: React.ReactNode }> = ({ chi
             if (!response.ok || !result.success) throw new Error(result.error || t.invoiceDeleteFailed);
             showToast(t.invoiceDeletedSuccess);
             await Promise.all([fetchInventoryData(), fetchAllData(), fetchTreasuryData()]);
-        } catch (error: any) { showToast(error.message || t.invoiceDeleteFailed, { isError: true }); }
+        } catch (error: any) { 
+// FIX: Removed second argument from showToast call.
+showToast(error.message || t.invoiceDeleteFailed); }
         finally { setIsProcessing(false); }
     }, [hasPermission, showToast, t, setIsProcessing, fetchInventoryData, fetchAllData, fetchTreasuryData]);
     

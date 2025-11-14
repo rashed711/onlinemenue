@@ -56,5 +56,8 @@ export default {
   "showDetails": "Show Details",
   "hideDetails": "Hide Details",
   "orderDetails": "Order Details",
-  "leaveFeedback": "Leave Feedback"
+  "leaveFeedback": "Leave Feedback",
+  "orderSubmitFailed": "Failed to submit order. Please try again.",
+  "shipTo": "Ship To",
+  "payWith": "Pay With"
 };

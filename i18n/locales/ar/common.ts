@@ -127,5 +127,7 @@ export default {
   "addToCart": "إضافة للسلة",
   "date": "التاريخ",
   "orderType": "نوع الطلب",
-  "orderId": "رقم الطلب"
+  "orderId": "رقم الطلب",
+  "installApp": "تثبيت التطبيق",
+  "orderUpdateFailed": "فشل تحديث الطلب."
 };

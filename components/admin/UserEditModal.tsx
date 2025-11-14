@@ -2,7 +2,6 @@ import React, { useState, useEffect, useMemo } from 'react';
 import type { User, UserRole, Role } from '../../types';
 import { useUI } from '../../contexts/UIContext';
 import { useAuth } from '../../contexts/AuthContext';
-import { useUserManagement } from '../../contexts/UserManagementContext';
 import { Modal } from '../Modal';
 
 interface UserEditModalProps {
@@ -19,10 +18,8 @@ const emptyUser: Omit<User, 'id'> = {
 };
 
 export const UserEditModal: React.FC<UserEditModalProps> = ({ user, onClose, onSave }) => {
-    // @FIX: Refactored to get translations `t` directly from the `useUI` hook.
     const { language, t } = useUI();
-    const { currentUser } = useAuth();
-    const { roles } = useUserManagement();
+    const { currentUser, roles } = useAuth();
     
     const [formData, setFormData] = useState<Omit<User, 'id'>>(emptyUser);
     const [error, setError] = useState('');

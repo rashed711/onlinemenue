@@ -5,7 +5,7 @@ import { Modal } from '../Modal';
 
 export const CompleteProfileModal: React.FC = () => {
     const { t, isProcessing } = useUI();
-    const { completeProfile, newUserFirebaseData, logout } = useAuth();
+    const { completeProfile, newUserFirebaseData, logout, currentUser } = useAuth();
     
     const [name, setName] = useState('');
     const [mobile, setMobile] = useState('');
@@ -13,11 +13,16 @@ export const CompleteProfileModal: React.FC = () => {
     useEffect(() => {
         if (newUserFirebaseData?.name) {
             setName(newUserFirebaseData.name);
+        } else if (currentUser?.name) { // Pre-fill from current user for Google Sign-In flow
+            setName(currentUser.name);
         }
+        
         if (newUserFirebaseData?.phoneNumber) {
             setMobile(newUserFirebaseData.phoneNumber);
+        } else if (currentUser?.mobile) {
+            setMobile(currentUser.mobile);
         }
-    }, [newUserFirebaseData]);
+    }, [newUserFirebaseData, currentUser]);
     
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();

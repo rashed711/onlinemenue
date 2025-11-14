@@ -1,16 +1,20 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import type { Order } from '../../types';
-import { PencilIcon, CameraIcon, KeyIcon, LogoutIcon, CheckIcon, CloseIcon, DevicePhoneMobileIcon, EnvelopeIcon } from '../icons/Icons';
+import { PencilIcon, CameraIcon, KeyIcon, LogoutIcon, CheckIcon, CloseIcon, DevicePhoneMobileIcon, EnvelopeIcon, UserCircleIcon, ClipboardListIcon, ClockIcon, ShieldCheckIcon, InformationCircleIcon } from '../icons/Icons';
 import { FeedbackModal } from './FeedbackModal';
 import { useUI } from '../../contexts/UIContext';
 import { useAuth } from '../../contexts/AuthContext';
 import { useData } from '../../contexts/DataContext';
 import { useOrders } from '../../contexts/OrderContext';
-import { OrderHistory } from './OrderHistory';
-import { Header } from '../Header'; // Import the main header
+import { Header } from '../Header';
 import { optimizeImage } from '../../utils/imageOptimizer';
 import { ReceiptModal } from '../ReceiptModal';
 import { generateReceiptImage } from '../../utils/helpers';
+import { ActiveOrderCard } from './ActiveOrderCard';
+import { PastOrderCard } from './PastOrderCard';
+
+
+type ProfileTab = 'info' | 'active' | 'history' | 'security';
 
 export const ProfilePage: React.FC = () => {
     const { language, t, setIsChangePasswordModalOpen, setIsProcessing, showToast } = useUI();
@@ -18,6 +22,7 @@ export const ProfilePage: React.FC = () => {
     const { restaurantInfo } = useData();
     const { orders, updateOrder } = useOrders();
     
+    const [activeTab, setActiveTab] = useState<ProfileTab>('active');
     const [feedbackOrder, setFeedbackOrder] = useState<Order | null>(null);
     const [receiptImageUrl, setReceiptImageUrl] = useState<string>('');
     const [isReceiptModalOpen, setIsReceiptModalOpen] = useState(false);
@@ -118,6 +123,15 @@ export const ProfilePage: React.FC = () => {
         return null;
     }
 
+    const isGoogleUser = !!currentUser.google_id;
+
+    const tabs = [
+        { id: 'active', label: t.activeOrders, icon: ClipboardListIcon },
+        { id: 'history', label: t.orderHistory, icon: ClockIcon },
+        { id: 'info', label: t.personalInformation, icon: UserCircleIcon },
+        { id: 'security', label: t.security, icon: ShieldCheckIcon },
+    ];
+    
     const renderEditableField = (
         label: string, 
         Icon: React.FC<any>, 
@@ -128,20 +142,21 @@ export const ProfilePage: React.FC = () => {
         handleCancel: () => void,
         inputType: 'text' | 'tel' = 'text'
     ) => (
-        <div className="flex items-center justify-between p-4">
+        <div className="flex items-center justify-between p-4 transition-colors hover:bg-slate-100/50 dark:hover:bg-slate-700/30 rounded-lg">
             <div className="flex items-center gap-4">
                 <Icon className="w-6 h-6 text-slate-500 dark:text-slate-400" />
                 <div className="text-sm">
                     <p className="font-medium text-slate-500 dark:text-slate-400">{label}</p>
                     {!isEditing ? (
-                        <p className="font-semibold text-slate-800 dark:text-slate-100">{value}</p>
+                        <p className="font-semibold text-slate-800 dark:text-slate-100 text-base">{value}</p>
                     ) : (
                         <input 
                             type={inputType}
                             value={value} 
                             onChange={(e) => setValue(e.target.value)} 
-                            className="text-sm font-semibold bg-transparent border-b-2 border-primary-500 focus:outline-none dark:text-slate-100" 
+                            className="text-base font-semibold bg-transparent border-b-2 border-primary-500 focus:outline-none dark:text-slate-100" 
                             autoFocus 
+                            onKeyDown={(e) => { if (e.key === 'Enter') handleSave(); if (e.key === 'Escape') handleCancel(); }}
                         />
                     )}
                 </div>
@@ -162,79 +177,116 @@ export const ProfilePage: React.FC = () => {
     return (
         <>
             <Header onCartClick={() => window.location.hash = '#/'} />
-            <div className="min-h-screen bg-slate-100 dark:bg-slate-950 p-4 sm:p-6 md:p-8">
-                <div className="max-w-7xl mx-auto">
-                    <h1 className="text-3xl sm:text-4xl font-extrabold text-slate-800 dark:text-slate-100 mb-8">{t.myProfile}</h1>
+            <div className="min-h-screen bg-slate-100 dark:bg-slate-950">
+                <main className="max-w-7xl mx-auto px-4 sm:px-6 md:px-8 py-12">
+                    
+                    {/* Profile Header */}
+                    <div className="flex flex-col sm:flex-row items-center gap-6 mb-10">
+                        <div className="relative w-24 h-24 sm:w-28 sm:h-28 flex-shrink-0">
+                            <img src={currentUser.profilePicture} alt={t.profilePicture} className="w-full h-full rounded-full object-cover border-4 border-white dark:border-slate-800 shadow-lg"/>
+                            <input type="file" ref={profilePicInputRef} onChange={handlePictureChange} accept="image/*" className="sr-only"/>
+                            <button onClick={() => profilePicInputRef.current?.click()} className="absolute bottom-0 end-0 bg-primary-500 text-white rounded-full p-2 hover:bg-primary-600 transition-transform transform hover:scale-110 shadow-md" aria-label={t.changeProfilePicture} title={t.changeProfilePicture}><CameraIcon className="w-5 h-5"/></button>
+                        </div>
+                        <div>
+                            <h1 className="text-3xl sm:text-4xl font-extrabold text-slate-800 dark:text-slate-100 text-center sm:text-start">{currentUser.name}</h1>
+                            <span className="mt-2 inline-block bg-primary-100 text-primary-800 text-sm font-semibold px-4 py-1 rounded-full dark:bg-primary-900/50 dark:text-primary-300">{t[currentUser.role as keyof typeof t]}</span>
+                        </div>
+                    </div>
 
-                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
-                        {/* Left Column for Profile & Security */}
-                        <div className="lg:col-span-1 space-y-8 animate-fade-in-up">
-                            
-                            {/* Profile Card */}
-                            <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-xl border border-slate-200 dark:border-slate-700">
-                                <div className="p-6 text-center border-b border-slate-200 dark:border-slate-700">
-                                    <div className="relative w-28 h-28 mx-auto mb-4">
-                                        <img src={currentUser.profilePicture} alt={t.profilePicture} className="w-full h-full rounded-full object-cover border-4 border-white dark:border-slate-700 shadow-lg"/>
-                                        <input type="file" ref={profilePicInputRef} onChange={handlePictureChange} accept="image/*" className="sr-only"/>
-                                        <button onClick={() => profilePicInputRef.current?.click()} className="absolute bottom-0 end-0 bg-primary-500 text-white rounded-full p-2 hover:bg-primary-600 transition-transform transform hover:scale-110 shadow-md" aria-label={t.changeProfilePicture} title={t.changeProfilePicture}><CameraIcon className="w-5 h-5"/></button>
-                                    </div>
-                                    <h2 className="text-xl font-bold text-slate-800 dark:text-slate-100">{currentUser.name}</h2>
-                                    <span className="mt-2 inline-block bg-primary-100 text-primary-800 text-xs font-semibold px-3 py-1 rounded-full dark:bg-primary-900/50 dark:text-primary-300">{t[currentUser.role as keyof typeof t]}</span>
-                                </div>
-                                <div className="divide-y divide-slate-200 dark:divide-slate-700">
-                                    {renderEditableField(t.name, PencilIcon, name, isEditingName, setName, handleSaveName, () => { setIsEditingName(false); setName(currentUser.name); })}
-                                    {renderEditableField(t.mobileNumber, DevicePhoneMobileIcon, mobile, isEditingMobile, setMobile, handleSaveMobile, () => { setIsEditingMobile(false); setMobile(currentUser.mobile); }, 'tel')}
-                                    <div className="flex items-center justify-between p-4">
-                                        <div className="flex items-center gap-4">
-                                            <EnvelopeIcon className="w-6 h-6 text-slate-500 dark:text-slate-400" />
-                                            <div className="text-sm">
-                                                <p className="font-medium text-slate-500 dark:text-slate-400">{t.email}</p>
-                                                <p className="font-semibold text-slate-800 dark:text-slate-100">{currentUser.email}</p>
-                                            </div>
+                    {/* Tab Navigation */}
+                    <div className="mb-8 border-b border-slate-300 dark:border-slate-700">
+                        <nav className="-mb-px flex space-x-6 rtl:space-x-reverse overflow-x-auto" aria-label="Tabs">
+                            {tabs.map(tab => (
+                                <button
+                                    key={tab.id}
+                                    onClick={() => setActiveTab(tab.id as ProfileTab)}
+                                    className={`flex items-center gap-2 whitespace-nowrap py-4 px-1 border-b-2 font-semibold text-base transition-colors ${
+                                        activeTab === tab.id
+                                            ? 'border-primary-500 text-primary-600 dark:text-primary-400'
+                                            : 'border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300 dark:hover:text-slate-200 dark:hover:border-slate-600'
+                                    }`}
+                                >
+                                    <tab.icon className="w-5 h-5" />
+                                    <span>{tab.label}</span>
+                                </button>
+                            ))}
+                        </nav>
+                    </div>
+
+                    {/* Tab Content */}
+                    <div className="animate-fade-in">
+                        {activeTab === 'info' && (
+                            <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-xl border border-slate-200 dark:border-slate-700 divide-y divide-slate-200 dark:divide-slate-700">
+                                {renderEditableField(t.name, PencilIcon, name, isEditingName, setName, handleSaveName, () => { setIsEditingName(false); setName(currentUser.name); })}
+                                {renderEditableField(t.mobileNumber, DevicePhoneMobileIcon, mobile, isEditingMobile, setMobile, handleSaveMobile, () => { setIsEditingMobile(false); setMobile(currentUser.mobile); }, 'tel')}
+                                <div className="flex items-center justify-between p-4">
+                                    <div className="flex items-center gap-4">
+                                        <EnvelopeIcon className="w-6 h-6 text-slate-500 dark:text-slate-400" />
+                                        <div className="text-sm">
+                                            <p className="font-medium text-slate-500 dark:text-slate-400">{t.email}</p>
+                                            <p className="font-semibold text-slate-800 dark:text-slate-100 text-base">{currentUser.email}</p>
                                         </div>
-                                        <span className="text-xs font-semibold text-slate-400 bg-slate-100 dark:bg-slate-700 px-2 py-1 rounded-full">{language === 'ar' ? 'للقراءة فقط' : 'Read-only'}</span>
                                     </div>
+                                    <span className="text-xs font-semibold text-slate-400 bg-slate-100 dark:bg-slate-700 px-2 py-1 rounded-full">{language === 'ar' ? 'للقراءة فقط' : 'Read-only'}</span>
                                 </div>
                             </div>
+                        )}
 
-                            {/* Security Card */}
-                            <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-xl border border-slate-200 dark:border-slate-700">
-                                 <h2 className="p-4 text-lg font-bold text-slate-800 dark:text-slate-100 border-b border-slate-200 dark:border-slate-700">{t.security}</h2>
-                                 <div className="divide-y divide-slate-200 dark:divide-slate-700">
+                        {activeTab === 'active' && (
+                            <div className="space-y-6">
+                                {activeOrders.length > 0
+                                    ? activeOrders.map(order => <ActiveOrderCard key={order.id} order={order} />)
+                                    : <div className="text-center py-16 bg-white dark:bg-slate-800 rounded-2xl shadow-xl border border-slate-200 dark:border-slate-700"><p className="text-slate-500">{t.language === 'ar' ? 'ليس لديك طلبات نشطة حاليًا.' : 'You have no active orders.'}</p></div>
+                                }
+                            </div>
+                        )}
+
+                        {activeTab === 'history' && (
+                            <div className="space-y-6">
+                                {pastOrders.length > 0
+                                    ? pastOrders.map(order => <PastOrderCard key={order.id} order={order} onLeaveFeedback={setFeedbackOrder} onShareInvoice={handleShareInvoice} />)
+                                    : <div className="text-center py-16 bg-white dark:bg-slate-800 rounded-2xl shadow-xl border border-slate-200 dark:border-slate-700"><p className="text-slate-500">{t.language === 'ar' ? 'ليس لديك طلبات سابقة.' : 'You have no past orders.'}</p></div>
+                                }
+                            </div>
+                        )}
+
+                        {activeTab === 'security' && (
+                             <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-xl border border-slate-200 dark:border-slate-700 divide-y divide-slate-200 dark:divide-slate-700">
+                                {isGoogleUser ? (
+                                    <div className="p-4 flex items-start gap-4 bg-blue-50 dark:bg-blue-900/30 rounded-t-lg">
+                                        <InformationCircleIcon className="w-6 h-6 text-blue-500 dark:text-blue-400 flex-shrink-0 mt-0.5" />
+                                        <div>
+                                            <h4 className="font-semibold text-blue-800 dark:text-blue-200">
+                                                {language === 'ar' ? 'حسابك مرتبط بجوجل' : 'Your Account is Linked to Google'}
+                                            </h4>
+                                            <p className="text-sm text-blue-700 dark:text-blue-300">
+                                                {language === 'ar' ? 'ليس لديك كلمة مرور خاصة بالموقع. تتم إدارة أمان حسابك عبر جوجل.' : 'You do not have a site-specific password. Your account security is managed through Google.'}
+                                            </p>
+                                        </div>
+                                    </div>
+                                ) : (
                                     <div className="flex items-center justify-between p-4">
                                         <div className="flex items-center gap-4">
                                             <KeyIcon className="w-6 h-6 text-slate-500 dark:text-slate-400" />
                                             <div className="text-sm">
                                                 <p className="font-medium text-slate-500 dark:text-slate-400">{t.password}</p>
-                                                <p className="font-semibold text-slate-800 dark:text-slate-100">••••••••</p>
+                                                <p className="font-semibold text-slate-800 dark:text-slate-100 text-base">••••••••</p>
                                             </div>
                                         </div>
                                         <button onClick={() => setIsChangePasswordModalOpen(true)} className="text-sm font-semibold text-primary-600 dark:text-primary-400 hover:underline">{t.change}</button>
                                     </div>
-                                    <button onClick={logout} className="w-full flex items-center gap-4 text-start p-4 rounded-b-2xl text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/40 transition-colors">
-                                        <LogoutIcon className="w-6 h-6" />
+                                )}
+                                <div className="p-4">
+                                     <button onClick={logout} className="w-full sm:w-auto flex items-center justify-center gap-3 text-start px-4 py-2 rounded-lg text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/40 hover:bg-red-100 dark:hover:bg-red-900/60 transition-colors">
+                                        <LogoutIcon className="w-5 h-5" />
                                         <span className="font-semibold">{t.logout}</span>
                                     </button>
-                                 </div>
-                            </div>
-                        </div>
-
-                        {/* Right Column for Order History */}
-                        <div className="lg:col-span-2 animate-fade-in-up" style={{ animationDelay: '100ms' }}>
-                             <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-xl border border-slate-200 dark:border-slate-700">
-                                <h2 className="p-4 text-lg font-bold text-slate-800 dark:text-slate-100 border-b border-slate-200 dark:border-slate-700">{t.yourOrders}</h2>
-                                <div className="p-4 sm:p-6">
-                                    <OrderHistory 
-                                        activeOrders={activeOrders}
-                                        pastOrders={pastOrders}
-                                        onLeaveFeedback={setFeedbackOrder}
-                                        onShareInvoice={handleShareInvoice}
-                                    />
                                 </div>
-                            </div>
-                        </div>
+                             </div>
+                        )}
                     </div>
-                </div>
+
+                </main>
                 {feedbackOrder && <FeedbackModal order={feedbackOrder} onClose={() => setFeedbackOrder(null)} onSave={handleSaveFeedback} />}
                 {isReceiptModalOpen && receiptImageUrl && (
                     <ReceiptModal

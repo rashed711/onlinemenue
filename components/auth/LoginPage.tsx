@@ -1,10 +1,13 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useUI } from '../../contexts/UIContext';
 import { useAuth } from '../../contexts/AuthContext';
 
+// Declare the google object from the script in index.html
+declare const google: any;
+
 export const LoginPage: React.FC = () => {
     const { t, isProcessing } = useUI();
-    const { unifiedLogin, registerWithEmailPassword } = useAuth();
+    const { unifiedLogin, registerWithEmailPassword, loginWithGoogle } = useAuth();
 
     const [formType, setFormType] = useState<'login' | 'register'>('login');
     const [error, setError] = useState('');
@@ -19,6 +22,8 @@ export const LoginPage: React.FC = () => {
     const [email, setEmail] = useState('');
     const [registerPassword, setRegisterPassword] = useState('');
     const [confirmPassword, setConfirmPassword] = useState('');
+
+    const googleButtonRef = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
         setError('');
@@ -36,8 +41,41 @@ export const LoginPage: React.FC = () => {
         if (errorMessage) {
             setError(errorMessage);
         }
-        // On success, context handles redirect
     };
+    
+    const handleGoogleSignIn = useCallback(async (response: any) => {
+        if (response.credential) {
+            setError('');
+            const errorMessage = await loginWithGoogle(response.credential);
+            if (errorMessage) {
+                setError(errorMessage);
+            }
+        } else {
+            setError(t.language === 'ar' ? 'فشل تسجيل الدخول باستخدام جوجل.' : 'Google sign-in failed.');
+        }
+    }, [loginWithGoogle, t.language]);
+
+    useEffect(() => {
+        if (typeof google === 'undefined' || !google.accounts) {
+            // Google script not loaded yet.
+            return;
+        }
+
+        google.accounts.id.initialize({
+            client_id: "735797678309-p764bsgq9vh3viv6hn09h467lv20s3oh.apps.googleusercontent.com",
+            callback: handleGoogleSignIn
+        });
+
+        if (googleButtonRef.current) {
+            // Ensure the container is empty before rendering
+            googleButtonRef.current.innerHTML = ''; 
+            google.accounts.id.renderButton(
+                googleButtonRef.current,
+                { theme: "outline", size: "large", type: "standard", shape: "rectangular", text: "signin_with", logo_alignment: "left" }
+            );
+        }
+    }, [handleGoogleSignIn, formType]); // Re-render if formType changes, in case of conditional rendering issues.
+
 
     const handleCustomerRegister = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -50,8 +88,6 @@ export const LoginPage: React.FC = () => {
         if (errorMessage) {
             setError(errorMessage);
         } else {
-            // Success toast is shown from AuthContext.
-            // Switch to login form for a better UX.
             setFormType('login');
             setName('');
             setMobile('');
@@ -88,6 +124,13 @@ export const LoginPage: React.FC = () => {
             <button type="submit" disabled={isProcessing} className="w-full px-5 py-3 font-medium text-white bg-primary-600 rounded-lg hover:bg-primary-700 disabled:bg-primary-400">
                 {isProcessing ? '...' : t.login}
             </button>
+            <div className="relative flex py-2 items-center">
+                <div className="flex-grow border-t border-slate-300 dark:border-slate-600"></div>
+                <span className="flex-shrink mx-4 text-slate-500 dark:text-slate-400 text-sm">{t.or}</span>
+                <div className="flex-grow border-t border-slate-300 dark:border-slate-600"></div>
+            </div>
+            {/* The Google button will be rendered here programmatically */}
+            <div ref={googleButtonRef} className="flex justify-center"></div>
         </form>
     );
 

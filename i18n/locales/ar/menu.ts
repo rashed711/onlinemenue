@@ -56,5 +56,8 @@ export default {
   "showDetails": "عرض التفاصيل",
   "hideDetails": "إخفاء التفاصيل",
   "orderDetails": "تفاصيل الطلب",
-  "leaveFeedback": "اترك تقييمًا"
+  "leaveFeedback": "اترك تقييمًا",
+  "orderSubmitFailed": "فشل إرسال الطلب. يرجى المحاولة مرة أخرى.",
+  "shipTo": "الشحن إلى",
+  "payWith": "الدفع بواسطة"
 };

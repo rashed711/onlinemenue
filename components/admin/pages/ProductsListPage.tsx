@@ -6,6 +6,7 @@ import { useUI } from '../../../contexts/UIContext';
 interface ProductsListPageProps {
     hasPermission: (permission: string) => boolean;
     setEditingProduct: (product: Product | 'new') => void;
+    onViewProduct: (product: Product) => void;
     productSearchTerm: string;
     setProductSearchTerm: (term: string) => void;
     productFilterTags: string[];
@@ -26,7 +27,7 @@ interface ProductsListPageProps {
 export const ProductsListPage: React.FC<ProductsListPageProps> = (props) => {
     const { t, language } = useUI();
     const {
-        hasPermission, setEditingProduct, productSearchTerm, setProductSearchTerm,
+        hasPermission, setEditingProduct, onViewProduct, productSearchTerm, setProductSearchTerm,
         productFilterTags, handleProductTagChange, productFilterCategory, setProductFilterCategory,
         categories, tags, isCategoryOrChildSelected, openCategoryDropdown, setOpenCategoryDropdown,
         categoryDropdownRef, filteredProducts, handleToggleProductFlag, deleteProduct
@@ -138,18 +139,18 @@ export const ProductsListPage: React.FC<ProductsListPageProps> = (props) => {
                                 <th scope="col" className="px-4 py-4 text-start text-xs font-medium text-slate-500 dark:text-slate-300 uppercase tracking-wider">{t.costPrice}</th>
                                 <th scope="col" className="px-4 py-4 text-start text-xs font-medium text-slate-500 dark:text-slate-300 uppercase tracking-wider">{t.price}</th>
                                 <th scope="col" className="px-4 py-4 text-center text-xs font-medium text-slate-500 dark:text-slate-300 uppercase tracking-wider">{t.visibleInMenu}</th>
-                                {(hasPermission('edit_product') || hasPermission('delete_product')) && <th scope="col" className="px-6 py-4 text-start text-xs font-medium text-slate-500 dark:text-slate-300 uppercase tracking-wider">{t.actions}</th>}
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-200 dark:divide-slate-700">
                             {filteredProducts.map((product) => (
-                                <tr key={product.id} className="odd:bg-white even:bg-slate-50 dark:odd:bg-slate-800 dark:even:bg-slate-800/50 hover:bg-slate-100 dark:hover:bg-slate-700/50 transition-colors">
+                                <tr key={product.id} onClick={() => onViewProduct(product)} className="odd:bg-white even:bg-slate-50 dark:odd:bg-slate-800 dark:even:bg-slate-800/50 hover:bg-slate-100 dark:hover:bg-slate-700/50 transition-colors cursor-pointer">
                                     <td className="px-6 py-4 whitespace-nowrap"><div className="flex items-center"><img src={product.image} alt={product.name[language]} className="w-12 h-12 rounded-md object-cover me-4" loading="lazy" /><div><div className="text-sm font-semibold text-slate-900 dark:text-slate-100">{product.name[language]}</div><div className="text-xs text-slate-500 dark:text-slate-400">{product.code}</div></div></div></td>
                                     <td className="px-4 py-4 whitespace-nowrap text-sm font-medium text-slate-600 dark:text-slate-300">{product.stock_quantity}</td>
                                     <td className="px-4 py-4 whitespace-nowrap text-sm text-slate-600 dark:text-slate-300">{product.cost_price.toFixed(2)}</td>
                                     <td className="px-4 py-4 whitespace-nowrap text-sm font-bold text-primary-600 dark:text-primary-400">{product.price.toFixed(2)}</td>
-                                    <td className="px-4 py-4 whitespace-nowrap text-center"><label className="relative inline-flex items-center cursor-pointer"><input type="checkbox" checked={product.isVisible} onChange={() => hasPermission('edit_product') && handleToggleProductFlag(product, 'isVisible')} disabled={!hasPermission('edit_product')} className="sr-only peer" /><div className="w-11 h-6 bg-slate-200 rounded-full peer dark:bg-slate-700 peer-focus:ring-4 peer-focus:ring-blue-300 dark:peer-focus:ring-blue-800 peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full after:content-[''] after:absolute after:top-0.5 after:start-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div></label></td>
-                                    {(hasPermission('edit_product') || hasPermission('delete_product')) && <td className="px-6 py-4 whitespace-nowrap text-sm font-medium"><div className="flex items-center gap-4">{hasPermission('edit_product') && <button onClick={() => setEditingProduct(product)} className="text-indigo-600 hover:text-indigo-900 dark:text-indigo-400 dark:hover:text-indigo-200 flex items-center gap-1"><PencilIcon className="w-4 h-4" /> {t.edit}</button>}{hasPermission('delete_product') && <button onClick={() => deleteProduct(product.id)} className="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-200 flex items-center gap-1"><TrashIcon className="w-4 h-4" /> {t.delete}</button>}</div></td>}
+                                    <td className="px-4 py-4 whitespace-nowrap text-center">
+                                        <div className={`inline-block w-4 h-4 rounded-full ${product.isVisible ? 'bg-green-500' : 'bg-slate-300'}`}></div>
+                                    </td>
                                 </tr>
                             ))}
                         </tbody>
@@ -158,7 +159,7 @@ export const ProductsListPage: React.FC<ProductsListPageProps> = (props) => {
                 {/* Mobile Cards */}
                 <div className="md:hidden space-y-4">
                     {filteredProducts.map(product => (
-                        <div key={product.id} className="bg-white dark:bg-slate-800 rounded-lg shadow p-4 space-y-4 border-l-4 border-primary-500">
+                        <div key={product.id} onClick={() => onViewProduct(product)} className="bg-white dark:bg-slate-800 rounded-lg shadow p-4 space-y-4 border-l-4 border-primary-500 cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-700/50">
                             <div className="flex items-start justify-between gap-4">
                                 <div className="flex items-center gap-4 flex-1 min-w-0">
                                     <img src={product.image} alt={product.name[language]} className="w-16 h-16 rounded-md object-cover flex-shrink-0" loading="lazy" />
@@ -172,19 +173,6 @@ export const ProductsListPage: React.FC<ProductsListPageProps> = (props) => {
                                     <span className="font-semibold">{t.stockQuantity}: <span className="font-bold text-slate-800 dark:text-slate-100">{product.stock_quantity}</span></span>
                                     <span className="font-semibold">{t.costPrice}: <span className="font-bold text-slate-800 dark:text-slate-100">{product.cost_price.toFixed(2)}</span></span>
                                 </div>
-                            </div>
-                            <div className="border-t border-slate-100 dark:border-slate-700 pt-3 flex justify-between items-center">
-                                <label className="flex items-center gap-2 cursor-pointer">
-                                    <span className="font-medium text-sm text-slate-600 dark:text-slate-300">{t.visibleInMenu}</span>
-                                    <input type="checkbox" checked={product.isVisible} onChange={() => hasPermission('edit_product') && handleToggleProductFlag(product, 'isVisible' as any)} disabled={!hasPermission('edit_product')} className={`sr-only peer`}/>
-                                    <div className={`relative w-10 h-5 bg-slate-200 rounded-full peer dark:bg-slate-700 peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full after:content-[''] after:absolute after:top-0.5 after:start-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-blue-600`}></div>
-                                </label>
-                                {(hasPermission('edit_product') || hasPermission('delete_product')) && (
-                                    <div className="flex items-center justify-end gap-4">
-                                        {hasPermission('edit_product') && <button onClick={() => setEditingProduct(product)} className="text-indigo-600 dark:text-indigo-400 font-semibold flex items-center gap-1 text-sm"><PencilIcon className="w-4 h-4" /> {t.edit}</button>}
-                                        {hasPermission('delete_product') && <button onClick={() => deleteProduct(product.id)} className="text-red-600 dark:text-red-400 font-semibold flex items-center gap-1 text-sm"><TrashIcon className="w-4 h-4" /> {t.delete}</button>}
-                                    </div>
-                                )}
                             </div>
                         </div>
                     ))}

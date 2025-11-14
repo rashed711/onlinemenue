@@ -9,5 +9,7 @@ export default {
   "pastOrders": "Past Orders",
   "customerFeedback": "Your Feedback",
   "yourRating": "Your Rating",
-  "yourComment": "Your Comment (Optional)"
+  "yourComment": "Your Comment (Optional)",
+  "personalInformation": "Personal Information",
+  "orderHistory": "Order History"
 };

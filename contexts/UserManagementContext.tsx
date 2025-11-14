@@ -16,6 +16,8 @@ interface UserManagementContextType {
     updateRole: (roleData: Role) => Promise<void>;
     deleteRole: (roleKey: string) => Promise<void>;
     updateRolePermissions: (roleKey: string, permissions: Permission[]) => Promise<void>;
+    // FIX: Add roles to the context type
+    roles: Role[];
 }
 
 const UserManagementContext = createContext<UserManagementContextType | undefined>(undefined);
@@ -182,7 +184,7 @@ export const UserManagementProvider: React.FC<{ children: React.ReactNode }> = (
         } finally { setIsProcessing(false); }
     }, [hasPermission, t, refetchAuthData, showToast, setIsProcessing]);
 
-    const value: UserManagementContextType = { users, isUsersLoading, addUser, updateUser, deleteUser, resetUserPassword, addRole, updateRole, deleteRole, updateRolePermissions };
+    const value: UserManagementContextType = { users, isUsersLoading, addUser, updateUser, deleteUser, resetUserPassword, addRole, updateRole, deleteRole, updateRolePermissions, roles: authRoles };
 
     return <UserManagementContext.Provider value={value}>{children}</UserManagementContext.Provider>;
 };

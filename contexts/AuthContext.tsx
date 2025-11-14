@@ -35,16 +35,19 @@ interface AuthContextType {
     loginWithEmailPassword: (email: string, password: string) => Promise<string | null>;
     sendPasswordResetLink: (email: string) => Promise<string | null>;
 
-    completeProfile: (details: { name: string, mobile: string }) => Promise<void>;
+    // Google Sign-In
+    loginWithGoogle: (token: string) => Promise<string | null>;
+
+    completeProfile: (details: { name: string; mobile: string; governorate: string; address_details: string; }) => Promise<void>;
     isCompletingProfile: boolean;
     newUserFirebaseData: { uid: string; phoneNumber: string | null; email?: string | null, name?: string | null, photoURL?: string | null, providerId: string } | null;
-    // FIX: Allow updating mobile number in user profile.
-    updateUserProfile: (userId: number, updates: { name?: string; mobile?: string; profilePicture?: string }) => Promise<void>;
+    updateUserProfile: (userId: number, updates: { name?: string; mobile?: string; profilePicture?: string; governorate?: string; address_details?: string; }) => Promise<void>;
     changeCurrentUserPassword: (currentPassword: string, newPassword: string) => Promise<string | null>;
     hasPermission: (permission: Permission) => boolean;
     isAdmin: boolean;
     roles: Role[];
     refetchAuthData: () => Promise<void>;
+    isAuthenticating: boolean;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -70,6 +73,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     
     const [isCompletingProfile, setIsCompletingProfile] = useState(false);
     const [newUserFirebaseData, setNewUserFirebaseData] = useState<{ uid: string; phoneNumber: string | null; email?: string | null, name?: string | null, photoURL?: string | null, providerId: string } | null>(null);
+    const [isAuthenticating, setIsAuthenticating] = useState(true);
 
     const fetchBaseAuthData = useCallback(async () => {
          try {
@@ -101,6 +105,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setCurrentUser(null);
         setIsCompletingProfile(false);
         setNewUserFirebaseData(null);
+        setIsAuthenticating(false);
         window.location.hash = '#/login';
     }, [setCurrentUser, setIsCompletingProfile, setNewUserFirebaseData]);
 
@@ -136,7 +141,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 if (isEmailPassProvider && !firebaseUser.emailVerified) {
                     showToast(t.pleaseVerifyEmail);
                     await logout();
-                    if(isMounted) setIsProcessing(false);
+                    if(isMounted) {
+                        setIsProcessing(false);
+                    }
                     return;
                 }
 
@@ -203,17 +210,21 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                     showToast(t.accountVerificationFailed);
                     if (isMounted) await logout();
                 } finally {
-                    if (isMounted) setIsProcessing(false);
+                    if (isMounted) {
+                       setIsProcessing(false);
+                    }
                 }
             } else {
                 setCurrentUser(prevUser => {
                     if (!prevUser) return null;
-                    if (prevUser.firebase_uid || prevUser.google_id) {
+                    if (prevUser.firebase_uid) {
                         return null; 
                     }
                     return prevUser;
                 });
-                if(isMounted) setIsProcessing(false);
+                if(isMounted) {
+                    setIsProcessing(false);
+                }
             }
         });
 
@@ -233,6 +244,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             }
         }
     }, [currentUser, roles]);
+    
+    useEffect(() => {
+        // This effect ensures that isAuthenticating is turned off only after
+        // the currentUser state has been fully updated in React. It runs on initial
+        // load and whenever a user logs in or out.
+        setIsAuthenticating(false);
+    }, [currentUser]);
 
     const userRoleDetails = useMemo(() => roles.find(r => r.key === currentUser?.role), [roles, currentUser]);
     
@@ -252,6 +270,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }, [currentUser, rolePermissions, userRoleDetails]);
 
     const staffLogin = useCallback(async (mobile: string, password: string): Promise<string | null> => {
+        setIsAuthenticating(true);
         setIsProcessing(true);
         try {
             const response = await fetch(`${APP_CONFIG.API_BASE_URL}login.php`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ mobile, password }) });
@@ -278,6 +297,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }, [setIsProcessing, t.invalidCredentials, setCurrentUser]);
 
     const registerWithEmailPassword = useCallback(async (details: { name: string; mobile: string; email: string; password: string }): Promise<string | null> => {
+        setIsAuthenticating(true);
         setIsProcessing(true);
         try {
             // Step 1: Create user in Firebase
@@ -308,27 +328,28 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
             // Step 3: Send verification email and sign out
             await sendEmailVerification(firebaseUser);
-            await signOut(auth); // Log out until they verify
+            await signOut(auth); // Log out until they verify. onAuthStateChanged will handle setting auth states to false.
             showToast(t.emailVerificationSent);
             return null;
         } catch (error: any) {
             console.error("Email registration error:", error);
+            setIsProcessing(false);
             if (error.code === 'auth/network-request-failed') {
                 return t.networkRequestFailed;
             }
             return error.message || "Registration failed.";
-        } finally {
-            setIsProcessing(false);
         }
     }, [setIsProcessing, showToast, t.emailVerificationSent, t.networkRequestFailed]);
     
     const loginWithEmailPassword = useCallback(async (email: string, password: string): Promise<string | null> => {
+        setIsAuthenticating(true);
         setIsProcessing(true);
         try {
             await signInWithEmailAndPassword(auth, email, password);
             return null; // onAuthStateChanged will handle the rest
         } catch (error: any) {
             console.error("Email login error:", error);
+            setIsProcessing(false);
             if (error.code === 'auth/network-request-failed') {
                 return t.networkRequestFailed;
             }
@@ -336,11 +357,69 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 return t.invalidCredentials;
             }
             return error.message || "Login failed.";
-        } finally {
-            setIsProcessing(false);
         }
     }, [setIsProcessing, t.invalidCredentials, t.networkRequestFailed]);
     
+    const loginWithGoogle = useCallback(async (token: string): Promise<string | null> => {
+        setIsAuthenticating(true);
+        setIsProcessing(true);
+        try {
+            const response = await fetch(`${APP_CONFIG.API_BASE_URL}google_login.php`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ token })
+            });
+    
+            const responseText = await response.text();
+            let result;
+            try {
+                result = JSON.parse(responseText);
+            } catch (e) {
+                console.error("Server response was not valid JSON:", responseText);
+                return t.googleSignInInvalidResponse;
+            }
+    
+            if (!response.ok || !result.success) {
+                console.error("Google login backend error:", result.error, result.details);
+                 return result.error ? `${result.error} (Check console for details)` : t.googleSignInFailed;
+            }
+    
+            const dbUser = result.user;
+            const userObject: User = {
+                id: Number(dbUser.id),
+                name: dbUser.name,
+                mobile: dbUser.mobile,
+                email: dbUser.email,
+                password: '', 
+                role: String(dbUser.role_id),
+                profilePicture: resolveImageUrl(dbUser.profile_picture) || `https://placehold.co/512x512/60a5fa/white?text=${(dbUser.name || 'U').charAt(0).toUpperCase()}`,
+                google_id: dbUser.google_id,
+            };
+            
+            setCurrentUser(userObject);
+    
+            if (!userObject.mobile || !userObject.governorate || !userObject.address_details) {
+                setIsCompletingProfile(true);
+            } else {
+                 if (window.location.hash.startsWith('#/login')) {
+                    const customerRole = roles.find(r => r.name.en.toLowerCase() === 'customer');
+                    if (customerRole && userObject.role === customerRole.key) {
+                        window.location.hash = '#/profile';
+                    } else {
+                        window.location.hash = '#/admin';
+                    }
+                 }
+            }
+    
+            return null; // Success
+        } catch (error) {
+            console.error('Google login network error:', error);
+            return t.networkRequestFailed;
+        } finally {
+            setIsProcessing(false);
+        }
+    }, [setIsProcessing, setCurrentUser, setIsCompletingProfile, t, roles]);
+
     const sendPasswordResetLink = useCallback(async (email: string): Promise<string | null> => {
         setIsProcessing(true);
         try {
@@ -358,91 +437,19 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }, [setIsProcessing, t.networkRequestFailed]);
 
     const unifiedLogin = useCallback(async (identifier: string, password: string): Promise<string | null> => {
-        // Both sub-functions handle their own processing state, so we don't need to manage it here.
-    
-        // Attempt 1: Staff Login (assuming mobile number if no '@')
         if (!identifier.includes('@')) {
-            const staffLoginError = await staffLogin(identifier, password);
-            if (staffLoginError === null) {
-                // Success! staffLogin already set the user. The useEffect will handle redirect.
-                return null;
-            }
-            // If it's not a staff login, it's an invalid credential for staff. We don't try customer login.
-            return staffLoginError;
+            return await staffLogin(identifier, password);
         }
     
-        // Attempt 2: Customer Login (assuming email)
         if (identifier.includes('@')) {
-            const customerLoginError = await loginWithEmailPassword(identifier, password);
-            if (customerLoginError === null) {
-                // Success! onAuthStateChanged will handle the rest.
-                return null;
-            }
-            return customerLoginError;
+            return await loginWithEmailPassword(identifier, password);
         }
         
-        // Fallback for an identifier that's neither (shouldn't happen with basic validation)
         return t.invalidCredentials;
     }, [staffLogin, loginWithEmailPassword, t.invalidCredentials]);
 
 
-    const completeProfile = useCallback(async (details: { name: string, mobile: string }) => {
-        if (!newUserFirebaseData) return;
-        setIsProcessing(true);
-        try {
-            const customerRole = roles.find(r => r.name.en.toLowerCase() === 'customer');
-            const payload: any = {
-                name: details.name,
-                mobile: details.mobile,
-                role: 'customer'
-            };
-
-            if (newUserFirebaseData.providerId === 'google.com') {
-                payload.google_id = newUserFirebaseData.uid;
-                payload.email = newUserFirebaseData.email;
-                payload.profilePicture = newUserFirebaseData.photoURL;
-            } else {
-                payload.firebase_uid = newUserFirebaseData.uid;
-                if (newUserFirebaseData.email) payload.email = newUserFirebaseData.email;
-            }
-
-            const response = await fetch(`${APP_CONFIG.API_BASE_URL}add_user.php`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(payload),
-            });
-            const result = await response.json();
-
-            if (!response.ok || !result.success) {
-                throw new Error(result.error || 'Failed to complete profile.');
-            }
-
-            const dbUser = result.user;
-            const profilePictureUrl = resolveImageUrl(dbUser.profile_picture) || `https://placehold.co/512x512/60a5fa/white?text=${(dbUser.name || 'U').charAt(0).toUpperCase()}`;
-
-            setCurrentUser({ 
-                id: Number(dbUser.id), 
-                name: dbUser.name, 
-                mobile: dbUser.mobile, 
-                email: dbUser.email,
-                password: '', 
-                role: String(dbUser.role_id), 
-                profilePicture: profilePictureUrl,
-                firebase_uid: dbUser.firebase_uid,
-                google_id: dbUser.google_id
-            });
-            setIsCompletingProfile(false);
-            setNewUserFirebaseData(null);
-            
-        } catch (error: any) {
-            console.error("Complete profile error:", error);
-            showToast(error.message || t.profileSaveFailed);
-        } finally {
-            setIsProcessing(false);
-        }
-    }, [newUserFirebaseData, roles, setIsProcessing, showToast, t.profileSaveFailed, setCurrentUser]);
-
-     const updateUserProfile = useCallback(async (userId: number, updates: { name?: string; mobile?: string; profilePicture?: string }) => {
+     const updateUserProfile = useCallback(async (userId: number, updates: { name?: string; mobile?: string; profilePicture?: string; governorate?: string; address_details?: string; }) => {
         if (!currentUser || currentUser.id !== userId) return;
 
         const originalUser = { ...currentUser };
@@ -450,6 +457,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         let optimisticUpdates: Partial<User> = {};
         if (updates.name) optimisticUpdates.name = updates.name;
         if (updates.mobile) optimisticUpdates.mobile = updates.mobile;
+        if (updates.governorate) optimisticUpdates.governorate = updates.governorate;
+        if (updates.address_details) optimisticUpdates.address_details = updates.address_details;
         if (updates.profilePicture && updates.profilePicture.startsWith('data:')) {
             optimisticUpdates.profilePicture = updates.profilePicture;
         }
@@ -501,7 +510,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                         mobile: finalUser.mobile ?? prev.mobile,
                         email: finalUser.email ?? prev.email,
                         role: finalUser.role_id ? String(finalUser.role_id) : prev.role,
-                        profilePicture: resolveImageUrl(finalUser.profile_picture)
+                        profilePicture: resolveImageUrl(finalUser.profile_picture),
+                        governorate: finalUser.governorate ?? prev.governorate,
+                        address_details: finalUser.address_details ?? prev.address_details
                     };
                     return updatedState;
                 });
@@ -523,6 +534,74 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         }
     }, [currentUser, setIsProcessing, showToast, t.profileUpdatedSuccess, t.profileUpdateFailed, setCurrentUser]);
     
+    const completeProfile = useCallback(async (details: { name: string; mobile: string; governorate: string; address_details: string; }) => {
+        setIsAuthenticating(true);
+        setIsProcessing(true);
+        try {
+            if (newUserFirebaseData) {
+                // Existing logic for when a new user signs up via Firebase directly
+                const payload: any = {
+                    name: details.name,
+                    mobile: details.mobile,
+                    governorate: details.governorate,
+                    address_details: details.address_details,
+                    role: 'customer'
+                };
+    
+                if (newUserFirebaseData.providerId === 'google.com') {
+                    payload.google_id = newUserFirebaseData.uid;
+                    payload.email = newUserFirebaseData.email;
+                    payload.profilePicture = newUserFirebaseData.photoURL;
+                } else {
+                    payload.firebase_uid = newUserFirebaseData.uid;
+                    if (newUserFirebaseData.email) payload.email = newUserFirebaseData.email;
+                }
+    
+                const response = await fetch(`${APP_CONFIG.API_BASE_URL}add_user.php`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload),
+                });
+                const result = await response.json();
+    
+                if (!response.ok || !result.success) {
+                    throw new Error(result.error || 'Failed to complete profile.');
+                }
+    
+                const dbUser = result.user;
+                const profilePictureUrl = resolveImageUrl(dbUser.profile_picture) || `https://placehold.co/512x512/60a5fa/white?text=${(dbUser.name || 'U').charAt(0).toUpperCase()}`;
+    
+                setCurrentUser({ 
+                    id: Number(dbUser.id), 
+                    name: dbUser.name, 
+                    mobile: dbUser.mobile, 
+                    email: dbUser.email,
+                    password: '', 
+                    role: String(dbUser.role_id), 
+                    profilePicture: profilePictureUrl,
+                    firebase_uid: dbUser.firebase_uid,
+                    google_id: dbUser.google_id,
+                    governorate: dbUser.governorate,
+                    address_details: dbUser.address_details
+                });
+                
+            } else if (currentUser && (!currentUser.mobile || !currentUser.governorate || !currentUser.address_details)) {
+                // Logic for existing but incomplete user (e.g., from custom Google Sign-In)
+                await updateUserProfile(currentUser.id, details);
+            }
+            
+            setIsCompletingProfile(false);
+            setNewUserFirebaseData(null); // Always clear this after completion attempt
+            window.location.hash = '#/profile';
+            
+        } catch (error: any) {
+            console.error("Complete profile error:", error);
+            showToast(error.message || t.profileSaveFailed);
+        } finally {
+            setIsProcessing(false);
+        }
+    }, [newUserFirebaseData, currentUser, setIsProcessing, showToast, t.profileSaveFailed, setCurrentUser, updateUserProfile]);
+
     const changeCurrentUserPassword = useCallback(async (currentPassword: string, newPassword: string): Promise<string | null> => {
         setIsProcessing(true);
         try {
@@ -569,6 +648,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         registerWithEmailPassword,
         loginWithEmailPassword,
         sendPasswordResetLink,
+        loginWithGoogle,
         completeProfile,
         isCompletingProfile,
         newUserFirebaseData,
@@ -578,6 +658,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         isAdmin,
         roles,
         refetchAuthData: fetchBaseAuthData,
+        isAuthenticating,
     };
 
     return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

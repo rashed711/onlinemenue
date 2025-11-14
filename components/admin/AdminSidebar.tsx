@@ -35,13 +35,10 @@ export const AdminSidebar: React.FC<AdminSidebarProps> = (props) => {
             { id: 'treasury', label: t.treasury, icon: BankIcon, permission: 'view_treasury_page' as Permission },
         ],
         management: [
-            { id: 'productList', label: t.productList, icon: CollectionIcon, permission: 'view_products_page' as Permission },
-            { id: 'classifications', label: t.classifications, icon: BookmarkAltIcon, permission: 'view_classifications_page' as Permission },
-            { id: 'promotions', label: t.managePromotions, icon: TagIcon, permission: 'view_promotions_page' as Permission },
+            { id: 'productList', label: t.productsAndPromotions, icon: CollectionIcon, permission: 'view_products_page' as Permission },
         ],
         administration: [
-            { id: 'staff', label: t.staff, icon: UsersIcon, permission: 'view_users_page' as Permission },
-            { id: 'roles', label: t.manageRoles, icon: ShieldCheckIcon, permission: 'view_roles_page' as Permission },
+            { id: 'staff', label: t.staffAndRoles, icon: UsersIcon, permission: 'view_users_page' as Permission },
             { id: 'settings', label: t.settings, icon: CogIcon, permission: 'view_settings_page' as Permission },
         ]
     };
@@ -85,8 +82,20 @@ export const AdminSidebar: React.FC<AdminSidebarProps> = (props) => {
                  <div className="flex-1 overflow-y-auto">
                     <nav className="p-4 space-y-4">
                         {Object.entries(navItems).map(([groupKey, groupItems], index) => {
-                            const visibleItems = groupItems.filter(item => hasPermission(item.permission));
+                            const visibleItems = groupItems.filter(item => {
+                                // Special handling for staff link to show if user can see roles
+                                if (item.id === 'staff') {
+                                    return hasPermission('view_users_page') || hasPermission('view_roles_page');
+                                }
+                                // Special handling for the combined products link
+                                if (item.id === 'productList') {
+                                    return hasPermission('view_products_page') || hasPermission('view_classifications_page') || hasPermission('view_promotions_page');
+                                }
+                                return hasPermission(item.permission)
+                            });
+
                             if (visibleItems.length === 0) return null;
+                            
                             return (
                                 <div key={index}>
                                    <h3 className="px-3 text-xs font-semibold uppercase text-slate-400 mb-2">{t[`permission_group_${groupKey}` as keyof typeof t] || groupKey}</h3>
@@ -96,7 +105,7 @@ export const AdminSidebar: React.FC<AdminSidebarProps> = (props) => {
                                             href={`#/admin/${item.id}`}
                                             onClick={(e) => handleTabChange(e, item.id as AdminTab)}
                                             className={`w-full flex items-center p-3 my-1 rounded-lg transition-colors duration-200 text-sm font-medium border-s-4 text-start ${
-                                                activeTab === item.id
+                                                activeTab === item.id || (activeTab === 'classifications' && item.id === 'productList') || (activeTab === 'promotions' && item.id === 'productList')
                                                     ? 'bg-primary-100 dark:bg-primary-900/50 text-primary-600 dark:text-primary-300 border-primary-500 font-semibold'
                                                     : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 border-transparent'
                                             }`}
