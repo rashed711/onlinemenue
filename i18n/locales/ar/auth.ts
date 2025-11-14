@@ -30,5 +30,6 @@ export default {
   "passwordResetFailed": "فشل إعادة تعيين كلمة المرور.",
   "passwordResetSuccess": "تم إعادة تعيين كلمة المرور بنجاح.",
   "googleSignInFailed": "فشل تسجيل الدخول عبر جوجل.",
-  "googleSignInInvalidResponse": "فشل الاتصال بالخادم. استجابة غير صالحة."
+  "googleSignInInvalidResponse": "فشل الاتصال بالخادم. استجابة غير صالحة.",
+  "signInWithGoogle": "تسجيل الدخول باستخدام جوجل"
 };

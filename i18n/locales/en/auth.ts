@@ -30,5 +30,6 @@ export default {
   "passwordResetFailed": "Failed to reset password.",
   "passwordResetSuccess": "Password reset successfully.",
   "googleSignInFailed": "Google Sign-In failed.",
-  "googleSignInInvalidResponse": "Failed to connect to the server. Invalid response."
+  "googleSignInInvalidResponse": "Failed to connect to the server. Invalid response.",
+  "signInWithGoogle": "Sign in with Google"
 };
