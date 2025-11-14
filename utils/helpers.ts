@@ -120,8 +120,8 @@ export const resolveImageUrl = (path: string | undefined): string => {
 };
 
 const getWrappedTextLines = (ctx: CanvasRenderingContext2D, text: string, maxWidth: number): string[] => {
+    if (!text) return [''];
     const words = text.split(' ');
-    if (words.length === 0) return [];
     const lines: string[] = [];
     let currentLine = words[0] || '';
 
@@ -161,88 +161,34 @@ export const generateReceiptImage = async (
     const ctx = canvas.getContext('2d');
     if (!ctx) return '';
 
+    // --- SETUP ---
     const isRtl = language === 'ar';
     ctx.direction = isRtl ? 'rtl' : 'ltr';
-    const FONT_FAMILY_SANS = isRtl ? 'Cairo, sans-serif' : 'sans-serif';
-    const width = 500;
-    const padding = 25;
+    const FONT_SANS = isRtl ? "'Cairo', sans-serif" : "'Cairo', sans-serif"; // Using Cairo for both for consistency
+    const FONT_BOLD = `bold ${FONT_SANS}`;
+    const FONT_MONO = "'Courier New', Courier, monospace";
+
+    const width = 700;
+    const padding = 35;
     const contentWidth = width - (padding * 2);
-    const COLORS = { BG: '#F8F9FA', PAPER: '#FFFFFF', TEXT_DARK: '#1E293B', TEXT_LIGHT: '#64748B', PRIMARY: '#F59E0B', GREEN: '#10B981', BLUE: '#3B82F6', ORANGE: '#F97316', BORDER: '#E2E8F0', RED: '#EF4444' };
     
-    const H_DETAIL = 22;
-    const H_ITEM_NAME = 24;
-    const H_ITEM_OPTION = 18;
-    const H_ITEM_DISCOUNT = 18;
-    const H_TOTAL_LINE = 28;
-
-    let totalHeight = 0;
-    totalHeight += 215; 
-
-    const details = [
-        { label: t.orderId, value: order.id },
-        { label: t.date, value: formatDateTime(order.timestamp) },
-        { label: t.orderType, value: t[order.orderType.toLowerCase() as keyof typeof t] + (order.tableNumber ? ` (${t.table} ${order.tableNumber})` : '')},
-        { label: t.customer, value: order.customer.name || 'Guest' },
-        { label: t.mobileNumber, value: order.customer.mobile },
-    ];
-    if (order.orderType === 'Delivery' && order.customer.address) {
-        details.push({ label: t.address, value: order.customer.address });
-    }
-    details.forEach(detail => {
-        if (detail.label === t.address) {
-            ctx.font = `14px ${FONT_FAMILY_SANS}`;
-            const addressLines = getWrappedTextLines(ctx, detail.value, contentWidth / 2);
-            totalHeight += (addressLines.length -1) * H_DETAIL;
-        }
-        totalHeight += H_DETAIL;
-    });
-    totalHeight += 10;
-
-    totalHeight += 45;
-    order.items.forEach(item => {
-        ctx.font = `15px ${FONT_FAMILY_SANS}`;
-        const itemText = `${item.quantity} x ${item.product.name[language]}`;
-        const itemLines = getWrappedTextLines(ctx, itemText, contentWidth - 120);
-        totalHeight += itemLines.length * H_ITEM_NAME;
-        
-        if (item.appliedDiscountPercent) {
-            totalHeight += H_ITEM_DISCOUNT;
-        }
-        if (item.options) {
-            totalHeight += Object.keys(item.options).length * H_ITEM_OPTION;
-        }
-        totalHeight += 25;
-    });
-    totalHeight += 15;
-
-    const totalSavings = calculateTotalSavings(order.items);
-    if(totalSavings > 0) totalHeight += H_TOTAL_LINE * 2;
-    totalHeight += H_TOTAL_LINE + 35;
-
-    totalHeight += 80;
-    totalHeight += 60;
-
-    canvas.width = width;
-    canvas.height = totalHeight;
-    
-    ctx.fillStyle = COLORS.PAPER;
-    ctx.fillRect(0, 0, width, totalHeight);
-
-    const x = (val: number) => isRtl ? width - val : val;
-    
-    const drawDashedLine = (y: number) => {
-        ctx.strokeStyle = COLORS.BORDER;
-        ctx.lineWidth = 1;
-        ctx.setLineDash([3, 4]);
-        ctx.beginPath();
-        ctx.moveTo(padding, y);
-        ctx.lineTo(width - padding, y);
-        ctx.stroke();
-        ctx.setLineDash([]);
+    const COLORS = { 
+        BG: '#FFFFFF', 
+        TEXT_DARK: '#1e293b', 
+        TEXT_MEDIUM: '#475569', 
+        TEXT_LIGHT: '#94a3b8', 
+        BORDER: '#e2e8f0',
+        PRIMARY: '#f59e0b', // Amber 500
+        SUCCESS: '#16a34a', // Green 600
+        INFO: '#2563eb', // Blue 600
+        DANGER: '#dc2626' // Red 600
     };
 
-    const drawWrappedText = (text: string, xPos: number, yPos: number, maxWidth: number, lineHeight: number, align: CanvasTextAlign = 'start'): number => {
-        ctx.textAlign = align;
+    // --- HELPERS ---
+    const x = (pos: number) => isRtl ? width - pos : pos;
+    const textAlign = (align: 'start' | 'end') => isRtl ? (align === 'start' ? 'right' : 'left') : (align === 'start' ? 'left' : 'right');
+    const drawWrappedText = (text: string, xPos: number, yPos: number, maxWidth: number, lineHeight: number, align: 'start' | 'end' = 'start'): number => {
+        ctx.textAlign = textAlign(align);
         const lines = getWrappedTextLines(ctx, text, maxWidth);
         lines.forEach((line, index) => {
             ctx.fillText(line, x(xPos), yPos + (index * lineHeight));
@@ -250,179 +196,282 @@ export const generateReceiptImage = async (
         return yPos + (lines.length - 1) * lineHeight;
     };
     
-    let y = 40;
+    // --- HEIGHT CALCULATION ---
+    let totalHeight = 0;
+    
+    // Header
+    totalHeight += 180;
+    
+    // Order Info
+    totalHeight += 50; 
+    ctx.font = `14px ${FONT_SANS}`;
+    const addressLines = getWrappedTextLines(ctx, order.customer.address || '', contentWidth / 2 - 20);
+    totalHeight += 80 + (addressLines.length > 1 ? (addressLines.length - 1) * 20 : 0);
+    
+    // Items Header
+    totalHeight += 60;
 
+    // Items
+    order.items.forEach(item => {
+        totalHeight += 20; // top padding
+        ctx.font = `bold 16px ${FONT_SANS}`;
+        const nameLines = getWrappedTextLines(ctx, item.product.name[language], contentWidth - 250);
+        totalHeight += nameLines.length * 22;
+
+        if (item.options) {
+            ctx.font = `14px ${FONT_SANS}`;
+            const optionsText = Object.entries(item.options).map(([optKey, valKey]) => {
+                const option = item.product.options?.find(o => o.name.en === optKey);
+                const value = option?.values.find(v => v.name.en === valKey);
+                return value ? `+ ${value.name[language]}` : '';
+            }).filter(Boolean).join(', ');
+            const optionLines = getWrappedTextLines(ctx, optionsText, contentWidth - 250);
+            totalHeight += optionLines.length * 18;
+        }
+        totalHeight += 20; // bottom padding
+    });
+    
+    // Totals
+    const totalSavings = calculateTotalSavings(order.items);
+    totalHeight += 40; // top padding and line
+    if (totalSavings > 0) totalHeight += 28 * 2;
+    totalHeight += 36; // Grand Total
+    
+    // Payment
+    totalHeight += 60;
+    
+    // Footer
+    totalHeight += 80;
+
+    // --- DRAWING ---
+    canvas.width = width;
+    canvas.height = totalHeight;
+    let y = 0;
+
+    ctx.fillStyle = COLORS.BG;
+    ctx.fillRect(0, 0, width, totalHeight);
+    
+    // Header
+    y = 50;
     const logo = await loadImage(restaurantInfo.logo);
-    ctx.drawImage(logo, (width / 2) - 32, y, 64, 64);
-    y += 80;
-    ctx.font = `bold 24px ${FONT_FAMILY_SANS}`;
+    ctx.drawImage(logo, (width / 2) - 40, y, 80, 80);
+    y += 100;
+
+    ctx.font = `bold 32px ${FONT_SANS}`;
     ctx.fillStyle = COLORS.TEXT_DARK;
     ctx.textAlign = 'center';
     ctx.fillText(restaurantInfo.name[language], width / 2, y);
-    y += 35;
-    ctx.font = `16px ${FONT_FAMILY_SANS}`;
-    ctx.fillStyle = COLORS.TEXT_LIGHT;
-    ctx.fillText(t.receiptTitle, width / 2, y);
     y += 30;
-    drawDashedLine(y);
-    y += 25;
-
-    ctx.font = `14px ${FONT_FAMILY_SANS}`;
-    details.forEach(detail => {
-        ctx.fillStyle = COLORS.TEXT_LIGHT;
-        ctx.textAlign = 'start';
-        ctx.fillText(detail.label, x(padding), y);
-        
-        ctx.fillStyle = COLORS.TEXT_DARK;
-        if (detail.label === t.address) {
-            y = drawWrappedText(detail.value, width - padding, y, contentWidth / 2, H_DETAIL, 'end');
-        } else {
-            ctx.textAlign = 'end';
-            ctx.fillText(detail.value, x(width - padding), y);
-        }
-        y += H_DETAIL;
-    });
-    y += 10;
     
-    drawDashedLine(y);
-    y += 25;
-    ctx.font = `bold 14px ${FONT_FAMILY_SANS}`;
-    ctx.fillStyle = COLORS.TEXT_LIGHT;
-    ctx.textAlign = 'start';
-    ctx.fillText(t.item, x(padding), y);
-    ctx.textAlign = 'end';
-    ctx.fillText(t.price, x(width - padding), y);
+    // Order Info Section
+    ctx.fillStyle = '#f8fafc'; // slate-50
+    ctx.strokeStyle = COLORS.BORDER;
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.roundRect(padding, y, contentWidth, 120 + (addressLines.length > 1 ? (addressLines.length - 1) * 20 : 0), 12);
+    ctx.fill();
+    ctx.stroke();
+    y += 30;
+    
+    ctx.font = `14px ${FONT_SANS}`;
+    ctx.fillStyle = COLORS.TEXT_MEDIUM;
+    ctx.textAlign = textAlign('start');
+    ctx.fillText(`${t.orderId}:`, x(padding + 20), y);
+    ctx.font = `bold 14px ${FONT_MONO}`;
+    ctx.fillStyle = COLORS.TEXT_DARK;
+    ctx.fillText(`${order.id}`, x(padding + (isRtl ? -60 : 100)), y);
+
+    ctx.font = `14px ${FONT_SANS}`;
+    ctx.fillStyle = COLORS.TEXT_MEDIUM;
+    ctx.textAlign = textAlign('end');
+    ctx.fillText(`${t.date}: ${formatDateTime(order.timestamp)}`, x(width - padding - 20), y);
+    y += 35;
+
+    // Info columns
+    const col1X = padding + 20;
+    const col2X = width / 2 + 10;
+    
+    ctx.font = `bold 14px ${FONT_SANS}`;
+    ctx.fillStyle = COLORS.TEXT_DARK;
+    ctx.textAlign = textAlign('start');
+    ctx.fillText(language === 'ar' ? 'بيانات العميل:' : 'Billed To:', x(col1X), y);
+    
+    ctx.font = `14px ${FONT_SANS}`;
+    ctx.fillStyle = COLORS.TEXT_MEDIUM;
+    y += 24;
+    ctx.fillText(order.customer.name || 'Guest', x(col1X), y);
     y += 20;
+    ctx.fillText(order.customer.mobile, x(col1X), y);
+    if(order.customer.address) {
+        y += 20;
+        drawWrappedText(order.customer.address, col1X, y, contentWidth / 2 - 40, 20, 'start');
+    }
 
+    y = 265;
+    ctx.font = `bold 14px ${FONT_SANS}`;
+    ctx.fillStyle = COLORS.TEXT_DARK;
+    ctx.textAlign = textAlign('start');
+    ctx.fillText(language === 'ar' ? 'تفاصيل الطلب:' : 'Order Details:', x(col2X), y);
+    
+    ctx.font = `14px ${FONT_SANS}`;
+    ctx.fillStyle = COLORS.TEXT_MEDIUM;
+    y += 24;
+    ctx.fillText(`${t.orderType}: ${t[order.orderType.toLowerCase() as keyof typeof t] || order.orderType}`, x(col2X), y);
+    if (order.tableNumber) {
+        y += 20;
+        ctx.fillText(`${t.table}: ${order.tableNumber}`, x(col2X), y);
+    }
+    if (creatorName) {
+        y += 20;
+        ctx.fillText(`${t.createdBy}: ${creatorName}`, x(col2X), y);
+    }
+    y += 60 + (addressLines.length > 1 ? (addressLines.length - 1) * 20 : 0);
+
+    // Items Table Header
+    ctx.fillStyle = '#f1f5f9'; // slate-100
+    ctx.fillRect(padding, y, contentWidth, 40);
+    y += 28;
+
+    ctx.font = `bold 13px ${FONT_SANS}`;
+    ctx.fillStyle = COLORS.TEXT_MEDIUM;
+    
+    const qtyX = width - padding - 280;
+    const priceX = width - padding - 180;
+    const totalX = width - padding - 35;
+
+    ctx.textAlign = textAlign('start');
+    ctx.fillText(t.item, x(padding + 15), y);
+    
+    ctx.textAlign = 'center';
+    ctx.fillText(t.quantity, x(qtyX), y);
+    ctx.fillText(t.price, x(priceX), y);
+    
+    ctx.textAlign = textAlign('end');
+    ctx.fillText(t.total, x(totalX), y);
+    y += 12;
+
+    // Items
     order.items.forEach(item => {
+        y += 20;
         const itemStartY = y;
-        ctx.font = `15px ${FONT_FAMILY_SANS}`;
-        ctx.fillStyle = COLORS.TEXT_DARK;
-        y = drawWrappedText(`${item.quantity} x ${item.product.name[language]}`, padding, y, contentWidth - 120, H_ITEM_NAME, 'start');
-        y += H_ITEM_NAME;
 
+        // Totals first for easier alignment
         const finalItemTotal = calculateItemTotal(item);
         const originalItemTotal = calculateOriginalItemTotal(item);
-
-        ctx.textAlign = 'end';
-        if (item.appliedDiscountPercent) {
-            ctx.fillStyle = COLORS.TEXT_DARK;
-            ctx.fillText(finalItemTotal.toFixed(2), x(width - padding), itemStartY + H_ITEM_NAME / 2);
-            
-            ctx.font = `13px ${FONT_FAMILY_SANS}`;
+        const hasDiscount = item.appliedDiscountPercent && item.appliedDiscountPercent > 0;
+        
+        ctx.textAlign = 'center';
+        ctx.font = `16px ${FONT_SANS}`;
+        ctx.fillStyle = COLORS.TEXT_DARK;
+        ctx.fillText(String(item.quantity), x(qtyX), itemStartY + 5);
+        
+        ctx.font = `14px ${FONT_MONO}`;
+        if (hasDiscount) {
+            ctx.fillText(calculateItemUnitPrice(item).toFixed(2), x(priceX), itemStartY + 5);
             ctx.fillStyle = COLORS.TEXT_LIGHT;
-            ctx.fillText(originalItemTotal.toFixed(2), x(width - padding), itemStartY + H_ITEM_NAME / 2 + H_ITEM_DISCOUNT);
-            
-            const textWidth = ctx.measureText(originalItemTotal.toFixed(2)).width;
-            ctx.beginPath();
-            const lineY = itemStartY + H_ITEM_NAME / 2 + H_ITEM_DISCOUNT - 5;
-            const lineXStart = isRtl ? padding : width - padding - textWidth;
-            const lineXEnd = isRtl ? padding + textWidth : width - padding;
-            ctx.moveTo(lineXStart, lineY);
-            ctx.lineTo(lineXEnd, lineY);
+            const originalPriceText = calculateOriginalItemUnitPrice(item).toFixed(2);
+            ctx.fillText(originalPriceText, x(priceX), itemStartY + 25);
+            const textWidth = ctx.measureText(originalPriceText).width;
             ctx.strokeStyle = COLORS.TEXT_LIGHT;
             ctx.lineWidth = 1;
+            ctx.beginPath();
+            ctx.moveTo(x(priceX) - (isRtl ? 0 : textWidth / 2), itemStartY + 20);
+            ctx.lineTo(x(priceX) + (isRtl ? textWidth : textWidth / 2), itemStartY + 20);
             ctx.stroke();
-            y += H_ITEM_DISCOUNT;
         } else {
-            ctx.fillText(finalItemTotal.toFixed(2), x(width - padding), itemStartY + H_ITEM_NAME / 2);
+            ctx.fillText(calculateItemUnitPrice(item).toFixed(2), x(priceX), itemStartY + 5);
         }
+        
+        ctx.textAlign = textAlign('end');
+        ctx.font = `bold 16px ${FONT_SANS}`;
+        ctx.fillStyle = COLORS.TEXT_DARK;
+        ctx.fillText(finalItemTotal.toFixed(2), x(totalX), itemStartY + 5);
 
+        // Item Name and Options (can wrap)
+        ctx.font = `bold 16px ${FONT_SANS}`;
+        const nameEndY = drawWrappedText(item.product.name[language], padding + 15, itemStartY, contentWidth - 350, 22, 'start');
+        
+        let currentY = nameEndY;
         if (item.options) {
-            ctx.font = `13px ${FONT_FAMILY_SANS}`;
-            ctx.fillStyle = COLORS.TEXT_LIGHT;
-            Object.values(item.options).forEach(valueKey => {
-                const valueName = item.product.options?.flatMap(opt => opt.values).find(v => v.name.en === valueKey)?.name[language];
-                if (valueName) {
-                    y = drawWrappedText(`+ ${valueName}`, padding + 15, y, contentWidth - 135, H_ITEM_OPTION, 'start');
-                    y += H_ITEM_OPTION;
-                }
-            });
+            currentY += 18;
+            ctx.font = `14px ${FONT_SANS}`;
+            ctx.fillStyle = COLORS.TEXT_MEDIUM;
+            const optionsText = Object.entries(item.options).map(([optKey, valKey]) => {
+                const option = item.product.options?.find(o => o.name.en === optKey);
+                const value = option?.values.find(v => v.name.en === valKey);
+                return value ? `+ ${value.name[language]}` : '';
+            }).filter(Boolean).join(', ');
+            currentY = drawWrappedText(optionsText, padding + 15, currentY, contentWidth - 350, 18, 'start');
         }
-        y += 5;
-        drawDashedLine(y);
-        y += 20;
+        
+        y = Math.max(y, currentY) + 20;
+
+        ctx.strokeStyle = COLORS.BORDER;
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.moveTo(padding, y);
+        ctx.lineTo(width - padding, y);
+        ctx.stroke();
     });
-    
-    const finalTotal = order.total;
-    const totalSavingsVal = calculateTotalSavings(order.items);
-    const originalTotal = finalTotal + totalSavingsVal;
-    
-    if (totalSavingsVal > 0) {
-        ctx.font = `16px ${FONT_FAMILY_SANS}`;
-        ctx.fillStyle = COLORS.TEXT_LIGHT;
-        ctx.textAlign = 'start';
-        ctx.fillText(t.subtotal, x(padding), y);
-        ctx.textAlign = 'end';
-        ctx.fillText(`${originalTotal.toFixed(2)} ${t.currency}`, x(width - padding), y);
-        y += H_TOTAL_LINE;
 
-        ctx.fillStyle = COLORS.RED;
-        ctx.textAlign = 'start';
-        ctx.fillText(t.discount, x(padding), y);
-        ctx.textAlign = 'end';
-        ctx.fillText(`-${totalSavingsVal.toFixed(2)} ${t.currency}`, x(width - padding), y);
-        y += H_TOTAL_LINE;
+    // Totals section
+    y += 30;
+    const totalsX = width - padding - 200;
+    const valuesX = width - padding;
+
+    if (totalSavings > 0) {
+        const originalTotal = order.total + totalSavings;
+        ctx.font = `16px ${FONT_SANS}`;
+        ctx.fillStyle = COLORS.TEXT_MEDIUM;
+        ctx.textAlign = textAlign('start');
+        ctx.fillText(`${t.subtotal}:`, x(totalsX), y);
+        ctx.textAlign = textAlign('end');
+        ctx.font = `16px ${FONT_MONO}`;
+        ctx.fillText(originalTotal.toFixed(2), x(valuesX), y);
+        y += 28;
+        
+        ctx.font = `16px ${FONT_SANS}`;
+        ctx.fillStyle = COLORS.DANGER;
+        ctx.textAlign = textAlign('start');
+        ctx.fillText(`${t.discount}:`, x(totalsX), y);
+        ctx.textAlign = textAlign('end');
+        ctx.font = `16px ${FONT_MONO}`;
+        ctx.fillText(`-${totalSavings.toFixed(2)}`, x(valuesX), y);
+        y += 28;
     }
 
-    ctx.font = `bold 18px ${FONT_FAMILY_SANS}`;
+    ctx.font = `bold 20px ${FONT_SANS}`;
     ctx.fillStyle = COLORS.TEXT_DARK;
-    ctx.textAlign = 'start';
-    ctx.fillText(t.total, x(padding), y);
-    ctx.textAlign = 'end';
-    ctx.fillText(`${finalTotal.toFixed(2)} ${t.currency}`, x(width - padding), y);
-    y += H_TOTAL_LINE + 10;
-    drawDashedLine(y);
-    y += 25;
-    
-    let paymentStatusText = t.paymentStatusUnpaid, paymentStatusColor = COLORS.ORANGE;
-    if (order.paymentMethod) {
-        if(order.paymentMethod === 'cod') { paymentStatusText = t.paymentStatusCod; paymentStatusColor = COLORS.BLUE; }
-        else if (order.paymentMethod === 'online') { paymentStatusText = t.paymentStatusPaidOnline; paymentStatusColor = COLORS.GREEN; }
-    }
-    
-    ctx.font = `bold 14px ${FONT_FAMILY_SANS}`;
-    ctx.fillStyle = COLORS.TEXT_LIGHT;
-    ctx.textAlign = 'start';
-    ctx.fillText(t.paymentStatus, x(padding), y);
-    ctx.fillStyle = paymentStatusColor;
-    const chipWidth = ctx.measureText(paymentStatusText).width + 24;
-    const chipX = isRtl ? padding : width - padding - chipWidth;
-    ctx.beginPath();
-    const chipRadius = 12;
-    ctx.moveTo(chipX + chipRadius, y - 16);
-    ctx.lineTo(chipX + chipWidth - chipRadius, y - 16);
-    ctx.quadraticCurveTo(chipX + chipWidth, y - 16, chipX + chipWidth, y - 16 + chipRadius);
-    ctx.lineTo(chipX + chipWidth, y - 16 + 24 - chipRadius);
-    ctx.quadraticCurveTo(chipX + chipWidth, y - 16 + 24, chipX + chipWidth - chipRadius, y - 16 + 24);
-    ctx.lineTo(chipX + chipRadius, y - 16 + 24);
-    ctx.quadraticCurveTo(chipX, y - 16 + 24, chipX, y - 16 + 24 - chipRadius);
-    ctx.lineTo(chipX, y - 16 + chipRadius);
-    ctx.quadraticCurveTo(chipX, y - 16, chipX + chipRadius, y - 16);
-    ctx.closePath();
-    ctx.fill();
-
-    ctx.fillStyle = '#FFFFFF';
-    ctx.textAlign = 'center';
-    ctx.fillText(paymentStatusText, chipX + chipWidth / 2, y);
-    y += 28;
-    
-    ctx.font = `14px ${FONT_FAMILY_SANS}`;
-    ctx.fillStyle = COLORS.TEXT_LIGHT;
-    ctx.textAlign = 'start';
-    ctx.fillText(t.paymentMethod, x(padding), y);
-    ctx.fillStyle = COLORS.TEXT_DARK;
-    ctx.textAlign = 'end';
-    ctx.fillText(order.paymentDetail || (order.paymentMethod === 'cod' ? t.cash : 'N/A'), x(width - padding), y);
+    ctx.textAlign = textAlign('start');
+    ctx.fillText(`${t.total}:`, x(totalsX), y);
+    ctx.font = `bold 24px ${FONT_SANS}`;
+    ctx.fillStyle = COLORS.PRIMARY;
+    ctx.textAlign = textAlign('end');
+    ctx.fillText(`${order.total.toFixed(2)} ${t.currency}`, x(valuesX), y);
     y += 40;
 
-    ctx.font = `16px ${FONT_FAMILY_SANS}`;
-    ctx.fillStyle = COLORS.TEXT_LIGHT;
+    // Payment Section
+    const paymentStatusText = order.paymentMethod === 'online' ? t.paymentStatusPaidOnline : order.paymentMethod === 'cod' ? t.paymentStatusCod : t.paymentStatusUnpaid;
+    const paymentStatusColor = order.paymentMethod === 'online' ? COLORS.SUCCESS : order.paymentMethod === 'cod' ? COLORS.INFO : COLORS.DANGER;
+
+    ctx.font = `14px ${FONT_SANS}`;
+    ctx.fillStyle = COLORS.TEXT_MEDIUM;
+    ctx.textAlign = textAlign('start');
+    ctx.fillText(t.paymentMethod, x(padding), y);
+    ctx.fillStyle = paymentStatusColor;
+    ctx.textAlign = textAlign('end');
+    ctx.fillText(paymentStatusText, x(width - padding), y);
+    y += 40;
+    
+    // Footer
+    ctx.font = `16px ${FONT_SANS}`;
+    ctx.fillStyle = COLORS.TEXT_MEDIUM;
     ctx.textAlign = 'center';
-    ctx.fillText(language === 'ar' ? 'شكراً لطلبك!' : 'Thank you for your order!', width / 2, y);
+    ctx.fillText(t.language === 'ar' ? 'شكراً لطلبك!' : 'Thank you for your order!', width / 2, y);
 
     return canvas.toDataURL('image/png');
 };
+
 
 const generateGenericInvoiceImage = async (
   invoice: PurchaseInvoice | SalesInvoice,
@@ -456,29 +505,6 @@ const generateGenericInvoiceImage = async (
         BORDER: '#E5E7EB', 
         RED: '#EF4444',
         PRIMARY: '#F59E0B'
-    };
-
-    // --- HELPERS ---
-    const getWrappedTextLines = (ctx: CanvasRenderingContext2D, text: string, maxWidth: number): string[] => {
-        const words = text.split(' ');
-        if (words.length === 0) return [];
-        const lines: string[] = [];
-        let currentLine = words[0] || '';
-        for (let i = 1; i < words.length; i++) {
-            const word = words[i];
-            if (!word) continue;
-            const testLine = currentLine + " " + word;
-            const metrics = ctx.measureText(testLine);
-            const testWidth = metrics.width;
-            if (testWidth > maxWidth && i > 0) {
-                lines.push(currentLine);
-                currentLine = word;
-            } else {
-                currentLine = testLine;
-            }
-        }
-        lines.push(currentLine);
-        return lines;
     };
 
     // --- HEIGHT CALCULATION ---
