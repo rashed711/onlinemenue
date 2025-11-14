@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import type { Order, RestaurantInfo, OrderType } from '../../types';
 import { DocumentTextIcon, PencilIcon, ShareIcon, PrintIcon, TrashIcon, CloseIcon, StarIcon, UserIcon, ClockIcon, HomeIcon, TakeawayIcon, TruckIcon, UserCircleIcon, CreditCardIcon, CheckIcon, ClipboardListIcon } from '../icons/Icons';
 import { StarRating } from '../StarRating';
-import { formatDateTime, formatNumber, generateReceiptImage, calculateItemTotal, calculateOriginalItemTotal, calculateTotalSavings } from '../../utils/helpers';
+import { formatDateTime, formatNumber, generateReceiptImage, calculateItemTotal, calculateOriginalItemTotal, calculateTotalSavings, dataUrlToBlob } from '../../utils/helpers';
 import { Modal } from '../Modal';
 import { useUI } from '../../contexts/UIContext';
 import { useData } from '../../contexts/DataContext';
@@ -70,8 +70,7 @@ export const OrderDetailsModal: React.FC<OrderDetailsModalProps> = ({ order, onC
         try {
             if (!restaurantInfo) throw new Error("Restaurant info not available");
             const imageUrl = await generateReceiptImage(order, restaurantInfo, t, language, creatorName);
-            const response = await fetch(imageUrl);
-            const blob = await response.blob();
+            const blob = dataUrlToBlob(imageUrl);
             const file = new File([blob], `order-${order.id}.png`, { type: 'image/png' });
 
             if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
@@ -177,7 +176,7 @@ export const OrderDetailsModal: React.FC<OrderDetailsModalProps> = ({ order, onC
                                     {formatDateTime(order.timestamp)}
                                 </InfoItem>
                                 {creatorName && (
-                                    <InfoItem label={t.creator} icon={<UserCircleIcon className="w-5 h-5 text-slate-500" />}>
+                                    <InfoItem label={t.createdBy} icon={<UserCircleIcon className="w-5 h-5 text-slate-500" />}>
                                         {creatorName}
                                     </InfoItem>
                                 )}

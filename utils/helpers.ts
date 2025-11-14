@@ -150,6 +150,23 @@ export const normalizeArabic = (text: string): string => {
       .replace(/[\u064B-\u0652]/g, '');
 };
 
+export const dataUrlToBlob = (dataUrl: string): Blob => {
+    const [header, base64Data] = dataUrl.split(',');
+    if (!header || !base64Data) throw new Error('Invalid data URL');
+
+    const mimeMatch = header.match(/:(.*?);/);
+    if (!mimeMatch) throw new Error('Invalid data URL MIME type');
+    const mime = mimeMatch[1];
+
+    const byteCharacters = atob(base64Data);
+    const byteNumbers = new Array(byteCharacters.length);
+    for (let i = 0; i < byteCharacters.length; i++) {
+        byteNumbers[i] = byteCharacters.charCodeAt(i);
+    }
+    const byteArray = new Uint8Array(byteNumbers);
+    return new Blob([byteArray], { type: mime });
+};
+
 export const generateReceiptImage = async (
   order: Order,
   restaurantInfo: RestaurantInfo,
