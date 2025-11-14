@@ -2,6 +2,8 @@ import type { CartItem, Order, RestaurantInfo, Language, Product, Promotion, Cat
 import { translations } from '../i18n/translations';
 import { APP_CONFIG } from './config';
 
+declare const bidi: any;
+
 export const getActivePromotionForProduct = (productId: number, promotions: Promotion[]): Promotion | undefined => {
     const now = new Date();
     return promotions.find(promo => 
@@ -163,11 +165,10 @@ export const generateReceiptImage = async (
 
     // --- SETUP ---
     const isRtl = language === 'ar';
-    // Set canvas direction for BiDi text support
     if (isRtl) {
         ctx.direction = 'rtl';
     }
-    const FONT_SANS = isRtl ? "'Cairo', sans-serif" : "'Cairo', sans-serif"; // Using Cairo for both for consistency
+    const FONT_SANS = isRtl ? "'Cairo', sans-serif" : "'Cairo', sans-serif";
     const FONT_BOLD = `bold ${FONT_SANS}`;
     const FONT_MONO = "'Courier New', Courier, monospace";
 
@@ -181,10 +182,10 @@ export const generateReceiptImage = async (
         TEXT_MEDIUM: '#475569', 
         TEXT_LIGHT: '#94a3b8', 
         BORDER: '#e2e8f0',
-        PRIMARY: '#f59e0b', // Amber 500
-        SUCCESS: '#16a34a', // Green 600
-        INFO: '#2563eb', // Blue 600
-        DANGER: '#dc2626' // Red 600
+        PRIMARY: '#f59e0b',
+        SUCCESS: '#16a34a',
+        INFO: '#2563eb',
+        DANGER: '#dc2626'
     };
 
     // --- HELPERS ---
@@ -208,7 +209,7 @@ export const generateReceiptImage = async (
         const minutes = String(date.getMinutes()).padStart(2, '0');
         const ampm = hours >= 12 ? (language === 'ar' ? 'م' : 'PM') : (language === 'ar' ? 'ص' : 'AM');
         hours = hours % 12;
-        hours = hours ? hours : 12; // the hour '0' should be '12'
+        hours = hours ? hours : 12;
         const hoursStr = String(hours).padStart(2, '0');
         
         const atText = t.atTime || (language === 'ar' ? 'الساعة' : 'at');
@@ -219,23 +220,22 @@ export const generateReceiptImage = async (
     // --- HEIGHT CALCULATION ---
     let totalHeight = 0;
     
-    // Header
-    totalHeight += 180;
+    totalHeight += 180; // Header
+    totalHeight += 50; // Order Info
     
-    // Order Info
-    totalHeight += 50; 
     ctx.font = `14px ${FONT_SANS}`;
-    const addressLines = getWrappedTextLines(ctx, order.customer.address || '', contentWidth / 2 - 20);
+    const addressText = order.customer.address || '';
+    const addressForCanvas = isRtl ? bidi.getVisual(addressText, 'RTL') : addressText;
+    const addressLines = getWrappedTextLines(ctx, addressForCanvas, contentWidth / 2 - 20);
     totalHeight += 80 + (addressLines.length > 1 ? (addressLines.length - 1) * 20 : 0);
     
-    // Items Header
-    totalHeight += 60;
+    totalHeight += 60; // Items Header
 
-    // Items
     order.items.forEach(item => {
         totalHeight += 20; // top padding
         ctx.font = `bold 16px ${FONT_SANS}`;
-        const nameLines = getWrappedTextLines(ctx, item.product.name[language], contentWidth - 250);
+        const productName = isRtl ? bidi.getVisual(item.product.name[language], 'RTL') : item.product.name[language];
+        const nameLines = getWrappedTextLines(ctx, productName, contentWidth - 250);
         totalHeight += nameLines.length * 22;
 
         if (item.options) {
@@ -245,23 +245,20 @@ export const generateReceiptImage = async (
                 const value = option?.values.find(v => v.name.en === valKey);
                 return value ? `+ ${value.name[language]}` : '';
             }).filter(Boolean).join(', ');
-            const optionLines = getWrappedTextLines(ctx, optionsText, contentWidth - 250);
+            const optionsForCanvas = isRtl ? bidi.getVisual(optionsText, 'RTL') : optionsText;
+            const optionLines = getWrappedTextLines(ctx, optionsForCanvas, contentWidth - 250);
             totalHeight += optionLines.length * 18;
         }
         totalHeight += 20; // bottom padding
     });
     
-    // Totals
     const totalSavings = calculateTotalSavings(order.items);
     totalHeight += 40; // top padding and line
     if (totalSavings > 0) totalHeight += 28 * 2;
     totalHeight += 36; // Grand Total
     
-    // Payment
-    totalHeight += 60;
-    
-    // Footer
-    totalHeight += 80;
+    totalHeight += 60; // Payment
+    totalHeight += 80; // Footer
 
     // --- DRAWING ---
     canvas.width = width;
@@ -280,11 +277,12 @@ export const generateReceiptImage = async (
     ctx.font = `bold 32px ${FONT_SANS}`;
     ctx.fillStyle = COLORS.TEXT_DARK;
     ctx.textAlign = 'center';
-    ctx.fillText(restaurantInfo.name[language], width / 2, y);
+    const restaurantNameForCanvas = isRtl ? bidi.getVisual(restaurantInfo.name[language], 'RTL') : restaurantInfo.name[language];
+    ctx.fillText(restaurantNameForCanvas, width / 2, y);
     y += 30;
     
     // Order Info Section
-    ctx.fillStyle = '#f8fafc'; // slate-50
+    ctx.fillStyle = '#f8fafc';
     ctx.strokeStyle = COLORS.BORDER;
     ctx.lineWidth = 1;
     ctx.beginPath();
@@ -301,14 +299,12 @@ export const generateReceiptImage = async (
     ctx.fillStyle = COLORS.TEXT_DARK;
     ctx.fillText(`${order.id}`, x(padding + 100), y);
 
-
     ctx.font = `14px ${FONT_SANS}`;
     ctx.fillStyle = COLORS.TEXT_MEDIUM;
     ctx.textAlign = textAlign('end');
     ctx.fillText(`${t.date}: ${formatReceiptDateTime(order.timestamp)}`, x(width - padding - 20), y);
     y += 35;
 
-    // Info columns
     const col1X = padding + 20;
     const col2X = width / 2 + 10;
     
@@ -320,12 +316,13 @@ export const generateReceiptImage = async (
     ctx.font = `14px ${FONT_SANS}`;
     ctx.fillStyle = COLORS.TEXT_MEDIUM;
     y += 24;
-    ctx.fillText(order.customer.name || 'Guest', x(col1X), y);
+    const customerNameForCanvas = isRtl ? bidi.getVisual(order.customer.name || 'Guest', 'RTL') : (order.customer.name || 'Guest');
+    ctx.fillText(customerNameForCanvas, x(col1X), y);
     y += 20;
     ctx.fillText(order.customer.mobile, x(col1X), y);
     if(order.customer.address) {
         y += 20;
-        drawWrappedText(order.customer.address, col1X, y, contentWidth / 2 - 40, 20, 'start');
+        drawWrappedText(addressForCanvas, col1X, y, contentWidth / 2 - 40, 20, 'start');
     }
 
     y = 265;
@@ -344,12 +341,13 @@ export const generateReceiptImage = async (
     }
     if (creatorName) {
         y += 20;
-        ctx.fillText(`${t.createdBy}: ${creatorName}`, x(col2X), y);
+        const creatorNameForCanvas = isRtl ? bidi.getVisual(creatorName, 'RTL') : creatorName;
+        ctx.fillText(`${t.createdBy}: ${creatorNameForCanvas}`, x(col2X), y);
     }
     y += 60 + (addressLines.length > 1 ? (addressLines.length - 1) * 20 : 0);
 
     // Items Table Header
-    ctx.fillStyle = '#f1f5f9'; // slate-100
+    ctx.fillStyle = '#f1f5f9';
     ctx.fillRect(padding, y, contentWidth, 40);
     y += 28;
 
@@ -376,10 +374,7 @@ export const generateReceiptImage = async (
         y += 20;
         const itemStartY = y;
 
-        // Totals first for easier alignment
         const finalItemTotal = calculateItemTotal(item);
-        const originalItemTotal = calculateOriginalItemTotal(item);
-        const hasDiscount = item.appliedDiscountPercent && item.appliedDiscountPercent > 0;
         
         ctx.textAlign = 'center';
         ctx.font = `16px ${FONT_SANS}`;
@@ -387,7 +382,7 @@ export const generateReceiptImage = async (
         ctx.fillText(String(item.quantity), x(qtyX), itemStartY + 5);
         
         ctx.font = `14px ${FONT_MONO}`;
-        if (hasDiscount) {
+        if (item.appliedDiscountPercent) {
             ctx.fillText(calculateItemUnitPrice(item).toFixed(2), x(priceX), itemStartY + 5);
             ctx.fillStyle = COLORS.TEXT_LIGHT;
             const originalPriceText = calculateOriginalItemUnitPrice(item).toFixed(2);
@@ -408,9 +403,9 @@ export const generateReceiptImage = async (
         ctx.fillStyle = COLORS.TEXT_DARK;
         ctx.fillText(finalItemTotal.toFixed(2), x(totalX), itemStartY + 5);
 
-        // Item Name and Options (can wrap)
         ctx.font = `bold 16px ${FONT_SANS}`;
-        const nameEndY = drawWrappedText(item.product.name[language], padding + 15, itemStartY, contentWidth - 350, 22, 'start');
+        const productNameForCanvas = isRtl ? bidi.getVisual(item.product.name[language], 'RTL') : item.product.name[language];
+        const nameEndY = drawWrappedText(productNameForCanvas, padding + 15, itemStartY, contentWidth - 350, 22, 'start');
         
         let currentY = nameEndY;
         if (item.options) {
@@ -422,7 +417,8 @@ export const generateReceiptImage = async (
                 const value = option?.values.find(v => v.name.en === valKey);
                 return value ? `+ ${value.name[language]}` : '';
             }).filter(Boolean).join(', ');
-            currentY = drawWrappedText(optionsText, padding + 15, currentY, contentWidth - 350, 18, 'start');
+            const optionsTextForCanvas = isRtl ? bidi.getVisual(optionsText, 'RTL') : optionsText;
+            currentY = drawWrappedText(optionsTextForCanvas, padding + 15, currentY, contentWidth - 350, 18, 'start');
         }
         
         y = Math.max(y, currentY) + 20;
@@ -471,7 +467,6 @@ export const generateReceiptImage = async (
     ctx.fillText(`${order.total.toFixed(2)} ${t.currency}`, x(valuesX), y);
     y += 40;
 
-    // Payment Section
     const paymentStatusText = order.paymentMethod === 'online' ? t.paymentStatusPaidOnline : order.paymentMethod === 'cod' ? t.paymentStatusCod : t.paymentStatusUnpaid;
     const paymentStatusColor = order.paymentMethod === 'online' ? COLORS.SUCCESS : order.paymentMethod === 'cod' ? COLORS.INFO : COLORS.DANGER;
 
@@ -484,7 +479,6 @@ export const generateReceiptImage = async (
     ctx.fillText(paymentStatusText, x(width - padding), y);
     y += 40;
     
-    // Footer
     ctx.font = `16px ${FONT_SANS}`;
     ctx.fillStyle = COLORS.TEXT_MEDIUM;
     ctx.textAlign = 'center';
@@ -508,9 +502,7 @@ const generateGenericInvoiceImage = async (
     const ctx = canvas.getContext('2d');
     if (!ctx) return '';
 
-    // --- SETUP ---
     const isRtl = language === 'ar';
-    // Set canvas direction for BiDi text support
     if (isRtl) {
         ctx.direction = 'rtl';
     }
@@ -533,32 +525,35 @@ const generateGenericInvoiceImage = async (
 
     // --- HEIGHT CALCULATION ---
     let y = 0;
-
-    y += 160; // Header
+    y += 160; 
 
     const details = [];
     if (type === 'sales') {
         const si = invoice as SalesInvoice;
         details.push({ label: t.invoiceNumber, value: si.invoice_number });
         details.push({ label: t.date, value: formatDateTime(si.invoice_date) });
-        details.push({ label: t.customer, value: si.customer_name });
+        const customerName = isRtl ? bidi.getVisual(si.customer_name, 'RTL') : si.customer_name;
+        details.push({ label: t.customer, value: customerName });
         details.push({ label: t.mobileNumber, value: si.customer_mobile });
         if (si.created_by_name) {
-            details.push({ label: t.createdBy, value: si.created_by_name });
+            const creatorName = isRtl ? bidi.getVisual(si.created_by_name, 'RTL') : si.created_by_name;
+            details.push({ label: t.createdBy, value: creatorName });
         }
     } else {
         const pi = invoice as PurchaseInvoice;
         details.push({ label: t.invoiceId, value: String(pi.id) });
         details.push({ label: t.date, value: formatDateTime(pi.invoice_date) });
-        details.push({ label: t.supplier, value: pi.supplier_name });
+        const supplierName = isRtl ? bidi.getVisual(pi.supplier_name, 'RTL') : pi.supplier_name;
+        details.push({ label: t.supplier, value: supplierName });
     }
     y += details.length * 24;
     y += 25;
 
-    y += 60; // Header height + spacing
+    y += 60; 
 
     (invoice.items as SalesInvoiceItem[]).forEach((item: SalesInvoiceItem) => {
-        const productName = item.product_name?.[language] || `Product ID: ${item.product_id}`;
+        const productNameText = item.product_name?.[language] || `Product ID: ${item.product_id}`;
+        const productName = isRtl ? bidi.getVisual(productNameText, 'RTL') : productNameText;
         ctx.font = `14px ${FONT_SANS}`;
         const lines = getWrappedTextLines(ctx, productName, 200);
         let itemHeight = lines.length * 18;
@@ -566,7 +561,7 @@ const generateGenericInvoiceImage = async (
         if (type === 'sales' && (item.discount_percent || 0) > 0) {
             itemHeight += 16;
         }
-        y += Math.max(itemHeight, 18); // Min height of one line
+        y += Math.max(itemHeight, 18);
         y += 25;
     });
     
@@ -604,7 +599,8 @@ const generateGenericInvoiceImage = async (
     ctx.font = `bold 22px ${FONT_SANS}`;
     ctx.fillStyle = COLORS.TEXT_DARK;
     ctx.textAlign = 'center';
-    ctx.fillText(restaurantInfo.name[language], width / 2, y);
+    const restaurantNameForCanvas = isRtl ? bidi.getVisual(restaurantInfo.name[language], 'RTL') : restaurantInfo.name[language];
+    ctx.fillText(restaurantNameForCanvas, width / 2, y);
     y += 20;
     ctx.font = `16px ${FONT_SANS}`;
     ctx.fillStyle = COLORS.TEXT_MEDIUM;
@@ -625,38 +621,33 @@ const generateGenericInvoiceImage = async (
     });
     y += 10;
     
-    // --- ITEM TABLE HEADER ---
     const headerY = y;
-    const headerHeight = 50; // Increased height for two lines
+    const headerHeight = 50;
     ctx.fillStyle = COLORS.TEXT_DARK;
     ctx.fillRect(padding, headerY, contentWidth, headerHeight);
 
     ctx.font = `bold 13px ${FONT_SANS}`;
     ctx.fillStyle = COLORS.PAPER;
 
-    // Helper to draw header text (potentially multi-line)
     const drawHeaderText = (text: string, x: number, align: CanvasTextAlign) => {
         ctx.textAlign = align;
         const words = text.split(' ');
         if (words.length > 1) {
             const line1 = words[0];
             const line2 = words.slice(1).join(' ');
-            ctx.fillText(line1, x, headerY + 20); // y position for line 1
-            ctx.fillText(line2, x, headerY + 38); // y position for line 2
+            ctx.fillText(line1, x, headerY + 20);
+            ctx.fillText(line2, x, headerY + 38);
         } else {
-            // Draw single-line text centered vertically
             ctx.fillText(text, x, headerY + 30);
         }
     };
 
-    // Column widths
     const subtotalColWidth = 85;
     const priceColWidth = 85;
     const qtyColWidth = 50;
     const itemColWidth = contentWidth - subtotalColWidth - priceColWidth - qtyColWidth;
     const colPadding = 10;
 
-    // Draw headers
     const priceHeader = type === 'sales' ? t.salePrice : t.purchasePrice;
     if (isRtl) {
         drawHeaderText(t.item, width - padding - colPadding, 'right');
@@ -670,17 +661,15 @@ const generateGenericInvoiceImage = async (
         drawHeaderText(t.subtotal, width - padding - colPadding, 'right');
     }
 
-    y = headerY + headerHeight; // Move y to the bottom of the header rect
-    y += 20; // Increased space between header and first item
+    y = headerY + headerHeight;
+    y += 20;
 
-    // --- ITEM ROWS ---
     (invoice.items as SalesInvoiceItem[]).forEach((item: SalesInvoiceItem) => {
         const itemStartY = y;
 
         const price = item.price ?? 0;
         const subtotal = item.subtotal;
 
-        // Numbers
         ctx.font = `14px ${FONT_MONO}`;
         ctx.fillStyle = COLORS.TEXT_MEDIUM;
         
@@ -710,12 +699,12 @@ const generateGenericInvoiceImage = async (
             ctx.fillText(Number(subtotal).toFixed(2), width - padding - colPadding, y);
         }
 
-        // Product Name (can wrap)
-        const productName = item.product_name?.[language] || `Product ID: ${item.product_id}`;
+        const productNameText = item.product_name?.[language] || `Product ID: ${item.product_id}`;
+        const productNameForCanvas = isRtl ? bidi.getVisual(productNameText, 'RTL') : productNameText;
         ctx.font = `14px ${FONT_SANS}`;
         ctx.fillStyle = COLORS.TEXT_DARK;
         ctx.textAlign = isRtl ? 'right' : 'left';
-        const lines = getWrappedTextLines(ctx, productName, itemColWidth - (colPadding * 2));
+        const lines = getWrappedTextLines(ctx, productNameForCanvas, itemColWidth - (colPadding * 2));
         let lineY = y;
         lines.forEach(line => {
             ctx.fillText(line, isRtl ? width - padding - colPadding : padding + colPadding, lineY);
