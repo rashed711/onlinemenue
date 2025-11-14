@@ -119,6 +119,12 @@ export const CheckoutPage: React.FC = () => {
         if (currentUser) {
             setName(currentUser.name);
             setMobile(currentUser.mobile);
+            if (currentUser.governorate) {
+                setGovernorate(currentUser.governorate);
+            }
+            if (currentUser.address_details) {
+                setAddressDetails(currentUser.address_details);
+            }
         }
     }, [currentUser]);
 

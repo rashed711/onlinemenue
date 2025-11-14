@@ -178,7 +178,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                                 role: String(dbUser.role_id), 
                                 profilePicture: profilePictureUrl,
                                 firebase_uid: dbUser.firebase_uid,
-                                google_id: dbUser.google_id
+                                google_id: dbUser.google_id,
+                                governorate: dbUser.governorate,
+                                address_details: dbUser.address_details
                             });
                             setIsCompletingProfile(false);
                             if (window.location.hash.startsWith('#/login')) {
@@ -394,6 +396,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 role: String(dbUser.role_id),
                 profilePicture: resolveImageUrl(dbUser.profile_picture) || `https://placehold.co/512x512/60a5fa/white?text=${(dbUser.name || 'U').charAt(0).toUpperCase()}`,
                 google_id: dbUser.google_id,
+                governorate: dbUser.governorate,
+                address_details: dbUser.address_details
             };
             
             setCurrentUser(userObject);
