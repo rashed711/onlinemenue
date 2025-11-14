@@ -27,17 +27,38 @@ export const OrderTrackingPage: React.FC = () => {
         setResult(null);
 
         try {
-            const response = await fetch(`${APP_CONFIG.API_BASE_URL}get_order_status.php?id=${encodeURIComponent(orderId.trim())}`);
+            const response = await fetch(`${APP_CONFIG.API_BASE_URL}get_order_status.php`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ id: orderId.trim() }),
+            });
+            
+            if (!response.ok) {
+                // Try to get error from body, but fallback if it's not JSON
+                try {
+                    const errorData = await response.json();
+                    throw new Error(errorData.error || t.orderNotFound);
+                } catch {
+                    throw new Error(t.orderNotFound);
+                }
+            }
+
             const data = await response.json();
 
-            if (!response.ok || !data.success) {
+            if (!data.success) {
                 throw new Error(data.error || t.orderNotFound);
             }
             
             setResult(data.order);
 
         } catch (err: any) {
-            setError(err.message || t.orderNotFound);
+            if (err.message.toLowerCase().includes('failed to fetch')) {
+                 setError(language === 'ar' ? 'فشل الاتصال بالخادم. يرجى التحقق من اتصالك بالإنترنت.' : 'Could not connect to the server. Please check your internet connection.');
+            } else {
+                setError(err.message || t.orderNotFound);
+            }
         } finally {
             setIsProcessing(false);
         }
