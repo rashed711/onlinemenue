@@ -27,16 +27,18 @@ export const OrderTrackingPage: React.FC = () => {
         setResult(null);
 
         try {
+            const body = new URLSearchParams();
+            body.append('id', orderId.trim());
+
             const response = await fetch(`${APP_CONFIG.API_BASE_URL}get_order_status.php`, {
                 method: 'POST',
                 headers: {
-                    'Content-Type': 'application/json',
+                    'Content-Type': 'application/x-www-form-urlencoded',
                 },
-                body: JSON.stringify({ id: orderId.trim() }),
+                body: body,
             });
             
             if (!response.ok) {
-                // Try to get error from body, but fallback if it's not JSON
                 try {
                     const errorData = await response.json();
                     throw new Error(errorData.error || t.orderNotFound);
