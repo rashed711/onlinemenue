@@ -62,7 +62,7 @@ export default {
   "payWith": "الدفع بواسطة",
   "trackYourOrder": "تتبع طلبك",
   "enterOrderId": "أدخل رقم طلبك",
-  "orderIdPrompt": "يمكنك العثور على رقم الطلب في شاشة نجاح الطلب.",
+  "orderIdPrompt": "أدخل رقم الطلب وتحقق من حالته الآن.",
   "orderNotFound": "الطلب غير موجود. يرجى التحقق من الرقم والمحاولة مرة أخرى.",
   "yourOrderIdIs": "رقم طلبك هو:",
   "useIdToTrack": "استخدم هذا الرقم لتتبع حالة طلبك.",
