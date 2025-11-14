@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import type { Order } from '../../types';
-import { PencilIcon, CameraIcon, KeyIcon, LogoutIcon, CheckIcon, CloseIcon, DevicePhoneMobileIcon, EnvelopeIcon, UserCircleIcon, ClipboardListIcon, ClockIcon, ShieldCheckIcon, InformationCircleIcon } from '../icons/Icons';
+import { PencilIcon, CameraIcon, KeyIcon, LogoutIcon, CheckIcon, CloseIcon, DevicePhoneMobileIcon, EnvelopeIcon, UserCircleIcon, ClipboardListIcon, ClockIcon, ShieldCheckIcon, InformationCircleIcon, TruckIcon, HomeIcon } from '../icons/Icons';
 import { FeedbackModal } from './FeedbackModal';
 import { useUI } from '../../contexts/UIContext';
 import { useAuth } from '../../contexts/AuthContext';
@@ -12,6 +12,7 @@ import { ReceiptModal } from '../ReceiptModal';
 import { generateReceiptImage } from '../../utils/helpers';
 import { ActiveOrderCard } from './ActiveOrderCard';
 import { PastOrderCard } from './PastOrderCard';
+import { GovernorateSelector } from '../checkout/GovernorateSelector';
 
 
 type ProfileTab = 'info' | 'active' | 'history' | 'security';
@@ -32,6 +33,10 @@ export const ProfilePage: React.FC = () => {
     const [name, setName] = useState(currentUser?.name || '');
     const [isEditingMobile, setIsEditingMobile] = useState(false);
     const [mobile, setMobile] = useState(currentUser?.mobile || '');
+    const [isEditingGovernorate, setIsEditingGovernorate] = useState(false);
+    const [governorate, setGovernorate] = useState(currentUser?.governorate || '');
+    const [isEditingAddress, setIsEditingAddress] = useState(false);
+    const [addressDetails, setAddressDetails] = useState(currentUser?.address_details || '');
     const profilePicInputRef = useRef<HTMLInputElement>(null);
 
     useEffect(() => {
@@ -40,6 +45,8 @@ export const ProfilePage: React.FC = () => {
         } else {
             setName(currentUser.name);
             setMobile(currentUser.mobile);
+            setGovernorate(currentUser.governorate || '');
+            setAddressDetails(currentUser.address_details || '');
         }
     }, [currentUser]);
 
@@ -55,6 +62,20 @@ export const ProfilePage: React.FC = () => {
             updateUserProfile(currentUser.id, { mobile: mobile.trim() });
         }
         setIsEditingMobile(false);
+    };
+
+    const handleSaveGovernorate = () => {
+        if (currentUser && governorate.trim() !== (currentUser.governorate || '')) {
+            updateUserProfile(currentUser.id, { governorate: governorate.trim() });
+        }
+        setIsEditingGovernorate(false);
+    };
+    
+    const handleSaveAddressDetails = () => {
+        if (currentUser && addressDetails.trim() !== (currentUser.address_details || '')) {
+            updateUserProfile(currentUser.id, { address_details: addressDetails.trim() });
+        }
+        setIsEditingAddress(false);
     };
 
     const handlePictureChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -228,6 +249,63 @@ export const ProfilePage: React.FC = () => {
                                         </div>
                                     </div>
                                     <span className="text-xs font-semibold text-slate-400 bg-slate-100 dark:bg-slate-700 px-2 py-1 rounded-full">{language === 'ar' ? 'للقراءة فقط' : 'Read-only'}</span>
+                                </div>
+                                 <div className="flex items-center justify-between p-4 transition-colors hover:bg-slate-100/50 dark:hover:bg-slate-700/30 rounded-lg">
+                                    <div className="flex items-center gap-4 w-full">
+                                        <TruckIcon className="w-6 h-6 text-slate-500 dark:text-slate-400" />
+                                        <div className="text-sm flex-grow">
+                                            <p className="font-medium text-slate-500 dark:text-slate-400">{t.governorate}</p>
+                                            {!isEditingGovernorate ? (
+                                                <p className="font-semibold text-slate-800 dark:text-slate-100 text-base">{governorate || t.selectGovernorate}</p>
+                                            ) : (
+                                                <GovernorateSelector
+                                                    selectedGovernorate={governorate}
+                                                    onSelectGovernorate={setGovernorate}
+                                                    language={language}
+                                                />
+                                            )}
+                                        </div>
+                                    </div>
+                                    {!isEditingGovernorate ? (
+                                        <button onClick={() => setIsEditingGovernorate(true)} className="p-2 text-slate-400 hover:text-primary-600 rounded-full hover:bg-primary-50 dark:hover:bg-primary-900/50 transition-colors">
+                                            <PencilIcon className="w-5 h-5" />
+                                        </button>
+                                    ) : (
+                                        <div className="flex items-center gap-2">
+                                            <button onClick={handleSaveGovernorate} className="p-2 text-green-500 hover:bg-green-100 dark:hover:bg-green-900/50 rounded-full"><CheckIcon className="w-5 h-5" /></button>
+                                            <button onClick={() => { setIsEditingGovernorate(false); setGovernorate(currentUser.governorate || ''); }} className="p-2 text-red-500 hover:bg-red-100 dark:hover:bg-red-900/50 rounded-full"><CloseIcon className="w-5 h-5" /></button>
+                                        </div>
+                                    )}
+                                </div>
+                                <div className="flex items-center justify-between p-4 transition-colors hover:bg-slate-100/50 dark:hover:bg-slate-700/30 rounded-lg">
+                                    <div className="flex items-center gap-4 w-full">
+                                        <HomeIcon className="w-6 h-6 text-slate-500 dark:text-slate-400" />
+                                        <div className="text-sm flex-grow">
+                                            <p className="font-medium text-slate-500 dark:text-slate-400">{t.addressDetailsLabel}</p>
+                                            {!isEditingAddress ? (
+                                                <p className="font-semibold text-slate-800 dark:text-slate-100 text-base whitespace-pre-wrap">{addressDetails || t.enterAddressPrompt}</p>
+                                            ) : (
+                                                <textarea
+                                                    value={addressDetails}
+                                                    onChange={(e) => setAddressDetails(e.target.value)}
+                                                    className="w-full mt-1 text-base font-semibold bg-slate-50 border-2 border-slate-200 focus:outline-none dark:text-slate-100 rounded-md dark:bg-slate-700 p-2 focus:border-primary-500 focus:ring-primary-500"
+                                                    autoFocus
+                                                    rows={3}
+                                                    onKeyDown={(e) => { if (e.key === 'Escape') { setIsEditingAddress(false); setAddressDetails(currentUser.address_details || ''); } }}
+                                                />
+                                            )}
+                                        </div>
+                                    </div>
+                                    {!isEditingAddress ? (
+                                        <button onClick={() => setIsEditingAddress(true)} className="p-2 text-slate-400 hover:text-primary-600 rounded-full hover:bg-primary-50 dark:hover:bg-primary-900/50 transition-colors">
+                                            <PencilIcon className="w-5 h-5" />
+                                        </button>
+                                    ) : (
+                                        <div className="flex items-center gap-2">
+                                            <button onClick={handleSaveAddressDetails} className="p-2 text-green-500 hover:bg-green-100 dark:hover:bg-green-900/50 rounded-full"><CheckIcon className="w-5 h-5" /></button>
+                                            <button onClick={() => { setIsEditingAddress(false); setAddressDetails(currentUser.address_details || ''); }} className="p-2 text-red-500 hover:bg-red-100 dark:hover:bg-red-900/50 rounded-full"><CloseIcon className="w-5 h-5" /></button>
+                                        </div>
+                                    )}
                                 </div>
                             </div>
                         )}
