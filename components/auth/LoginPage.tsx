@@ -218,27 +218,6 @@ export const LoginPage: React.FC = () => {
                     
                     {error && <p className="text-sm text-red-500 text-center mt-4">{error}</p>}
                     
-                    <div className="space-y-2 text-sm text-center mt-4">
-                        {formType === 'login' ? (
-                            <p>
-                                <span className="text-slate-600 dark:text-slate-400">{t.dontHaveAccount} </span>
-                                <button onClick={() => setFormType('register')} className="font-medium text-primary-600 hover:underline dark:text-primary-500">{t.createAccount}</button>
-                            </p>
-                        ) : (
-                            <p>
-                                <span className="text-slate-600 dark:text-slate-400">{t.alreadyHaveAccount} </span>
-                                <button onClick={() => setFormType('login')} className="font-medium text-primary-600 hover:underline dark:text-primary-500">{t.login}</button>
-                            </p>
-                        )}
-                        {formType === 'login' && (
-                            <p>
-                                <a href="#/forgot-password" onClick={(e) => handleNav(e, '/forgot-password')} className="text-xs font-medium text-primary-600 hover:underline dark:text-primary-500">
-                                    {t.forgotPassword}
-                                </a>
-                            </p>
-                        )}
-                    </div>
-
                      <div className="text-center border-t border-slate-200 dark:border-slate-700 pt-4 mt-6">
                         <a href="#/" onClick={(e) => handleNav(e, '/')} className="text-sm text-primary-600 hover:underline dark:text-primary-500">
                             {t.backToMenu}
