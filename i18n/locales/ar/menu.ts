@@ -75,6 +75,7 @@ export default {
   "paymentSuccessfulMessage": "لقد تمت معالجة دفعتك بنجاح. طلبك قيد التجهيز الآن.",
   "paymentFailed": "فشل الدفع",
   "paymentFailedMessage": "حدثت مشكلة أثناء معالجة الدفع. يرجى المحاولة مرة أخرى أو اختيار طريقة دفع مختلفة.",
+  "paymentSuccessOrderFailed": "تم الدفع بنجاح، لكن فشل إنشاء طلبك. برجاء التواصل مع الدعم الفني.",
   "backToHome": "العودة للرئيسية",
   "goToPaymentLink": "الانتقال إلى رابط الدفع"
 };

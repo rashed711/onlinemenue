@@ -6,14 +6,17 @@ export const PaymentStatusPage: React.FC = () => {
     const { t, language } = useUI();
     const [isSuccess, setIsSuccess] = useState<boolean | null>(null);
     const [orderId, setOrderId] = useState<string | null>(null);
+    const [errorCode, setErrorCode] = useState<string | null>(null);
 
     useEffect(() => {
         const params = new URLSearchParams(window.location.hash.split('?')[1]);
         const successParam = params.get('success');
         const orderIdParam = params.get('order'); // Paymob returns its own order ID
+        const errorCodeParam = params.get('error_code');
 
         setIsSuccess(successParam === 'true');
         setOrderId(orderIdParam);
+        setErrorCode(errorCodeParam);
     }, []);
 
     const handleNav = (e: React.MouseEvent<HTMLAnchorElement>, path: string) => {
@@ -51,7 +54,10 @@ export const PaymentStatusPage: React.FC = () => {
                             {t.paymentFailed}
                         </h1>
                         <p className="text-slate-600 dark:text-slate-300">
-                            {t.paymentFailedMessage}
+                            {errorCode === 'finalization_failed'
+                                ? t.paymentSuccessOrderFailed
+                                : t.paymentFailedMessage
+                            }
                         </p>
                     </>
                 )}

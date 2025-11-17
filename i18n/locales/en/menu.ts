@@ -75,6 +75,7 @@ export default {
   "paymentSuccessfulMessage": "Your payment has been processed successfully. Your order is being prepared.",
   "paymentFailed": "Payment Failed",
   "paymentFailedMessage": "There was an issue with your payment. Please try again or choose a different payment method.",
+  "paymentSuccessOrderFailed": "Your payment was successful, but we failed to create your order. Please contact support.",
   "backToHome": "Back to Home",
   "goToPaymentLink": "Go to Payment Link"
 };

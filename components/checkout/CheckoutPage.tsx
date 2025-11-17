@@ -13,8 +13,8 @@ import { Footer } from '../Footer';
 import { CheckoutStepper } from './CheckoutStepper';
 import { OrderSummary } from './OrderSummary';
 import { OrderSuccessScreen } from './OrderSuccessScreen';
-import { calculateTotal } from '../../utils/helpers';
-import { ChevronRightIcon, UploadIcon, CopyIcon, CheckIcon, CreditCardIcon } from '../icons/Icons';
+import { calculateTotal, calculateItemTotal } from '../../utils/helpers';
+import { ChevronRightIcon, UploadIcon, CopyIcon, CheckIcon, CreditCardIcon, CloseIcon } from '../icons/Icons';
 import { GovernorateSelector } from './GovernorateSelector';
 import { APP_CONFIG } from '../../utils/config';
 // FIX: Import the 'CopiedButton' component.
@@ -23,14 +23,20 @@ import { CopiedButton } from '../CopiedButton';
 
 type CheckoutStep = 'delivery' | 'payment' | 'confirm';
 
-const PAYMOB_IFRAME_ID = '321143';
+// =================================================================================
+// !! هام جداً - VERY IMPORTANT !!
+// =================================================================================
+// The correct Iframe ID from the Paymob Dashboard.
+const PAYMOB_IFRAME_ID = 321142;
+// =================================================================================
+
 
 export const CheckoutPage: React.FC = () => {
     const { language, t, isProcessing, setIsProcessing, showToast } = useUI();
     const { currentUser, isAuthenticating } = useAuth();
     const { restaurantInfo } = useData();
     const { cartItems, clearCart } = useCart();
-    const { placeOrder } = useOrders();
+    const { placeOrder, updateOrder } = useOrders();
 
     const [step, setStep] = useState<CheckoutStep>('delivery');
     const [name, setName] = useState('');
@@ -46,6 +52,8 @@ export const CheckoutPage: React.FC = () => {
 
     const [isPaymobLoading, setIsPaymobLoading] = useState(false);
     const [paymobToken, setPaymobToken] = useState<string | null>(null);
+    const [paymentError, setPaymentError] = useState<string | null>(null);
+
 
     useEffect(() => {
         if (currentUser) {
@@ -72,51 +80,55 @@ export const CheckoutPage: React.FC = () => {
 
     // Event listener for Paymob iframe communication
     useEffect(() => {
-        const handlePaymobMessage = (event: MessageEvent) => {
-            // Security: Check the origin of the message
-            if (event.origin !== 'https://accept.paymob.com') {
-                return;
-            }
+        const handlePaymobMessage = async (event: MessageEvent) => {
+            if (event.origin !== 'https://accept.paymob.com') return;
 
             let data;
             try {
-                if (typeof event.data === 'string') {
-                    // Paymob often sends a query string-like message, e.g., "success=true&id=123..."
+                // Paymob sends data differently depending on the context. This handles both.
+                if (typeof event.data === 'string' && event.data.includes('success=')) {
                     const params = new URLSearchParams(event.data);
                     data = Object.fromEntries(params.entries());
                 } else if (typeof event.data === 'object' && event.data !== null && event.data.type === 'TRANSACTION') {
-                     // Sometimes it sends a structured object
                     data = event.data.obj;
                 } else {
-                    return; // Ignore messages with unknown format
+                    return; // Not a message we are interested in.
                 }
-
-                // The key property is `success` which is a string "true" or "false".
+                
                 if (data && typeof data.success === 'string') {
                     const isSuccess = data.success.toLowerCase() === 'true';
-                    const orderId = data.order || ''; // Paymob's internal order ID
+                    const merchantOrderId = data.merchant_order_id;
 
-                    // Clear our app's cart if successful
-                    if (isSuccess) {
-                        clearCart();
+                    if (isSuccess && merchantOrderId) {
+                        try {
+                            await updateOrder(merchantOrderId, { 
+                                payment_status: 'paid',
+                                status: restaurantInfo?.orderStatusColumns[0]?.id || 'pending',
+                                paymob_order_id: data.id ? Number(data.id) : undefined
+                            });
+                            
+                            clearCart();
+                            window.location.hash = `#/payment-status?success=true`;
+                        } catch (e: any) {
+                            console.error("Error updating order status after Paymob payment:", e);
+                            window.location.hash = `#/payment-status?success=false&error_code=finalization_failed`;
+                        }
+                    } else {
+                         if (merchantOrderId) {
+                            await updateOrder(merchantOrderId, { payment_status: 'failed', status: 'cancelled' });
+                        }
+                        window.location.hash = `#/payment-status?success=false&order=${data.order || ''}`;
                     }
-
-                    // Redirect to a user-friendly status page
-                    window.location.hash = `#/payment-status?success=${isSuccess}&order=${orderId}`;
                 }
             } catch (e) {
                 console.error("Error handling Paymob iframe message:", e);
-                // Fallback to a generic failure page if message parsing fails
                 window.location.hash = `#/payment-status?success=false`;
             }
         };
 
         window.addEventListener('message', handlePaymobMessage);
-
-        return () => {
-            window.removeEventListener('message', handlePaymobMessage);
-        };
-    }, [clearCart]); // Add clearCart to dependency array
+        return () => window.removeEventListener('message', handlePaymobMessage);
+    }, [clearCart, updateOrder, restaurantInfo]);
 
 
     const subtotal = useMemo(() => calculateTotal(cartItems), [cartItems]);
@@ -153,6 +165,109 @@ export const CheckoutPage: React.FC = () => {
 
     const handleConfirmPurchase = async () => {
         if (!restaurantInfo) return;
+
+        if (paymentMethod === 'paymob') {
+            setIsPaymobLoading(true);
+            setPaymentError(null); // Reset error on new attempt
+            let preliminaryOrderId: string | null = null;
+    
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 30000); // 30-second timeout
+    
+            try {
+                const amountCents = Math.round(subtotal * 100);
+                if (amountCents < 10) {
+                    throw new Error(language === 'ar' ? 'المبلغ الإجمالي صغير جداً للدفع الإلكتروني (أقل من 10 قروش).' : 'Total amount is too small for online payment (less than 10 cents).');
+                }
+    
+                // Step 1: Create a preliminary order
+                const fullAddress = `${addressDetails}, ${governorate}`;
+                const orderData: Omit<Order, 'id' | 'timestamp'> = {
+                    items: cartItems,
+                    total: subtotal,
+                    status: 'pending_payment',
+                    orderType: 'Delivery',
+                    customer: {
+                        userId: currentUser?.id,
+                        name: name,
+                        mobile: mobile,
+                        email: currentUser?.email,
+                        address: fullAddress,
+                        governorate: governorate,
+                    },
+                    createdBy: currentUser?.id,
+                    paymentMethod: 'paymob',
+                    payment_status: 'pending',
+                };
+    
+                const preliminaryOrder = await placeOrder(orderData);
+                preliminaryOrderId = preliminaryOrder.id;
+    
+                if (!preliminaryOrderId) {
+                    throw new Error("Failed to create a preliminary order. The server did not return an order ID.");
+                }
+    
+                // Step 2: Call Paymob initiation script
+                const paymobPayload = {
+                    merchant_order_id: preliminaryOrderId,
+                    amount_cents: amountCents,
+                    customer_name: name,
+                    customer_mobile: mobile,
+                    customer_email: currentUser?.email || `${mobile.replace(/\D/g, '')}@souqstart.com`,
+                };
+    
+                const paymobResponse = await fetch(`${APP_CONFIG.API_BASE_URL}paymob_initiate.php`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+                    body: JSON.stringify(paymobPayload),
+                    signal: controller.signal
+                });
+    
+                clearTimeout(timeoutId);
+    
+                const responseText = await paymobResponse.text();
+                let paymobData;
+                try {
+                    paymobData = JSON.parse(responseText);
+                } catch (e) {
+                    console.error("Failed to parse Paymob init response as JSON:", responseText);
+                    throw new Error(language === 'ar' ? 'حدث خطأ غير متوقع من الخادم. يرجى مراجعة سجلات الخادم.' : 'The server returned an invalid response. Please check the server logs.');
+                }
+    
+                if (!paymobResponse.ok || !paymobData.success) {
+                    const errorMessage = paymobData.error ? `${paymobData.error}` : t.orderSubmitFailed;
+                    throw new Error(errorMessage);
+                }
+    
+                if (paymobData.token) {
+                    setPaymobToken(paymobData.token);
+                    // On success, we transition to the iframe. Loading state becomes irrelevant.
+                } else {
+                    throw new Error(paymobData.error || 'The server failed to retrieve a payment token.');
+                }
+    
+            } catch (error: any) {
+                clearTimeout(timeoutId);
+                console.error('Failed to initiate Paymob payment:', error);
+                
+                let errorMessage = t.orderSubmitFailed;
+                if (error.name === 'AbortError') {
+                    errorMessage = language === 'ar' ? 'انتهت مهلة الطلب. الخادم لا يستجيب.' : 'The request timed out. The server is not responding.';
+                } else if (error.message) {
+                    errorMessage = error.message;
+                }
+                
+                setPaymentError(errorMessage);
+                setIsPaymobLoading(false); // Stop loading on error
+    
+                if (preliminaryOrderId) {
+                    await updateOrder(preliminaryOrderId, { status: 'cancelled', payment_status: 'failed' });
+                }
+            }
+            return;
+        }
+        
+        // Existing logic for COD and other manual methods
         setIsProcessing(true);
         try {
             let receiptDataUrl: string | undefined = undefined;
@@ -182,72 +297,52 @@ export const CheckoutPage: React.FC = () => {
                 },
                 createdBy: currentUser?.id,
                 paymentMethod: paymentMethod,
-                paymentDetail: paymentMethod === 'online' ? selectedOnlineMethod?.name[language] : paymentMethod === 'paymob' ? 'Paymob' : t.cashOnDelivery,
+                paymentDetail: paymentMethod === 'online' ? selectedOnlineMethod?.name[language] : t.cashOnDelivery,
                 paymentReceiptUrl: receiptDataUrl,
             };
 
             const newOrder = await placeOrder(orderData);
+            clearCart();
+            setCompletedOrderId(newOrder.id);
 
-            if (paymentMethod === 'paymob') {
-                setIsPaymobLoading(true);
-                const paymobResponse = await fetch(`${APP_CONFIG.API_BASE_URL}paymob_initiate.php`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        order_id: newOrder.id,
-                        amount_egp: newOrder.total,
-                        customer: {
-                            name: newOrder.customer.name,
-                            mobile: newOrder.customer.mobile,
-                            email: newOrder.customer.email || 'test@test.com',
-                            address: newOrder.customer.address,
-                            governorate: newOrder.customer.governorate,
-                        }
-                    })
-                });
-
-                let paymobData;
-                try {
-                    paymobData = await paymobResponse.json();
-                } catch (e) {
-                    console.error("Failed to parse server response as JSON:", await paymobResponse.text());
-                    throw new Error('Received an invalid response from the server.');
-                }
-
-                if (!paymobResponse.ok) {
-                    const errorMessage = paymobData.details || paymobData.error || 'Failed to connect to payment provider.';
-                    console.error('Paymob initiation failed:', paymobData);
-                    throw new Error(errorMessage);
-                }
-
-                if (paymobData.token) {
-                    setPaymobToken(paymobData.token);
-                } else {
-                    throw new Error(paymobData.error || 'Failed to get payment token.');
-                }
-                setIsPaymobLoading(false);
-
-            } else {
-                clearCart();
-                setCompletedOrderId(newOrder.id);
-            }
-            
         } catch (error: any) {
             console.error('Failed to place order:', error);
             showToast(error.message || t.orderSubmitFailed);
-            setIsProcessing(false);
-            setIsPaymobLoading(false);
         } finally {
-            if (paymentMethod !== 'paymob') {
-                setIsProcessing(false);
-            }
+            setIsProcessing(false);
         }
     };
     
     if (!restaurantInfo) return null;
 
-    if (isPaymobLoading) {
-        return <div className="fixed inset-0 bg-white dark:bg-slate-900 z-50 flex flex-col items-center justify-center gap-4"><div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary-500"></div><p className="font-semibold text-slate-600 dark:text-slate-300">{t.processingPayment}</p></div>;
+    if (isPaymobLoading && !paymobToken) {
+        return (
+            <div className="fixed inset-0 bg-white dark:bg-slate-900 z-50 flex flex-col items-center justify-center gap-4 p-4 text-center">
+                {paymentError ? (
+                    <div className="animate-fade-in-up">
+                        <div className="mx-auto w-16 h-16 flex items-center justify-center bg-red-100 dark:bg-red-900/50 rounded-full mb-4">
+                            <CloseIcon className="w-8 h-8 text-red-600 dark:text-red-400" />
+                        </div>
+                        <h2 className="text-xl font-bold text-slate-800 dark:text-slate-100 mb-2">{t.paymentFailed}</h2>
+                        <p className="text-slate-600 dark:text-slate-300 max-w-sm mb-6">{paymentError}</p>
+                        <button 
+                            onClick={() => {
+                                setPaymentError(null);
+                                setIsPaymobLoading(false);
+                            }}
+                            className="bg-primary-600 text-white font-bold py-2 px-6 rounded-lg hover:bg-primary-700"
+                        >
+                            {language === 'ar' ? 'حاول مرة أخرى' : 'Try Again'}
+                        </button>
+                    </div>
+                ) : (
+                    <>
+                        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary-500"></div>
+                        <p className="font-semibold text-slate-600 dark:text-slate-300">{t.processingPayment}</p>
+                    </>
+                )}
+            </div>
+        );
     }
 
     if (paymobToken) {
