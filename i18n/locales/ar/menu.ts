@@ -44,6 +44,10 @@ export default {
   "choosePaymentMethod": "اختر طريقة الدفع",
   "cashOnDelivery": "الدفع عند الاستلام",
   "onlinePayment": "الدفع أونلاين",
+  "payWithCard": "الدفع بالبطاقة البنكية",
+  "paymobNotice": "سيتم توجيهك إلى صفحة دفع آمنة.",
+  "processingPayment": "جاري معالجة الدفع...",
+  "paymentIframeLoading": "جاري تحميل صفحة الدفع الآمنة...",
   "uploadReceipt": "رفع إيصال الدفع",
   "changeReceipt": "تغيير الإيصال",
   "receiptPreview": "معاينة الإيصال",
@@ -66,5 +70,11 @@ export default {
   "orderNotFound": "الطلب غير موجود. يرجى التحقق من الرقم والمحاولة مرة أخرى.",
   "yourOrderIdIs": "رقم طلبك هو:",
   "useIdToTrack": "استخدم هذا الرقم لتتبع حالة طلبك.",
-  "copyOrderId": "نسخ الرقم"
+  "copyOrderId": "نسخ الرقم",
+  "paymentSuccessful": "تم الدفع بنجاح!",
+  "paymentSuccessfulMessage": "لقد تمت معالجة دفعتك بنجاح. طلبك قيد التجهيز الآن.",
+  "paymentFailed": "فشل الدفع",
+  "paymentFailedMessage": "حدثت مشكلة أثناء معالجة الدفع. يرجى المحاولة مرة أخرى أو اختيار طريقة دفع مختلفة.",
+  "backToHome": "العودة للرئيسية",
+  "goToPaymentLink": "الانتقال إلى رابط الدفع"
 };

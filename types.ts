@@ -111,6 +111,7 @@ export interface RestaurantInfo {
     defaultPage: 'menu' | 'social';
     orderStatusColumns: OrderStatusColumn[];
     onlinePaymentMethods: OnlinePaymentMethod[];
+    isPaymobVisible?: boolean;
     codNotes?: LocalizedString;
     onlinePaymentNotes?: LocalizedString;
     activationEndDate?: string | null; // Null means active indefinitely
@@ -138,7 +139,7 @@ export interface User {
 export type OrderStatus = string;
 // FIX: Expanded OrderType to include all possible values.
 export type OrderType = 'Delivery' | 'Dine-in' | 'Takeaway';
-export type PaymentMethod = 'cod' | 'online';
+export type PaymentMethod = 'cod' | 'online' | 'paymob';
 
 export interface CheckoutDetails {
     name: string;
@@ -158,6 +159,8 @@ export interface Order {
     name?: string; // for registered users
     mobile: string; // mandatory for all
     address?: string;
+    governorate?: string;
+    email?: string;
   };
   // FIX: Added optional tableNumber property to the Order interface.
   tableNumber?: string;
@@ -171,6 +174,8 @@ export interface Order {
   paymentMethod?: PaymentMethod;
   paymentDetail?: string; // The specific payment method used, e.g., "Cash", "Vodafone Cash"
   paymentReceiptUrl?: string; // URL or Data URL of the uploaded receipt
+  paymob_order_id?: number;
+  payment_status?: 'pending' | 'paid' | 'failed';
 }
 
 // Permissions Type

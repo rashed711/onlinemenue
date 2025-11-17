@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 
 import { useUI } from '../../contexts/UIContext';
@@ -15,35 +14,16 @@ import { CheckoutStepper } from './CheckoutStepper';
 import { OrderSummary } from './OrderSummary';
 import { OrderSuccessScreen } from './OrderSuccessScreen';
 import { calculateTotal } from '../../utils/helpers';
-import { ChevronRightIcon, UploadIcon, CopyIcon, CheckIcon } from '../icons/Icons';
+import { ChevronRightIcon, UploadIcon, CopyIcon, CheckIcon, CreditCardIcon } from '../icons/Icons';
 import { GovernorateSelector } from './GovernorateSelector';
+import { APP_CONFIG } from '../../utils/config';
+// FIX: Import the 'CopiedButton' component.
+import { CopiedButton } from '../CopiedButton';
+
 
 type CheckoutStep = 'delivery' | 'payment' | 'confirm';
 
-const CopiedButton: React.FC<{ textToCopy: string, children: React.ReactNode }> = ({ textToCopy, children }) => {
-    const [copied, setCopied] = useState(false);
-    const { t } = useUI();
-    const handleClick = (e: React.MouseEvent) => {
-        e.stopPropagation(); // Prevent parent onClick
-        navigator.clipboard.writeText(textToCopy);
-        setCopied(true);
-        setTimeout(() => setCopied(false), 2000);
-    };
-    return (
-        <button 
-            type="button" 
-            onClick={handleClick}
-            className={`flex items-center gap-2 text-sm font-semibold py-1.5 px-3 rounded-lg transition-all duration-300 shadow-sm ${
-                copied 
-                ? 'bg-green-100 dark:bg-green-900/50 text-green-700 dark:text-green-300' 
-                : 'bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 transform hover:-translate-y-0.5'
-            }`}
-        >
-            {copied ? <CheckIcon className="w-5 h-5" /> : <CopyIcon className="w-5 h-5" />}
-            <span>{copied ? t.copied : children}</span>
-        </button>
-    );
-};
+const PAYMOB_IFRAME_ID = '321143';
 
 export const CheckoutPage: React.FC = () => {
     const { language, t, isProcessing, setIsProcessing, showToast } = useUI();
@@ -64,6 +44,8 @@ export const CheckoutPage: React.FC = () => {
     const [receiptPreview, setReceiptPreview] = useState<string | null>(null);
     const [completedOrderId, setCompletedOrderId] = useState<string | null>(null);
 
+    const [isPaymobLoading, setIsPaymobLoading] = useState(false);
+    const [paymobToken, setPaymobToken] = useState<string | null>(null);
 
     useEffect(() => {
         if (currentUser) {
@@ -79,14 +61,63 @@ export const CheckoutPage: React.FC = () => {
     }, [currentUser]);
 
     useEffect(() => {
-        if (cartItems.length === 0 && !isProcessing && !completedOrderId) {
+        if (cartItems.length === 0 && !isProcessing && !completedOrderId && !paymobToken) {
             window.location.hash = '#/';
         }
-    }, [cartItems, isProcessing, completedOrderId]);
+    }, [cartItems, isProcessing, completedOrderId, paymobToken]);
 
     useEffect(() => {
         window.scrollTo(0, 0);
     }, [step, completedOrderId]);
+
+    // Event listener for Paymob iframe communication
+    useEffect(() => {
+        const handlePaymobMessage = (event: MessageEvent) => {
+            // Security: Check the origin of the message
+            if (event.origin !== 'https://accept.paymob.com') {
+                return;
+            }
+
+            let data;
+            try {
+                if (typeof event.data === 'string') {
+                    // Paymob often sends a query string-like message, e.g., "success=true&id=123..."
+                    const params = new URLSearchParams(event.data);
+                    data = Object.fromEntries(params.entries());
+                } else if (typeof event.data === 'object' && event.data !== null && event.data.type === 'TRANSACTION') {
+                     // Sometimes it sends a structured object
+                    data = event.data.obj;
+                } else {
+                    return; // Ignore messages with unknown format
+                }
+
+                // The key property is `success` which is a string "true" or "false".
+                if (data && typeof data.success === 'string') {
+                    const isSuccess = data.success.toLowerCase() === 'true';
+                    const orderId = data.order || ''; // Paymob's internal order ID
+
+                    // Clear our app's cart if successful
+                    if (isSuccess) {
+                        clearCart();
+                    }
+
+                    // Redirect to a user-friendly status page
+                    window.location.hash = `#/payment-status?success=${isSuccess}&order=${orderId}`;
+                }
+            } catch (e) {
+                console.error("Error handling Paymob iframe message:", e);
+                // Fallback to a generic failure page if message parsing fails
+                window.location.hash = `#/payment-status?success=false`;
+            }
+        };
+
+        window.addEventListener('message', handlePaymobMessage);
+
+        return () => {
+            window.removeEventListener('message', handlePaymobMessage);
+        };
+    }, [clearCart]); // Add clearCart to dependency array
+
 
     const subtotal = useMemo(() => calculateTotal(cartItems), [cartItems]);
 
@@ -95,7 +126,7 @@ export const CheckoutPage: React.FC = () => {
     }, [name, mobile, governorate, addressDetails]);
 
     const canProceedToConfirm = useMemo(() => {
-        if (paymentMethod === 'cod') return true;
+        if (paymentMethod === 'cod' || paymentMethod === 'paymob') return true;
         if (paymentMethod === 'online') return selectedOnlineMethod && receiptFile;
         return false;
     }, [paymentMethod, selectedOnlineMethod, receiptFile]);
@@ -145,28 +176,95 @@ export const CheckoutPage: React.FC = () => {
                     userId: currentUser?.id,
                     name: name,
                     mobile: mobile,
+                    email: currentUser?.email,
                     address: fullAddress,
+                    governorate: governorate,
                 },
                 createdBy: currentUser?.id,
                 paymentMethod: paymentMethod,
-                paymentDetail: paymentMethod === 'online' ? selectedOnlineMethod?.name[language] : t.cashOnDelivery,
+                paymentDetail: paymentMethod === 'online' ? selectedOnlineMethod?.name[language] : paymentMethod === 'paymob' ? 'Paymob' : t.cashOnDelivery,
                 paymentReceiptUrl: receiptDataUrl,
             };
 
             const newOrder = await placeOrder(orderData);
-            clearCart();
-            setCompletedOrderId(newOrder.id);
+
+            if (paymentMethod === 'paymob') {
+                setIsPaymobLoading(true);
+                const paymobResponse = await fetch(`${APP_CONFIG.API_BASE_URL}paymob_initiate.php`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        order_id: newOrder.id,
+                        amount_egp: newOrder.total,
+                        customer: {
+                            name: newOrder.customer.name,
+                            mobile: newOrder.customer.mobile,
+                            email: newOrder.customer.email || 'test@test.com',
+                            address: newOrder.customer.address,
+                            governorate: newOrder.customer.governorate,
+                        }
+                    })
+                });
+
+                let paymobData;
+                try {
+                    paymobData = await paymobResponse.json();
+                } catch (e) {
+                    console.error("Failed to parse server response as JSON:", await paymobResponse.text());
+                    throw new Error('Received an invalid response from the server.');
+                }
+
+                if (!paymobResponse.ok) {
+                    const errorMessage = paymobData.details || paymobData.error || 'Failed to connect to payment provider.';
+                    console.error('Paymob initiation failed:', paymobData);
+                    throw new Error(errorMessage);
+                }
+
+                if (paymobData.token) {
+                    setPaymobToken(paymobData.token);
+                } else {
+                    throw new Error(paymobData.error || 'Failed to get payment token.');
+                }
+                setIsPaymobLoading(false);
+
+            } else {
+                clearCart();
+                setCompletedOrderId(newOrder.id);
+            }
             
         } catch (error: any) {
             console.error('Failed to place order:', error);
             showToast(error.message || t.orderSubmitFailed);
-        } finally {
             setIsProcessing(false);
+            setIsPaymobLoading(false);
+        } finally {
+            if (paymentMethod !== 'paymob') {
+                setIsProcessing(false);
+            }
         }
     };
     
     if (!restaurantInfo) return null;
 
+    if (isPaymobLoading) {
+        return <div className="fixed inset-0 bg-white dark:bg-slate-900 z-50 flex flex-col items-center justify-center gap-4"><div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary-500"></div><p className="font-semibold text-slate-600 dark:text-slate-300">{t.processingPayment}</p></div>;
+    }
+
+    if (paymobToken) {
+        return (
+            <div className="fixed inset-0 bg-slate-100 dark:bg-slate-900 z-50 flex flex-col items-center justify-center p-4">
+                <div className="w-full max-w-lg h-[90vh] bg-white dark:bg-slate-800 rounded-xl shadow-2xl flex flex-col">
+                    <div className="p-3 border-b dark:border-slate-700 text-center"><p className="text-sm font-semibold text-slate-500">{t.paymentIframeLoading}</p></div>
+                    <iframe
+                        src={`https://accept.paymob.com/api/acceptance/iframes/${PAYMOB_IFRAME_ID}?payment_token=${paymobToken}`}
+                        className="w-full h-full border-0"
+                        title="Paymob Secure Payment"
+                    ></iframe>
+                </div>
+            </div>
+        );
+    }
+    
     if (completedOrderId) {
         return (
             <>
@@ -229,65 +327,73 @@ export const CheckoutPage: React.FC = () => {
                                 <div className="bg-white dark:bg-slate-800 p-6 rounded-xl shadow-lg border dark:border-slate-700">
                                     <h2 className="text-2xl font-bold mb-6 text-slate-800 dark:text-slate-100">{t.choosePaymentMethod}</h2>
                                     <div className="space-y-4">
-                                        <div onClick={() => setPaymentMethod('cod')} className={`p-4 border-2 rounded-lg cursor-pointer ${paymentMethod === 'cod' ? 'border-primary-500 bg-primary-50 dark:bg-primary-900/20' : 'border-slate-300 dark:border-slate-600'}`}>
+                                        <div onClick={() => { setPaymentMethod('cod'); setSelectedOnlineMethod(null); }} className={`p-4 border-2 rounded-lg cursor-pointer transition-colors ${paymentMethod === 'cod' ? 'border-primary-500 bg-primary-50 dark:bg-primary-900/20' : 'border-slate-300 dark:border-slate-600'}`}>
                                             <h3 className="font-bold text-slate-800 dark:text-slate-100">{t.cashOnDelivery}</h3>
-                                            {restaurantInfo.codNotes && <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">{restaurantInfo.codNotes[language]}</p>}
+                                            {restaurantInfo.codNotes?.[language] && <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">{restaurantInfo.codNotes[language]}</p>}
                                         </div>
-                                        <div onClick={() => { setPaymentMethod('online'); setSelectedOnlineMethod(null); }} className={`p-4 border-2 rounded-lg cursor-pointer ${paymentMethod === 'online' ? 'border-primary-500 bg-primary-50 dark:bg-primary-900/20' : 'border-slate-300 dark:border-slate-600'}`}>
-                                            <h3 className="font-bold text-slate-800 dark:text-slate-100">{t.onlinePayment}</h3>
-                                            {restaurantInfo.onlinePaymentNotes && <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">{restaurantInfo.onlinePaymentNotes[language]}</p>}
-                                        </div>
-                                    </div>
-                                    {paymentMethod === 'online' && (
-                                        <div className="mt-6 border-t pt-6 space-y-4 dark:border-slate-700">
-                                            <h3 className="font-semibold text-slate-800 dark:text-slate-100">{t.choosePaymentMethod}</h3>
-                                            {restaurantInfo.onlinePaymentMethods?.filter(m => m.isVisible).map(method => (
-                                                <label 
-                                                    key={method.id} 
-                                                    className={`p-4 border-2 rounded-lg cursor-pointer flex flex-col gap-3 transition-colors duration-200 ${
-                                                        selectedOnlineMethod?.id === method.id
-                                                        ? 'border-primary-500 bg-primary-50 dark:bg-primary-900/20'
-                                                        : 'border-slate-300 dark:border-slate-600 hover:border-primary-400 dark:hover:border-primary-500/50'
-                                                    }`}
-                                                >
-                                                    <div className="flex items-center justify-between gap-4">
-                                                        <div className="flex items-center gap-4">
-                                                            <img src={method.icon} alt={method.name[language]} className="w-10 h-10 object-contain"/>
-                                                            <span className="font-semibold text-slate-800 dark:text-slate-100">{method.name[language]}</span>
-                                                        </div>
-                                                        <input 
-                                                            type="radio" 
-                                                            name="online-payment-method"
-                                                            checked={selectedOnlineMethod?.id === method.id}
-                                                            onChange={() => setSelectedOnlineMethod(method)}
-                                                            className="w-5 h-5 text-primary-600 focus:ring-primary-500 border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 dark:checked:bg-primary-500"
-                                                        />
+
+                                        {restaurantInfo.isPaymobVisible && (
+                                            <div onClick={() => { setPaymentMethod('paymob'); setSelectedOnlineMethod(null); }} className={`p-4 border-2 rounded-lg cursor-pointer flex items-center gap-4 transition-colors ${paymentMethod === 'paymob' ? 'border-primary-500 bg-primary-50 dark:bg-primary-900/20' : 'border-slate-300 dark:border-slate-600'}`}>
+                                                <CreditCardIcon className="w-8 h-8 text-slate-600 dark:text-slate-300 flex-shrink-0" />
+                                                <div>
+                                                    <h3 className="font-bold text-slate-800 dark:text-slate-100">{t.payWithCard}</h3>
+                                                    <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">{t.paymobNotice}</p>
+                                                </div>
+                                            </div>
+                                        )}
+                                        
+                                        {restaurantInfo.onlinePaymentMethods?.filter(m => m.isVisible).map(method => (
+                                            <label 
+                                                key={method.id} 
+                                                className={`p-4 border-2 rounded-lg cursor-pointer flex flex-col gap-3 transition-colors duration-200 ${
+                                                    selectedOnlineMethod?.id === method.id
+                                                    ? 'border-primary-500 bg-primary-50 dark:bg-primary-900/20'
+                                                    : 'border-slate-300 dark:border-slate-600 hover:border-primary-400 dark:hover:border-primary-500/50'
+                                                }`}
+                                            >
+                                                <div className="flex items-center justify-between gap-4">
+                                                    <div className="flex items-center gap-4">
+                                                        <img src={method.icon} alt={method.name[language]} className="w-10 h-10 object-contain"/>
+                                                        <span className="font-semibold text-slate-800 dark:text-slate-100">{method.name[language]}</span>
                                                     </div>
-                                                    {selectedOnlineMethod?.id === method.id && (
-                                                        <div className="mt-2 pt-3 border-t dark:border-slate-600 space-y-3">
-                                                            {method.instructions?.[language] && <p className="text-sm text-slate-600 dark:text-slate-300">{method.instructions[language]}</p>}
-                                                            
-                                                            <div className="flex items-center justify-between">
-                                                                {method.type === 'number' ? (
-                                                                    <>
-                                                                        <span className="font-mono text-base bg-slate-100 dark:bg-slate-700/50 px-3 py-1.5 rounded-lg text-slate-800 dark:text-slate-100">{method.details}</span>
-                                                                        <CopiedButton textToCopy={method.details}>{t.copy}</CopiedButton>
-                                                                    </>
-                                                                ) : (
-                                                                    <a 
-                                                                        href={method.details} 
-                                                                        target="_blank" 
-                                                                        rel="noopener noreferrer" 
-                                                                        className="w-full text-center bg-green-500 text-white font-bold py-2.5 px-4 rounded-lg hover:bg-green-600 transition-colors flex items-center justify-center gap-2 shadow-md hover:shadow-lg transform hover:-translate-y-0.5"
-                                                                    >
-                                                                        {t.payNow}
-                                                                    </a>
-                                                                )}
-                                                            </div>
-                                                        </div>
-                                                    )}
-                                                </label>
-                                            ))}
+                                                    <input 
+                                                        type="radio" 
+                                                        name="online-payment-method"
+                                                        checked={selectedOnlineMethod?.id === method.id}
+                                                        onChange={() => {
+                                                            setPaymentMethod('online');
+                                                            setSelectedOnlineMethod(method);
+                                                        }}
+                                                        className="w-5 h-5 text-primary-600 focus:ring-primary-500 border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 dark:checked:bg-primary-500"
+                                                    />
+                                                </div>
+                                            </label>
+                                        ))}
+                                    </div>
+
+                                    {paymentMethod === 'online' && selectedOnlineMethod && (
+                                        <div className="mt-6 border-t pt-6 space-y-4 dark:border-slate-700 animate-fade-in">
+                                            <div className="p-4 bg-blue-50 dark:bg-blue-900/50 rounded-lg border border-blue-200 dark:border-blue-500/30">
+                                                <p className="text-sm font-semibold text-blue-800 dark:text-blue-200 mb-2 whitespace-pre-wrap">{selectedOnlineMethod.instructions?.[language]}</p>
+                                                {selectedOnlineMethod.type === 'link' ? (
+                                                    <a
+                                                        href={selectedOnlineMethod.details}
+                                                        target="_blank"
+                                                        rel="noopener noreferrer"
+                                                        className="inline-flex items-center gap-2 bg-blue-500 text-white font-bold py-2 px-4 rounded-lg hover:bg-blue-600 transition-colors"
+                                                    >
+                                                        {t.goToPaymentLink}
+                                                        <ChevronRightIcon className={`w-4 h-4 ${language === 'ar' ? 'transform -scale-x-100' : ''}`} />
+                                                    </a>
+                                                ) : (
+                                                    <div className="flex items-center gap-3">
+                                                        <p className="font-mono text-base font-bold text-blue-900 dark:text-blue-100">{selectedOnlineMethod.details}</p>
+                                                        <CopiedButton textToCopy={selectedOnlineMethod.details} className="text-xs font-semibold py-1 px-2 rounded-md shadow-sm">
+                                                            {t.copy}
+                                                        </CopiedButton>
+                                                    </div>
+                                                )}
+                                            </div>
                                             <div>
                                                 <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">{t.uploadReceipt}</label>
                                                 <div className="mt-2 flex items-center gap-4 p-4 border-2 border-dashed rounded-lg dark:border-slate-600">
@@ -333,7 +439,11 @@ export const CheckoutPage: React.FC = () => {
                                                 <button onClick={() => setStep('payment')} className="text-sm font-medium text-primary-600 hover:underline dark:text-primary-400">{t.edit}</button>
                                             </div>
                                             <div className="mt-2 text-sm text-slate-700 dark:text-slate-300">
-                                                <p className="font-bold text-slate-800 dark:text-slate-100">{paymentMethod === 'cod' ? t.cashOnDelivery : t.onlinePayment}</p>
+                                                <p className="font-bold text-slate-800 dark:text-slate-100">
+                                                    {paymentMethod === 'cod' ? t.cashOnDelivery : 
+                                                     paymentMethod === 'paymob' ? t.payWithCard : 
+                                                     t.onlinePayment}
+                                                </p>
                                                 {paymentMethod === 'online' && selectedOnlineMethod && <p>{selectedOnlineMethod.name[language]}</p>}
                                             </div>
                                         </div>

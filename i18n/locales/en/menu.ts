@@ -44,6 +44,10 @@ export default {
   "choosePaymentMethod": "Choose Payment Method",
   "cashOnDelivery": "Cash on Delivery",
   "onlinePayment": "Online Payment",
+  "payWithCard": "Pay with Card",
+  "paymobNotice": "You will be redirected to a secure payment page.",
+  "processingPayment": "Processing Payment...",
+  "paymentIframeLoading": "Loading secure payment page...",
   "uploadReceipt": "Upload Receipt",
   "changeReceipt": "Change Receipt",
   "receiptPreview": "Receipt Preview",
@@ -66,5 +70,11 @@ export default {
   "orderNotFound": "Order not found. Please check the ID and try again.",
   "yourOrderIdIs": "Your Order ID is:",
   "useIdToTrack": "Use this ID to track the status of your order.",
-  "copyOrderId": "Copy ID"
+  "copyOrderId": "Copy ID",
+  "paymentSuccessful": "Payment Successful!",
+  "paymentSuccessfulMessage": "Your payment has been processed successfully. Your order is being prepared.",
+  "paymentFailed": "Payment Failed",
+  "paymentFailedMessage": "There was an issue with your payment. Please try again or choose a different payment method.",
+  "backToHome": "Back to Home",
+  "goToPaymentLink": "Go to Payment Link"
 };

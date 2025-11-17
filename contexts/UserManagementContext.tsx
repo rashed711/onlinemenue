@@ -44,6 +44,8 @@ export const UserManagementProvider: React.FC<{ children: React.ReactNode }> = (
                     name: u.name, 
                     mobile: u.mobile, 
                     email: u.email,
+                    governorate: u.governorate,
+                    address_details: u.address_details,
                     password: '', 
                     role: String(u.role_id), 
                     profilePicture: resolveImageUrl(u.profile_picture) || `https://placehold.co/512x512/60a5fa/white?text=${u.name.charAt(0).toUpperCase()}` 

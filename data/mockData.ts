@@ -26,6 +26,7 @@ export const restaurantInfo: RestaurantInfo = {
         { id: 'cancelled', name: { en: 'Cancelled & Refused', ar: 'ملغي ومرفوض' }, color: 'slate', playSound: false },
     ],
     onlinePaymentMethods: [],
+    isPaymobVisible: true,
     codNotes: { en: '', ar: '' },
     onlinePaymentNotes: { en: '', ar: '' },
 };

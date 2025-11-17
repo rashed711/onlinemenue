@@ -69,6 +69,9 @@ export const UsersPage: React.FC<UsersPageProps> = (props) => {
                         <tr>
                             <th scope="col" className="px-6 py-3 text-start text-xs font-medium text-slate-500 dark:text-slate-300 uppercase tracking-wider">{t.name}</th>
                             <th scope="col" className="px-6 py-3 text-start text-xs font-medium text-slate-500 dark:text-slate-300 uppercase tracking-wider">{t.mobileNumber}</th>
+                            {pageType === 'customers' && <th scope="col" className="px-6 py-3 text-start text-xs font-medium text-slate-500 dark:text-slate-300 uppercase tracking-wider">{t.email}</th>}
+                            {pageType === 'customers' && <th scope="col" className="px-6 py-3 text-start text-xs font-medium text-slate-500 dark:text-slate-300 uppercase tracking-wider">{t.governorate}</th>}
+                            {pageType === 'customers' && <th scope="col" className="px-6 py-3 text-start text-xs font-medium text-slate-500 dark:text-slate-300 uppercase tracking-wider">{t.addressDetailsLabel}</th>}
                             <th scope="col" className="px-6 py-3 text-start text-xs font-medium text-slate-500 dark:text-slate-300 uppercase tracking-wider">{t.role}</th>
                             {(hasPermission('edit_user') || hasPermission('delete_user')) && <th scope="col" className="px-6 py-3 text-start text-xs font-medium text-slate-500 dark:text-slate-300 uppercase tracking-wider">{t.actions}</th>}
                         </tr>
@@ -78,6 +81,9 @@ export const UsersPage: React.FC<UsersPageProps> = (props) => {
                             <tr key={user.id} className="hover:bg-slate-50 dark:hover:bg-slate-700/50">
                                 <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-slate-900 dark:text-slate-100">{user.name}</td>
                                 <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-600 dark:text-slate-300">{user.mobile}</td>
+                                {pageType === 'customers' && <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-600 dark:text-slate-300">{user.email || '-'}</td>}
+                                {pageType === 'customers' && <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-600 dark:text-slate-300">{user.governorate || '-'}</td>}
+                                {pageType === 'customers' && <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-600 dark:text-slate-300"><p className="max-w-xs truncate" title={user.address_details || ''}>{user.address_details || '-'}</p></td>}
                                 <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-600 dark:text-slate-300">{roles.find(r => r.key === user.role)?.name[language] || user.role}</td>
                                 {(hasPermission('edit_user') || hasPermission('delete_user')) && <td className="px-6 py-4 whitespace-nowrap text-sm font-medium"><div className="flex items-center gap-4">{hasPermission('edit_user') && <button onClick={() => setEditingUser(user)} className="text-indigo-600 hover:text-indigo-900 dark:text-indigo-400 dark:hover:text-indigo-200 flex items-center gap-1"><PencilIcon className="w-4 h-4" /> {t.edit}</button>}{hasPermission('delete_user') && <button onClick={() => deleteUser(user.id)} className="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-200 flex items-center gap-1"><TrashIcon className="w-4 h-4" /> {t.delete}</button>}</div></td>}
                             </tr>
@@ -99,6 +105,13 @@ export const UsersPage: React.FC<UsersPageProps> = (props) => {
                                 {roles.find(r => r.key === user.role)?.name[language] || user.role}
                             </span>
                         </div>
+                        {pageType === 'customers' && (user.email || user.governorate || user.address_details) && (
+                             <div className="text-sm text-slate-600 dark:text-slate-300 space-y-1 pt-2 border-t border-slate-100 dark:border-slate-700">
+                                {user.email && <p><span className="font-semibold">{t.email}:</span> {user.email}</p>}
+                                {user.governorate && <p><span className="font-semibold">{t.governorate}:</span> {user.governorate}</p>}
+                                {user.address_details && <p><span className="font-semibold">{t.addressDetailsLabel}:</span> {user.address_details}</p>}
+                            </div>
+                        )}
                         {(hasPermission('edit_user') || hasPermission('delete_user')) && (
                             <div className="border-t border-slate-100 dark:border-slate-700 pt-3 flex justify-end items-center gap-4">
                                 {hasPermission('edit_user') && <button onClick={() => setEditingUser(user)} className="text-indigo-600 dark:text-indigo-400 font-semibold flex items-center gap-1 text-sm"><PencilIcon className="w-4 h-4" /> {t.edit}</button>}

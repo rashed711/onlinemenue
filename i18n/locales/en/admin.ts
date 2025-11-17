@@ -1,3 +1,4 @@
+
 export default {
   "adminPanel": "Admin Panel",
   "disablePushNotifications": "Disable Push Notifications",
@@ -230,7 +231,9 @@ export default {
   "socialLinksManagement": "Social Links Management",
   "orderStatusManagement": "Order Status Management",
   "playSoundOnEntry": "Play sound on entry",
-  "onlinePaymentMethods": "Online Payment Methods",
+  "paymentGatewaysIntegration": "Payment Gateways",
+  "paymentGatewaysSubtitle": "Integrate with online payment providers.",
+  "onlinePaymentMethods": "Manual Online Methods",
   "addNewPaymentMethod": "Add New Method",
   "editPaymentMethod": "Edit Payment Method",
   "confirmDeletePaymentMethod": "Are you sure you want to delete this payment method?",
@@ -238,7 +241,9 @@ export default {
   "codNotes": "Cash on Delivery Notes",
   "codNotesHelper": "Shown to user when they select COD. (English & Arabic)",
   "onlinePaymentNotes": "General Online Payment Notes",
-  "onlineNotesHelper": "Shown to user when they select Online Payment. (English & Arabic)",
+  "onlineNotesHelper": "Shown to user when they select a manual online payment method.",
+  "enablePaymobIntegration": "Enable Card Payments (Paymob)",
+  "enablePaymobHelper": "When enabled, customers can pay directly with their credit cards at checkout.",
   "systemActivation": "System Activation",
   "systemActivationSubtitle": "Manage subscription and system activation status.",
   "activationStatus": "Current Status",

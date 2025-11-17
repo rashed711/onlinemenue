@@ -1,3 +1,4 @@
+
 export default {
   "adminPanel": "لوحة التحكم",
   "disablePushNotifications": "إيقاف الإشعارات",
@@ -230,7 +231,9 @@ export default {
   "socialLinksManagement": "إدارة روابط التواصل",
   "orderStatusManagement": "إدارة حالات الطلب",
   "playSoundOnEntry": "تشغيل صوت عند الدخول",
-  "onlinePaymentMethods": "طرق الدفع الأونلاين",
+  "paymentGatewaysIntegration": "بوابات الدفع الإلكتروني",
+  "paymentGatewaysSubtitle": "الربط مع مزودي خدمة الدفع عبر الإنترنت.",
+  "onlinePaymentMethods": "طرق الدفع اليدوية",
   "addNewPaymentMethod": "إضافة طريقة جديدة",
   "editPaymentMethod": "تعديل طريقة الدفع",
   "confirmDeletePaymentMethod": "هل أنت متأكد من حذف طريقة الدفع هذه؟",
@@ -238,7 +241,9 @@ export default {
   "codNotes": "ملاحظات الدفع عند الاستلام",
   "codNotesHelper": "تظهر للمستخدم عند اختيار الدفع عند الاستلام. (إنجليزي وعربي)",
   "onlinePaymentNotes": "ملاحظات عامة للدفع الأونلاين",
-  "onlineNotesHelper": "تظهر للمستخدم عند اختيار الدفع أونلاين. (إنجليزي وعربي)",
+  "onlineNotesHelper": "تظهر للمستخدم عند اختيار طريقة دفع يدوية أونلاين.",
+  "enablePaymobIntegration": "تفعيل الدفع بالبطاقة (Paymob)",
+  "enablePaymobHelper": "عند التفعيل، يمكن للعملاء الدفع مباشرة ببطاقاتهم الائتمانية عند الدفع.",
   "systemActivation": "تفعيل النظام",
   "systemActivationSubtitle": "إدارة الاشتراك وحالة تفعيل النظام.",
   "activationStatus": "الحالة الحالية",

@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useMemo } from 'react';
 import type { Language, Order, OrderStatusColumn, Permission, RestaurantInfo, SocialLink, OnlinePaymentMethod } from '../../types';
 import { PlusIcon, PencilIcon, TrashIcon } from '../icons/Icons';
@@ -460,10 +461,26 @@ export const SettingsPage: React.FC = () => {
                 )}
 
                 {activeTab === 'payments' && hasPermission('manage_settings_payments') && (
-                     <div className="grid grid-cols-1 xl:grid-cols-2 gap-8">
+                    <div className="grid grid-cols-1 xl:grid-cols-2 gap-8">
+                        <SettingsCard
+                            title={t.paymentGatewaysIntegration}
+                            subtitle={t.paymentGatewaysSubtitle}
+                        >
+                            <FormGroup label={t.enablePaymobIntegration} helperText={t.enablePaymobHelper}>
+                                <label className="relative inline-flex items-center cursor-pointer">
+                                    <input
+                                        type="checkbox"
+                                        checked={localInfo.isPaymobVisible ?? true}
+                                        onChange={(e) => setLocalInfo(prev => prev ? { ...prev, isPaymobVisible: e.target.checked } : null)}
+                                        className="sr-only peer"
+                                    />
+                                    <div className="w-11 h-6 bg-slate-200 rounded-full peer dark:bg-slate-700 peer-focus:ring-4 peer-focus:ring-primary-300 dark:peer-focus:ring-primary-800 peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full after:content-[''] after:absolute after:top-0.5 after:start-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-green-600"></div>
+                                </label>
+                            </FormGroup>
+                        </SettingsCard>
                         <SettingsCard 
                             title={t.onlinePaymentMethods} 
-                            subtitle="Manage your online payment options for delivery."
+                            subtitle={t.onlineNotesHelper}
                             actions={
                                 <button onClick={() => setEditingPaymentMethod('new')} className={btnPrimarySmClasses}>
                                     <PlusIcon className="w-5 h-5" />
@@ -491,21 +508,23 @@ export const SettingsPage: React.FC = () => {
                                         </div>
                                     </li>
                                 )) : (
-                                    <p className="p-6 text-center text-slate-500">No online payment methods added yet.</p>
+                                    <p className="p-6 text-center text-slate-500">{t.noInvoicesFound}</p>
                                 )}
                             </ul>
                         </SettingsCard>
-                        <SettingsCard title={t.paymentInstructionsSettings} subtitle="Provide specific instructions for different payment methods.">
-                            <FormGroup label={t.codNotes} helperText={t.codNotesHelper}>
-                                <textarea name="codNotes.en" value={localInfo.codNotes?.en || ''} onChange={handleInfoChange} placeholder="English Notes" rows={3} className={formInputClasses + ' mb-2'}></textarea>
-                                <textarea name="codNotes.ar" value={localInfo.codNotes?.ar || ''} onChange={handleInfoChange} placeholder="Arabic Notes" rows={3} className={formInputClasses}></textarea>
-                            </FormGroup>
-                            <hr className="border-slate-200 dark:border-slate-700"/>
-                            <FormGroup label={t.onlinePaymentNotes} helperText={t.onlineNotesHelper}>
-                                <textarea name="onlinePaymentNotes.en" value={localInfo.onlinePaymentNotes?.en || ''} onChange={handleInfoChange} placeholder="English Notes" rows={3} className={formInputClasses + ' mb-2'}></textarea>
-                                <textarea name="onlinePaymentNotes.ar" value={localInfo.onlinePaymentNotes?.ar || ''} onChange={handleInfoChange} placeholder="Arabic Notes" rows={3} className={formInputClasses}></textarea>
-                            </FormGroup>
-                        </SettingsCard>
+                        <div className="xl:col-span-2">
+                            <SettingsCard title={t.paymentInstructionsSettings} subtitle="Provide specific instructions for different payment methods.">
+                                <FormGroup label={t.codNotes} helperText={t.codNotesHelper}>
+                                    <textarea name="codNotes.en" value={localInfo.codNotes?.en || ''} onChange={handleInfoChange} placeholder="English Notes" rows={3} className={formInputClasses + ' mb-2'}></textarea>
+                                    <textarea name="codNotes.ar" value={localInfo.codNotes?.ar || ''} onChange={handleInfoChange} placeholder="Arabic Notes" rows={3} className={formInputClasses}></textarea>
+                                </FormGroup>
+                                <hr className="border-slate-200 dark:border-slate-700"/>
+                                <FormGroup label={t.onlinePaymentNotes} helperText={t.onlineNotesHelper}>
+                                    <textarea name="onlinePaymentNotes.en" value={localInfo.onlinePaymentNotes?.en || ''} onChange={handleInfoChange} placeholder="English Notes" rows={3} className={formInputClasses + ' mb-2'}></textarea>
+                                    <textarea name="onlinePaymentNotes.ar" value={localInfo.onlinePaymentNotes?.ar || ''} onChange={handleInfoChange} placeholder="Arabic Notes" rows={3} className={formInputClasses}></textarea>
+                                </FormGroup>
+                            </SettingsCard>
+                        </div>
                     </div>
                 )}
                  {activeTab === 'activation' && hasPermission('manage_settings_activation') && (

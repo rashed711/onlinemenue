@@ -20,6 +20,8 @@ const OrderTrackingPage = lazy(() => import('./components/OrderTrackingPage').th
 const ForgotPasswordPage = lazy(() => import('./components/auth/ForgotPasswordPage').then(module => ({ default: module.ForgotPasswordPage })));
 const ActionHandlerPage = lazy(() => import('./components/auth/ActionHandlerPage').then(module => ({ default: module.ActionHandlerPage })));
 const CompleteProfilePage = lazy(() => import('./components/auth/CompleteProfilePage').then(module => ({ default: module.CompleteProfilePage })));
+const PaymentStatusPage = lazy(() => import('./components/checkout/PaymentStatusPage'));
+
 
 // Non-page components can be imported directly
 import { ToastNotification } from './components/ToastNotification';
@@ -106,6 +108,7 @@ const AppContent: React.FC = () => {
     if (baseRoute.startsWith('#/track')) return <OrderTrackingPage />;
     if (baseRoute.startsWith('#/social')) return <SocialPage />;
     if (baseRoute.startsWith('#/action')) return <ActionHandlerPage />;
+    if (baseRoute.startsWith('#/payment-status')) return <PaymentStatusPage />;
     
     // Fallback to menu page
     return <MenuPage />;
