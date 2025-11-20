@@ -1,3 +1,4 @@
+
 import React from 'react';
 import type { Permission } from '../types';
 import { translations } from '../i18n/translations';
@@ -57,6 +58,8 @@ export const PERMISSION_GROUPS: Record<string, PermissionGroup> = {
       { id: 'delete_order', nameKey: 'permission_delete_order' },
       { id: 'edit_recorded_payment', nameKey: 'permission_edit_recorded_payment' },
       { id: 'view_delivery_orders', nameKey: 'permission_view_delivery_orders' },
+      { id: 'view_dine_in_orders', nameKey: 'permission_view_dine_in_orders' },
+      { id: 'view_takeaway_orders', nameKey: 'permission_view_takeaway_orders' },
     ],
   },
   reports: {

@@ -284,6 +284,8 @@ export default {
   "permission_delete_order": "Delete Orders",
   "permission_edit_recorded_payment": "Record/Edit Payment Info",
   "permission_view_delivery_orders": "View Delivery Orders Only",
+  "permission_view_dine_in_orders": "View Dine-in Orders",
+  "permission_view_takeaway_orders": "View Takeaway Orders",
   "permission_view_reports_page": "View Reports Page",
   "permission_view_sales_report": "View Sales Report",
   "permission_view_orders_report": "View Orders Report",
