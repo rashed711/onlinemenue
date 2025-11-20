@@ -1,3 +1,4 @@
+
 import React, { useMemo } from 'react';
 import type { CartItem, Language, OrderType, RestaurantInfo } from '../types';
 import { PlusIcon, MinusIcon, CloseIcon, TrashIcon } from './icons/Icons';
@@ -151,11 +152,24 @@ export const CartContents: React.FC<CartContentsProps> = ({
               <span>{t.total}</span>
               <span>{subtotal.toFixed(2)} {t.currency}</span>
           </div>
-          <div className="space-y-2 pt-2">
-            <button onClick={handleCheckout} disabled={isPlaceOrderDisabled} className="w-full bg-green-500 text-white font-bold py-3 px-4 rounded-lg hover:bg-green-600 transition-all flex justify-center items-center shadow-lg hover:shadow-xl transform hover:scale-105 disabled:bg-gray-400 disabled:cursor-not-allowed disabled:scale-100 disabled:shadow-none">
+          
+          {/* Updated Buttons Layout */}
+          <div className="flex items-stretch gap-3 pt-3">
+            <button 
+                onClick={clearCart} 
+                className="flex items-center justify-center p-3 rounded-xl bg-red-100 text-red-600 hover:bg-red-200 dark:bg-red-900/30 dark:text-red-400 dark:hover:bg-red-900/50 transition-colors border border-red-200 dark:border-red-800/50"
+                aria-label="Clear Cart"
+                title="Clear Cart"
+            >
+                <TrashIcon className="w-6 h-6" />
+            </button>
+            <button 
+                onClick={handleCheckout} 
+                disabled={isPlaceOrderDisabled} 
+                className="flex-1 bg-green-500 text-white font-bold py-3 px-4 rounded-xl hover:bg-green-600 transition-all flex justify-center items-center shadow-lg hover:shadow-xl transform hover:scale-[1.02] disabled:bg-gray-400 disabled:cursor-not-allowed disabled:scale-100 disabled:shadow-none"
+            >
                 {t.checkout}
             </button>
-            <button onClick={clearCart} className="w-full text-center text-red-500 hover:text-red-700 dark:hover:text-red-400 text-sm font-semibold">Clear Cart</button>
           </div>
         </div>
       )}

@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 
 import { useUI } from '../../contexts/UIContext';
@@ -133,9 +134,15 @@ export const CheckoutPage: React.FC = () => {
 
     const subtotal = useMemo(() => calculateTotal(cartItems), [cartItems]);
 
+    // Helper to check strict Egyptian Mobile format
+    const isMobileValid = useMemo(() => {
+        // Must start with 01, contain only digits, and be exactly 11 digits
+        return /^01\d{9}$/.test(mobile);
+    }, [mobile]);
+
     const canProceedToPayment = useMemo(() => {
-        return name.trim() !== '' && mobile.trim() !== '' && governorate.trim() !== '' && addressDetails.trim() !== '';
-    }, [name, mobile, governorate, addressDetails]);
+        return name.trim() !== '' && isMobileValid && governorate.trim() !== '' && addressDetails.trim() !== '';
+    }, [name, isMobileValid, governorate, addressDetails]);
 
     const canProceedToConfirm = useMemo(() => {
         if (paymentMethod === 'cod' || paymentMethod === 'paymob') return true;
@@ -151,6 +158,14 @@ export const CheckoutPage: React.FC = () => {
     const handlePreviousStep = () => {
         if (step === 'confirm') setStep('payment');
         if (step === 'payment') setStep('delivery');
+    };
+
+    const handleMobileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const value = e.target.value;
+        // Allow only numbers and max 11 digits
+        if (/^\d*$/.test(value) && value.length <= 11) {
+            setMobile(value);
+        }
     };
 
     const handleReceiptUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -394,7 +409,21 @@ export const CheckoutPage: React.FC = () => {
                                             </div>
                                             <div>
                                                 <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">{t.mobileNumber}</label>
-                                                <input type="tel" value={mobile} onChange={e => setMobile(e.target.value)} className="w-full p-2 border rounded-md dark:bg-slate-700 dark:border-slate-600 dark:text-white" required />
+                                                <input 
+                                                    type="tel" 
+                                                    value={mobile} 
+                                                    onChange={handleMobileChange} 
+                                                    className={`w-full p-2 border rounded-md dark:bg-slate-700 dark:text-white ${mobile.length > 0 && !isMobileValid ? 'border-red-500 focus:border-red-500 focus:ring-red-200' : 'dark:border-slate-600'}`}
+                                                    placeholder="01xxxxxxxxx"
+                                                    required 
+                                                />
+                                                {mobile.length > 0 && !isMobileValid && (
+                                                    <p className="text-red-500 text-xs mt-1">
+                                                        {language === 'ar' 
+                                                            ? 'يجب أن يتكون الرقم من 11 رقم ويبدأ بـ 01' 
+                                                            : 'Number must be 11 digits and start with 01'}
+                                                    </p>
+                                                )}
                                             </div>
                                         </div>
                                         <div>
@@ -411,7 +440,7 @@ export const CheckoutPage: React.FC = () => {
                                         </div>
                                     </div>
                                     <div className="mt-6 text-end">
-                                        <button onClick={handleNextStep} disabled={!canProceedToPayment} className="bg-primary-600 text-white font-bold py-2 px-6 rounded-lg hover:bg-primary-700 disabled:bg-slate-400">
+                                        <button onClick={handleNextStep} disabled={!canProceedToPayment} className="bg-primary-600 text-white font-bold py-2 px-6 rounded-lg hover:bg-primary-700 disabled:bg-slate-400 transition-colors">
                                             {t.nextStep} <ChevronRightIcon className={`inline-block w-5 h-5 ${language === 'ar' ? 'transform -scale-x-100' : ''}`} />
                                         </button>
                                     </div>

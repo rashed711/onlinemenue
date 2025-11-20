@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { calculateTotal, calculateItemTotal, calculateOriginalItemTotal, calculateTotalSavings } from '../../utils/helpers';
 import { ChevronRightIcon } from '../icons/Icons';
@@ -56,7 +57,9 @@ export const OrderSummary: React.FC = () => {
                 )}
                 <div className="flex justify-between">
                     <span>{t.shipping}</span>
-                    <span className="font-medium text-slate-800 dark:text-slate-100">{t.free}</span>
+                    <span className="font-medium text-slate-800 dark:text-slate-100">
+                        {language === 'ar' ? 'تطبق الرسوم' : 'Fees apply'}
+                    </span>
                 </div>
                 <div className="border-t border-slate-200 dark:border-slate-700 pt-2 mt-2 flex justify-between font-bold text-lg text-slate-800 dark:text-slate-100">
                     <span>{t.total}</span>
