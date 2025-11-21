@@ -1,11 +1,13 @@
+
 import React, { useState, useMemo } from 'react';
+import { ReportHeader } from './ReportHeader';
 import { useUI } from '../../../contexts/UIContext';
 import { useOrders } from '../../../contexts/OrderContext';
 import { useData } from '../../../contexts/DataContext';
 import { useAuth } from '../../../contexts/AuthContext';
-import { formatNumber, calculateTotal, getStartAndEndDates } from '../../../utils/helpers';
+import { formatNumber, getStartAndEndDates } from '../../../utils/helpers';
 import { ArrowDownIcon, ArrowUpIcon, InformationCircleIcon } from '../../icons/Icons';
-import type { Order, CartItem, OrderType, RestaurantInfo, Product } from '../../../types';
+import type { Product, OrderType } from '../../../types';
 
 // Simple, dependency-free components for data visualization
 const KpiCard: React.FC<{ title: string; value: string; change?: number; tooltip: string }> = ({ title, value, change, tooltip }) => {
@@ -122,7 +124,7 @@ export const DashboardPage: React.FC = () => {
     const { orders: allOrders } = useOrders();
     const { products: allProducts, restaurantInfo } = useData();
     const { currentUser, hasPermission } = useAuth();
-    const [dateRange, setDateRange] = useState('last7days');
+    const [dateRange, setDateRange] = useState('thisMonth');
     const [customStartDate, setCustomStartDate] = useState('');
     const [customEndDate, setCustomEndDate] = useState('');
 
@@ -172,19 +174,35 @@ export const DashboardPage: React.FC = () => {
 
     const topProducts = useMemo(() => {
         const stats: { [key: number]: number } = {};
+        
         filteredOrders
             .filter(o => o.status === completedStatusId)
             .forEach(order => {
-                order.items.forEach(item => {
-                    stats[item.product.id] = (stats[item.product.id] || 0) + item.quantity;
-                });
+                if (Array.isArray(order.items)) {
+                    order.items.forEach(item => {
+                        if (item && item.product && item.product.id) {
+                            // FIX: Parse integer correctly to ensure we are summing numbers, not concatenating strings
+                            const qty = typeof item.quantity === 'string' ? parseInt(item.quantity, 10) : item.quantity;
+                            
+                            if (!isNaN(qty)) {
+                                const productId = Number(item.product.id);
+                                const currentCount = stats[productId] || 0;
+                                stats[productId] = currentCount + qty;
+                            }
+                        }
+                    });
+                }
             });
+
         return Object.entries(stats)
-            .map(([id, quantity]) => ({ product: allProducts.find(p => p.id === +id), quantity }))
-            .filter((p): p is { product: Product; quantity: number } => !!p.product)
+            .map(([id, quantity]) => ({ 
+                product: allProducts.find(p => p.id === Number(id)), 
+                quantity 
+            }))
+            .filter((p): p is { product: Product; quantity: number } => !!p.product && p.quantity > 0)
             .sort((a, b) => b.quantity - a.quantity)
             .slice(0, 5)
-            .map(p => ({ label: p.product!.name[language], value: p.quantity }));
+            .map(p => ({ label: p.product.name[language], value: p.quantity }));
     }, [filteredOrders, allProducts, completedStatusId, language]);
     
     const topGovernorates = useMemo(() => {
@@ -228,29 +246,15 @@ export const DashboardPage: React.FC = () => {
     
     return (
         <div className="space-y-6 animate-fade-in">
-             <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-4 mb-6 flex-wrap">
-                <h1 className="text-2xl font-bold text-slate-800 dark:text-slate-100 shrink-0">{t.reportsDashboard}</h1>
-                <div className="flex items-center gap-2 flex-wrap justify-start sm:justify-end">
-                    {[
-                        { id: 'today', label: t.today },
-                        { id: 'yesterday', label: t.yesterday },
-                        { id: 'last7days', label: t.last7days },
-                        { id: 'thisMonth', label: t.thisMonth },
-                    ].map(filter => (
-                        <button
-                            key={filter.id}
-                            onClick={() => setDateRange(filter.id)}
-                            className={`px-3 py-1.5 rounded-md text-sm font-semibold transition-colors ${
-                                dateRange === filter.id 
-                                ? 'bg-primary-600 text-white shadow' 
-                                : 'bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-300 dark:hover:bg-slate-600'
-                            }`}
-                        >
-                            {filter.label}
-                        </button>
-                    ))}
-                </div>
-            </div>
+             <ReportHeader 
+                title={t.reportsDashboard}
+                dateRange={dateRange}
+                setDateRange={setDateRange}
+                customStartDate={customStartDate}
+                setCustomStartDate={setCustomStartDate}
+                customEndDate={customEndDate}
+                setCustomEndDate={setCustomEndDate}
+            />
             
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
                 

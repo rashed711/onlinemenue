@@ -1,3 +1,4 @@
+
 import type { CartItem, Order, RestaurantInfo, Language, Product, Promotion, Category, PurchaseInvoice, SalesInvoice, SalesInvoiceItem } from '../types';
 import { translations } from '../i18n/translations';
 import { APP_CONFIG } from './config';
@@ -65,22 +66,30 @@ export const calculateTotalSavings = (cartItems: CartItem[]): number => {
 
 export const formatDate = (isoString: string): string => {
   if (!isoString) return '';
-  return new Date(isoString).toLocaleDateString(undefined, {
-    year: 'numeric',
-    month: 'long',
-    day: 'numeric',
-  });
+  const date = new Date(isoString);
+  const day = String(date.getDate()).padStart(2, '0');
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const year = date.getFullYear();
+  // Force LTR direction using Unicode Control Characters (\u202A... \u202C)
+  return `\u202A${day}/${month}/${year}\u202C`;
 };
 
 export const formatDateTime = (isoString: string): string => {
   if (!isoString) return '';
-  return new Date(isoString).toLocaleString(undefined, {
-    year: 'numeric',
-    month: 'long',
-    day: 'numeric',
+  const date = new Date(isoString);
+  const day = String(date.getDate()).padStart(2, '0');
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const year = date.getFullYear();
+  
+  const time = date.toLocaleTimeString('en-US', {
     hour: '2-digit',
     minute: '2-digit',
+    hour12: true
   });
+
+  // Force LTR direction using Unicode Control Characters (\u202A... \u202C)
+  // This ensures "15/11/2025 at 09:42 PM" stays in that order even in RTL mode.
+  return `\u202A${day}/${month}/${year} at ${time}\u202C`;
 };
 
 const loadImage = (src: string): Promise<HTMLImageElement> => {

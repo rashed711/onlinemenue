@@ -1,3 +1,4 @@
+
 import React, { useState, useMemo } from 'react';
 import { ReportHeader } from './ReportHeader';
 import { DataTable } from './DataTable';
@@ -26,17 +27,28 @@ export const ProductsReportPage: React.FC = () => {
                 return orderDate >= startDate && orderDate <= endDate;
             })
             .forEach(order => {
-                order.items.forEach(item => {
-                    if (!productStats[item.product.id]) {
-                        productStats[item.product.id] = { quantitySold: 0, revenue: 0 };
-                    }
-                    productStats[item.product.id].quantitySold += item.quantity;
-                    productStats[item.product.id].revenue += item.product.price * item.quantity;
-                });
+                if (Array.isArray(order.items)) {
+                    order.items.forEach(item => {
+                        if (item && item.product) {
+                            const pid = item.product.id;
+                            if (!productStats[pid]) {
+                                productStats[pid] = { quantitySold: 0, revenue: 0 };
+                            }
+                            // Ensure quantity is a number
+                            const qty = typeof item.quantity === 'string' ? parseInt(item.quantity, 10) : item.quantity;
+                            const price = typeof item.product.price === 'string' ? parseFloat(item.product.price) : item.product.price;
+                            
+                            productStats[pid].quantitySold += qty;
+                            productStats[pid].revenue += price * qty;
+                        }
+                    });
+                }
             });
 
         return products.map(product => ({
             ...product,
+            // FLATTENED NAME FOR SEARCHING:
+            productName: product.name[language], 
             categoryName: categories.find(c => c.id === product.categoryId)?.name[language] || 'N/A',
             quantitySold: productStats[product.id]?.quantitySold || 0,
             revenue: productStats[product.id]?.revenue || 0,
@@ -45,7 +57,8 @@ export const ProductsReportPage: React.FC = () => {
     }, [orders, products, categories, dateRange, language, customStartDate, customEndDate]);
 
     const columns = useMemo(() => [
-        { Header: t.product, accessor: 'name', Cell: (row: Product) => row.name[language] },
+        // Use the flattened 'productName' field for the accessor
+        { Header: t.product, accessor: 'productName' },
         { Header: t.category, accessor: 'categoryName' },
         { Header: t.quantitySold, accessor: 'quantitySold' },
         { Header: t.revenue, accessor: 'revenue', Cell: (row: any) => `${row.revenue.toFixed(2)} ${t.currency}` },

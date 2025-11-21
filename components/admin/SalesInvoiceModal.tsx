@@ -144,13 +144,6 @@ export const SalesInvoiceModal: React.FC<SalesInvoiceModalProps> = ({ invoiceToE
                     return newItems;
                 }
     
-                const duplicateIndex = newItems.findIndex((item, i) => i !== index && item.product_id === productId);
-                
-                if (duplicateIndex !== -1) {
-                    // Logic to handle duplicates (e.g., merge quantities)
-                    // For now, let's keep it simple and just update
-                } 
-                
                 const product = products.find(p => p.id === productId);
                 if (!product) return newItems;
 
@@ -190,7 +183,11 @@ export const SalesInvoiceModal: React.FC<SalesInvoiceModalProps> = ({ invoiceToE
                 currentItem.price = value;
             }
     
-            currentItem.subtotal = (parseFloat(String(currentItem.quantity)) || 0) * (parseFloat(String(currentItem.price)) || 0);
+            // Recalculate subtotal
+            const qty = parseFloat(String(currentItem.quantity)) || 0;
+            const prc = parseFloat(String(currentItem.price)) || 0;
+            currentItem.subtotal = qty * prc;
+            
             newItems[index] = currentItem;
             return newItems;
         });
