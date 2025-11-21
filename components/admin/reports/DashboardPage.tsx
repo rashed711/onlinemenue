@@ -129,6 +129,7 @@ export const DashboardPage: React.FC = () => {
     const [customEndDate, setCustomEndDate] = useState('');
 
     const completedStatusId = useMemo(() => {
+        // Fallback to 'completed' but prioritize the configured green status
         return restaurantInfo?.orderStatusColumns.find(col => col.color === 'green')?.id || 'completed';
     }, [restaurantInfo]);
 
@@ -162,7 +163,7 @@ export const DashboardPage: React.FC = () => {
     }, [permissionFilteredOrders, dateRange, customStartDate, customEndDate]);
 
     const metrics = useMemo(() => {
-        const completed = filteredOrders.filter(o => o.status === completedStatusId);
+        const completed = filteredOrders.filter(o => o.status === completedStatusId || o.status === 'completed');
         const revenue = completed.reduce((sum, order) => sum + order.total, 0);
         return {
             totalRevenue: revenue,
@@ -176,22 +177,35 @@ export const DashboardPage: React.FC = () => {
         const stats: { [key: number]: number } = {};
         
         filteredOrders
-            .filter(o => o.status === completedStatusId)
+            .filter(o => o.status === completedStatusId || o.status === 'completed')
             .forEach(order => {
-                if (Array.isArray(order.items)) {
-                    order.items.forEach(item => {
-                        if (item && item.product && item.product.id) {
-                            // FIX: Parse integer correctly to ensure we are summing numbers, not concatenating strings
-                            const qty = typeof item.quantity === 'string' ? parseInt(item.quantity, 10) : item.quantity;
-                            
-                            if (!isNaN(qty)) {
-                                const productId = Number(item.product.id);
-                                const currentCount = stats[productId] || 0;
-                                stats[productId] = currentCount + qty;
-                            }
-                        }
-                    });
+                let items = order.items;
+                // Robustly parse items if it's a JSON string or not an array
+                if (typeof items === 'string') {
+                    try { items = JSON.parse(items); } catch (e) { items = []; }
                 }
+                
+                // Handle cases where items might be an object (PHP associative array encoded as object)
+                const itemsList = Array.isArray(items) ? items : (items && typeof items === 'object' ? Object.values(items) : []);
+
+                itemsList.forEach((item: any) => {
+                    if (item && item.product && item.product.id) {
+                        // Robustly parse quantity to ensure we are summing numbers
+                        let qty = 0;
+                        if (typeof item.quantity === 'number') {
+                            qty = item.quantity;
+                        } else if (typeof item.quantity === 'string') {
+                            // Parse float handles "1" and "1.5" correctly
+                            qty = parseFloat(item.quantity);
+                        }
+                        
+                        if (!isNaN(qty) && qty > 0) {
+                            const productId = Number(item.product.id);
+                            const currentCount = stats[productId] || 0;
+                            stats[productId] = currentCount + qty;
+                        }
+                    }
+                });
             });
 
         return Object.entries(stats)
@@ -208,7 +222,7 @@ export const DashboardPage: React.FC = () => {
     const topGovernorates = useMemo(() => {
         const stats: { [key: string]: number } = {};
         filteredOrders
-            .filter(o => o.status === completedStatusId && o.customer.address)
+            .filter(o => (o.status === completedStatusId || o.status === 'completed') && o.customer.address)
             .forEach(order => {
                 const addressParts = order.customer.address!.split(',');
                 const governorate = addressParts.pop()?.trim();
