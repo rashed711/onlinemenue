@@ -1,3 +1,4 @@
+
 import React, { useState, useMemo, useEffect, useRef, useCallback, lazy, Suspense } from 'react';
 import type { Language, Product, RestaurantInfo, Order, OrderStatus, User, UserRole, Promotion, Permission, Category, Tag, CartItem, SocialLink, LocalizedString, OrderStatusColumn, OrderType, Role } from '../../types';
 import { MenuAlt2Icon, BellIcon, BellSlashIcon, ShieldCheckIcon, UserIcon, HomeIcon, LogoutIcon } from '../icons/Icons';
@@ -404,7 +405,7 @@ export const AdminPage: React.FC<AdminPageProps> = ({ activeSubRoute, reportSubR
         setEditingPermissionsForRole(null);
     };
 
-    const handleSaveOrder = (updatedOrderData: {items: CartItem[], notes: string, tableNumber?: string}) => {
+    const handleSaveOrder = (updatedOrderData: {items: CartItem[], notes: string, total: number, tableNumber?: string}) => {
         if (editingOrder) updateOrder(editingOrder.id, updatedOrderData);
         setEditingOrder(null);
     };

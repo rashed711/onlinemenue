@@ -1,3 +1,4 @@
+
 import React, { createContext, useState, useCallback, useContext, useEffect, useRef } from 'react';
 import type { Order, CartItem, RestaurantInfo } from '../types';
 import { APP_CONFIG } from '../utils/config';
@@ -166,7 +167,16 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         const originalOrder = orders.find(o => o.id === orderId);
         if (!originalOrder) return;
         
-        setOrders(prev => prev.map(o => o.id === orderId ? { ...o, ...payload } : o));
+        // Optimistic update
+        // Ensure updatedOrder has the correct structure by explicitly merging payload
+        const updatedOrder = { ...originalOrder, ...payload };
+        
+        // Update the list
+        setOrders(prev => prev.map(o => o.id === orderId ? updatedOrder : o));
+        
+        // Synchronously update viewingOrder to match the updated list item
+        // This forces the UI (OrderDetailsModal) to reflect changes immediately, including total
+        setViewingOrder(current => (current?.id === orderId ? updatedOrder : current));
         
         setIsProcessing(true);
         try {
@@ -199,7 +209,11 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
             showToast(t.orderUpdatedSuccess);
         } catch (error: any) {
+            // Revert optimistic update
             setOrders(prev => prev.map(o => o.id === orderId ? originalOrder : o));
+            // Revert viewingOrder
+            setViewingOrder(current => (current?.id === orderId ? originalOrder : current));
+            
             showToast(error.message || t.orderUpdateFailed);
         } finally {
             setIsProcessing(false);
@@ -218,6 +232,10 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
             // FIX: Corrected translation key
             if (!response.ok || !(await response.json()).success) throw new Error(t.orderDeleteFailed);
             setOrders(prev => prev.filter(o => o.id !== orderId));
+            
+            // Close the viewing modal if the deleted order was being viewed
+            setViewingOrder(current => (current && current.id === orderId ? null : current));
+
             showToast(t.orderDeletedSuccess);
             return true;
         } catch (error: any) {

@@ -1,3 +1,4 @@
+
 import React, { useState, useMemo } from 'react';
 import type { Order, Language, CartItem, Product } from '../../types';
 import { PlusIcon, TrashIcon, MinusIcon } from '../icons/Icons';
@@ -10,13 +11,11 @@ import { calculateItemTotal } from '../../utils/helpers';
 interface OrderEditModalProps {
     order: Order;
     onClose: () => void;
-    onSave: (updatedOrderData: {items: CartItem[], notes: string, tableNumber?: string}) => void;
+    onSave: (updatedOrderData: {items: CartItem[], notes: string, total: number, tableNumber?: string}) => void;
 }
 
 export const OrderEditModal: React.FC<OrderEditModalProps> = ({ order, onClose, onSave }) => {
-    // @FIX: Refactored to get translations `t` directly from the `useUI` hook.
     const { language, t } = useUI();
-    // FIX: Destructure 'promotions' from useData to pass to ProductModal.
     const { products: allProducts, promotions } = useData();
     
     const [editedItems, setEditedItems] = useState<CartItem[]>(() => JSON.parse(JSON.stringify(order.items)));
@@ -70,7 +69,14 @@ export const OrderEditModal: React.FC<OrderEditModalProps> = ({ order, onClose, 
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
-        onSave({ items: editedItems, notes, tableNumber: order.orderType === 'Dine-in' ? tableNumber : undefined });
+        // Calculate total explicitly on submit to ensure accuracy
+        const currentTotal = editedItems.reduce((acc, item) => acc + calculateItemTotal(item), 0);
+        onSave({ 
+            items: editedItems, 
+            notes, 
+            total: currentTotal, 
+            tableNumber: order.orderType === 'Dine-in' ? tableNumber : undefined 
+        });
     };
 
     return (
@@ -168,7 +174,6 @@ export const OrderEditModal: React.FC<OrderEditModalProps> = ({ order, onClose, 
                     product={addingProductWithOptions}
                     onClose={() => setAddingProductWithOptions(null)}
                     addToCart={handleAddFromModal}
-                    // FIX: Pass the required 'promotions' prop to the ProductModal.
                     promotions={promotions}
                 />
             )}
