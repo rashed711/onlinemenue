@@ -66,7 +66,7 @@ This is a comprehensive restaurant management system with a React frontend and P
 ### Vite Configuration
 - **Port**: 5000 (required for Replit)
 - **Host**: 0.0.0.0 (allows external connections)
-- **HMR**: Configured for port 5000
+- **HMR**: Configured for Replit proxy (clientPort: 443, protocol: 'wss')
 - **Alias**: `@` points to project root
 
 ## Running the Application
@@ -87,6 +87,19 @@ npm run build
 ```bash
 npm run preview
 ```
+
+## Deployment Configuration
+
+### Static Deployment (Production)
+The application is configured for **Static Deployment** on Replit:
+- **Deployment Target**: `static`
+- **Build Command**: `npm run build`
+- **Public Directory**: `dist`
+- **Run Command**: `npx vite preview --host 0.0.0.0` (for preview only)
+
+This configuration builds the React application into static files that are served directly from the `dist` directory. The application consumes the remote PHP API at `https://souqstart.com/api/` so no backend server is needed in the deployment.
+
+To publish the application, click the "Publish" button in Replit and the static files will be automatically deployed.
 
 ## Dependencies
 
