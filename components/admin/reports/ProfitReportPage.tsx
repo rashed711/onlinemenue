@@ -10,7 +10,7 @@ import type { Order } from '../../../types';
 export const ProfitReportPage: React.FC = () => {
     const { t, language } = useUI();
     const { orders, setViewingOrder } = useOrders();
-    const { restaurantInfo } = useData();
+    const { restaurantInfo, products } = useData();
     const [dateRange, setDateRange] = useState('thisMonth');
     const [customStartDate, setCustomStartDate] = useState('');
     const [customEndDate, setCustomEndDate] = useState('');
@@ -29,7 +29,8 @@ export const ProfitReportPage: React.FC = () => {
             })
             .map(o => {
                 const cogs = o.items.reduce((sum, item) => {
-                    const cost = item.product.cost_price || 0;
+                    const currentProduct = products.find(p => p.id === item.product.id);
+                    const cost = currentProduct?.cost_price || 0;
                     return sum + (cost * item.quantity);
                 }, 0);
                 const profit = o.total - cogs;
@@ -42,7 +43,7 @@ export const ProfitReportPage: React.FC = () => {
                     profit: profit,
                 };
             });
-    }, [orders, dateRange, completedStatusId, customStartDate, customEndDate]);
+    }, [orders, dateRange, completedStatusId, customStartDate, customEndDate, products]);
     
     const totals = useMemo(() => profitData.reduce((acc, curr) => ({
         revenue: acc.revenue + curr.revenue,
