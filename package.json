@@ -1,5 +1,5 @@
 {
-  "name": "start-computer-new-03-whith--card-payment",
+  "name": "online-menu-3",
   "private": true,
   "version": "0.0.0",
   "type": "module",
@@ -9,10 +9,10 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "react-dom": "^19.2.0",
     "react": "^19.2.0",
-    "firebase": "^12.4.0",
-    "react-router-dom": "^7.9.5"
+    "react-dom": "^19.2.0",
+    "react-router-dom": "^7.9.4",
+    "firebase": "^12.4.0"
   },
   "devDependencies": {
     "@types/node": "^22.14.0",

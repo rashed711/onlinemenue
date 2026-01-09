@@ -1,8 +1,7 @@
-
-import React, { useState, useEffect, useMemo } from 'react';
-import type { Product, Promotion } from '../types';
+import React, { useState, useEffect } from 'react';
+import type { Product } from '../types';
 import { StarIcon, PlusIcon } from './icons/Icons';
-import { formatNumber, getActivePromotionForProduct } from '../utils/helpers';
+import { formatNumber } from '../utils/helpers';
 import { Modal } from './Modal';
 import { useUI } from '../contexts/UIContext';
 
@@ -10,14 +9,12 @@ interface ProductModalProps {
   product: Product;
   onClose: () => void;
   addToCart: (product: Product, quantity: number, options?: { [key: string]: string }) => void;
-  promotions: Promotion[];
 }
 
 export const ProductModal: React.FC<ProductModalProps> = ({
   product,
   onClose,
   addToCart,
-  promotions
 }) => {
   const { t, language } = useUI();
   const [quantity, setQuantity] = useState(1);
@@ -45,27 +42,17 @@ export const ProductModal: React.FC<ProductModalProps> = ({
     setSelectedOptions(prev => ({ ...prev, [optionKey]: valueKey }));
   };
   
-  const promotion = getActivePromotionForProduct(product.id, promotions);
-
-    const originalUnitPrice = useMemo(() => {
-        let price = product.price;
-        product.options?.forEach(option => {
-            const selectedValueKey = selectedOptions[option.name.en];
-            const selectedValue = option.values.find(v => v.name.en === selectedValueKey);
-            if (selectedValue) {
-                price += selectedValue.priceModifier;
-            }
-        });
-        return price;
-    }, [product, selectedOptions]);
-
-    const discountedUnitPrice = useMemo(() => {
-        if (!promotion) return originalUnitPrice;
-        return originalUnitPrice * (1 - promotion.discountPercent / 100);
-    }, [originalUnitPrice, promotion]);
-
-    const finalTotalPrice = discountedUnitPrice * quantity;
-    const originalTotalPrice = originalUnitPrice * quantity;
+  const calculateTotalPrice = () => {
+    let basePrice = product.price;
+    product.options?.forEach(option => {
+        const selectedValueKey = selectedOptions[option.name.en];
+        const selectedValue = option.values.find(v => v.name.en === selectedValueKey);
+        if (selectedValue) {
+            basePrice += selectedValue.priceModifier;
+        }
+    });
+    return basePrice * quantity;
+  };
 
   return (
     <Modal title={product.name[language]} onClose={onClose} size="3xl">
@@ -92,7 +79,7 @@ export const ProductModal: React.FC<ProductModalProps> = ({
                 <span className="text-slate-700 dark:text-slate-300 font-semibold ms-1 text-sm">{formatNumber(product.rating)}</span>
               </div>
             </div>
-            <p className="text-slate-600 dark:text-slate-300 text-sm mb-3 whitespace-pre-wrap">{product.description[language]}</p>
+            <p className="text-slate-600 dark:text-slate-300 text-sm mb-3">{product.description[language]}</p>
             
             <div className="flex-grow space-y-3 my-3">
               {product.options?.map(option => (
@@ -129,14 +116,7 @@ export const ProductModal: React.FC<ProductModalProps> = ({
         <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-4">
           <div className="text-center sm:text-start">
             <span className="text-slate-500 dark:text-slate-400 text-sm">{t.total}</span>
-            {promotion ? (
-                <div className="flex items-baseline gap-2 justify-center sm:justify-start">
-                    <p className="text-xl font-extrabold text-primary-600 dark:text-primary-400">{finalTotalPrice.toFixed(2)} {t.currency}</p>
-                    <p className="text-base line-through text-slate-500 dark:text-slate-400 font-normal">{originalTotalPrice.toFixed(2)} {t.currency}</p>
-                </div>
-            ) : (
-                <p className="text-xl font-extrabold text-primary-600 dark:text-primary-400">{finalTotalPrice.toFixed(2)} {t.currency}</p>
-            )}
+            <p className="text-xl font-extrabold text-primary-600 dark:text-primary-400">{calculateTotalPrice().toFixed(2)} {t.currency}</p>
           </div>
           <button onClick={handleAddToCart} className="w-full sm:w-auto bg-primary-500 text-white font-bold py-2.5 px-5 rounded-lg hover:bg-primary-600 flex items-center justify-center gap-2 transition-all text-sm focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 dark:focus:ring-offset-slate-800 shadow-lg hover:shadow-xl transform hover:scale-105">
             <PlusIcon className="w-5 h-5" />

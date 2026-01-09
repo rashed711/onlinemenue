@@ -1,4 +1,3 @@
-
 import React from 'react';
 import ReactDOM from 'react-dom';
 import type { CartItem, Language, OrderType, RestaurantInfo } from '../types';
@@ -10,6 +9,11 @@ import { useData } from '../contexts/DataContext';
 interface CartSidebarProps {
   isOpen: boolean;
   onClose: () => void;
+  onPlaceOrder: () => void;
+  orderType: OrderType;
+  setOrderType: (type: OrderType) => void;
+  tableNumber: string;
+  setTableNumber: (table: string) => void;
 }
 
 export const CartSidebar: React.FC<CartSidebarProps> = (props) => {
@@ -31,14 +35,14 @@ export const CartSidebar: React.FC<CartSidebarProps> = (props) => {
         aria-hidden="true"
       />
       <div
-        className={`fixed bottom-0 inset-x-0 md:top-0 md:right-0 md:inset-x-auto w-full md:max-w-md bg-white dark:bg-slate-900 shadow-2xl z-50 flex flex-col transition-transform duration-300 ease-in-out rounded-t-2xl md:rounded-none max-h-[85vh] md:max-h-full ${
+        className={`fixed bottom-0 inset-x-0 md:top-0 md:right-0 md:inset-x-auto w-full md:max-w-md bg-cream dark:bg-slate-900 shadow-2xl z-50 flex flex-col transition-transform duration-300 ease-in-out rounded-t-2xl md:rounded-none max-h-[85vh] md:max-h-full ${
           isOpen ? openClasses : closedClasses
         }`}
         role="dialog"
         aria-modal="true"
         aria-labelledby="cart-heading"
       >
-        <CartContents isSidebar={true} onClose={onClose} />
+        <CartContents {...props} isSidebar={true} onClose={onClose} />
       </div>
     </>,
     portalRoot

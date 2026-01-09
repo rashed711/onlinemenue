@@ -1,13 +1,11 @@
-
 import React, { useState, useMemo } from 'react';
-import { ReportHeader } from './ReportHeader';
 import { useUI } from '../../../contexts/UIContext';
-import { useOrders } from '../../../contexts/OrderContext';
+import { useAdmin } from '../../../contexts/AdminContext';
 import { useData } from '../../../contexts/DataContext';
 import { useAuth } from '../../../contexts/AuthContext';
-import { formatNumber, getStartAndEndDates } from '../../../utils/helpers';
+import { formatNumber, calculateTotal, getStartAndEndDates } from '../../../utils/helpers';
 import { ArrowDownIcon, ArrowUpIcon, InformationCircleIcon } from '../../icons/Icons';
-import type { Product, OrderType } from '../../../types';
+import type { Order, CartItem, OrderType, RestaurantInfo, Product } from '../../../types';
 
 // Simple, dependency-free components for data visualization
 const KpiCard: React.FC<{ title: string; value: string; change?: number; tooltip: string }> = ({ title, value, change, tooltip }) => {
@@ -37,24 +35,20 @@ const KpiCard: React.FC<{ title: string; value: string; change?: number; tooltip
     );
 };
 
-const BarChart: React.FC<{ data: { label: string, value: number }[], valueFormatter?: (value: number) => string }> = ({ data, valueFormatter = formatNumber }) => {
+const BarChart: React.FC<{ data: { label: string, value: number }[] }> = ({ data }) => {
     const maxValue = Math.max(...data.map(d => d.value), 1);
     return (
         <div className="space-y-3">
             {data.map((item, index) => (
-                <div key={index} className="grid grid-cols-12 gap-x-2 sm:gap-x-3 items-center text-sm">
-                    <div className="col-span-5 sm:col-span-4 truncate font-medium text-slate-600 dark:text-slate-300" title={item.label}>
-                        {item.label}
-                    </div>
-                    <div className="col-span-5 sm:col-span-6 bg-slate-200 dark:bg-slate-700 rounded-full h-4">
+                <div key={index} className="flex items-center gap-3 text-sm">
+                    <div className="w-28 truncate font-medium text-slate-600 dark:text-slate-300" title={item.label}>{item.label}</div>
+                    <div className="flex-1 bg-slate-200 dark:bg-slate-700 rounded-full h-4">
                         <div
                             className="bg-primary-500 h-4 rounded-full"
                             style={{ width: `${(item.value / maxValue) * 100}%` }}
                         />
                     </div>
-                    <div className="col-span-2 text-right font-semibold text-slate-800 dark:text-slate-100">
-                        {valueFormatter(item.value)}
-                    </div>
+                    <div className="w-12 text-right font-semibold text-slate-800 dark:text-slate-100">{formatNumber(item.value)}</div>
                 </div>
             ))}
         </div>
@@ -121,15 +115,15 @@ const tailwindColorMap: { [key: string]: string } = {
 
 export const DashboardPage: React.FC = () => {
     const { language, t } = useUI();
-    const { orders: allOrders } = useOrders();
+    const { orders: allOrders } = useAdmin();
     const { products: allProducts, restaurantInfo } = useData();
     const { currentUser, hasPermission } = useAuth();
-    const [dateRange, setDateRange] = useState('thisMonth');
+    const [dateRange, setDateRange] = useState('last7days');
     const [customStartDate, setCustomStartDate] = useState('');
     const [customEndDate, setCustomEndDate] = useState('');
+    const [topProductsFilter, setTopProductsFilter] = useState<OrderType | 'All'>('All');
 
     const completedStatusId = useMemo(() => {
-        // Fallback to 'completed' but prioritize the configured green status
         return restaurantInfo?.orderStatusColumns.find(col => col.color === 'green')?.id || 'completed';
     }, [restaurantInfo]);
 
@@ -163,7 +157,7 @@ export const DashboardPage: React.FC = () => {
     }, [permissionFilteredOrders, dateRange, customStartDate, customEndDate]);
 
     const metrics = useMemo(() => {
-        const completed = filteredOrders.filter(o => o.status === completedStatusId || o.status === 'completed');
+        const completed = filteredOrders.filter(o => o.status === completedStatusId);
         const revenue = completed.reduce((sum, order) => sum + order.total, 0);
         return {
             totalRevenue: revenue,
@@ -175,68 +169,38 @@ export const DashboardPage: React.FC = () => {
 
     const topProducts = useMemo(() => {
         const stats: { [key: number]: number } = {};
-        
         filteredOrders
-            .filter(o => o.status === completedStatusId || o.status === 'completed')
+            .filter(o => {
+                if (o.status !== completedStatusId) return false;
+                if (topProductsFilter === 'All') return true;
+                return o.orderType === topProductsFilter;
+            })
             .forEach(order => {
-                let items = order.items;
-                // Robustly parse items if it's a JSON string or not an array
-                if (typeof items === 'string') {
-                    try { items = JSON.parse(items); } catch (e) { items = []; }
-                }
-                
-                // Handle cases where items might be an object (PHP associative array encoded as object)
-                const itemsList = Array.isArray(items) ? items : (items && typeof items === 'object' ? Object.values(items) : []);
-
-                itemsList.forEach((item: any) => {
-                    if (item && item.product && item.product.id) {
-                        // Robustly parse quantity to ensure we are summing numbers
-                        let qty = 0;
-                        if (typeof item.quantity === 'number') {
-                            qty = item.quantity;
-                        } else if (typeof item.quantity === 'string') {
-                            // Parse float handles "1" and "1.5" correctly
-                            qty = parseFloat(item.quantity);
-                        }
-                        
-                        if (!isNaN(qty) && qty > 0) {
-                            const productId = Number(item.product.id);
-                            const currentCount = stats[productId] || 0;
-                            stats[productId] = currentCount + qty;
-                        }
-                    }
+                order.items.forEach(item => {
+                    stats[item.product.id] = (stats[item.product.id] || 0) + item.quantity;
                 });
             });
-
         return Object.entries(stats)
-            .map(([id, quantity]) => ({ 
-                product: allProducts.find(p => p.id === Number(id)), 
-                quantity 
-            }))
-            .filter((p): p is { product: Product; quantity: number } => !!p.product && p.quantity > 0)
+            .map(([id, quantity]) => ({ product: allProducts.find(p => p.id === +id), quantity }))
+            .filter((p): p is { product: Product; quantity: number } => !!p.product)
             .sort((a, b) => b.quantity - a.quantity)
             .slice(0, 5)
-            .map(p => ({ label: p.product.name[language], value: p.quantity }));
-    }, [filteredOrders, allProducts, completedStatusId, language]);
+            .map(p => ({ label: p.product!.name[language], value: p.quantity }));
+    }, [filteredOrders, allProducts, completedStatusId, language, topProductsFilter]);
     
-    const topGovernorates = useMemo(() => {
-        const stats: { [key: string]: number } = {};
-        filteredOrders
-            .filter(o => (o.status === completedStatusId || o.status === 'completed') && o.customer.address)
-            .forEach(order => {
-                const addressParts = order.customer.address!.split(',');
-                const governorate = addressParts.pop()?.trim();
-                if (governorate) {
-                    stats[governorate] = (stats[governorate] || 0) + order.total;
-                }
-            });
-
-        return Object.entries(stats)
-            .sort((a, b) => b[1] - a[1])
-            .slice(0, 5) // Top 5
-            .map(([label, value]) => ({ label, value }));
-    }, [filteredOrders, completedStatusId]);
-
+    const orderTypeDistribution = useMemo(() => {
+        const stats: Record<string, number> = { 'Dine-in': 0, 'Delivery': 0, 'Takeaway': 0 };
+        filteredOrders.forEach(order => {
+            if (stats.hasOwnProperty(order.orderType)) {
+                stats[order.orderType]++;
+            }
+        });
+        return [
+            { label: t.dineIn, value: stats['Dine-in'], color: '#4f46e5' },
+            { label: t.takeaway, value: stats['Takeaway'], color: '#f59e0b' },
+            { label: t.delivery, value: stats['Delivery'], color: '#10b981' },
+        ];
+    }, [filteredOrders, t]);
 
     const orderStatusDistribution = useMemo(() => {
         if (!restaurantInfo) return [];
@@ -260,48 +224,79 @@ export const DashboardPage: React.FC = () => {
     
     return (
         <div className="space-y-6 animate-fade-in">
-             <ReportHeader 
-                title={t.reportsDashboard}
-                dateRange={dateRange}
-                setDateRange={setDateRange}
-                customStartDate={customStartDate}
-                setCustomStartDate={setCustomStartDate}
-                customEndDate={customEndDate}
-                setCustomEndDate={setCustomEndDate}
-            />
+             <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-4 mb-6 flex-wrap">
+                <h1 className="text-2xl font-bold text-slate-800 dark:text-slate-100 shrink-0">{t.dashboard}</h1>
+                <div className="flex items-center gap-2 flex-wrap justify-start sm:justify-end">
+                    {[
+                        { id: 'today', label: t.today },
+                        { id: 'yesterday', label: t.yesterday },
+                        { id: 'last7days', label: t.last7days },
+                        { id: 'thisMonth', label: t.thisMonth },
+                    ].map(filter => (
+                        <button
+                            key={filter.id}
+                            onClick={() => setDateRange(filter.id)}
+                            className={`px-3 py-1.5 rounded-md text-sm font-semibold transition-colors ${
+                                dateRange === filter.id 
+                                ? 'bg-primary-600 text-white shadow' 
+                                : 'bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-300 dark:hover:bg-slate-600'
+                            }`}
+                        >
+                            {filter.label}
+                        </button>
+                    ))}
+                </div>
+            </div>
             
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
                 
-                <div className="order-1 lg:order-1">
-                    <KpiCard title={t.totalRevenue} value={`${metrics.totalRevenue.toFixed(2)} ${t.currency}`} tooltip={t.totalRevenueTooltip} />
-                </div>
-                <div className="order-2 lg:order-2">
-                    <KpiCard title={t.totalOrders} value={formatNumber(metrics.totalOrders)} tooltip={t.totalOrdersTooltip} />
-                </div>
-                <div className="order-3 lg:order-3">
-                    <KpiCard title={t.completedOrders} value={formatNumber(metrics.completedOrders)} tooltip={""} />
-                </div>
-                <div className="order-4 lg:order-4">
-                    <KpiCard title={t.avgOrderValue} value={`${metrics.avgOrderValue.toFixed(2)} ${t.currency}`} tooltip={t.avgOrderValueTooltip} />
+                <div className="order-1 sm:col-span-2 lg:col-span-2 lg:order-6 bg-white dark:bg-slate-800 p-5 rounded-xl shadow-sm border dark:border-slate-700/80">
+                    <h3 className="font-semibold mb-4 text-slate-800 dark:text-slate-100">{t.orderStatusDistribution}</h3>
+                    <DonutChart data={orderStatusDistribution} />
                 </div>
 
-                <div className="order-6 sm:col-span-2 lg:col-span-4 lg:order-5 bg-white dark:bg-slate-800 p-5 rounded-xl shadow-sm border dark:border-slate-700/80">
+                <div className="order-2 sm:col-span-2 lg:col-span-2 lg:order-7 bg-white dark:bg-slate-800 p-5 rounded-xl shadow-sm border dark:border-slate-700/80">
+                    <h3 className="font-semibold mb-4 text-slate-800 dark:text-slate-100">{t.orderTypeDistribution}</h3>
+                    <DonutChart data={orderTypeDistribution} />
+                </div>
+
+                <div className="order-3 sm:col-span-2 lg:col-span-4 lg:order-5 bg-white dark:bg-slate-800 p-5 rounded-xl shadow-sm border dark:border-slate-700/80">
                     <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-3 mb-4">
                         <h3 className="font-semibold text-slate-800 dark:text-slate-100">{t.topSellingProducts}</h3>
+                         <div className="flex items-center p-1 rounded-lg bg-slate-100 dark:bg-slate-700 self-start sm:self-center">
+                            {(['All', 'Dine-in', 'Takeaway', 'Delivery'] as (OrderType | 'All')[]).map(type => {
+                                const typeKey = type === 'All' ? 'all' : type === 'Dine-in' ? 'dineIn' : type === 'Takeaway' ? 'takeaway' : 'delivery';
+                                return (
+                                    <button
+                                        key={type}
+                                        onClick={() => setTopProductsFilter(type)}
+                                        className={`px-3 py-1 text-xs font-bold transition-colors duration-200 rounded-md ${
+                                            topProductsFilter === type
+                                            ? 'bg-white dark:bg-slate-800 text-primary-600 shadow'
+                                            : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200'
+                                        }`}
+                                    >
+                                        {t[typeKey]}
+                                    </button>
+                                );
+                            })}
+                        </div>
                     </div>
                     {topProducts.length > 0 ? <BarChart data={topProducts} /> : <div className="flex items-center justify-center h-40 text-slate-500">{t.noDataForPeriod}</div>}
                 </div>
                 
-                <div className="order-5 sm:col-span-2 lg:col-span-2 lg:order-6 bg-white dark:bg-slate-800 p-5 rounded-xl shadow-sm border dark:border-slate-700/80">
-                    <h3 className="font-semibold mb-4 text-slate-800 dark:text-slate-100">{t.orderStatusDistribution}</h3>
-                    <DonutChart data={orderStatusDistribution} />
+                <div className="order-4 lg:order-1">
+                    <KpiCard title={t.totalRevenue} value={`${metrics.totalRevenue.toFixed(2)} ${t.currency}`} tooltip={t.totalRevenueTooltip} />
                 </div>
-                
-                <div className="order-7 sm:col-span-2 lg:col-span-2 lg:order-7 bg-white dark:bg-slate-800 p-5 rounded-xl shadow-sm border dark:border-slate-700/80">
-                    <h3 className="font-semibold mb-4 text-slate-800 dark:text-slate-100">{t.topGovernoratesBySales}</h3>
-                    {topGovernorates.length > 0 ? <BarChart data={topGovernorates} valueFormatter={v => v.toFixed(2)} /> : <div className="flex items-center justify-center h-40 text-slate-500">{t.noDataForPeriod}</div>}
+                <div className="order-4 lg:order-2">
+                    <KpiCard title={t.totalOrders} value={formatNumber(metrics.totalOrders)} tooltip={t.totalOrdersTooltip} />
                 </div>
-
+                <div className="order-5 lg:order-3">
+                    <KpiCard title={t.completedOrders} value={formatNumber(metrics.completedOrders)} tooltip={""} />
+                </div>
+                <div className="order-5 lg:order-4">
+                    <KpiCard title={t.avgOrderValue} value={`${metrics.avgOrderValue.toFixed(2)} ${t.currency}`} tooltip={t.avgOrderValueTooltip} />
+                </div>
             </div>
 
         </div>

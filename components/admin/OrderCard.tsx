@@ -3,7 +3,7 @@ import type { Order, User, RestaurantInfo, Language, Permission, OrderStatus, Or
 import { HomeIcon, TakeawayIcon, TruckIcon, ClockIcon, UserCircleIcon, EyeIcon, ChevronDownIcon } from '../icons/Icons';
 import { useTimeAgo } from '../../hooks/useTimeAgo';
 import { useUI } from '../../contexts/UIContext';
-import { useOrders } from '../../contexts/OrderContext';
+import { useAdmin } from '../../contexts/AdminContext';
 import { useAuth } from '../../contexts/AuthContext';
 import { useData } from '../../contexts/DataContext';
 import { formatNumber } from '../../utils/helpers';
@@ -18,7 +18,7 @@ export const OrderCard: React.FC<OrderCardProps> = ({ order, style, className })
     const { language, t } = useUI();
     const { currentUser, hasPermission } = useAuth();
     const { restaurantInfo } = useData();
-    const { updateOrder, setRefusingOrder, setViewingOrder } = useOrders();
+    const { users: allUsers, updateOrder, setRefusingOrder, setViewingOrder } = useAdmin();
 
     const isDriver = currentUser?.role === 'driver';
     const canManage = hasPermission('manage_order_status');

@@ -1,29 +1,22 @@
-
-
-
 import React, { useSyncExternalStore, useMemo, useEffect, lazy, Suspense } from 'react';
 import { UIProvider, useUI } from './contexts/UIContext';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { DataProvider, useData } from './contexts/DataContext';
 import { CartProvider } from './contexts/CartContext';
-import { OrderProvider } from './contexts/OrderContext';
-import { APP_CONFIG } from './utils/config';
+import { AdminProvider } from './contexts/AdminContext';
 
 // Lazy load page components for better performance
 const MenuPage = lazy(() => import('./components/MenuPage').then(module => ({ default: module.MenuPage })));
 const LoginPage = lazy(() => import('./components/auth/LoginPage').then(module => ({ default: module.LoginPage })));
 const ProfilePage = lazy(() => import('./components/profile/ProfilePage').then(module => ({ default: module.ProfilePage })));
-const AdminArea = lazy(() => import('./components/admin/AdminArea'));
+const AdminWrapper = lazy(() => import('./components/admin/AdminWrapper'));
 const SocialPage = lazy(() => import('./components/SocialPage').then(module => ({ default: module.SocialPage })));
 const CheckoutPage = lazy(() => import('./components/checkout/CheckoutPage').then(module => ({ default: module.CheckoutPage })));
-const OrderTrackingPage = lazy(() => import('./components/OrderTrackingPage').then(module => ({ default: module.OrderTrackingPage })));
 const ForgotPasswordPage = lazy(() => import('./components/auth/ForgotPasswordPage').then(module => ({ default: module.ForgotPasswordPage })));
 const ActionHandlerPage = lazy(() => import('./components/auth/ActionHandlerPage').then(module => ({ default: module.ActionHandlerPage })));
-const CompleteProfilePage = lazy(() => import('./components/auth/CompleteProfilePage').then(module => ({ default: module.CompleteProfilePage })));
-const PaymentStatusPage = lazy(() => import('./components/checkout/PaymentStatusPage'));
-
 
 // Non-page components can be imported directly
+import { CompleteProfileModal } from './components/auth/CompleteProfileModal';
 import { ToastNotification } from './components/ToastNotification';
 import { TopProgressBar } from './components/TopProgressBar';
 import { ChangePasswordModal } from './components/profile/ChangePasswordModal';
@@ -48,6 +41,7 @@ const AppContent: React.FC = () => {
   const {
     language,
     toast,
+    showToast,
     isChangePasswordModalOpen,
     setIsChangePasswordModalOpen,
     isLoading,
@@ -63,20 +57,9 @@ const AppContent: React.FC = () => {
   const hash = useSyncExternalStore(subscribe, getSnapshot, () => '');
   const displayedRoute = useMemo(() => hash || (restaurantInfo?.defaultPage === 'social' ? '#/social' : '#/'), [hash, restaurantInfo]);
 
-  // Set document title dynamically from config
-  useEffect(() => {
-    document.title = restaurantInfo ? restaurantInfo.name[language] : APP_CONFIG.APP_NAME[language];
-  }, [language, restaurantInfo]);
-
-
-
   const renderPage = () => {
     const routeParts = displayedRoute.split('?')[0].split('/');
     const baseRoute = routeParts.slice(0, 3).join('/'); // #/admin/reports
-
-    if (isCompletingProfile) {
-        return <CompleteProfilePage />;
-    }
 
     if (isLoading || !restaurantInfo) {
       return <LoadingOverlay isVisible={true} />;
@@ -97,18 +80,16 @@ const AppContent: React.FC = () => {
     }
 
     if (baseRoute.startsWith('#/admin')) {
-        const adminSubRoute = routeParts[2] || 'dashboard'; // For /admin/ or /admin
+        const adminSubRoute = routeParts[2] || 'orders';
         const reportSubRoute = routeParts[3] || 'dashboard'; // For /reports/dashboard etc.
-        return <AdminArea activeSubRoute={adminSubRoute} reportSubRoute={reportSubRoute} />;
+        return <AdminWrapper activeSubRoute={adminSubRoute} reportSubRoute={reportSubRoute} />;
     }
     if (baseRoute.startsWith('#/login')) return <LoginPage />;
     if (baseRoute.startsWith('#/forgot-password')) return <ForgotPasswordPage />;
     if (baseRoute.startsWith('#/profile')) return <ProfilePage />;
     if (baseRoute.startsWith('#/checkout')) return <CheckoutPage />;
-    if (baseRoute.startsWith('#/track')) return <OrderTrackingPage />;
     if (baseRoute.startsWith('#/social')) return <SocialPage />;
     if (baseRoute.startsWith('#/action')) return <ActionHandlerPage />;
-    if (baseRoute.startsWith('#/payment-status')) return <PaymentStatusPage />;
     
     // Fallback to menu page
     return <MenuPage />;
@@ -129,6 +110,7 @@ const AppContent: React.FC = () => {
               onClose={() => setIsChangePasswordModalOpen(false)}
           />
       )}
+      {isCompletingProfile && <CompleteProfileModal />}
     </>
   );
 };
@@ -140,9 +122,9 @@ const App: React.FC = () => {
       <AuthProvider>
         <DataProvider>
           <CartProvider>
-            <OrderProvider>
+            <AdminProvider>
               <AppContent />
-            </OrderProvider>
+            </AdminProvider>
           </CartProvider>
         </DataProvider>
       </AuthProvider>

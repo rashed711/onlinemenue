@@ -1,6 +1,5 @@
-
 import React, { useState, useEffect, useRef } from 'react';
-import { SunIcon, MoonIcon, CartIcon, LanguageIcon, UserIcon, FullscreenIcon, ExitFullscreenIcon, ShieldCheckIcon, LogoutIcon, InstallIcon } from './icons/Icons';
+import { SunIcon, MoonIcon, CartIcon, LanguageIcon, UserIcon, FullscreenIcon, ExitFullscreenIcon, ShieldCheckIcon, LogoutIcon } from './icons/Icons';
 import { formatNumber } from '../utils/helpers';
 import { useUI } from '../contexts/UIContext';
 import { useAuth } from '../contexts/AuthContext';
@@ -12,7 +11,7 @@ interface HeaderProps {
 }
 
 export const Header: React.FC<HeaderProps> = React.memo(({ onCartClick }) => {
-  const { language, theme, toggleLanguage, toggleTheme, t, installPromptEvent, triggerInstallPrompt } = useUI();
+  const { language, theme, toggleLanguage, toggleTheme, t } = useUI();
   const { currentUser, logout, isAdmin } = useAuth();
   const { restaurantInfo } = useData();
   const { cartItems } = useCart();
@@ -119,19 +118,6 @@ export const Header: React.FC<HeaderProps> = React.memo(({ onCartClick }) => {
             <button onClick={toggleFullscreen} className="hidden sm:flex p-2 h-10 w-10 items-center justify-center rounded-full hover:bg-slate-200/60 dark:hover:bg-slate-700/60 transition-colors" aria-label="Toggle fullscreen">
               {isFullscreen ? <ExitFullscreenIcon className="w-6 h-6 text-slate-600 dark:text-slate-300" /> : <FullscreenIcon className="w-6 h-6 text-slate-600 dark:text-slate-300" />}
             </button>
-
-             {installPromptEvent && (
-                <button 
-                    onClick={triggerInstallPrompt} 
-                    className="p-2 h-10 items-center justify-center rounded-full hover:bg-slate-200/60 dark:hover:bg-slate-700/60 transition-colors flex gap-2 sm:w-auto sm:px-3" 
-                    aria-label={t.installApp}
-                    title={t.installApp}
-                >
-                    <InstallIcon className="w-6 h-6 text-slate-600 dark:text-slate-300" />
-                    <span className="hidden sm:inline text-xs font-semibold text-slate-700 dark:text-slate-200">{t.installApp}</span>
-                </button>
-            )}
-
             <button onClick={onCartClick} className="relative p-2 h-10 w-10 flex items-center justify-center rounded-full hover:bg-slate-200/60 dark:hover:bg-slate-700/60 transition-colors" aria-label="Open cart">
               <CartIcon className="w-6 h-6 text-slate-600 dark:text-slate-300" />
               {cartItemCount > 0 && (

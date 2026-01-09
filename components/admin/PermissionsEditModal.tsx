@@ -4,7 +4,7 @@ import type { Permission, Language, UserRole, RestaurantInfo, Role } from '../..
 import { CloseIcon, ClipboardListIcon } from '../icons/Icons';
 import { PERMISSION_GROUPS, PermissionGroup } from '../../data/permissions';
 import { useUI } from '../../contexts/UIContext';
-import { useUserManagement } from '../../contexts/UserManagementContext';
+import { useAdmin } from '../../contexts/AdminContext';
 import { useData } from '../../contexts/DataContext';
 import { useAuth } from '../../contexts/AuthContext';
 import { translations } from '../../i18n/translations';
@@ -67,8 +67,8 @@ interface PermissionsEditModalProps {
 export const PermissionsEditModal: React.FC<PermissionsEditModalProps> = ({ roleId, onClose, onSave }) => {
   const { language, t } = useUI();
   const { restaurantInfo } = useData();
-  const { roles } = useAuth(); // AuthContext holds the roles list
-  const { currentUser, rolePermissions, hasPermission } = useAuth();
+  const { roles, rolePermissions } = useAdmin();
+  const { currentUser } = useAuth();
   const currentPermissions = rolePermissions[roleId] || [];
 
   const [selectedPermissions, setSelectedPermissions] = useState<Permission[]>(currentPermissions);
@@ -86,14 +86,19 @@ export const PermissionsEditModal: React.FC<PermissionsEditModalProps> = ({ role
 
   const role = useMemo(() => roles.find(r => r.key === roleId), [roles, roleId]);
   
-  const userRoleDetails = useMemo(() => {
+  const currentUserRoleDetails = useMemo(() => {
     if (!currentUser) return null;
     return roles.find(r => r.key === currentUser.role);
   }, [currentUser, roles]);
 
   const isCurrentUserSuperAdmin = useMemo(() => {
-    return userRoleDetails?.name.en.toLowerCase() === 'superadmin';
-  }, [userRoleDetails]);
+    return currentUserRoleDetails?.name.en.toLowerCase() === 'superadmin';
+  }, [currentUserRoleDetails]);
+
+  const currentUserPermissions = useMemo(() => {
+    if (!currentUser || !rolePermissions) return [];
+    return rolePermissions[currentUser.role] || [];
+  }, [currentUser, rolePermissions]);
   
   const availablePermissionGroups = useMemo(() => {
       if (isCurrentUserSuperAdmin) {
@@ -105,14 +110,14 @@ export const PermissionsEditModal: React.FC<PermissionsEditModalProps> = ({ role
       return Object.values(PERMISSION_GROUPS).map(group => {
           // Filter each group's permissions based on what the current user has.
           const availablePermissions = group.permissions.filter(permission => 
-              hasPermission(permission.id)
+              currentUserPermissions.includes(permission.id)
           );
           
           // Return the group but with the filtered permissions list.
           return { ...group, permissions: availablePermissions };
       }).filter(group => group.permissions.length > 0); // Hide groups that become empty after filtering.
 
-  }, [isCurrentUserSuperAdmin, hasPermission]);
+  }, [isCurrentUserSuperAdmin, currentUserPermissions]);
 
   const handleCheckboxChange = (permissionId: Permission, isChecked: boolean) => {
     if (isChecked) {

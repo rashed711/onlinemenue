@@ -24,15 +24,13 @@ interface UIContextType {
     setShowProgress: React.Dispatch<React.SetStateAction<boolean>>;
     transitionStage: 'in' | 'out';
     setTransitionStage: React.Dispatch<React.SetStateAction<'in' | 'out'>>;
-    installPromptEvent: Event | null;
-    triggerInstallPrompt: () => void;
 }
 
 const UIContext = createContext<UIContextType | undefined>(undefined);
 
 export const UIProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     const [language, setLanguage] = usePersistentState<Language>('restaurant_language', 'ar');
-    const [theme, setTheme] = usePersistentState<Theme>('restaurant_theme', 'light');
+    const [theme, setTheme] = usePersistentState<Theme>('restaurant_theme', 'dark');
     const [toast, setToast] = useState<{ message: string; isVisible: boolean }>({ message: '', isVisible: false });
     const [isChangePasswordModalOpen, setIsChangePasswordModalOpen] = useState(false);
     const [isLoading, setIsLoading] = useState(true);
@@ -49,41 +47,6 @@ export const UIProvider: React.FC<{ children: React.ReactNode }> = ({ children }
     // Page transition state
     const [transitionStage, setTransitionStage] = useState<'in' | 'out'>('in');
     
-    // PWA Install Prompt State
-    const [installPromptEvent, setInstallPromptEvent] = useState<Event | null>(null);
-
-    useEffect(() => {
-        const handleBeforeInstallPrompt = (e: Event) => {
-            e.preventDefault();
-            setInstallPromptEvent(e);
-        };
-
-        const handleAppInstalled = () => {
-            setInstallPromptEvent(null);
-        };
-
-        window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
-        window.addEventListener('appinstalled', handleAppInstalled);
-
-        return () => {
-            window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
-            window.removeEventListener('appinstalled', handleAppInstalled);
-        };
-    }, []);
-
-    const triggerInstallPrompt = useCallback(() => {
-        if (!installPromptEvent || !(installPromptEvent as any).prompt) {
-            return;
-        }
-        
-        const promptEvent = installPromptEvent as any;
-        promptEvent.prompt();
-        
-        promptEvent.userChoice.then((choiceResult: { outcome: 'accepted' | 'dismissed' }) => {
-            setInstallPromptEvent(null);
-        });
-    }, [installPromptEvent]);
-
     // UI Persistence Effects
     useEffect(() => {
         document.documentElement.lang = language;
@@ -124,8 +87,6 @@ export const UIProvider: React.FC<{ children: React.ReactNode }> = ({ children }
         setShowProgress,
         transitionStage,
         setTransitionStage,
-        installPromptEvent,
-        triggerInstallPrompt,
     };
 
     return <UIContext.Provider value={value}>{children}</UIContext.Provider>;

@@ -4,6 +4,89 @@ type IconProps = {
   className?: string;
 };
 
+export const DrinkIcon: React.FC<IconProps> = ({ className }) => (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M14.5 17.5L12 15l-2.5 2.5" />
+        <path d="M12 15V3" />
+        <path d="M8 3h8" />
+        <path d="M9 18h6c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2H9c-1.1 0-2 .9-2 2v8c0 1.1.9 2 2 2z" />
+    </svg>
+);
+
+export const DessertIcon: React.FC<IconProps> = ({ className }) => (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M12 2a2.5 2.5 0 013 2.5A2.5 2.5 0 0112 7a2.5 2.5 0 01-3-2.5A2.5 2.5 0 0112 2z" />
+        <path d="M12 7v2" />
+        <path d="M12 9c-3.3 0-6 2.7-6 6v4h12v-4c0-3.3-2.7-6-6-6z" />
+        <path d="M6 15h12" />
+    </svg>
+);
+
+export const AppetizerIcon: React.FC<IconProps> = ({ className }) => (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M17.2 11.2a2.2 2.2 0 00-3-2.2c-1.3-1.3-3.3-1.3-4.5 0l-5 5c-.6.6-.6 1.5 0 2.1l4.6 4.6c.6.6 1.5.6 2.1 0l5.8-5.8c.2-.2.3-.6.3-.9 0-.3-.1-.6-.3-1z" />
+      <path d="M16 12l2-2" />
+    </svg>
+);
+
+export const MainCourseIcon: React.FC<IconProps> = ({ className }) => (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M2 12c0-5.5 4.5-10 10-10s10 4.5 10 10-4.5 10-10 10-10-4.5-10-10z"/>
+      <path d="M12 2v20"/>
+      <path d="M2 12h20"/>
+      <path d="M18.4 18.4a9.9 9.9 0 00-12.8 0"/>
+      <path d="M5.6 5.6a9.9 9.9 0 0012.8 0"/>
+    </svg>
+);
+
+export const CutleryIcon: React.FC<IconProps> = ({ className }) => (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M16 2v20"/>
+      <path d="M10 2v5c0 1.7-1.3 3-3 3H4"/>
+      <path d="M10 13v8"/>
+      <path d="M10 13a3 3 0 00-3-3H4"/>
+      <path d="M16 5h2a2 2 0 012 2v2"/>
+      <path d="M16 15h2a2 2 0 012 2v2"/>
+    </svg>
+);
+
+export const PizzaIcon: React.FC<IconProps> = ({ className }) => (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M12 2 2.5 11H21.5L12 2Z"/>
+        <path d="M12 11v11"/>
+        <path d="M15.5 14.5a2.5 2.5 0 1 1-5 0 2.5 2.5 0 0 1 5 0Z"/>
+    </svg>
+);
+
+export const SandwichIcon: React.FC<IconProps> = ({ className }) => (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M4 15h16a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2z"/>
+        <path d="M5 15v-4.5A2.5 2.5 0 0 1 7.5 8h0a2.5 2.5 0 0 1 2.5 2.5V15"/>
+        <path d="M14 15v-4.5A2.5 2.5 0 0 1 16.5 8h0a2.5 2.5 0 0 1 2.5 2.5V15"/>
+    </svg>
+);
+
+export const SaladIcon: React.FC<IconProps> = ({ className }) => (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M2 16h20" />
+        <path d="M21 16a8 8 0 0 0-18 0" />
+        <path d="M9 8c-1.3 2.3-1.3 5.3 0 7.5" />
+        <path d="M15 8c1.3 2.3 1.3 5.3 0 7.5" />
+        <path d="M12 6c-2.2 2.7-2.2 6.3 0 9" />
+    </svg>
+);
+
+export const BreakfastIcon: React.FC<IconProps> = ({ className }) => (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M18 8h1a4 4 0 0 1 0 8h-1"/>
+        <path d="M2 8h14v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z"/>
+        <line x1="6" y1="1" x2="6" y2="4"/>
+        <line x1="10" y1="1" x2="10" y2="4"/>
+        <line x1="14" y1="1" x2="14" y2="4"/>
+    </svg>
+);
+
+
 export const SunIcon: React.FC<IconProps> = ({ className }) => (
   <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor">
     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
@@ -249,7 +332,7 @@ export const LockClosedIcon: React.FC<IconProps> = ({ className }) => (
 
 export const CashRegisterIcon: React.FC<IconProps> = ({ className }) => (
     <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" />
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 14l6-6m-5.5.5h.01m4.99 5h.01M19 14l-6-6m6 6l-6 6M5 12H3a2 2 0 00-2 2v5a2 2 0 002 2h2a2 2 0 002-2v-5a2 2 0 00-2-2zm14 0h-2a2 2 0 00-2 2v5a2 2 0 002 2h2a2 2 0 002-2v-5a2 2 0 00-2-2zM12 2a2 2 0 00-2 2v2a2 2 0 002 2h0a2 2 0 002-2V4a2 2 0 00-2-2z" />
     </svg>
 );
 
@@ -363,22 +446,6 @@ export const EnvelopeIcon: React.FC<IconProps> = ({ className }) => (
   </svg>
 );
 
-export const InstallIcon: React.FC<IconProps> = ({ className }) => (
-    <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className={className}>
-        <defs>
-            <linearGradient id="installIconGradient" x1="50%" y1="0%" x2="50%" y2="100%">
-                <stop offset="0%" stopColor="#fbbf24" />
-                <stop offset="100%" stopColor="#d97706" />
-            </linearGradient>
-        </defs>
-        <circle cx="12" cy="12" r="12" fill="url(#installIconGradient)"/>
-        <path 
-            d="M11 5 H13 V11 H16 L12 15 L8 11 H11 V5 Z M7 17 H17 V19 H7 Z"
-            fill="white"
-        />
-    </svg>
-);
-
 export const CreditCardIcon: React.FC<IconProps> = ({ className }) => (
     <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
         <path strokeLinecap="round" strokeLinejoin="round" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
@@ -389,29 +456,4 @@ export const PhotoIcon: React.FC<IconProps> = ({ className }) => (
     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className={className}>
         <path strokeLinecap="round" strokeLinejoin="round" d="m2.25 15.75 5.159-5.159a2.25 2.25 0 0 1 3.182 0l5.159 5.159m-1.5-1.5 1.409-1.409a2.25 2.25 0 0 1 3.182 0l2.909 2.909m-18 3.75h16.5a1.5 1.5 0 0 0 1.5-1.5V6a1.5 1.5 0 0 0-1.5-1.5H3.75A1.5 1.5 0 0 0 2.25 6v12a1.5 1.5 0 0 0 1.5 1.5Zm10.5-11.25h.008v.008h-.008V8.25Zm.375 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Z" />
     </svg>
-);
-
-export const GripVerticalIcon: React.FC<IconProps> = ({ className }) => (
-  <svg className={className} viewBox="0 0 24 24" fill="currentColor">
-    <circle cx="9" cy="4" r="1" />
-    <circle cx="15" cy="4" r="1" />
-    <circle cx="9" cy="9" r="1" />
-    <circle cx="15" cy="9" r="1" />
-    <circle cx="9" cy="14" r="1" />
-    <circle cx="15" cy="14" r="1" />
-    <circle cx="9" cy="19" r="1" />
-    <circle cx="15" cy="19" r="1" />
-  </svg>
-);
-
-export const BankIcon: React.FC<IconProps> = ({ className }) => (
-    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className={className}>
-        <path strokeLinecap="round" strokeLinejoin="round" d="M12 21v-8.25M15.75 21v-8.25M8.25 21v-8.25M3 9l9-6 9 6m-1.5 12V10.332A48.36 48.36 0 0012 9.75c-2.551 0-5.056.2-7.5.582V21M3 21h18M12 6.75h.008v.008H12V6.75z" />
-    </svg>
-);
-
-export const ArchiveIcon: React.FC<IconProps> = ({ className }) => (
-  <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-    <path strokeLinecap="round" strokeLinejoin="round" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4" />
-  </svg>
 );

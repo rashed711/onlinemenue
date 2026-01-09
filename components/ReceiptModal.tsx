@@ -4,16 +4,15 @@ import { DownloadIcon } from './icons/Icons';
 import { useCart } from '../contexts/CartContext';
 import { useData } from '../contexts/DataContext';
 import { Modal } from './Modal';
-import { imageUrlToBlob } from '../utils/helpers';
 
 interface ReceiptModalProps {
     isOpen: boolean;
     onClose: () => void;
     receiptImageUrl: string;
-    isFromCheckout?: boolean;
 }
 
-export const ReceiptModal: React.FC<ReceiptModalProps> = ({ isOpen, onClose, receiptImageUrl, isFromCheckout = false }) => {
+export const ReceiptModal: React.FC<ReceiptModalProps> = ({ isOpen, onClose, receiptImageUrl }) => {
+    // @FIX: Refactored to get translations `t` directly from the `useUI` hook.
     const { language, t } = useUI();
     const { restaurantInfo } = useData();
     const { clearCart } = useCart();
@@ -28,10 +27,8 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({ isOpen, onClose, rec
     
     if (!isOpen) return null;
 
-    const handleAfterShare = () => {
-        if (isFromCheckout) {
-            clearCart();
-        }
+    const handleCloseAndClear = () => {
+        clearCart();
         onClose();
     };
 
@@ -41,7 +38,9 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({ isOpen, onClose, rec
         const whatsappUrl = `https://wa.me/${restaurantInfo?.whatsappNumber}?text=${encodeURIComponent(whatsAppMessage)}`;
         
         try {
-            const blob = await imageUrlToBlob(receiptImageUrl);
+            const response = await fetch(receiptImageUrl);
+            if (!response.ok) throw new Error('Failed to fetch receipt image.');
+            const blob = await response.blob();
             const file = new File([blob], `receipt-${Date.now()}.png`, { type: 'image/png' });
 
             if (canShare && navigator.canShare && navigator.canShare({ files: [file] })) {
@@ -50,10 +49,10 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({ isOpen, onClose, rec
                     title: t.receiptTitle,
                     text: whatsAppMessage,
                 });
-                handleAfterShare();
+                handleCloseAndClear();
             } else {
                 window.open(whatsappUrl, '_blank', 'noopener,noreferrer');
-                handleAfterShare();
+                handleCloseAndClear();
             }
         } catch (error) {
             console.error('Error sharing receipt:', error);
@@ -107,7 +106,7 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({ isOpen, onClose, rec
                                 href={whatsappUrl}
                                 target="_blank"
                                 rel="noopener noreferrer"
-                                onClick={handleAfterShare}
+                                onClick={handleCloseAndClear}
                                 className="w-full bg-green-500 text-white font-bold py-2.5 px-4 rounded-lg hover:bg-green-600 transition-colors block text-center"
                             >
                             {t.openWhatsApp}

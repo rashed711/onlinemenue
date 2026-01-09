@@ -18,6 +18,8 @@ import {
   EmailAuthProvider,
   updatePassword,
 } from "firebase/auth";
+// @FIX: Import getMessaging and getToken from firebase/messaging to re-enable push notifications.
+import { getMessaging as getFirebaseMessaging, getToken } from "firebase/messaging";
 import type { User } from "firebase/auth";
 
 // Your web app's Firebase configuration
@@ -38,6 +40,18 @@ const app = initializeApp(firebaseConfig);
 // Get Auth instance
 const auth = getAuth(app);
 
+// We only export a getter for messaging that returns null if not supported
+export const getMessaging = async () => {
+    // @FIX: Restore Firebase Messaging functionality if supported by the browser.
+    try {
+        if (typeof window !== 'undefined' && 'serviceWorker' in navigator && 'Notification' in window && 'PushManager' in window) {
+            return getFirebaseMessaging(app);
+        }
+    } catch (e) {
+        console.error("Firebase Messaging is not supported in this environment.", e);
+    }
+    return null;
+};
 
 // Make auth functions available to the app
 export { 
@@ -58,6 +72,8 @@ export {
     reauthenticateWithCredential,
     EmailAuthProvider,
     updatePassword,
+    // @FIX: Export getToken to be used in the NotificationBell component.
+    getToken,
 };
 // @FIX: Explicitly re-export the User type as FirebaseUser to resolve module error.
 export type { User as FirebaseUser };

@@ -10,11 +10,11 @@ interface CategoryEditModalProps {
     onSave: (categoryData: Category | Omit<Category, 'id'>) => void;
 }
 
-// FIX: Added missing 'display_order' property to satisfy the Omit<Category, 'id'> type.
 const emptyCategory: Omit<Category, 'id'> = {
     name: { en: '', ar: '' },
     parent_id: null,
-    display_order: 0,
+    // FIX: Add missing required 'sort_order' property.
+    sort_order: 0,
 };
 
 // Helper to get all descendant IDs of a category
@@ -35,18 +35,26 @@ const getDescendantIds = (categoryId: number, allCategories: Category[]): number
 export const CategoryEditModal: React.FC<CategoryEditModalProps> = ({ category, categories, onClose, onSave }) => {
     // @FIX: Refactored to get translations `t` directly from the `useUI` hook.
     const { language, t } = useUI();
-    const [formData, setFormData] = useState<Omit<Category, 'id'>>(emptyCategory);
+    const [formData, setFormData] = useState<Omit<Category, 'id' | 'children'>>({
+        name: { en: '', ar: '' },
+        parent_id: null,
+        sort_order: 0,
+    });
 
     useEffect(() => {
         if (category) {
             const { id, children, ...editableData } = category;
-            // FIX: Spread editableData to include all properties, including 'display_order'.
             setFormData({
-                ...editableData,
-                parent_id: editableData.parent_id || null
+                name: editableData.name,
+                parent_id: editableData.parent_id || null,
+                sort_order: editableData.sort_order,
             });
         } else {
-            setFormData(emptyCategory);
+            setFormData({
+                name: { en: '', ar: '' },
+                parent_id: null,
+                sort_order: 0,
+            });
         }
     }, [category]);
 

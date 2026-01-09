@@ -1,13 +1,11 @@
-
 import type { Product, Category, Tag, Promotion, RestaurantInfo, User } from '../types';
-import { APP_CONFIG } from '../utils/config';
 
 export const restaurantInfo: RestaurantInfo = {
-    name: APP_CONFIG.APP_NAME,
+    name: { en: "Online Menu", ar: "منيو اونلاين" },
     logo: "",
     heroImage: "",
     heroTitle: { en: "Welcome", ar: "أهلاً بك" },
-    description: { en: "Our Site is being updated. Please check back soon.", ar: "هذا الموقع قيد التحديث. يرجى المراجعة قريبا." },
+    description: { en: "Our menu is being updated. Please check back soon.", ar: "قائمتنا قيد التحديث. يرجى المراجعة قريبا." },
     whatsappNumber: "",
     tableCount: 0,
     defaultPage: 'menu',
@@ -18,15 +16,14 @@ export const restaurantInfo: RestaurantInfo = {
     },
     socialLinks: [],
     orderStatusColumns: [
-        { id: 'pending', name: { en: 'New Orders', ar: 'طلبات جديدة' }, color: 'yellow', playSound: true },
-        { id: 'in_progress', name: { en: 'In the Kitchen', ar: 'في المطبخ' }, color: 'orange', playSound: true },
-        { id: 'ready_for_pickup', name: { en: 'Ready for Pickup', ar: 'جاهز للتسليم' }, color: 'cyan', playSound: false },
-        { id: 'out_for_delivery', name: { en: 'Out for Delivery', ar: 'قيد التوصيل' }, color: 'blue', playSound: false },
-        { id: 'completed', name: { en: 'Completed', ar: 'مكتمل' }, color: 'green', playSound: false },
-        { id: 'cancelled', name: { en: 'Cancelled & Refused', ar: 'ملغي ومرفوض' }, color: 'slate', playSound: false },
+        { id: 'pending', name: { en: 'New Orders', ar: 'طلبات جديدة' }, color: 'yellow' },
+        { id: 'in_progress', name: { en: 'In the Kitchen', ar: 'في المطبخ' }, color: 'orange' },
+        { id: 'ready_for_pickup', name: { en: 'Ready for Pickup', ar: 'جاهز للتسليم' }, color: 'cyan' },
+        { id: 'out_for_delivery', name: { en: 'Out for Delivery', ar: 'قيد التوصيل' }, color: 'blue' },
+        { id: 'completed', name: { en: 'Completed', ar: 'مكتمل' }, color: 'green' },
+        { id: 'cancelled', name: { en: 'Cancelled & Refused', ar: 'ملغي ومرفوض' }, color: 'slate' },
     ],
     onlinePaymentMethods: [],
-    isPaymobVisible: true,
     codNotes: { en: '', ar: '' },
     onlinePaymentNotes: { en: '', ar: '' },
 };

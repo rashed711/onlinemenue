@@ -1,4 +1,3 @@
-
 import React from 'react';
 import type { Permission } from '../types';
 import { translations } from '../i18n/translations';
@@ -17,39 +16,27 @@ import {
   UserGroupIcon,
   TruckIcon,
   UserIcon,
-  BellIcon,
-  BankIcon,
-  // New Icon
-  ArchiveIcon,
 } from '../components/icons/Icons';
-
-// A simple placeholder for icons that might not exist yet
-// FIX: Rewrote the component to explicitly return React.ReactElement to avoid potential JSX parsing issues.
-const PlaceholderIcon = ({className}: {className?: string}): React.ReactElement => {
-    // FIX: Replaced JSX with React.createElement to be valid in a .ts file.
-    return React.createElement('div', { className: `w-5 h-5 bg-slate-300 rounded ${className}` });
-};
-
 
 // Define a type for translation keys to ensure type safety
 type TranslationKey = keyof typeof translations['en'];
 
 // Structure for grouping permissions in the UI
+interface PermissionInfo {
+  id: Permission;
+  nameKey: TranslationKey;
+}
+
 export interface PermissionGroup {
   nameKey: TranslationKey;
   icon: React.FC<any>; // Add icon property
   permissions: PermissionInfo[];
 }
 
-interface PermissionInfo {
-  id: Permission;
-  nameKey: TranslationKey;
-}
-
 // Static permissions grouped by page/feature for a clearer UI
 export const PERMISSION_GROUPS: Record<string, PermissionGroup> = {
-  operations: {
-    nameKey: 'permission_group_operations',
+  orders: {
+    nameKey: 'manageOrders',
     icon: ClipboardListIcon,
     permissions: [
       { id: 'view_orders_page', nameKey: 'permission_view_orders_page' },
@@ -57,9 +44,16 @@ export const PERMISSION_GROUPS: Record<string, PermissionGroup> = {
       { id: 'edit_order_content', nameKey: 'permission_edit_order_content' },
       { id: 'delete_order', nameKey: 'permission_delete_order' },
       { id: 'edit_recorded_payment', nameKey: 'permission_edit_recorded_payment' },
-      { id: 'view_delivery_orders', nameKey: 'permission_view_delivery_orders' },
       { id: 'view_dine_in_orders', nameKey: 'permission_view_dine_in_orders' },
       { id: 'view_takeaway_orders', nameKey: 'permission_view_takeaway_orders' },
+      { id: 'view_delivery_orders', nameKey: 'permission_view_delivery_orders' },
+    ],
+  },
+  cashier: {
+    nameKey: 'cashier',
+    icon: CashRegisterIcon,
+    permissions: [
+      { id: 'use_cashier_page', nameKey: 'permission_use_cashier_page' },
     ],
   },
   reports: {
@@ -77,26 +71,20 @@ export const PERMISSION_GROUPS: Record<string, PermissionGroup> = {
       { id: 'view_user_activity_report', nameKey: 'permission_view_user_activity_report' },
     ],
   },
-  financials: {
-    nameKey: 'permission_group_financials',
-    icon: BankIcon,
-    permissions: [
-        { id: 'view_treasury_page', nameKey: 'permission_view_treasury_page' },
-        { id: 'add_manual_transaction', nameKey: 'permission_add_manual_transaction' },
-        { id: 'manage_treasuries', nameKey: 'permission_manage_treasuries' },
-        { id: 'manage_suppliers', nameKey: 'permission_manage_suppliers' },
-        { id: 'add_purchase_invoice', nameKey: 'permission_add_purchase_invoice' },
-        { id: 'manage_sales_invoices', nameKey: 'permission_manage_sales_invoices' },
-    ]
-  },
-  management: {
-    nameKey: 'permission_group_management',
+  products: {
+    nameKey: 'productList',
     icon: CollectionIcon,
     permissions: [
       { id: 'view_products_page', nameKey: 'permission_view_products_page' },
       { id: 'add_product', nameKey: 'permission_add_product' },
       { id: 'edit_product', nameKey: 'permission_edit_product' },
       { id: 'delete_product', nameKey: 'permission_delete_product' },
+    ],
+  },
+  classifications: {
+    nameKey: 'classifications',
+    icon: BookmarkAltIcon,
+    permissions: [
       { id: 'view_classifications_page', nameKey: 'permission_view_classifications_page' },
       { id: 'add_category', nameKey: 'permission_add_category' },
       { id: 'edit_category', nameKey: 'permission_edit_category' },
@@ -104,20 +92,32 @@ export const PERMISSION_GROUPS: Record<string, PermissionGroup> = {
       { id: 'add_tag', nameKey: 'permission_add_tag' },
       { id: 'edit_tag', nameKey: 'permission_edit_tag' },
       { id: 'delete_tag', nameKey: 'permission_delete_tag' },
-      { id: 'view_promotions_page', nameKey: 'permission_view_promotions_page' },
-      { id: 'add_promotion', nameKey: 'permission_add_promotion' },
-      { id: 'edit_promotion', nameKey: 'permission_edit_promotion' },
-      { id: 'delete_promotion', nameKey: 'permission_delete_promotion' },
     ],
   },
-  administration: {
-    nameKey: 'permission_group_administration',
+  promotions: {
+    nameKey: 'managePromotions',
+    icon: TagIcon,
+    permissions: [
+       { id: 'view_promotions_page', nameKey: 'permission_view_promotions_page' },
+       { id: 'add_promotion', nameKey: 'permission_add_promotion' },
+       { id: 'edit_promotion', nameKey: 'permission_edit_promotion' },
+       { id: 'delete_promotion', nameKey: 'permission_delete_promotion' },
+    ],
+  },
+  users: {
+    nameKey: 'manageUsers',
     icon: UsersIcon,
     permissions: [
       { id: 'view_users_page', nameKey: 'permission_view_users_page' },
       { id: 'add_user', nameKey: 'permission_add_user' },
       { id: 'edit_user', nameKey: 'permission_edit_user' },
       { id: 'delete_user', nameKey: 'permission_delete_user' },
+    ],
+  },
+  roles: {
+    nameKey: 'manageRoles',
+    icon: ShieldCheckIcon,
+    permissions: [
       { id: 'view_roles_page', nameKey: 'permission_view_roles_page' },
       { id: 'add_role', nameKey: 'permission_add_role' },
       { id: 'edit_role', nameKey: 'permission_edit_role' },

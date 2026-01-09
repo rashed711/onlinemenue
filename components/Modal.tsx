@@ -52,9 +52,7 @@ export const Modal: React.FC<ModalProps> = ({ onClose, children, title, size = '
                         <CloseIcon className="w-6 h-6 text-slate-500 dark:text-slate-400"/>
                     </button>
                 </div>
-                <div className="overflow-y-auto">
-                    {children}
-                </div>
+                {children}
             </div>
         </div>,
         portalRoot

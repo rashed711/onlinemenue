@@ -2,13 +2,13 @@ import React, { useState, useMemo } from 'react';
 import { ReportHeader } from './ReportHeader';
 import { DataTable } from './DataTable';
 import { useUI } from '../../../contexts/UIContext';
-import { useOrders } from '../../../contexts/OrderContext';
+import { useAdmin } from '../../../contexts/AdminContext';
 import { formatDate, getStartAndEndDates } from '../../../utils/helpers';
 import type { Order } from '../../../types';
 
 export const CustomersReportPage: React.FC = () => {
     const { t } = useUI();
-    const { orders } = useOrders();
+    const { orders } = useAdmin();
     const [dateRange, setDateRange] = useState('thisMonth');
     const [customStartDate, setCustomStartDate] = useState('');
     const [customEndDate, setCustomEndDate] = useState('');

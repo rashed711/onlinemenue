@@ -1,6 +1,6 @@
 import React, { createContext, useState, useEffect, useCallback, useContext, useMemo } from 'react';
 import type { User, Permission, UserRole, Role } from '../types';
-import { APP_CONFIG } from '../utils/config';
+import { API_BASE_URL } from '../utils/config';
 import { useUI } from './UIContext';
 import { 
     auth, 
@@ -16,16 +16,15 @@ import {
     reauthenticateWithCredential,
     EmailAuthProvider,
     updatePassword,
+    // @FIX: Corrected import syntax for the FirebaseUser type to resolve a module declaration error.
+    type FirebaseUser
 } from '../firebase';
-// @FIX: Corrected import syntax for the FirebaseUser type to resolve a module declaration error.
-import type { FirebaseUser } from '../firebase';
 
 
 interface AuthContextType {
     currentUser: User | null;
     setCurrentUser: React.Dispatch<React.SetStateAction<User | null>>;
     setRolePermissions: React.Dispatch<React.SetStateAction<Record<UserRole, Permission[]>>>;
-    rolePermissions: Record<UserRole, Permission[]>;
     staffLogin: (mobile: string, password: string) => Promise<string | null>;
     unifiedLogin: (identifier: string, password: string) => Promise<string | null>;
     logout: () => void;
@@ -35,19 +34,15 @@ interface AuthContextType {
     loginWithEmailPassword: (email: string, password: string) => Promise<string | null>;
     sendPasswordResetLink: (email: string) => Promise<string | null>;
 
-    // Google Sign-In
-    loginWithGoogle: (token: string) => Promise<string | null>;
-
-    completeProfile: (details: { name: string; mobile: string; governorate: string; address_details: string; }) => Promise<void>;
+    completeProfile: (details: { name: string, mobile: string }) => Promise<void>;
     isCompletingProfile: boolean;
     newUserFirebaseData: { uid: string; phoneNumber: string | null; email?: string | null, name?: string | null, photoURL?: string | null, providerId: string } | null;
-    updateUserProfile: (userId: number, updates: { name?: string; mobile?: string; profilePicture?: string; governorate?: string; address_details?: string; }) => Promise<void>;
+    // FIX: Allow updating mobile number in user profile.
+    updateUserProfile: (userId: number, updates: { name?: string; mobile?: string; profilePicture?: string }) => Promise<void>;
     changeCurrentUserPassword: (currentPassword: string, newPassword: string) => Promise<string | null>;
     hasPermission: (permission: Permission) => boolean;
     isAdmin: boolean;
     roles: Role[];
-    refetchAuthData: () => Promise<void>;
-    isAuthenticating: boolean;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -56,10 +51,24 @@ const resolveImageUrl = (path: string | undefined): string => {
   if (!path || path.startsWith('http') || path.startsWith('data:')) {
     return path || '';
   }
-  const domain = new URL(APP_CONFIG.API_BASE_URL).origin;
+  const domain = new URL(API_BASE_URL).origin;
   const cleanPath = path.startsWith('/') ? path.substring(1) : path;
   return `${domain}/${cleanPath}`;
 };
+
+const getRelativePath = (url: string): string => {
+    if (!url || !url.startsWith('http')) {
+        return url.split('?v=')[0];
+    }
+    try {
+        const urlObject = new URL(url);
+        const path = urlObject.pathname;
+        return path.startsWith('/') ? path.substring(1).split('?v=')[0] : path.split('?v=')[0];
+    } catch (e) {
+        console.error("Could not parse URL to get relative path:", url, e);
+        return '';
+    }
+}
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     const { setIsProcessing, showToast, t } = useUI();
@@ -73,23 +82,21 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     
     const [isCompletingProfile, setIsCompletingProfile] = useState(false);
     const [newUserFirebaseData, setNewUserFirebaseData] = useState<{ uid: string; phoneNumber: string | null; email?: string | null, name?: string | null, photoURL?: string | null, providerId: string } | null>(null);
-    const [isAuthenticating, setIsAuthenticating] = useState(true);
-
-    const fetchBaseAuthData = useCallback(async () => {
-         try {
-            const fetchOptions = { method: 'GET' };
-            const [rolesResponse, permissionsResponse] = await Promise.all([
-                fetch(`${APP_CONFIG.API_BASE_URL}get_roles.php`, fetchOptions),
-                fetch(`${APP_CONFIG.API_BASE_URL}get_permissions.php`, fetchOptions)
-            ]);
-            if (rolesResponse.ok) setRoles(await rolesResponse.json() || []);
-            if (permissionsResponse.ok) setRolePermissions(await permissionsResponse.json() || {});
-         } catch (e) { console.error("Failed to fetch base auth data", e); }
-    }, []);
 
     useEffect(() => {
+        const fetchBaseAuthData = async () => {
+             try {
+                const fetchOptions = { method: 'GET' };
+                const [rolesResponse, permissionsResponse] = await Promise.all([
+                    fetch(`${API_BASE_URL}get_roles.php`, fetchOptions),
+                    fetch(`${API_BASE_URL}get_permissions.php`, fetchOptions)
+                ]);
+                if (rolesResponse.ok) setRoles(await rolesResponse.json() || []);
+                if (permissionsResponse.ok) setRolePermissions(await permissionsResponse.json() || {});
+             } catch (e) { console.error("Failed to fetch base auth data", e); }
+        };
         fetchBaseAuthData();
-    }, [fetchBaseAuthData]);
+    }, []);
 
     useEffect(() => {
       if (currentUser) localStorage.setItem('restaurant_currentUser', JSON.stringify(currentUser));
@@ -103,11 +110,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             console.error("Error signing out from Firebase:", error);
         }
         setCurrentUser(null);
-        setIsCompletingProfile(false);
-        setNewUserFirebaseData(null);
-        setIsAuthenticating(false);
-        window.location.hash = '#/login';
-    }, [setCurrentUser, setIsCompletingProfile, setNewUserFirebaseData]);
+        window.location.hash = '#/';
+    }, [setCurrentUser]);
 
      useEffect(() => {
         let isMounted = true;
@@ -141,9 +145,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 if (isEmailPassProvider && !firebaseUser.emailVerified) {
                     showToast(t.pleaseVerifyEmail);
                     await logout();
-                    if(isMounted) {
-                        setIsProcessing(false);
-                    }
+                    if(isMounted) setIsProcessing(false);
                     return;
                 }
 
@@ -154,7 +156,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                     const endpoint = isEmailBased ? 'get_user_by_email.php' : 'get_user_by_fid.php';
                     const body = isEmailBased ? { email: firebaseUser.email } : { firebase_uid: firebaseUser.uid };
 
-                    const response = await fetch(`${APP_CONFIG.API_BASE_URL}${endpoint}`, {
+                    const response = await fetch(`${API_BASE_URL}${endpoint}`, {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify(body)
@@ -178,9 +180,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                                 role: String(dbUser.role_id), 
                                 profilePicture: profilePictureUrl,
                                 firebase_uid: dbUser.firebase_uid,
-                                google_id: dbUser.google_id,
-                                governorate: dbUser.governorate,
-                                address_details: dbUser.address_details
+                                google_id: dbUser.google_id
                             });
                             setIsCompletingProfile(false);
                             if (window.location.hash.startsWith('#/login')) {
@@ -212,21 +212,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                     showToast(t.accountVerificationFailed);
                     if (isMounted) await logout();
                 } finally {
-                    if (isMounted) {
-                       setIsProcessing(false);
-                    }
+                    if (isMounted) setIsProcessing(false);
                 }
             } else {
                 setCurrentUser(prevUser => {
                     if (!prevUser) return null;
-                    if (prevUser.firebase_uid) {
+                    if (prevUser.firebase_uid || prevUser.google_id) {
                         return null; 
                     }
                     return prevUser;
                 });
-                if(isMounted) {
-                    setIsProcessing(false);
-                }
+                if(isMounted) setIsProcessing(false);
             }
         });
 
@@ -246,20 +242,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             }
         }
     }, [currentUser, roles]);
-    
-    useEffect(() => {
-        // This effect ensures that isAuthenticating is turned off only after
-        // the currentUser state has been fully updated in React. It runs on initial
-        // load and whenever a user logs in or out.
-        setIsAuthenticating(false);
-    }, [currentUser]);
 
     const userRoleDetails = useMemo(() => roles.find(r => r.key === currentUser?.role), [roles, currentUser]);
     
     const isAdmin = useMemo(() => {
-        if (!userRoleDetails?.name?.en || typeof userRoleDetails.name.en !== 'string') {
-            return false;
-        }
+        if (!userRoleDetails) return false;
         const roleName = userRoleDetails.name.en.toLowerCase();
         return roleName !== 'customer';
     }, [userRoleDetails]);
@@ -272,10 +259,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }, [currentUser, rolePermissions, userRoleDetails]);
 
     const staffLogin = useCallback(async (mobile: string, password: string): Promise<string | null> => {
-        setIsAuthenticating(true);
         setIsProcessing(true);
         try {
-            const response = await fetch(`${APP_CONFIG.API_BASE_URL}login.php`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ mobile, password }) });
+            const response = await fetch(`${API_BASE_URL}login.php`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ mobile, password }) });
             const result = await response.json();
             if (!response.ok || !result.success) {
                 if (result.error && result.error.toLowerCase().includes('invalid credentials')) {
@@ -299,7 +285,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }, [setIsProcessing, t.invalidCredentials, setCurrentUser]);
 
     const registerWithEmailPassword = useCallback(async (details: { name: string; mobile: string; email: string; password: string }): Promise<string | null> => {
-        setIsAuthenticating(true);
         setIsProcessing(true);
         try {
             // Step 1: Create user in Firebase
@@ -315,7 +300,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 firebase_uid: firebaseUser.uid,
                 role: 'customer' // Explicitly set role
             };
-            const addUserResponse = await fetch(`${APP_CONFIG.API_BASE_URL}add_user.php`, {
+            const addUserResponse = await fetch(`${API_BASE_URL}add_user.php`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(addUserPayload),
@@ -330,28 +315,27 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
             // Step 3: Send verification email and sign out
             await sendEmailVerification(firebaseUser);
-            await signOut(auth); // Log out until they verify. onAuthStateChanged will handle setting auth states to false.
+            await signOut(auth); // Log out until they verify
             showToast(t.emailVerificationSent);
             return null;
         } catch (error: any) {
             console.error("Email registration error:", error);
-            setIsProcessing(false);
             if (error.code === 'auth/network-request-failed') {
                 return t.networkRequestFailed;
             }
             return error.message || "Registration failed.";
+        } finally {
+            setIsProcessing(false);
         }
     }, [setIsProcessing, showToast, t.emailVerificationSent, t.networkRequestFailed]);
     
     const loginWithEmailPassword = useCallback(async (email: string, password: string): Promise<string | null> => {
-        setIsAuthenticating(true);
         setIsProcessing(true);
         try {
             await signInWithEmailAndPassword(auth, email, password);
             return null; // onAuthStateChanged will handle the rest
         } catch (error: any) {
             console.error("Email login error:", error);
-            setIsProcessing(false);
             if (error.code === 'auth/network-request-failed') {
                 return t.networkRequestFailed;
             }
@@ -359,71 +343,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 return t.invalidCredentials;
             }
             return error.message || "Login failed.";
-        }
-    }, [setIsProcessing, t.invalidCredentials, t.networkRequestFailed]);
-    
-    const loginWithGoogle = useCallback(async (token: string): Promise<string | null> => {
-        setIsAuthenticating(true);
-        setIsProcessing(true);
-        try {
-            const response = await fetch(`${APP_CONFIG.API_BASE_URL}google_login.php`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ token })
-            });
-    
-            const responseText = await response.text();
-            let result;
-            try {
-                result = JSON.parse(responseText);
-            } catch (e) {
-                console.error("Server response was not valid JSON:", responseText);
-                return t.googleSignInInvalidResponse;
-            }
-    
-            if (!response.ok || !result.success) {
-                console.error("Google login backend error:", result.error, result.details);
-                 return result.error ? `${result.error} (Check console for details)` : t.googleSignInFailed;
-            }
-    
-            const dbUser = result.user;
-            const userObject: User = {
-                id: Number(dbUser.id),
-                name: dbUser.name,
-                mobile: dbUser.mobile,
-                email: dbUser.email,
-                password: '', 
-                role: String(dbUser.role_id),
-                profilePicture: resolveImageUrl(dbUser.profile_picture) || `https://placehold.co/512x512/60a5fa/white?text=${(dbUser.name || 'U').charAt(0).toUpperCase()}`,
-                google_id: dbUser.google_id,
-                governorate: dbUser.governorate,
-                address_details: dbUser.address_details
-            };
-            
-            setCurrentUser(userObject);
-    
-            if (!userObject.mobile || !userObject.governorate || !userObject.address_details) {
-                setIsCompletingProfile(true);
-            } else {
-                 if (window.location.hash.startsWith('#/login')) {
-                    const customerRole = roles.find(r => r.name.en.toLowerCase() === 'customer');
-                    if (customerRole && userObject.role === customerRole.key) {
-                        window.location.hash = '#/profile';
-                    } else {
-                        window.location.hash = '#/admin';
-                    }
-                 }
-            }
-    
-            return null; // Success
-        } catch (error) {
-            console.error('Google login network error:', error);
-            return t.networkRequestFailed;
         } finally {
             setIsProcessing(false);
         }
-    }, [setIsProcessing, setCurrentUser, setIsCompletingProfile, t, roles]);
-
+    }, [setIsProcessing, t.invalidCredentials, t.networkRequestFailed]);
+    
     const sendPasswordResetLink = useCallback(async (email: string): Promise<string | null> => {
         setIsProcessing(true);
         try {
@@ -441,19 +365,91 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }, [setIsProcessing, t.networkRequestFailed]);
 
     const unifiedLogin = useCallback(async (identifier: string, password: string): Promise<string | null> => {
+        // Both sub-functions handle their own processing state, so we don't need to manage it here.
+    
+        // Attempt 1: Staff Login (assuming mobile number if no '@')
         if (!identifier.includes('@')) {
-            return await staffLogin(identifier, password);
+            const staffLoginError = await staffLogin(identifier, password);
+            if (staffLoginError === null) {
+                // Success! staffLogin already set the user. The useEffect will handle redirect.
+                return null;
+            }
+            // If it's not a staff login, it's an invalid credential for staff. We don't try customer login.
+            return staffLoginError;
         }
     
+        // Attempt 2: Customer Login (assuming email)
         if (identifier.includes('@')) {
-            return await loginWithEmailPassword(identifier, password);
+            const customerLoginError = await loginWithEmailPassword(identifier, password);
+            if (customerLoginError === null) {
+                // Success! onAuthStateChanged will handle the rest.
+                return null;
+            }
+            return customerLoginError;
         }
         
+        // Fallback for an identifier that's neither (shouldn't happen with basic validation)
         return t.invalidCredentials;
     }, [staffLogin, loginWithEmailPassword, t.invalidCredentials]);
 
 
-     const updateUserProfile = useCallback(async (userId: number, updates: { name?: string; mobile?: string; profilePicture?: string; governorate?: string; address_details?: string; }) => {
+    const completeProfile = useCallback(async (details: { name: string, mobile: string }) => {
+        if (!newUserFirebaseData) return;
+        setIsProcessing(true);
+        try {
+            const customerRole = roles.find(r => r.name.en.toLowerCase() === 'customer');
+            const payload: any = {
+                name: details.name,
+                mobile: details.mobile,
+                role: 'customer'
+            };
+
+            if (newUserFirebaseData.providerId === 'google.com') {
+                payload.google_id = newUserFirebaseData.uid;
+                payload.email = newUserFirebaseData.email;
+                payload.profilePicture = newUserFirebaseData.photoURL;
+            } else {
+                payload.firebase_uid = newUserFirebaseData.uid;
+                if (newUserFirebaseData.email) payload.email = newUserFirebaseData.email;
+            }
+
+            const response = await fetch(`${API_BASE_URL}add_user.php`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload),
+            });
+            const result = await response.json();
+
+            if (!response.ok || !result.success) {
+                throw new Error(result.error || 'Failed to complete profile.');
+            }
+
+            const dbUser = result.user;
+            const profilePictureUrl = resolveImageUrl(dbUser.profile_picture) || `https://placehold.co/512x512/60a5fa/white?text=${(dbUser.name || 'U').charAt(0).toUpperCase()}`;
+
+            setCurrentUser({ 
+                id: Number(dbUser.id), 
+                name: dbUser.name, 
+                mobile: dbUser.mobile, 
+                email: dbUser.email,
+                password: '', 
+                role: String(dbUser.role_id), 
+                profilePicture: profilePictureUrl,
+                firebase_uid: dbUser.firebase_uid,
+                google_id: dbUser.google_id
+            });
+            setIsCompletingProfile(false);
+            setNewUserFirebaseData(null);
+            
+        } catch (error: any) {
+            console.error("Complete profile error:", error);
+            showToast(error.message || t.profileSaveFailed);
+        } finally {
+            setIsProcessing(false);
+        }
+    }, [newUserFirebaseData, roles, setIsProcessing, showToast, t.profileSaveFailed, setCurrentUser]);
+
+     const updateUserProfile = useCallback(async (userId: number, updates: { name?: string; mobile?: string; profilePicture?: string }) => {
         if (!currentUser || currentUser.id !== userId) return;
 
         const originalUser = { ...currentUser };
@@ -461,8 +457,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         let optimisticUpdates: Partial<User> = {};
         if (updates.name) optimisticUpdates.name = updates.name;
         if (updates.mobile) optimisticUpdates.mobile = updates.mobile;
-        if (updates.governorate) optimisticUpdates.governorate = updates.governorate;
-        if (updates.address_details) optimisticUpdates.address_details = updates.address_details;
         if (updates.profilePicture && updates.profilePicture.startsWith('data:')) {
             optimisticUpdates.profilePicture = updates.profilePicture;
         }
@@ -479,21 +473,19 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 const formData = new FormData();
                 formData.append('image', blob, 'profile.png');
                 formData.append('type', 'users');
-                const relativeOldPath = (currentUser.profilePicture || '').split('?')[0].replace(new URL(APP_CONFIG.API_BASE_URL).origin + '/', '');
-                formData.append('oldPath', relativeOldPath);
-                const uploadRes = await fetch(`${APP_CONFIG.API_BASE_URL}upload_image.php`, { method: 'POST', body: formData });
+                if (currentUser && currentUser.profilePicture && !currentUser.profilePicture.includes('placehold.co')) {
+                    formData.append('oldPath', getRelativePath(currentUser.profilePicture));
+                }
+                const uploadRes = await fetch(`${API_BASE_URL}upload_image.php`, { method: 'POST', body: formData });
                 const result = await uploadRes.json();
                 if (result.success && result.url) {
-                    // The backend script for updating user info expects `profile_picture` (snake_case)
-                    payload.profile_picture = result.url.split('?v=')[0];
-                    // Remove the original camelCase key to avoid confusion
-                    delete payload.profilePicture;
+                    payload.profilePicture = result.url.split('?v=')[0];
                 } else {
                     throw new Error(result.error || 'Image upload failed');
                 }
             }
 
-            const response = await fetch(`${APP_CONFIG.API_BASE_URL}update_user.php`, {
+            const response = await fetch(`${API_BASE_URL}update_user.php`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(payload)
@@ -503,29 +495,35 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 throw new Error(result.error || t.profileUpdateFailed);
             }
             
-            const finalUser = result.user; // from backend, snake_case
-            if (finalUser) {
+            if (result.user) {
+                const dbUser = result.user;
                 setCurrentUser(prev => {
                     if (!prev) return null;
-                    // Create a new user state from previous, but update with server data
-                    const updatedState = {
+                    return {
                         ...prev,
-                        name: finalUser.name ?? prev.name,
-                        mobile: finalUser.mobile ?? prev.mobile,
-                        email: finalUser.email ?? prev.email,
-                        role: finalUser.role_id ? String(finalUser.role_id) : prev.role,
-                        profilePicture: resolveImageUrl(finalUser.profile_picture),
-                        governorate: finalUser.governorate ?? prev.governorate,
-                        address_details: finalUser.address_details ?? prev.address_details
+                        name: dbUser.name ?? prev.name,
+                        mobile: dbUser.mobile ?? prev.mobile,
+                        email: dbUser.email ?? prev.email,
+                        role: dbUser.role_id ? String(dbUser.role_id) : prev.role,
+                        profilePicture: resolveImageUrl(dbUser.profile_picture),
                     };
-                    return updatedState;
                 });
             } else {
-                // If server doesn't send back user object, but we uploaded an image,
-                // we can construct the URL from our payload.
-                if (payload.profile_picture) {
-                    setCurrentUser(prev => prev ? { ...prev, profilePicture: resolveImageUrl(payload.profile_picture) } : null);
-                }
+                // Fallback if backend doesn't return the user object.
+                // Confirm optimistic update, ensuring image URL is correct.
+                setCurrentUser(prev => {
+                    if (!prev) return null;
+        
+                    const finalUpdates: Partial<User> = {};
+                    if (updates.name) finalUpdates.name = updates.name;
+                    if (updates.mobile) finalUpdates.mobile = updates.mobile;
+                    
+                    if (payload.profilePicture) {
+                        finalUpdates.profilePicture = resolveImageUrl(payload.profilePicture);
+                    }
+                    
+                    return { ...prev, ...finalUpdates };
+                });
             }
 
             showToast(t.profileUpdatedSuccess);
@@ -538,79 +536,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         }
     }, [currentUser, setIsProcessing, showToast, t.profileUpdatedSuccess, t.profileUpdateFailed, setCurrentUser]);
     
-    const completeProfile = useCallback(async (details: { name: string; mobile: string; governorate: string; address_details: string; }) => {
-        setIsAuthenticating(true);
-        setIsProcessing(true);
-        try {
-            if (newUserFirebaseData) {
-                // Existing logic for when a new user signs up via Firebase directly
-                const payload: any = {
-                    name: details.name,
-                    mobile: details.mobile,
-                    governorate: details.governorate,
-                    address_details: details.address_details,
-                    role: 'customer'
-                };
-    
-                if (newUserFirebaseData.providerId === 'google.com') {
-                    payload.google_id = newUserFirebaseData.uid;
-                    payload.email = newUserFirebaseData.email;
-                    payload.profilePicture = newUserFirebaseData.photoURL;
-                } else {
-                    payload.firebase_uid = newUserFirebaseData.uid;
-                    if (newUserFirebaseData.email) payload.email = newUserFirebaseData.email;
-                }
-    
-                const response = await fetch(`${APP_CONFIG.API_BASE_URL}add_user.php`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(payload),
-                });
-                const result = await response.json();
-    
-                if (!response.ok || !result.success) {
-                    throw new Error(result.error || 'Failed to complete profile.');
-                }
-    
-                const dbUser = result.user;
-                const profilePictureUrl = resolveImageUrl(dbUser.profile_picture) || `https://placehold.co/512x512/60a5fa/white?text=${(dbUser.name || 'U').charAt(0).toUpperCase()}`;
-    
-                setCurrentUser({ 
-                    id: Number(dbUser.id), 
-                    name: dbUser.name, 
-                    mobile: dbUser.mobile, 
-                    email: dbUser.email,
-                    password: '', 
-                    role: String(dbUser.role_id), 
-                    profilePicture: profilePictureUrl,
-                    firebase_uid: dbUser.firebase_uid,
-                    google_id: dbUser.google_id,
-                    governorate: dbUser.governorate,
-                    address_details: dbUser.address_details
-                });
-                
-            } else if (currentUser && (!currentUser.mobile || !currentUser.governorate || !currentUser.address_details)) {
-                // Logic for existing but incomplete user (e.g., from custom Google Sign-In)
-                await updateUserProfile(currentUser.id, details);
-            }
-            
-            setIsCompletingProfile(false);
-            setNewUserFirebaseData(null); // Always clear this after completion attempt
-            window.location.hash = '#/profile';
-            
-        } catch (error: any) {
-            console.error("Complete profile error:", error);
-            showToast(error.message || t.profileSaveFailed);
-        } finally {
-            setIsProcessing(false);
-        }
-    }, [newUserFirebaseData, currentUser, setIsProcessing, showToast, t.profileSaveFailed, setCurrentUser, updateUserProfile]);
-
     const changeCurrentUserPassword = useCallback(async (currentPassword: string, newPassword: string): Promise<string | null> => {
         setIsProcessing(true);
         try {
             if (!auth.currentUser?.email) {
-                 const response = await fetch(`${APP_CONFIG.API_BASE_URL}update_user.php`, {
+                 const response = await fetch(`${API_BASE_URL}update_user.php`, {
                     method: 'POST',
                     headers: {'Content-Type': 'application/json'},
                     body: JSON.stringify({ id: currentUser?.id, password: newPassword, old_password: currentPassword })
@@ -645,14 +575,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         currentUser,
         setCurrentUser,
         setRolePermissions,
-        rolePermissions,
         staffLogin,
         unifiedLogin,
         logout,
         registerWithEmailPassword,
         loginWithEmailPassword,
         sendPasswordResetLink,
-        loginWithGoogle,
         completeProfile,
         isCompletingProfile,
         newUserFirebaseData,
@@ -661,8 +589,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         hasPermission,
         isAdmin,
         roles,
-        refetchAuthData: fetchBaseAuthData,
-        isAuthenticating,
     };
 
     return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

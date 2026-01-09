@@ -2,8 +2,6 @@ import React, { createContext, useCallback, useContext } from 'react';
 import type { Product, CartItem } from '../types';
 import { usePersistentState } from '../hooks/usePersistentState';
 import { useUI } from './UIContext';
-import { useData } from './DataContext';
-import { getActivePromotionForProduct } from '../utils/helpers';
 
 interface CartContextType {
     cartItems: CartItem[];
@@ -16,7 +14,6 @@ const CartContext = createContext<CartContextType | undefined>(undefined);
 
 export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     const { showToast, t } = useUI();
-    const { promotions } = useData();
     const [cartItems, setCartItems] = usePersistentState<CartItem[]>('restaurant_cart', []);
 
     const addToCart = useCallback((product: Product, quantity: number, options?: { [key: string]: string }) => {
@@ -31,17 +28,10 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 : item
             );
           }
-          const promotion = getActivePromotionForProduct(product.id, promotions);
-          const newItem: CartItem = { 
-              product, 
-              quantity, 
-              options,
-              appliedDiscountPercent: promotion ? promotion.discountPercent : undefined
-          };
-          return [...prevItems, newItem];
+          return [...prevItems, { product, quantity, options }];
         });
         showToast(t.addedToCart);
-    }, [showToast, t.addedToCart, setCartItems, promotions]);
+    }, [showToast, t.addedToCart, setCartItems]);
     
     const updateCartQuantity = useCallback((productId: number, options: { [key: string]: string } | undefined, newQuantity: number) => {
         const itemVariantId = productId + JSON.stringify(options || {});

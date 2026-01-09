@@ -1,13 +1,10 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useUI } from '../../contexts/UIContext';
 import { useAuth } from '../../contexts/AuthContext';
 
-// Declare the google object from the script in index.html
-declare const google: any;
-
 export const LoginPage: React.FC = () => {
     const { t, isProcessing } = useUI();
-    const { unifiedLogin, registerWithEmailPassword, loginWithGoogle } = useAuth();
+    const { unifiedLogin, registerWithEmailPassword } = useAuth();
 
     const [formType, setFormType] = useState<'login' | 'register'>('login');
     const [error, setError] = useState('');
@@ -22,37 +19,6 @@ export const LoginPage: React.FC = () => {
     const [email, setEmail] = useState('');
     const [registerPassword, setRegisterPassword] = useState('');
     const [confirmPassword, setConfirmPassword] = useState('');
-
-    const googleButtonRef = useRef<HTMLDivElement>(null);
-    const [isAndroid, setIsAndroid] = useState(false);
-    const authCallbacksRef = useRef({ loginWithGoogle, setError });
-
-    useEffect(() => {
-        authCallbacksRef.current = { loginWithGoogle, setError };
-    }, [loginWithGoogle, setError]);
-    
-    useEffect(() => {
-        if ((window as any).Android?.requestGoogleSignIn) {
-            setIsAndroid(true);
-        }
-
-        (window as any).handleGoogleSignInFromAndroid = async (token: string) => {
-            if (!token) {
-                authCallbacksRef.current.setError(t.language === 'ar' ? 'فشل تسجيل الدخول من أندرويد: لم يتم استلام رمز.' : 'Android sign-in failed: No token received.');
-                return;
-            }
-            authCallbacksRef.current.setError('');
-            const errorMessage = await authCallbacksRef.current.loginWithGoogle(token);
-            if (errorMessage) {
-                authCallbacksRef.current.setError(errorMessage);
-            }
-        };
-
-        return () => {
-            delete (window as any).handleGoogleSignInFromAndroid;
-        };
-    }, [t.language]);
-
 
     useEffect(() => {
         setError('');
@@ -70,41 +36,8 @@ export const LoginPage: React.FC = () => {
         if (errorMessage) {
             setError(errorMessage);
         }
+        // On success, context handles redirect
     };
-    
-    const handleGoogleSignIn = useCallback(async (response: any) => {
-        if (response.credential) {
-            setError('');
-            const errorMessage = await loginWithGoogle(response.credential);
-            if (errorMessage) {
-                setError(errorMessage);
-            }
-        } else {
-            setError(t.language === 'ar' ? 'فشل تسجيل الدخول باستخدام جوجل.' : 'Google sign-in failed.');
-        }
-    }, [loginWithGoogle, t.language]);
-
-    useEffect(() => {
-        if (isAndroid || typeof google === 'undefined' || !google.accounts) {
-            // Don't render GSI button on Android or if script isn't ready
-            return;
-        }
-
-        google.accounts.id.initialize({
-            client_id: "735797678309-p764bsgq9vh3viv6hn09h467lv20s3oh.apps.googleusercontent.com",
-            callback: handleGoogleSignIn
-        });
-
-        if (googleButtonRef.current) {
-            // Ensure the container is empty before rendering
-            googleButtonRef.current.innerHTML = ''; 
-            google.accounts.id.renderButton(
-                googleButtonRef.current,
-                { theme: "outline", size: "large", type: "standard", shape: "rectangular", text: "signin_with", logo_alignment: "left" }
-            );
-        }
-    }, [handleGoogleSignIn, formType, isAndroid]);
-
 
     const handleCustomerRegister = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -117,6 +50,8 @@ export const LoginPage: React.FC = () => {
         if (errorMessage) {
             setError(errorMessage);
         } else {
+            // Success toast is shown from AuthContext.
+            // Switch to login form for a better UX.
             setFormType('login');
             setName('');
             setMobile('');
@@ -153,28 +88,6 @@ export const LoginPage: React.FC = () => {
             <button type="submit" disabled={isProcessing} className="w-full px-5 py-3 font-medium text-white bg-primary-600 rounded-lg hover:bg-primary-700 disabled:bg-primary-400">
                 {isProcessing ? '...' : t.login}
             </button>
-            <div className="relative flex py-2 items-center">
-                <div className="flex-grow border-t border-slate-300 dark:border-slate-600"></div>
-                <span className="flex-shrink mx-4 text-slate-500 dark:text-slate-400 text-sm">{t.or}</span>
-                <div className="flex-grow border-t border-slate-300 dark:border-slate-600"></div>
-            </div>
-            <div ref={googleButtonRef} className="flex justify-center">
-                {isAndroid && (
-                    <button
-                        type="button"
-                        onClick={() => (window as any).Android.requestGoogleSignIn()}
-                        className="w-full flex items-center justify-center gap-3 py-2.5 px-4 border-2 border-slate-300 dark:border-slate-600 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-700 transition"
-                    >
-                        <svg className="w-5 h-5" viewBox="0 0 48 48">
-                            <path fill="#FFC107" d="M43.611,20.083H42V20H24v8h11.303c-1.649,4.657-6.08,8-11.303,8c-6.627,0-12-5.373-12-12s5.373-12,12-12c3.059,0,5.842,1.154,7.961,3.039l5.657-5.657C34.046,6.053,29.268,4,24,4C12.955,4,4,12.955,4,24s8.955,20,20,20s20-8.955,20-20C44,22.659,43.862,21.35,43.611,20.083z"></path>
-                            <path fill="#FF3D00" d="M6.306,14.691l6.571,4.819C14.655,15.108,18.961,12,24,12c3.059,0,5.842,1.154,7.961,3.039l5.657-5.657C34.046,6.053,29.268,4,24,4C16.318,4,9.656,8.337,6.306,14.691z"></path>
-                            <path fill="#4CAF50" d="M24,44c5.166,0,9.86-1.977,13.409-5.192l-6.19-5.238C29.211,35.091,26.715,36,24,36c-5.222,0-9.619-3.317-11.283-7.946l-6.522,5.025C9.505,39.556,16.227,44,24,44z"></path>
-                            <path fill="#1976D2" d="M43.611,20.083H42V20H24v8h11.303c-0.792,2.237-2.231,4.166-4.087,5.574l6.19,5.238C42.022,36.218,44,30.57,44,24C44,22.659,43.862,21.35,43.611,20.083z"></path>
-                        </svg>
-                        <span className="text-sm font-semibold text-slate-700 dark:text-slate-200">{t.signInWithGoogle}</span>
-                    </button>
-                )}
-            </div>
         </form>
     );
 
@@ -218,6 +131,27 @@ export const LoginPage: React.FC = () => {
                     
                     {error && <p className="text-sm text-red-500 text-center mt-4">{error}</p>}
                     
+                    <div className="space-y-2 text-sm text-center mt-4">
+                        {formType === 'login' ? (
+                            <p>
+                                <span className="text-slate-600 dark:text-slate-400">{t.dontHaveAccount} </span>
+                                <button onClick={() => setFormType('register')} className="font-medium text-primary-600 hover:underline dark:text-primary-500">{t.createAccount}</button>
+                            </p>
+                        ) : (
+                            <p>
+                                <span className="text-slate-600 dark:text-slate-400">{t.alreadyHaveAccount} </span>
+                                <button onClick={() => setFormType('login')} className="font-medium text-primary-600 hover:underline dark:text-primary-500">{t.login}</button>
+                            </p>
+                        )}
+                        {formType === 'login' && (
+                            <p>
+                                <a href="#/forgot-password" onClick={(e) => handleNav(e, '/forgot-password')} className="text-xs font-medium text-primary-600 hover:underline dark:text-primary-500">
+                                    {t.forgotPassword}
+                                </a>
+                            </p>
+                        )}
+                    </div>
+
                      <div className="text-center border-t border-slate-200 dark:border-slate-700 pt-4 mt-6">
                         <a href="#/" onClick={(e) => handleNav(e, '/')} className="text-sm text-primary-600 hover:underline dark:text-primary-500">
                             {t.backToMenu}

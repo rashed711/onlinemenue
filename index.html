@@ -4,48 +4,32 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
-       <!-- Basic Meta Tags -->
-    <title>Start Computer</title>
-    <meta name="description" content="كل ما يتعلق بالكمبيوتر وكاميرات المراقبة." />
-    <meta name="keywords" content="" />
-    <meta name="author" content="ستارت للكمبيوتر" />
+    <!-- Basic Meta Tags -->
+    <title>منيو أونلاين | مكان يليق بك</title>
+    <meta name="description" content="منيو أونلاين - اكتشف أفضل المطاعم والكافيهات من مكان واحد. تصفح القوائم، الأسعار، والعروض المميزة بكل سهولة." />
+    <meta name="keywords" content="منيو أونلاين, منيو, مطاعم, كافيهات, فود, أكل, مشروبات, مطاعم مصر, كافيه مصر, menu online, cafes, restaurants" />
+    <meta name="author" content="منيو أونلاين" />
 
     <!-- Open Graph / Facebook -->
     <meta property="og:type" content="website" />
-    <meta property="og:title" content="ستارات للكمبيوتر | كل شيئ في مكان واحد" />
-    <meta property="og:description" content="كل ما يتعلق بالكمبيوتر وكاميرات المراقبة." />
-    <meta property="og:url" content="https://souqstart.com" />
-    <meta property="og:image" content="https://souqstart.com/icons/icon-192x192.png" />
+    <meta property="og:title" content="منيو أونلاين | مكان يليق بك" />
+    <meta property="og:description" content="منيو أونلاين – وجهتك لاكتشاف أفضل المطاعم والكافيهات والعروض في مكان واحد." />
+    <meta property="og:url" content="https://menu.enjaz.app" />
+    <meta property="og:image" content="https://menu.enjaz.app/uploads/branding/f204ae68f9299053103.png" />
     <meta property="og:locale" content="ar_AR" />
 
     <!-- Twitter Card -->
     <meta name="twitter:card" content="summary_large_image" />
-    <meta name="twitter:title" content="ستارات للكمبيوتر | كل شيئ في مكان واحد" />
-    <meta name="twitter:description" content="كل ما يتعلق بالكمبيوتر وكاميرات المراقبة." />
-    <meta name="twitter:image" content="https://souqstart.com/icons/icon-192x192.png" />
+    <meta name="twitter:title" content="منيو أونلاين | مكان يليق بك" />
+    <meta name="twitter:description" content="منيو أونلاين – تصفح قوائم المطاعم والكافيهات بسهولة." />
+    <meta name="twitter:image" content="https://menu.enjaz.app/uploads/branding/f204ae68f9299053103.png" />
 
     <!-- Favicon -->
-    <link rel="icon" type="image/png" href="https://souqstart.com/icons/icon-192x192.png" />
+    <link rel="icon" type="image/png" href="https://menu.enjaz.app/uploads/branding/f204ae68f9299053103.png" />
 
     <!-- Canonical URL -->
-    <link rel="canonical" href="https://souqstart.com" />
+    <link rel="canonical" href="https://menu.enjaz.app" />
 
-    <script src="https://accounts.google.com/gsi/client" async defer></script>
-
-    <script type="importmap">
-{
-  "imports": {
-    "react-dom": "https://aistudiocdn.com/react-dom@^19.2.0",
-    "react-dom/": "https://aistudiocdn.com/react-dom@^19.2.0/",
-    "react": "https://aistudiocdn.com/react@^19.2.0",
-    "react/": "https://aistudiocdn.com/react@^19.2.0/",
-    "firebase/app": "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js",
-    "firebase/auth": "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js",
-    "firebase/": "https://aistudiocdn.com/firebase@^12.4.0/",
-    "react-router-dom": "https://aistudiocdn.com/react-router-dom@^7.9.5"
-  }
-}
-</script>
 
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
@@ -57,19 +41,21 @@
               'sans': ['Cairo', 'sans-serif'],
             },
             colors: {
+              cream: '#F5F3EF',
               primary: {
-                '50': '#fffbeb',
-                '100': '#fef3c7',
-                '200': '#fde68a',
-                '300': '#fcd34d',
-                '400': '#fbbf24',
-                '500': '#f59e0b',
-                '600': '#d97706',
-                '700': '#b45309',
-                '800': '#92400e',
-                '900': '#78350f',
-                '950': '#451a03',
+                '50': '#f0fdfa',
+                '100': '#ccfbf1',
+                '200': '#99f6e4',
+                '300': '#5eead4',
+                '400': '#2dd4bf',
+                '500': '#14b8a6',
+                '600': '#0d9488',
+                '700': '#0f766e',
+                '800': '#115e59',
+                '900': '#134e4a',
+                '950': '#042f2e',
               },
+              accent: '#52A569',
                slate: {
                  50: '#f8fafc',
                  100: '#f1f5f9',
@@ -103,11 +89,20 @@
                   '0%': { transform: 'translateY(100%)' },
                   '100%': { transform: 'translateY(0)' },
               },
+              'slide-in-from-bottom-small': {
+                  '0%': { transform: 'translateY(20px)' },
+                  '100%': { transform: 'translateY(0)' },
+              },
+              'float': {
+                '0%, 100%': { transform: 'translateY(0px)' },
+                '50%': { transform: 'translateY(-8px)' },
+              },
             },
             animation: {
                 'fade-in-up': 'fade-in-up 0.5s ease-out forwards',
                 'fade-in': 'fade-in 0.3s ease-out forwards',
                 'slide-up': 'slide-up 0.3s ease-out forwards',
+                'float': 'float 3s ease-in-out infinite',
             },
             gridTemplateRows: {
               '[auto,auto,1fr]': 'auto auto 1fr',
@@ -169,17 +164,47 @@
         -ms-overflow-style: none; /* IE and Edge */
         scrollbar-width: none; /* Firefox */
       }
+      .social-button-entry-animate {
+        opacity: 0;
+        animation: fade-in 0.6s ease-out forwards, slide-in-from-bottom-small 0.6s ease-out forwards;
+      }
     </style>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
     <link rel="manifest" href="/manifest.json?v=2">
-    <link rel="apple-touch-icon" href="/icons/icon-192x192.png?v=5">
-  </head>
-  <body class="bg-slate-50 dark:bg-slate-950 font-sans antialiased text-slate-800 dark:text-slate-200">
+    <link rel="apple-touch-icon" href="/icons/icon-192x192.png?v=2">
+  <script type="importmap">
+{
+  "imports": {
+    "react/": "https://aistudiocdn.com/react@^19.2.0/",
+    "react": "https://aistudiocdn.com/react@^19.2.0",
+    "react-dom": "https://aistudiocdn.com/react-dom@^19.2.0",
+    "react-dom/": "https://aistudiocdn.com/react-dom@^19.2.0/",
+    "firebase/app": "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js",
+    "firebase/auth": "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js",
+    "firebase/messaging": "https://www.gstatic.com/firebasejs/10.12.2/firebase-messaging.js",
+    "react-router-dom": "https://aistudiocdn.com/react-router-dom@^7.9.4",
+    "firebase/": "https://aistudiocdn.com/firebase@^12.4.0/"
+  }
+}
+</script>
+</head>
+  <body class="bg-cream dark:bg-slate-950">
     <div id="root"></div>
     <div id="portal-root"></div>
-    <script src="https://cdn.jsdelivr.net/npm/bidi-js@1.0.0/bidi-js.min.js" defer></script>
-    <script type="module" src="/index.tsx" defer></script>
+    <div id="recaptcha-container"></div>
+    <script type="module" src="/index.tsx"></script>
+    <script>
+      if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+          navigator.serviceWorker.register('/sw.js').then(registration => {
+            console.log('ServiceWorker registration successful with scope: ', registration.scope);
+          }, err => {
+            console.log('ServiceWorker registration failed: ', err);
+          });
+        });
+      }
+    </script>
   </body>
 </html>
